@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Users, GraduationCap, UserCheck } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Navbar from "@/components/Navbar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -510,49 +511,49 @@ const Import = () => {
                 </Card>
               )}
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+              <Accordion type="single" collapsible defaultValue={selectedFile ? "" : "requirements"}>
+                <AccordionItem value="requirements">
+                  <AccordionTrigger className="flex items-center gap-2 text-left">
                     <AlertCircle className="h-5 w-5" />
                     File Requirements
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Required Columns:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• First Name (or "FirstName")</li>
-                      <li>• Last Name (or "LastName")</li>
-                      <li>• Grade Level (or "Grade")</li>
-                      <li>• Class Name (or "Class", "Classroom")</li>
-                      <li>• Teacher First Name (or "TeacherFirstName")</li>
-                      <li>• Teacher Last Name (or "TeacherLastName")</li>
-                      <li>• Teacher Email (or "TeacherEmail")</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Optional Columns:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Student ID (or "ID", "StudentID")</li>
-                      <li>• Room Number (or "Room")</li>
-                      <li>• Parent/Guardian Name (or "Parent", "Guardian")</li>
-                      <li>• Contact Info (or "Contact", "Phone")</li>
-                      <li>• Special Notes (or "Notes")</li>
-                      <li>• Dismissal Group (or "Dismissal")</li>
-                    </ul>
-                  </div>
-                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                    <h4 className="font-medium mb-2 text-sm">File Format:</h4>
-                    <ul className="text-xs text-muted-foreground space-y-1">
-                      <li>• CSV format only (.csv)</li>
-                      <li>• First row must contain column headers</li>
-                      <li>• Column names are case-insensitive</li>
-                      <li>• Multiple teachers per class separated by commas</li>
-                      <li>• Empty optional fields are allowed</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Required Columns:</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• First Name (or "FirstName")</li>
+                        <li>• Last Name (or "LastName")</li>
+                        <li>• Grade Level (or "Grade")</li>
+                        <li>• Class Name (or "Class", "Classroom")</li>
+                        <li>• Teacher First Name (or "TeacherFirstName")</li>
+                        <li>• Teacher Last Name (or "TeacherLastName")</li>
+                        <li>• Teacher Email (or "TeacherEmail")</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Optional Columns:</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Student ID (or "ID", "StudentID")</li>
+                        <li>• Room Number (or "Room")</li>
+                        <li>• Parent/Guardian Name (or "Parent", "Guardian")</li>
+                        <li>• Contact Info (or "Contact", "Phone")</li>
+                        <li>• Special Notes (or "Notes")</li>
+                        <li>• Dismissal Group (or "Dismissal")</li>
+                      </ul>
+                    </div>
+                    <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                      <h4 className="font-medium mb-2 text-sm">File Format:</h4>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• CSV format only (.csv)</li>
+                        <li>• First row must contain column headers</li>
+                        <li>• Column names are case-insensitive</li>
+                        <li>• Multiple teachers per class separated by commas</li>
+                        <li>• Empty optional fields are allowed</li>
+                      </ul>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </main>
           </div>
         </div>
