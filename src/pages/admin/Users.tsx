@@ -31,7 +31,7 @@ const Users = () => {
     <div className="flex-1 p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Users</h1>
+          <h1 className="text-3xl font-bold">People</h1>
           <p className="text-muted-foreground">Manage teachers, staff, and user permissions</p>
         </div>
         <Button>
