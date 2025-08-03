@@ -326,10 +326,10 @@ const Import = () => {
                 <SidebarTrigger />
                 <div>
                   <h1 className="text-2xl font-bold">
-                    Import Roster
+                    {schoolName}
                   </h1>
                   <p className="text-sm text-muted-foreground">
-                    Upload student roster files for {schoolName}
+                    Import student roster files
                   </p>
                 </div>
               </div>
