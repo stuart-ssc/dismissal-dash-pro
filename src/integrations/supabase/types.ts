@@ -195,7 +195,7 @@ export type Database = {
           parent_guardian_name: string | null
           school_id: number
           special_notes: string | null
-          student_id: string
+          student_id: string | null
           updated_at: string
         }
         Insert: {
@@ -209,7 +209,7 @@ export type Database = {
           parent_guardian_name?: string | null
           school_id: number
           special_notes?: string | null
-          student_id: string
+          student_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -223,7 +223,7 @@ export type Database = {
           parent_guardian_name?: string | null
           school_id?: number
           special_notes?: string | null
-          student_id?: string
+          student_id?: string | null
           updated_at?: string
         }
         Relationships: [
