@@ -13,7 +13,9 @@ interface RosterRow {
   gradeLevel: string;
   className: string;
   roomNumber?: string;
-  teacherNames: string;
+  teacherFirstName: string;
+  teacherLastName: string;
+  teacherEmail: string;
   parentGuardianName?: string;
   contactInfo?: string;
   specialNotes?: string;
@@ -138,69 +140,61 @@ serve(async (req) => {
           processedClasses.set(classKey, classId);
         }
 
-        // 2. Process teachers
-        const teacherNames = row.teacherNames.split(',').map(name => name.trim()).filter(name => name);
+        // 2. Process teacher
+        let teacherId = processedTeachers.get(row.teacherEmail);
         
-        for (const teacherName of teacherNames) {
-          const [firstName, ...lastNameParts] = teacherName.split(' ');
-          const lastName = lastNameParts.join(' ');
-          const teacherEmail = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@school.edu`;
-          
-          let teacherId = processedTeachers.get(teacherEmail);
-          
-          if (!teacherId) {
-            // Check if teacher profile exists
-            const { data: existingTeacher } = await supabase
+        if (!teacherId) {
+          // Check if teacher profile exists
+          const { data: existingTeacher } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', row.teacherEmail)
+            .eq('school_id', profile.school_id)
+            .single();
+
+          if (existingTeacher) {
+            teacherId = existingTeacher.id;
+          } else {
+            // Create teacher profile (they can sign up later)
+            const { data: newTeacher, error: teacherError } = await supabase
               .from('profiles')
+              .insert({
+                first_name: row.teacherFirstName,
+                last_name: row.teacherLastName,
+                email: row.teacherEmail,
+                school_id: profile.school_id,
+              })
               .select('id')
-              .eq('email', teacherEmail)
-              .eq('school_id', profile.school_id)
               .single();
 
-            if (existingTeacher) {
-              teacherId = existingTeacher.id;
-            } else {
-              // Create teacher profile (they can sign up later)
-              const { data: newTeacher, error: teacherError } = await supabase
-                .from('profiles')
-                .insert({
-                  first_name: firstName,
-                  last_name: lastName,
-                  email: teacherEmail,
-                  school_id: profile.school_id,
-                })
-                .select('id')
-                .single();
-
-              if (teacherError) {
-                results.errors.push(`Row ${i + 1}: Failed to create teacher ${teacherName} - ${teacherError.message}`);
-                continue;
-              }
-              teacherId = newTeacher.id;
-              results.teachersCreated++;
-
-              // Assign teacher role
-              await supabase
-                .from('user_roles')
-                .insert({
-                  user_id: teacherId,
-                  role: 'teacher',
-                });
+            if (teacherError) {
+              results.errors.push(`Row ${i + 1}: Failed to create teacher ${row.teacherFirstName} ${row.teacherLastName} - ${teacherError.message}`);
+              continue;
             }
-            processedTeachers.set(teacherEmail, teacherId);
-          }
+            teacherId = newTeacher.id;
+            results.teachersCreated++;
 
-          // Assign teacher to class
-          const { error: assignError } = await supabase
-            .from('class_teachers')
-            .upsert({
-              teacher_id: teacherId,
-              class_id: classId,
-            });
-
-          if (!assignError) {
-            results.teachersAssigned++;
+            // Assign teacher role
+            await supabase
+              .from('user_roles')
+              .insert({
+                user_id: teacherId,
+                role: 'teacher',
+              });
           }
+          processedTeachers.set(row.teacherEmail, teacherId);
+        }
+
+        // Assign teacher to class
+        const { error: assignError } = await supabase
+          .from('class_teachers')
+          .upsert({
+            teacher_id: teacherId,
+            class_id: classId,
+          });
+
+        if (!assignError) {
+          results.teachersAssigned++;
         }
 
         // 3. Create student

@@ -19,7 +19,9 @@ interface RosterRow {
   gradeLevel: string;
   className: string;
   roomNumber?: string;
-  teacherNames: string;
+  teacherFirstName: string;
+  teacherLastName: string;
+  teacherEmail: string;
   parentGuardianName?: string;
   contactInfo?: string;
   specialNotes?: string;
@@ -119,10 +121,12 @@ const Import = () => {
       'classroom': 'className',
       'room': 'roomNumber',
       'room number': 'roomNumber',
-      'teacher': 'teacherNames',
-      'teachers': 'teacherNames',
-      'teacher name': 'teacherNames',
-      'teacher names': 'teacherNames',
+      'teacher first name': 'teacherFirstName',
+      'teacherfirstname': 'teacherFirstName',
+      'teacher last name': 'teacherLastName',
+      'teacherlastname': 'teacherLastName',
+      'teacher email': 'teacherEmail',
+      'teacheremail': 'teacherEmail',
       'parent': 'parentGuardianName',
       'guardian': 'parentGuardianName',
       'parent/guardian': 'parentGuardianName',
@@ -147,8 +151,8 @@ const Import = () => {
       });
 
       // Validate required fields
-      if (!row.studentId || !row.firstName || !row.lastName || !row.gradeLevel || !row.className || !row.teacherNames) {
-        errors.push(`Row ${i + 1}: Missing required fields (Student ID, First Name, Last Name, Grade Level, Class Name, Teacher Names)`);
+      if (!row.studentId || !row.firstName || !row.lastName || !row.gradeLevel || !row.className || !row.teacherFirstName || !row.teacherLastName || !row.teacherEmail) {
+        errors.push(`Row ${i + 1}: Missing required fields (Student ID, First Name, Last Name, Grade Level, Class Name, Teacher First Name, Teacher Last Name, Teacher Email)`);
         continue;
       }
 
@@ -500,7 +504,9 @@ const Import = () => {
                       <li>• Last Name (or "LastName")</li>
                       <li>• Grade Level (or "Grade")</li>
                       <li>• Class Name (or "Class", "Classroom")</li>
-                      <li>• Teacher Names (or "Teacher", "Teachers") - comma-separated for multiple</li>
+                      <li>• Teacher First Name (or "TeacherFirstName")</li>
+                      <li>• Teacher Last Name (or "TeacherLastName")</li>
+                      <li>• Teacher Email (or "TeacherEmail")</li>
                     </ul>
                   </div>
                   <div>
