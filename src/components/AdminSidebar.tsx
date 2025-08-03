@@ -39,9 +39,12 @@ export function AdminSidebar() {
     >
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm font-semibold text-muted-foreground px-4 py-2">
-            Admin Panel
-          </SidebarGroupLabel>
+          <div className="flex items-center gap-2 font-bold text-lg px-4 py-3 border-b">
+            <GraduationCap className="h-6 w-6 text-primary" />
+            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Dismissal Pro
+            </span>
+          </div>
 
           <SidebarGroupContent>
             <SidebarMenu>
