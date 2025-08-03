@@ -97,11 +97,15 @@ const Import = () => {
 
   const parseCSVContent = (content: string): RosterRow[] => {
     const lines = content.split('\n').filter(line => line.trim());
+    console.log('Total lines found:', lines.length);
+    
     if (lines.length < 2) {
       throw new Error('File must contain at least a header row and one data row');
     }
 
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    console.log('Headers found:', headers);
+    
     const rows: RosterRow[] = [];
     const errors: string[] = [];
 
@@ -141,23 +145,41 @@ const Import = () => {
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      console.log(`Row ${i + 1} values:`, values);
+      
       const row: any = {};
 
       headers.forEach((header, index) => {
         const mappedField = columnMap[header as keyof typeof columnMap];
         if (mappedField && values[index]) {
           row[mappedField] = values[index];
+          console.log(`Mapped ${header} -> ${mappedField}: ${values[index]}`);
         }
       });
 
+      console.log(`Row ${i + 1} mapped object:`, row);
+      
       // Validate required fields (student ID is now optional)
-      if (!row.firstName || !row.lastName || !row.gradeLevel || !row.className || !row.teacherFirstName || !row.teacherLastName || !row.teacherEmail) {
-        errors.push(`Row ${i + 1}: Missing required fields (First Name, Last Name, Grade Level, Class Name, Teacher First Name, Teacher Last Name, Teacher Email)`);
+      const missingFields = [];
+      if (!row.firstName) missingFields.push('First Name');
+      if (!row.lastName) missingFields.push('Last Name');
+      if (!row.gradeLevel) missingFields.push('Grade Level');
+      if (!row.className) missingFields.push('Class Name');
+      if (!row.teacherFirstName) missingFields.push('Teacher First Name');
+      if (!row.teacherLastName) missingFields.push('Teacher Last Name');
+      if (!row.teacherEmail) missingFields.push('Teacher Email');
+
+      if (missingFields.length > 0) {
+        console.log(`Row ${i + 1} missing fields:`, missingFields);
+        errors.push(`Row ${i + 1}: Missing required fields (${missingFields.join(', ')})`);
         continue;
       }
 
       rows.push(row as RosterRow);
     }
+
+    console.log('Final parsed rows:', rows);
+    console.log('Parse errors:', errors);
 
     setParseErrors(errors);
     return rows;
