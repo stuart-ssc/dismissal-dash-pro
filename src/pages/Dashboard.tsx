@@ -71,6 +71,10 @@ const Dashboard = () => {
     return null;
   }
 
+  // Debug: Log the current user role
+  console.log('Current user role:', userRole);
+  console.log('User object:', user);
+
   // For school admins, show the sidebar layout
   if (userRole === 'school_admin') {
     return (
