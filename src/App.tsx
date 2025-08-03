@@ -10,7 +10,7 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import DismissalGroups from "./pages/admin/DismissalGroups";
 import Classes from "./pages/admin/Classes";
-import Users from "./pages/admin/Users";
+import People from "./pages/admin/People";
 import Settings from "./pages/admin/Settings";
 import { AuthProvider } from "./hooks/useAuth";
 
@@ -30,7 +30,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
             <Route path="/admin/classes" element={<Classes />} />
-            <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/users" element={<People />} />
             <Route path="/admin/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
