@@ -13,7 +13,7 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 interface RosterRow {
-  studentId: string;
+  studentId?: string;
   firstName: string;
   lastName: string;
   gradeLevel: string;
@@ -150,9 +150,9 @@ const Import = () => {
         }
       });
 
-      // Validate required fields
-      if (!row.studentId || !row.firstName || !row.lastName || !row.gradeLevel || !row.className || !row.teacherFirstName || !row.teacherLastName || !row.teacherEmail) {
-        errors.push(`Row ${i + 1}: Missing required fields (Student ID, First Name, Last Name, Grade Level, Class Name, Teacher First Name, Teacher Last Name, Teacher Email)`);
+      // Validate required fields (student ID is now optional)
+      if (!row.firstName || !row.lastName || !row.gradeLevel || !row.className || !row.teacherFirstName || !row.teacherLastName || !row.teacherEmail) {
+        errors.push(`Row ${i + 1}: Missing required fields (First Name, Last Name, Grade Level, Class Name, Teacher First Name, Teacher Last Name, Teacher Email)`);
         continue;
       }
 
@@ -499,7 +499,6 @@ const Import = () => {
                   <div>
                     <h4 className="font-medium mb-2">Required Columns:</h4>
                     <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Student ID (or "ID", "StudentID")</li>
                       <li>• First Name (or "FirstName")</li>
                       <li>• Last Name (or "LastName")</li>
                       <li>• Grade Level (or "Grade")</li>
@@ -512,6 +511,7 @@ const Import = () => {
                   <div>
                     <h4 className="font-medium mb-2">Optional Columns:</h4>
                     <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Student ID (or "ID", "StudentID")</li>
                       <li>• Room Number (or "Room")</li>
                       <li>• Parent/Guardian Name (or "Parent", "Guardian")</li>
                       <li>• Contact Info (or "Contact", "Phone")</li>

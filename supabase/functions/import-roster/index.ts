@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface RosterRow {
-  studentId: string;
+  studentId?: string;
   firstName: string;
   lastName: string;
   gradeLevel: string;
@@ -198,14 +198,19 @@ serve(async (req) => {
         }
 
         // 3. Create student
-        const { data: existingStudent } = await supabase
-          .from('students')
-          .select('id')
-          .eq('student_id', row.studentId)
-          .eq('school_id', profile.school_id)
-          .single();
-
         let studentId: string;
+        let existingStudent = null;
+        
+        // Only check for existing student if student_id is provided
+        if (row.studentId) {
+          const { data: existing } = await supabase
+            .from('students')
+            .select('id')
+            .eq('student_id', row.studentId)
+            .eq('school_id', profile.school_id)
+            .single();
+          existingStudent = existing;
+        }
         
         if (existingStudent) {
           studentId = existingStudent.id;
@@ -213,7 +218,7 @@ serve(async (req) => {
           const { data: newStudent, error: studentError } = await supabase
             .from('students')
             .insert({
-              student_id: row.studentId,
+              student_id: row.studentId || null,
               first_name: row.firstName,
               last_name: row.lastName,
               grade_level: row.gradeLevel,
