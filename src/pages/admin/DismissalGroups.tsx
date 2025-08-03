@@ -31,8 +31,8 @@ const DismissalGroups = () => {
     <div className="flex-1 p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Dismissal Groups</h1>
-          <p className="text-muted-foreground">Manage student dismissal groups and assignments</p>
+          <h1 className="text-3xl font-bold">Dismissal Plans</h1>
+          <p className="text-muted-foreground">Manage student dismissal plans and assignments</p>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
