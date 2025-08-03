@@ -138,7 +138,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           first_name?: string | null
-          id: string
+          id?: string
           last_name?: string | null
           school_id?: number | null
           updated_at?: string
