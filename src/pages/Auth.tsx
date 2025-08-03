@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,16 +9,58 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraduationCap, Mail, Lock, User, Building } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/hooks/useAuth";
+
+interface SignInForm {
+  email: string;
+  password: string;
+}
+
+interface SignUpForm {
+  firstName: string;
+  lastName: string;
+  schoolName: string;
+  email: string;
+  password: string;
+}
 
 const Auth = () => {
+  const { signIn, signUp, user, userRole, loading } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const signInForm = useForm<SignInForm>();
+  const signUpForm = useForm<SignUpForm>();
+
+  useEffect(() => {
+    if (!loading && user && userRole) {
+      if (userRole === 'system_admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [user, userRole, loading, navigate]);
+
+  const handleSignIn = async (data: SignInForm) => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => setIsLoading(false), 2000);
+    await signIn(data.email, data.password);
+    setIsLoading(false);
   };
+
+  const handleSignUp = async (data: SignUpForm) => {
+    setIsLoading(true);
+    await signUp(data.email, data.password, data.firstName, data.lastName, data.schoolName);
+    setIsLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
@@ -61,7 +105,7 @@ const Auth = () => {
             <CardContent>
               <Tabs defaultValue="login" className="w-full">
                 <TabsContent value="login">
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
                       <div className="relative">
@@ -71,7 +115,7 @@ const Auth = () => {
                           type="email" 
                           placeholder="Enter your email"
                           className="pl-9"
-                          required
+                          {...signInForm.register("email", { required: true })}
                         />
                       </div>
                     </div>
@@ -85,7 +129,7 @@ const Auth = () => {
                           type="password" 
                           placeholder="Enter your password"
                           className="pl-9"
-                          required
+                          {...signInForm.register("password", { required: true })}
                         />
                       </div>
                     </div>
@@ -103,7 +147,7 @@ const Auth = () => {
                 </TabsContent>
                 
                 <TabsContent value="signup">
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">First Name</Label>
@@ -113,7 +157,7 @@ const Auth = () => {
                             id="firstName" 
                             placeholder="John"
                             className="pl-9"
-                            required
+                            {...signUpForm.register("firstName", { required: true })}
                           />
                         </div>
                       </div>
@@ -122,7 +166,7 @@ const Auth = () => {
                         <Input 
                           id="lastName" 
                           placeholder="Doe"
-                          required
+                          {...signUpForm.register("lastName", { required: true })}
                         />
                       </div>
                     </div>
@@ -135,7 +179,7 @@ const Auth = () => {
                           id="schoolName" 
                           placeholder="Lincoln Elementary School"
                           className="pl-9"
-                          required
+                          {...signUpForm.register("schoolName", { required: true })}
                         />
                       </div>
                     </div>
@@ -149,7 +193,7 @@ const Auth = () => {
                           type="email" 
                           placeholder="john@school.edu"
                           className="pl-9"
-                          required
+                          {...signUpForm.register("email", { required: true })}
                         />
                       </div>
                     </div>
@@ -163,7 +207,7 @@ const Auth = () => {
                           type="password" 
                           placeholder="Create a strong password"
                           className="pl-9"
-                          required
+                          {...signUpForm.register("password", { required: true })}
                         />
                       </div>
                     </div>
