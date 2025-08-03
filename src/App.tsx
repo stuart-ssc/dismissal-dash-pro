@@ -8,6 +8,10 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import DismissalGroups from "./pages/admin/DismissalGroups";
+import Classes from "./pages/admin/Classes";
+import Users from "./pages/admin/Users";
+import Settings from "./pages/admin/Settings";
 import { AuthProvider } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -24,6 +28,10 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
+            <Route path="/admin/classes" element={<Classes />} />
+            <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
