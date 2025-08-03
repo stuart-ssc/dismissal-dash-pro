@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import DismissalGroups from "./pages/admin/DismissalGroups";
 import Classes from "./pages/admin/Classes";
 import People from "./pages/admin/People";
+import PeopleManagement from "./pages/People";
 import Settings from "./pages/admin/Settings";
 import { AuthProvider } from "./hooks/useAuth";
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/people" element={<PeopleManagement />} />
             <Route path="/dashboard/import" element={<Import />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
