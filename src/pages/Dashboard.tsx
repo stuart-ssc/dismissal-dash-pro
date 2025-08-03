@@ -11,6 +11,8 @@ const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const [schoolName, setSchoolName] = useState<string>('');
+  const [firstName, setFirstName] = useState<string>('');
+  const [lastName, setLastName] = useState<string>('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -23,23 +25,28 @@ const Dashboard = () => {
       if (!user) return;
       
       try {
-        // Get user's profile to get school_id
+        // Get user's profile to get school_id, first_name, and last_name
         const { data: profile } = await supabase
           .from('profiles')
-          .select('school_id')
+          .select('school_id, first_name, last_name')
           .eq('id', user.id)
           .single();
 
-        if (profile?.school_id) {
-          // Get school name
-          const { data: school } = await supabase
-            .from('schools')
-            .select('school_name')
-            .eq('id', profile.school_id)
-            .single();
+        if (profile) {
+          setFirstName(profile.first_name || '');
+          setLastName(profile.last_name || '');
 
-          if (school?.school_name) {
-            setSchoolName(school.school_name);
+          if (profile.school_id) {
+            // Get school name
+            const { data: school } = await supabase
+              .from('schools')
+              .select('school_name')
+              .eq('id', profile.school_id)
+              .single();
+
+            if (school?.school_name) {
+              setSchoolName(school.school_name);
+            }
           }
         }
       } catch (error) {
@@ -74,7 +81,7 @@ const Dashboard = () => {
                 {schoolName ? `${schoolName} ` : ''}Dashboard
               </h1>
               <p className="text-muted-foreground">
-                Welcome back! Role: {userRole || 'Loading...'}
+                Welcome {firstName} {lastName}
               </p>
             </div>
             <Button onClick={signOut} variant="outline">
