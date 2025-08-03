@@ -4,10 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Users, Calendar, BarChart3 } from "lucide-react";
+import { GraduationCap, Users, Calendar, BarChart3, Upload } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Link } from "react-router-dom";
 
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
@@ -175,6 +176,12 @@ const Dashboard = () => {
                       <BarChart3 className="mr-2 h-4 w-4" />
                       View Reports
                     </Button>
+                    <Button asChild className="w-full justify-start" variant="outline">
+                      <Link to="/dashboard/import">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import Roster
+                      </Link>
+                    </Button>
                   </CardContent>
                 </Card>
 
@@ -316,6 +323,12 @@ const Dashboard = () => {
                   </Button>
                 </>
               )}
+              <Button asChild className="w-full justify-start" variant="outline">
+                <Link to="/dashboard/import">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import Roster
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 

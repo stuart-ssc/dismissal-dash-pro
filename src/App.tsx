@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Import from "./pages/Import";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import DismissalGroups from "./pages/admin/DismissalGroups";
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/import" element={<Import />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
             <Route path="/admin/classes" element={<Classes />} />
