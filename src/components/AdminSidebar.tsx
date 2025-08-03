@@ -39,7 +39,7 @@ export function AdminSidebar() {
     >
       <SidebarContent>
         <SidebarGroup>
-          <div className={`flex items-center gap-2 font-bold text-lg px-4 py-3 border-b ${state === 'collapsed' ? 'justify-center' : ''}`}>
+          <div className={`flex items-center gap-2 font-bold text-lg px-4 py-3 ${state === 'collapsed' ? 'justify-center' : ''}`}>
             <GraduationCap className="h-6 w-6 text-primary" />
             {state !== 'collapsed' && (
               <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -49,7 +49,7 @@ export function AdminSidebar() {
           </div>
 
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="pt-4">
               {adminNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
