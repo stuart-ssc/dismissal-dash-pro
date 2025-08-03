@@ -329,7 +329,7 @@ const Import = () => {
                     {schoolName}
                   </h1>
                   <p className="text-sm text-muted-foreground">
-                    Import student roster files
+                    Welcome back, {firstName} {lastName}
                   </p>
                 </div>
               </div>
