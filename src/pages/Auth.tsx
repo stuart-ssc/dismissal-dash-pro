@@ -94,8 +94,8 @@ const Auth = () => {
           </div>
 
           <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-            <CardHeader>
-              <Tabs defaultValue="login" className="w-full">
+            <Tabs defaultValue="login" className="w-full">
+              <CardHeader>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="login">Sign In</TabsTrigger>
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -114,11 +114,9 @@ const Auth = () => {
                     Join thousands of schools using Dismissal Pro.
                   </CardDescription>
                 </TabsContent>
-              </Tabs>
-            </CardHeader>
-            
-            <CardContent>
-              <Tabs defaultValue="login" className="w-full">
+              </CardHeader>
+              
+              <CardContent>
                 <TabsContent value="login">
                   <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
                     <div className="space-y-2">
@@ -252,15 +250,15 @@ const Auth = () => {
                     </p>
                   </form>
                 </TabsContent>
-              </Tabs>
-              
-              <div className="mt-6">
-                <Separator className="my-4" />
-                <div className="text-center text-sm text-muted-foreground">
-                  Trusted by 500+ schools nationwide
+                
+                <div className="mt-6">
+                  <Separator className="my-4" />
+                  <div className="text-center text-sm text-muted-foreground">
+                    Trusted by 500+ schools nationwide
+                  </div>
                 </div>
-              </div>
-            </CardContent>
+              </CardContent>
+            </Tabs>
           </Card>
         </div>
       </div>
