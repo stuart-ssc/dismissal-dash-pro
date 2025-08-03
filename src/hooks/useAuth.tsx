@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   userRole: string | null;
-  signUp: (email: string, password: string, firstName: string, lastName: string, schoolName?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, schoolId: number, role: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   loading: boolean;
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string, schoolName?: string) => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string, schoolId: number, role: string) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
@@ -75,7 +75,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: {
             first_name: firstName,
             last_name: lastName,
-            school_name: schoolName
+            school_id: schoolId,
+            role: role
           }
         }
       });
@@ -89,11 +90,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error };
       }
 
-      if (data.user && !data.session) {
-        toast({
-          title: "Check your email",
-          description: "Please check your email for a confirmation link.",
-        });
+      // If user is created successfully, create the user role
+      if (data.user) {
+        // Create user role entry
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: data.user.id,
+            role: role as 'school_admin' | 'teacher'
+          });
+
+        if (roleError) {
+          console.error('Error creating user role:', roleError);
+        }
+
+        if (!data.session) {
+          toast({
+            title: "Check your email",
+            description: "Please check your email for a confirmation link.",
+          });
+        } else {
+          toast({
+            title: "Account created successfully!",
+            description: "Welcome to Dismissal Pro.",
+          });
+        }
       }
 
       return { error: null };

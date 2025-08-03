@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Mail, Lock, User, Building } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { GraduationCap, Mail, Lock, User, Building, UserCheck } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SignInForm {
   email: string;
@@ -19,7 +21,8 @@ interface SignInForm {
 interface SignUpForm {
   firstName: string;
   lastName: string;
-  schoolName: string;
+  schoolId: string;
+  role: string;
   email: string;
   password: string;
 }
@@ -28,9 +31,21 @@ const Auth = () => {
   const { signIn, signUp, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [schools, setSchools] = useState<{ id: number; school_name: string }[]>([]);
 
   const signInForm = useForm<SignInForm>();
   const signUpForm = useForm<SignUpForm>();
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      const { data } = await supabase
+        .from('schools')
+        .select('id, school_name')
+        .order('school_name');
+      if (data) setSchools(data);
+    };
+    fetchSchools();
+  }, []);
 
   useEffect(() => {
     if (!loading && user && userRole) {
@@ -50,7 +65,7 @@ const Auth = () => {
 
   const handleSignUp = async (data: SignUpForm) => {
     setIsLoading(true);
-    await signUp(data.email, data.password, data.firstName, data.lastName, data.schoolName);
+    await signUp(data.email, data.password, data.firstName, data.lastName, parseInt(data.schoolId), data.role);
     setIsLoading(false);
   };
 
@@ -172,16 +187,32 @@ const Auth = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="schoolName">School Name</Label>
-                      <div className="relative">
-                        <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="schoolName" 
-                          placeholder="Lincoln Elementary School"
-                          className="pl-9"
-                          {...signUpForm.register("schoolName", { required: true })}
-                        />
-                      </div>
+                      <Label htmlFor="schoolId">School</Label>
+                      <Select onValueChange={(value) => signUpForm.setValue("schoolId", value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your school" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {schools.map((school) => (
+                            <SelectItem key={school.id} value={school.id.toString()}>
+                              {school.school_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Role</Label>
+                      <Select onValueChange={(value) => signUpForm.setValue("role", value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="school_admin">School Admin</SelectItem>
+                          <SelectItem value="teacher">Teacher</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     <div className="space-y-2">
