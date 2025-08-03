@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Users, Calendar, BarChart3 } from "lucide-react";
@@ -9,12 +10,45 @@ import Navbar from "@/components/Navbar";
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  const [schoolName, setSchoolName] = useState<string>('');
 
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    const fetchSchoolName = async () => {
+      if (!user) return;
+      
+      try {
+        // Get user's profile to get school_id
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.school_id) {
+          // Get school name
+          const { data: school } = await supabase
+            .from('schools')
+            .select('school_name')
+            .eq('id', profile.school_id)
+            .single();
+
+          if (school?.school_name) {
+            setSchoolName(school.school_name);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching school name:', error);
+      }
+    };
+
+    fetchSchoolName();
+  }, [user]);
 
   if (loading) {
     return (
@@ -36,7 +70,9 @@ const Dashboard = () => {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+              <h1 className="text-4xl font-bold mb-2">
+                {schoolName ? `${schoolName} ` : ''}Dashboard
+              </h1>
               <p className="text-muted-foreground">
                 Welcome back! Role: {userRole || 'Loading...'}
               </p>
