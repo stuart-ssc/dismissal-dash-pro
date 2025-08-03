@@ -14,6 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      class_rosters: {
+        Row: {
+          class_id: string
+          enrolled_at: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          class_id: string
+          enrolled_at?: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          class_id?: string
+          enrolled_at?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_rosters_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_rosters_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_teachers: {
+        Row: {
+          assigned_at: string
+          class_id: string
+          id: string
+          teacher_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          class_id: string
+          id?: string
+          teacher_id: string
+        }
+        Update: {
+          assigned_at?: string
+          class_id?: string
+          id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_teachers_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_teachers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          class_name: string
+          created_at: string
+          grade_level: string | null
+          id: string
+          room_number: string | null
+          school_id: number
+          updated_at: string
+        }
+        Insert: {
+          class_name: string
+          created_at?: string
+          grade_level?: string | null
+          id?: string
+          room_number?: string | null
+          school_id: number
+          updated_at?: string
+        }
+        Update: {
+          class_name?: string
+          created_at?: string
+          grade_level?: string | null
+          id?: string
+          room_number?: string | null
+          school_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -72,6 +182,59 @@ export type Database = {
           school_name?: string | null
         }
         Relationships: []
+      }
+      students: {
+        Row: {
+          contact_info: string | null
+          created_at: string
+          dismissal_group: string | null
+          first_name: string
+          grade_level: string
+          id: string
+          last_name: string
+          parent_guardian_name: string | null
+          school_id: number
+          special_notes: string | null
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_info?: string | null
+          created_at?: string
+          dismissal_group?: string | null
+          first_name: string
+          grade_level: string
+          id?: string
+          last_name: string
+          parent_guardian_name?: string | null
+          school_id: number
+          special_notes?: string | null
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_info?: string | null
+          created_at?: string
+          dismissal_group?: string | null
+          first_name?: string
+          grade_level?: string
+          id?: string
+          last_name?: string
+          parent_guardian_name?: string | null
+          school_id?: number
+          special_notes?: string | null
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
