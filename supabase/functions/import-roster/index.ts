@@ -144,9 +144,9 @@ serve(async (req) => {
         let teacherId = processedTeachers.get(row.teacherEmail);
         
         if (!teacherId) {
-          // Check if teacher profile exists
+          // Check if teacher exists in teachers table
           const { data: existingTeacher } = await supabase
-            .from('profiles')
+            .from('teachers')
             .select('id')
             .eq('email', row.teacherEmail)
             .eq('school_id', profile.school_id)
@@ -155,9 +155,9 @@ serve(async (req) => {
           if (existingTeacher) {
             teacherId = existingTeacher.id;
           } else {
-            // Create teacher profile (they can sign up later)
+            // Create teacher record
             const { data: newTeacher, error: teacherError } = await supabase
-              .from('profiles')
+              .from('teachers')
               .insert({
                 first_name: row.teacherFirstName,
                 last_name: row.teacherLastName,
@@ -173,14 +173,6 @@ serve(async (req) => {
             }
             teacherId = newTeacher.id;
             results.teachersCreated++;
-
-            // Assign teacher role
-            await supabase
-              .from('user_roles')
-              .insert({
-                user_id: teacherId,
-                role: 'teacher',
-              });
           }
           processedTeachers.set(row.teacherEmail, teacherId);
         }
