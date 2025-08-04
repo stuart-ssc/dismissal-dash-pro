@@ -165,27 +165,34 @@ const People = () => {
         }
       }
 
-      // Fetch students with their classes in one query using joins
+      // Fetch students with their classes using a more explicit approach to avoid RLS issues
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select(`
-          id, 
-          student_id, 
-          first_name, 
-          last_name, 
-          grade_level,
-          class_rosters(
-            classes(class_name)
-          )
-        `)
+        .select('id, student_id, first_name, last_name, grade_level')
         .eq('school_id', schoolId);
 
-      console.log('Students query result:', { studentsData, studentsError });
+      console.log('Students query result:', { studentsData, studentsError, schoolId });
 
       if (studentsData) {
         console.log('Processing students:', studentsData.length);
+        
+        // Fetch class enrollments separately for all students
+        const studentIds = studentsData.map(s => s.id);
+        const { data: classRostersData } = await supabase
+          .from('class_rosters')
+          .select(`
+            student_id,
+            classes(class_name)
+          `)
+          .in('student_id', studentIds);
+
+        console.log('Class rosters data:', classRostersData);
+        
         for (const student of studentsData) {
-          const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
+          const studentClasses = classRostersData
+            ?.filter(cr => cr.student_id === student.id)
+            ?.map(cr => cr.classes?.class_name)
+            ?.filter(Boolean) || [];
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
