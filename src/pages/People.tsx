@@ -44,6 +44,7 @@ const People = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filterRole, setFilterRole] = useState<'all' | 'School Admin' | 'Teacher' | 'Student'>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
+  const [filterClass, setFilterClass] = useState<string>('all');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -320,12 +321,21 @@ const People = () => {
 
   // Get unique grades for filter dropdown
   const uniqueGrades = [...new Set(people.filter(p => p.grade).map(p => p.grade!))].sort();
+  
+  // Get unique classes for filter dropdown (filtered by grade if selected)
+  const uniqueClasses = [...new Set(
+    people
+      .filter(p => filterGrade === 'all' || p.grade === filterGrade)
+      .flatMap(p => p.classes)
+      .filter(Boolean)
+  )].sort();
 
   // Apply filters and sorting
   const filteredAndSortedPeople = people
     .filter(person => {
       if (filterRole !== 'all' && person.role !== filterRole) return false;
       if (filterGrade !== 'all' && person.grade !== filterGrade) return false;
+      if (filterClass !== 'all' && !person.classes.includes(filterClass)) return false;
       return true;
     })
     .sort((a, b) => {
@@ -357,10 +367,17 @@ const People = () => {
     });
 
   // Reset page when filters change
-  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string) => {
+  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string) => {
     setCurrentPage(1);
     if (newFilterRole !== undefined) setFilterRole(newFilterRole);
-    if (newFilterGrade !== undefined) setFilterGrade(newFilterGrade);
+    if (newFilterGrade !== undefined) {
+      setFilterGrade(newFilterGrade);
+      // Reset class filter when grade changes
+      if (newFilterGrade !== filterGrade) {
+        setFilterClass('all');
+      }
+    }
+    if (newFilterClass !== undefined) setFilterClass(newFilterClass);
   };
 
   const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
@@ -496,6 +513,26 @@ const People = () => {
                         {uniqueGrades.map((grade) => (
                           <DropdownMenuItem key={grade} onClick={() => handleFilterChange(undefined, grade)}>
                             {grade}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Class Filter */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          Class: {filterClass === 'all' ? 'All' : filterClass}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, 'all')}>
+                          All Classes
+                        </DropdownMenuItem>
+                        {uniqueClasses.map((className) => (
+                          <DropdownMenuItem key={className} onClick={() => handleFilterChange(undefined, undefined, className)}>
+                            {className}
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>
@@ -759,6 +796,26 @@ const People = () => {
                     {uniqueGrades.map((grade) => (
                       <DropdownMenuItem key={grade} onClick={() => handleFilterChange(undefined, grade)}>
                         {grade}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Class Filter */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8">
+                      Class: {filterClass === 'all' ? 'All' : filterClass}
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                    <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, 'all')}>
+                      All Classes
+                    </DropdownMenuItem>
+                    {uniqueClasses.map((className) => (
+                      <DropdownMenuItem key={className} onClick={() => handleFilterChange(undefined, undefined, className)}>
+                        {className}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
