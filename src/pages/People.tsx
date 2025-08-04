@@ -172,6 +172,10 @@ const People = () => {
         .eq('school_id', schoolId);
 
       console.log('Students query result:', { studentsData, studentsError, schoolId });
+      
+      // Specifically check for Terri Tester
+      const terriInData = studentsData?.find(s => s.first_name === 'Terri' && s.last_name === 'Tester');
+      console.log('Terri Tester in students data:', terriInData);
 
       if (studentsData) {
         console.log('Processing students:', studentsData.length);
