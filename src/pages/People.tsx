@@ -166,10 +166,11 @@ const People = () => {
       }
 
       // Fetch students with their classes using a more explicit approach to avoid RLS issues
-      const { data: studentsData, error: studentsError } = await supabase
+      const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
-        .select('id, student_id, first_name, last_name, grade_level')
-        .eq('school_id', schoolId);
+        .select('id, student_id, first_name, last_name, grade_level', { count: 'exact' })
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false }); // Order by newest first so Terri appears
 
       console.log('Students query result:', { studentsData, studentsError, schoolId });
       
