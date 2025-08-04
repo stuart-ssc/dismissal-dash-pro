@@ -166,7 +166,7 @@ const People = () => {
       }
 
       // Fetch students with their classes in one query using joins
-      const { data: studentsData } = await supabase
+      const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select(`
           id, 
@@ -180,9 +180,18 @@ const People = () => {
         `)
         .eq('school_id', schoolId);
 
+      console.log('Students query result:', { studentsData, studentsError });
+
       if (studentsData) {
+        console.log('Processing students:', studentsData.length);
         for (const student of studentsData) {
           const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
+          
+          console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
+            id: student.id,
+            grade: student.grade_level,
+            classes: studentClasses
+          });
           
           allPeople.push({
             id: student.id,
