@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Users, GraduationCap, UserCog, Settings, Menu } from "lucide-react";
+import { Home, Users, GraduationCap, UserCog, Settings, Menu, Bus } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -19,6 +19,7 @@ const adminNavItems = [
   { title: "Dismissal Plans", url: "/admin/dismissal-groups", icon: GraduationCap },
   { title: "Classes", url: "/admin/classes", icon: Users },
   { title: "People", url: "/dashboard/people", icon: UserCog },
+  { title: "Transportation", url: "/dashboard/transportation", icon: Bus },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 
