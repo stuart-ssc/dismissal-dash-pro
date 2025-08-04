@@ -165,14 +165,24 @@ const People = () => {
         }
       }
 
-      // Fetch students with their classes using a more explicit approach to avoid RLS issues
+      // Fetch students with their classes in one query using joins, ordered by newest first
       const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
-        .select('id, student_id, first_name, last_name, grade_level', { count: 'exact' })
+        .select(`
+          id, 
+          student_id, 
+          first_name, 
+          last_name, 
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          )
+        `, { count: 'exact' })
         .eq('school_id', schoolId)
-        .order('created_at', { ascending: false }); // Order by newest first so Terri appears
+        .order('created_at', { ascending: false })
+        .limit(2000); // Increase limit to ensure we get all students
 
-      console.log('Students query result:', { studentsData, studentsError, schoolId });
+      console.log('Students query result:', { studentsData, studentsError, schoolId, count });
       
       // Specifically check for Terri Tester
       const terriInData = studentsData?.find(s => s.first_name === 'Terri' && s.last_name === 'Tester');
@@ -181,29 +191,8 @@ const People = () => {
       if (studentsData) {
         console.log('Processing students:', studentsData.length);
         
-        // Fetch class enrollments separately for all students
-        const studentIds = studentsData.map(s => s.id);
-        console.log('Student IDs for class lookup:', studentIds.length);
-        
-        const { data: classRostersData, error: classRostersError } = await supabase
-          .from('class_rosters')
-          .select(`
-            student_id,
-            classes(class_name)
-          `)
-          .in('student_id', studentIds);
-
-        console.log('Class rosters query result:', { 
-          classRostersData, 
-          classRostersError, 
-          count: classRostersData?.length 
-        });
-        
         for (const student of studentsData) {
-          const studentClasses = classRostersData
-            ?.filter(cr => cr.student_id === student.id)
-            ?.map(cr => cr.classes?.class_name)
-            ?.filter(Boolean) || [];
+          const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
