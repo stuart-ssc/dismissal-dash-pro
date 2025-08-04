@@ -13,6 +13,7 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AddPersonDialog } from "@/components/AddPersonDialog";
 
 interface PersonData {
   id: string;
@@ -32,6 +33,7 @@ const People = () => {
   const [schoolName, setSchoolName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
+  const [schoolId, setSchoolId] = useState<number | null>(null);
   const [people, setPeople] = useState<PersonData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -66,6 +68,7 @@ const People = () => {
           setLastName(profile.last_name || '');
 
           if (profile.school_id) {
+            setSchoolId(profile.school_id);
             // Get school name
             const { data: school } = await supabase
               .from('schools')
@@ -417,10 +420,12 @@ const People = () => {
                         Manage students, teachers, and administrators
                       </CardDescription>
                     </div>
-                    <Button className="flex items-center gap-2">
-                      <UserPlus className="h-4 w-4" />
-                      Add Person
-                    </Button>
+                    {schoolId && (
+                      <AddPersonDialog 
+                        schoolId={schoolId} 
+                        onPersonAdded={() => schoolId && fetchPeople(schoolId)} 
+                      />
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>
