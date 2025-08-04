@@ -25,11 +25,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
     email: '',
     gradeLevel: '',
     classId: '',
-    studentId: '',
-    contactInfo: '',
-    parentGuardianName: '',
-    specialNotes: '',
-    dismissalGroup: ''
+    studentId: ''
   });
   const { toast } = useToast();
 
@@ -61,11 +57,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
       email: '',
       gradeLevel: '',
       classId: '',
-      studentId: '',
-      contactInfo: '',
-      parentGuardianName: '',
-      specialNotes: '',
-      dismissalGroup: ''
+      studentId: ''
     });
     setPersonType('student');
     setAvailableClasses([]);
@@ -84,10 +76,6 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
             last_name: formData.lastName,
             grade_level: formData.gradeLevel,
             student_id: formData.studentId || null,
-            contact_info: formData.contactInfo || null,
-            parent_guardian_name: formData.parentGuardianName || null,
-            special_notes: formData.specialNotes || null,
-            dismissal_group: formData.dismissalGroup || null,
             school_id: schoolId
           })
           .select()
@@ -257,47 +245,6 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="parentGuardianName">Parent/Guardian Name</Label>
-                <Input
-                  id="parentGuardianName"
-                  value={formData.parentGuardianName}
-                  onChange={(e) => setFormData({ ...formData, parentGuardianName: e.target.value })}
-                  placeholder="Parent or guardian name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactInfo">Contact Information</Label>
-                <Textarea
-                  id="contactInfo"
-                  value={formData.contactInfo}
-                  onChange={(e) => setFormData({ ...formData, contactInfo: e.target.value })}
-                  placeholder="Phone number, emergency contacts, etc."
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dismissalGroup">Dismissal Group</Label>
-                <Input
-                  id="dismissalGroup"
-                  value={formData.dismissalGroup}
-                  onChange={(e) => setFormData({ ...formData, dismissalGroup: e.target.value })}
-                  placeholder="Bus number, walker, car rider, etc."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="specialNotes">Special Notes</Label>
-                <Textarea
-                  id="specialNotes"
-                  value={formData.specialNotes}
-                  onChange={(e) => setFormData({ ...formData, specialNotes: e.target.value })}
-                  placeholder="Any special notes or considerations"
-                  rows={2}
-                />
-              </div>
             </>
           )}
 
