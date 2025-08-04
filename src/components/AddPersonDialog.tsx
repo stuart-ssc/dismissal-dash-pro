@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +18,13 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [personType, setPersonType] = useState<'teacher' | 'student' | 'school_admin'>('student');
+  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; class_name: string }>>([]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     gradeLevel: '',
+    classId: '',
     studentId: '',
     contactInfo: '',
     parentGuardianName: '',
@@ -31,12 +33,34 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
   });
   const { toast } = useToast();
 
+  // Fetch classes when grade level changes
+  useEffect(() => {
+    const fetchClasses = async () => {
+      if (formData.gradeLevel && personType === 'student') {
+        const { data, error } = await supabase
+          .from('classes')
+          .select('id, class_name')
+          .eq('school_id', schoolId)
+          .eq('grade_level', formData.gradeLevel);
+        
+        if (!error && data) {
+          setAvailableClasses(data);
+        }
+      } else {
+        setAvailableClasses([]);
+      }
+    };
+
+    fetchClasses();
+  }, [formData.gradeLevel, personType, schoolId]);
+
   const resetForm = () => {
     setFormData({
       firstName: '',
       lastName: '',
       email: '',
       gradeLevel: '',
+      classId: '',
       studentId: '',
       contactInfo: '',
       parentGuardianName: '',
@@ -44,6 +68,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
       dismissalGroup: ''
     });
     setPersonType('student');
+    setAvailableClasses([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,7 +77,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
 
     try {
       if (personType === 'student') {
-        const { error } = await supabase
+        const { data: studentData, error: studentError } = await supabase
           .from('students')
           .insert({
             first_name: formData.firstName,
@@ -64,9 +89,23 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
             special_notes: formData.specialNotes || null,
             dismissal_group: formData.dismissalGroup || null,
             school_id: schoolId
-          });
+          })
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (studentError) throw studentError;
+
+        // If a class is selected, add the student to the class roster
+        if (formData.classId && studentData) {
+          const { error: rosterError } = await supabase
+            .from('class_rosters')
+            .insert({
+              student_id: studentData.id,
+              class_id: formData.classId
+            });
+
+          if (rosterError) throw rosterError;
+        }
       } else if (personType === 'teacher') {
         const { error } = await supabase
           .from('teachers')
@@ -189,6 +228,24 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.gradeLevel && availableClasses.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="classId">Class *</Label>
+                  <Select value={formData.classId} onValueChange={(value) => setFormData({ ...formData, classId: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableClasses.map((classItem) => (
+                        <SelectItem key={classItem.id} value={classItem.id}>
+                          {classItem.class_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="studentId">Student ID</Label>
