@@ -420,12 +420,17 @@ const People = () => {
                         Manage students, teachers, and administrators
                       </CardDescription>
                     </div>
-                    {schoolId && (
+                     {schoolId && (
                       <AddPersonDialog 
                         schoolId={schoolId} 
-                        onPersonAdded={() => schoolId && fetchPeople(schoolId)} 
+                        onPersonAdded={() => {
+                          console.log('Person added, refreshing data...');
+                          if (schoolId) {
+                            fetchPeople(schoolId);
+                          }
+                        }} 
                       />
-                    )}
+                     )}
                   </div>
                 </CardHeader>
                 <CardContent>
