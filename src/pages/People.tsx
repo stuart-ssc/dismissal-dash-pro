@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -35,6 +35,8 @@ const People = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<PersonData | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(25);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -289,6 +291,24 @@ const People = () => {
     }
   };
 
+  // Pagination logic
+  const totalPages = Math.ceil(people.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPeople = people.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -350,14 +370,13 @@ const People = () => {
                       <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Role</TableHead>
-                        <TableHead>Email/Student ID</TableHead>
                         <TableHead>Grade</TableHead>
                         <TableHead>Classes</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {people.map((person) => (
+                      {currentPeople.map((person) => (
                         <TableRow key={person.id}>
                           <TableCell className="font-medium">
                             {person.firstName} {person.lastName}
@@ -367,9 +386,6 @@ const People = () => {
                               {getRoleIcon(person.role)}
                               {person.role}
                             </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {person.email || person.studentId || '-'}
                           </TableCell>
                           <TableCell>{person.grade || '-'}</TableCell>
                           <TableCell>
@@ -403,6 +419,54 @@ const People = () => {
                   {people.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
                       No people found. Import a roster to get started.
+                    </div>
+                  )}
+
+                  {/* Pagination Controls */}
+                  {people.length > 0 && (
+                    <div className="flex items-center justify-between mt-6">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {startIndex + 1} to {Math.min(endIndex, people.length)} of {people.length} people
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToPreviousPage}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                            if (pageNum > totalPages) return null;
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={currentPage === pageNum ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => goToPage(pageNum)}
+                                className="w-8 h-8 p-0"
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToNextPage}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -474,13 +538,12 @@ const People = () => {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Email/Student ID</TableHead>
                     <TableHead>Grade</TableHead>
                     <TableHead>Classes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {people.map((person) => (
+                  {currentPeople.map((person) => (
                     <TableRow key={person.id}>
                       <TableCell className="font-medium">
                         {person.firstName} {person.lastName}
@@ -490,9 +553,6 @@ const People = () => {
                           {getRoleIcon(person.role)}
                           {person.role}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {person.email || person.studentId || '-'}
                       </TableCell>
                       <TableCell>{person.grade || '-'}</TableCell>
                       <TableCell>
@@ -516,6 +576,54 @@ const People = () => {
               {people.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No people found.
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {people.length > 0 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {startIndex + 1} to {Math.min(endIndex, people.length)} of {people.length} people
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                        if (pageNum > totalPages) return null;
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
