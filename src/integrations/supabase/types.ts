@@ -308,6 +308,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_teacher_class_ids: {
+        Args: { teacher_uuid: string }
+        Returns: string[]
+      }
       get_user_school_id: {
         Args: { user_uuid: string }
         Returns: number
