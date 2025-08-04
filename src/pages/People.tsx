@@ -132,7 +132,7 @@ const People = () => {
           last_name, 
           email,
           class_teachers(
-            classes(class_name)
+            classes(class_name, grade_level)
           )
         `)
         .eq('school_id', schoolId);
@@ -142,6 +142,7 @@ const People = () => {
           // Check if this teacher is already in the list (from profiles)
           const existingTeacher = allPeople.find(p => p.email === teacher.email);
           const teacherClasses = teacher.class_teachers?.map(ct => ct.classes?.class_name).filter(Boolean) || [];
+          const teacherGrade = teacher.class_teachers?.[0]?.classes?.grade_level;
           
           if (!existingTeacher) {
             allPeople.push({
@@ -150,11 +151,13 @@ const People = () => {
               lastName: teacher.last_name,
               email: teacher.email,
               role: 'Teacher',
+              grade: teacherGrade,
               classes: teacherClasses,
             });
           } else {
-            // Update classes for existing teacher
+            // Update classes and grade for existing teacher
             existingTeacher.classes = teacherClasses;
+            existingTeacher.grade = teacherGrade;
           }
         }
       }
