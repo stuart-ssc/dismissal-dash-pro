@@ -89,55 +89,54 @@ const People = () => {
     try {
       const allPeople: PersonData[] = [];
 
-      // Fetch profiles first
+      // Fetch profiles with roles in one query
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email')
+        .select(`
+          id, 
+          first_name, 
+          last_name, 
+          email,
+          user_roles(role)
+        `)
         .eq('school_id', schoolId);
 
-      // Fetch user roles separately to avoid recursion
-      const profileIds = profilesData?.map(p => p.id) || [];
-      const { data: userRoles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', profileIds);
-
       // Process profiles with roles
-      if (profilesData && userRoles) {
+      if (profilesData) {
         for (const profile of profilesData) {
-          const userRole = userRoles.find(ur => ur.user_id === profile.id);
-          if (userRole && (userRole.role === 'school_admin' || userRole.role === 'teacher')) {
+          const userRole = profile.user_roles?.[0]?.role;
+          if (userRole && (userRole === 'school_admin' || userRole === 'teacher')) {
             allPeople.push({
               id: profile.id,
               firstName: profile.first_name || '',
               lastName: profile.last_name || '',
               email: profile.email || '',
-              role: userRole.role === 'school_admin' ? 'School Admin' : 'Teacher',
+              role: userRole === 'school_admin' ? 'School Admin' : 'Teacher',
               classes: [],
             });
           }
         }
       }
 
-      // Fetch teachers separately
+      // Fetch teachers with their classes in one query using joins
       const { data: teachersData } = await supabase
         .from('teachers')
-        .select('id, first_name, last_name, email')
+        .select(`
+          id, 
+          first_name, 
+          last_name, 
+          email,
+          class_teachers(
+            classes(class_name)
+          )
+        `)
         .eq('school_id', schoolId);
-
-      // Fetch class assignments for teachers separately
-      const teacherIds = teachersData?.map(t => t.id) || [];
-      const { data: classTeachers } = await supabase
-        .from('class_teachers')
-        .select('teacher_id, classes(class_name)')
-        .in('teacher_id', teacherIds);
 
       if (teachersData) {
         for (const teacher of teachersData) {
           // Check if this teacher is already in the list (from profiles)
           const existingTeacher = allPeople.find(p => p.email === teacher.email);
-          const teacherClasses = classTeachers?.filter(ct => ct.teacher_id === teacher.id)
-            .map(ct => ct.classes?.class_name).filter(Boolean) || [];
+          const teacherClasses = teacher.class_teachers?.map(ct => ct.classes?.class_name).filter(Boolean) || [];
           
           if (!existingTeacher) {
             allPeople.push({
@@ -155,23 +154,24 @@ const People = () => {
         }
       }
 
-      // Fetch students
+      // Fetch students with their classes in one query using joins
       const { data: studentsData } = await supabase
         .from('students')
-        .select('id, student_id, first_name, last_name, grade_level')
+        .select(`
+          id, 
+          student_id, 
+          first_name, 
+          last_name, 
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          )
+        `)
         .eq('school_id', schoolId);
-
-      // Fetch class assignments for students separately
-      const studentIds = studentsData?.map(s => s.id) || [];
-      const { data: classRosters } = await supabase
-        .from('class_rosters')
-        .select('student_id, classes(class_name)')
-        .in('student_id', studentIds);
 
       if (studentsData) {
         for (const student of studentsData) {
-          const studentClasses = classRosters?.filter(cr => cr.student_id === student.id)
-            .map(cr => cr.classes?.class_name).filter(Boolean) || [];
+          const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
           
           allPeople.push({
             id: student.id,
