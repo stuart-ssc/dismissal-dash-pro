@@ -183,7 +183,9 @@ const People = () => {
         
         // Fetch class enrollments separately for all students
         const studentIds = studentsData.map(s => s.id);
-        const { data: classRostersData } = await supabase
+        console.log('Student IDs for class lookup:', studentIds.length);
+        
+        const { data: classRostersData, error: classRostersError } = await supabase
           .from('class_rosters')
           .select(`
             student_id,
@@ -191,7 +193,11 @@ const People = () => {
           `)
           .in('student_id', studentIds);
 
-        console.log('Class rosters data:', classRostersData);
+        console.log('Class rosters query result:', { 
+          classRostersData, 
+          classRostersError, 
+          count: classRostersData?.length 
+        });
         
         for (const student of studentsData) {
           const studentClasses = classRostersData
