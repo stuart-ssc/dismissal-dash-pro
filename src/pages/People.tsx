@@ -87,68 +87,68 @@ const People = () => {
     try {
       const allPeople: PersonData[] = [];
 
-      // Fetch school admins and teachers from profiles with roles
+      // Fetch profiles first
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          user_roles(role)
-        `)
+        .select('id, first_name, last_name, email')
         .eq('school_id', schoolId);
 
-      if (profilesData) {
+      // Fetch user roles separately to avoid recursion
+      const profileIds = profilesData?.map(p => p.id) || [];
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', profileIds);
+
+      // Process profiles with roles
+      if (profilesData && userRoles) {
         for (const profile of profilesData) {
-          if (profile.user_roles && profile.user_roles.length > 0) {
-            const role = (profile.user_roles[0] as any).role;
-            if (role === 'school_admin' || role === 'teacher') {
-              allPeople.push({
-                id: profile.id,
-                firstName: profile.first_name || '',
-                lastName: profile.last_name || '',
-                email: profile.email || '',
-                role: role === 'school_admin' ? 'School Admin' : 'Teacher',
-                classes: [],
-              });
-            }
+          const userRole = userRoles.find(ur => ur.user_id === profile.id);
+          if (userRole && (userRole.role === 'school_admin' || userRole.role === 'teacher')) {
+            allPeople.push({
+              id: profile.id,
+              firstName: profile.first_name || '',
+              lastName: profile.last_name || '',
+              email: profile.email || '',
+              role: userRole.role === 'school_admin' ? 'School Admin' : 'Teacher',
+              classes: [],
+            });
           }
         }
       }
 
-      // Fetch teachers from teachers table
+      // Fetch teachers separately
       const { data: teachersData } = await supabase
         .from('teachers')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          class_teachers(
-            classes(class_name)
-          )
-        `)
+        .select('id, first_name, last_name, email')
         .eq('school_id', schoolId);
+
+      // Fetch class assignments for teachers separately
+      const teacherIds = teachersData?.map(t => t.id) || [];
+      const { data: classTeachers } = await supabase
+        .from('class_teachers')
+        .select('teacher_id, classes(class_name)')
+        .in('teacher_id', teacherIds);
 
       if (teachersData) {
         for (const teacher of teachersData) {
           // Check if this teacher is already in the list (from profiles)
           const existingTeacher = allPeople.find(p => p.email === teacher.email);
+          const teacherClasses = classTeachers?.filter(ct => ct.teacher_id === teacher.id)
+            .map(ct => ct.classes?.class_name).filter(Boolean) || [];
+          
           if (!existingTeacher) {
-            const classes = teacher.class_teachers?.map((ct: any) => ct.classes.class_name) || [];
             allPeople.push({
               id: teacher.id,
               firstName: teacher.first_name,
               lastName: teacher.last_name,
               email: teacher.email,
               role: 'Teacher',
-              classes,
+              classes: teacherClasses,
             });
           } else {
             // Update classes for existing teacher
-            const classes = teacher.class_teachers?.map((ct: any) => ct.classes.class_name) || [];
-            existingTeacher.classes = classes;
+            existingTeacher.classes = teacherClasses;
           }
         }
       }
@@ -156,21 +156,21 @@ const People = () => {
       // Fetch students
       const { data: studentsData } = await supabase
         .from('students')
-        .select(`
-          id,
-          student_id,
-          first_name,
-          last_name,
-          grade_level,
-          class_rosters(
-            classes(class_name)
-          )
-        `)
+        .select('id, student_id, first_name, last_name, grade_level')
         .eq('school_id', schoolId);
+
+      // Fetch class assignments for students separately
+      const studentIds = studentsData?.map(s => s.id) || [];
+      const { data: classRosters } = await supabase
+        .from('class_rosters')
+        .select('student_id, classes(class_name)')
+        .in('student_id', studentIds);
 
       if (studentsData) {
         for (const student of studentsData) {
-          const classes = student.class_rosters?.map((cr: any) => cr.classes.class_name) || [];
+          const studentClasses = classRosters?.filter(cr => cr.student_id === student.id)
+            .map(cr => cr.classes?.class_name).filter(Boolean) || [];
+          
           allPeople.push({
             id: student.id,
             firstName: student.first_name,
@@ -178,11 +178,12 @@ const People = () => {
             studentId: student.student_id,
             role: 'Student',
             grade: student.grade_level,
-            classes,
+            classes: studentClasses,
           });
         }
       }
 
+      console.log('Fetched people data:', allPeople);
       setPeople(allPeople);
     } catch (error) {
       console.error('Error fetching people:', error);
