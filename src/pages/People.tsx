@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface PersonData {
   id: string;
@@ -37,6 +38,10 @@ const People = () => {
   const [personToDelete, setPersonToDelete] = useState<PersonData | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
+  const [sortBy, setSortBy] = useState<'name' | 'role' | 'grade'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [filterRole, setFilterRole] = useState<'all' | 'School Admin' | 'Teacher' | 'Student'>('all');
+  const [filterGrade, setFilterGrade] = useState<string>('all');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -291,11 +296,62 @@ const People = () => {
     }
   };
 
+  // Get unique grades for filter dropdown
+  const uniqueGrades = [...new Set(people.filter(p => p.grade).map(p => p.grade!))].sort();
+
+  // Apply filters and sorting
+  const filteredAndSortedPeople = people
+    .filter(person => {
+      if (filterRole !== 'all' && person.role !== filterRole) return false;
+      if (filterGrade !== 'all' && person.grade !== filterGrade) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      let aValue: string;
+      let bValue: string;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+          break;
+        case 'role':
+          aValue = a.role.toLowerCase();
+          bValue = b.role.toLowerCase();
+          break;
+        case 'grade':
+          aValue = a.grade?.toLowerCase() || '';
+          bValue = b.grade?.toLowerCase() || '';
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue.localeCompare(bValue);
+      } else {
+        return bValue.localeCompare(aValue);
+      }
+    });
+
+  // Reset page when filters change
+  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string) => {
+    setCurrentPage(1);
+    if (newFilterRole !== undefined) setFilterRole(newFilterRole);
+    if (newFilterGrade !== undefined) setFilterGrade(newFilterGrade);
+  };
+
+  const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
+    setCurrentPage(1);
+    setSortBy(newSortBy);
+    if (newSortOrder) setSortOrder(newSortOrder);
+  };
+
   // Pagination logic
-  const totalPages = Math.ceil(people.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredAndSortedPeople.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentPeople = people.slice(startIndex, endIndex);
+  const currentPeople = filteredAndSortedPeople.slice(startIndex, endIndex);
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -365,6 +421,101 @@ const People = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* Filters and Sort Controls */}
+                  <div className="flex items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Filters:</span>
+                    </div>
+                    
+                    {/* Role Filter */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          Role: {filterRole === 'all' ? 'All' : filterRole}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                        <DropdownMenuItem onClick={() => handleFilterChange('all')}>
+                          All Roles
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleFilterChange('School Admin')}>
+                          School Admin
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleFilterChange('Teacher')}>
+                          Teacher
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleFilterChange('Student')}>
+                          Student
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Grade Filter */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          Grade: {filterGrade === 'all' ? 'All' : filterGrade}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, 'all')}>
+                          All Grades
+                        </DropdownMenuItem>
+                        {uniqueGrades.map((grade) => (
+                          <DropdownMenuItem key={grade} onClick={() => handleFilterChange(undefined, grade)}>
+                            {grade}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <div className="h-4 w-px bg-border mx-2" />
+
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Sort:</span>
+                    </div>
+
+                    {/* Sort Options */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          {sortBy === 'name' ? 'Name' : sortBy === 'role' ? 'Role' : 'Grade'} ({sortOrder === 'asc' ? '↑' : '↓'})
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                        <DropdownMenuItem onClick={() => handleSortChange('name', 'asc')}>
+                          Name (A-Z)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSortChange('name', 'desc')}>
+                          Name (Z-A)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSortChange('role', 'asc')}>
+                          Role (A-Z)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSortChange('role', 'desc')}>
+                          Role (Z-A)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSortChange('grade', 'asc')}>
+                          Grade (A-Z)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSortChange('grade', 'desc')}>
+                          Grade (Z-A)
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <div className="flex-1" />
+                    
+                    {/* Results count */}
+                    <div className="text-sm text-muted-foreground">
+                      {filteredAndSortedPeople.length} of {people.length} people
+                    </div>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -426,7 +577,7 @@ const People = () => {
                   {people.length > 0 && (
                     <div className="flex items-center justify-between mt-6">
                       <div className="text-sm text-muted-foreground">
-                        Showing {startIndex + 1} to {Math.min(endIndex, people.length)} of {people.length} people
+                        Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedPeople.length)} of {filteredAndSortedPeople.length} people
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
@@ -533,6 +684,102 @@ const People = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Filters and Sort Controls */}
+              <div className="flex items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Filters:</span>
+                </div>
+                
+                {/* Role Filter */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8">
+                      Role: {filterRole === 'all' ? 'All' : filterRole}
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                    <DropdownMenuItem onClick={() => handleFilterChange('all')}>
+                      All Roles
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleFilterChange('School Admin')}>
+                      School Admin
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleFilterChange('Teacher')}>
+                      Teacher
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleFilterChange('Student')}>
+                      Student
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Grade Filter */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8">
+                      Grade: {filterGrade === 'all' ? 'All' : filterGrade}
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                    <DropdownMenuItem onClick={() => handleFilterChange(undefined, 'all')}>
+                      All Grades
+                    </DropdownMenuItem>
+                    {uniqueGrades.map((grade) => (
+                      <DropdownMenuItem key={grade} onClick={() => handleFilterChange(undefined, grade)}>
+                        {grade}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <div className="h-4 w-px bg-border mx-2" />
+
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Sort:</span>
+                </div>
+
+                {/* Sort Options */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8">
+                      {sortBy === 'name' ? 'Name' : sortBy === 'role' ? 'Role' : 'Grade'} ({sortOrder === 'asc' ? '↑' : '↓'})
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                    <DropdownMenuItem onClick={() => handleSortChange('name', 'asc')}>
+                      Name (A-Z)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSortChange('name', 'desc')}>
+                      Name (Z-A)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSortChange('role', 'asc')}>
+                      Role (A-Z)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSortChange('role', 'desc')}>
+                      Role (Z-A)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSortChange('grade', 'asc')}>
+                      Grade (A-Z)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSortChange('grade', 'desc')}>
+                      Grade (Z-A)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <div className="flex-1" />
+                
+                {/* Results count */}
+                <div className="text-sm text-muted-foreground">
+                  {filteredAndSortedPeople.length} of {people.length} people
+                </div>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -583,7 +830,7 @@ const People = () => {
               {people.length > 0 && (
                 <div className="flex items-center justify-between mt-6">
                   <div className="text-sm text-muted-foreground">
-                    Showing {startIndex + 1} to {Math.min(endIndex, people.length)} of {people.length} people
+                    Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedPeople.length)} of {filteredAndSortedPeople.length} people
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button
