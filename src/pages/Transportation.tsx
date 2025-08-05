@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3 } from "lucide-react";
+import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3, UserPlus, Trash2, ArrowLeft } from "lucide-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
@@ -38,6 +38,15 @@ interface TransportationRecord {
   updated_at: string;
 }
 
+interface StudentBusRecord {
+  id: string;
+  student_id: string;
+  student_name: string;
+  grade_level: string;
+  class_name: string;
+  ride_status: 'active_rider' | 'guest_rider' | 'non_rider';
+}
+
 const Transportation = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -51,6 +60,9 @@ const Transportation = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'maintenance'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingRecord, setEditingRecord] = useState<TransportationRecord | null>(null);
+  const [managingStudents, setManagingStudents] = useState<TransportationRecord | null>(null);
+  const [busStudents, setBusStudents] = useState<StudentBusRecord[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -281,6 +293,95 @@ const Transportation = () => {
     }
   };
 
+  const fetchBusStudents = async (busId: string) => {
+    setIsLoadingStudents(true);
+    try {
+      const { data, error } = await supabase
+        .from('student_bus_assignments')
+        .select(`
+          id,
+          student_id,
+          students!inner(
+            first_name,
+            last_name,
+            grade_level,
+            class_rosters(
+              classes(class_name)
+            )
+          )
+        `)
+        .eq('bus_id', busId);
+
+      if (error) {
+        console.error('Error fetching bus students:', error);
+        toast.error('Failed to load students');
+        return;
+      }
+
+      const studentRecords: StudentBusRecord[] = data?.map(assignment => ({
+        id: assignment.id,
+        student_id: assignment.student_id,
+        student_name: `${assignment.students.first_name} ${assignment.students.last_name}`,
+        grade_level: assignment.students.grade_level,
+        class_name: assignment.students.class_rosters?.[0]?.classes?.class_name || 'No Class',
+        ride_status: 'active_rider', // Default value - this could be stored in the database
+      })) || [];
+
+      setBusStudents(studentRecords);
+    } catch (error) {
+      console.error('Error fetching bus students:', error);
+      toast.error('Failed to load students');
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  };
+
+  const handleManageStudents = (bus: TransportationRecord) => {
+    setManagingStudents(bus);
+    fetchBusStudents(bus.id);
+  };
+
+  const handleUpdateRideStatus = async (assignmentId: string, newStatus: string) => {
+    try {
+      // For now, we'll just update the local state since ride_status isn't in the database yet
+      setBusStudents(prev => prev.map(student => 
+        student.id === assignmentId 
+          ? { ...student, ride_status: newStatus as 'active_rider' | 'guest_rider' | 'non_rider' }
+          : student
+      ));
+      toast.success('Ride status updated successfully');
+    } catch (error) {
+      console.error('Error updating ride status:', error);
+      toast.error('Failed to update ride status');
+    }
+  };
+
+  const handleRemoveStudent = async (assignmentId: string, studentName: string) => {
+    if (!confirm(`Are you sure you want to remove ${studentName} from this bus?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('student_bus_assignments')
+        .delete()
+        .eq('id', assignmentId);
+
+      if (error) {
+        console.error('Error removing student:', error);
+        toast.error('Failed to remove student');
+        return;
+      }
+
+      setBusStudents(prev => prev.filter(student => student.id !== assignmentId));
+      toast.success('Student removed from bus successfully');
+      fetchTransportation(); // Refresh the main data to update student counts
+    } catch (error) {
+      console.error('Error removing student:', error);
+      toast.error('Failed to remove student');
+    }
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -380,161 +481,254 @@ const Transportation = () => {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle>Transportation Management</CardTitle>
+                    <CardTitle>
+                      {managingStudents ? `Transportation Management: ${managingStudents.bus_number}` : 'Transportation Management'}
+                    </CardTitle>
                     <CardDescription>
-                      Manage buses, drivers, and student assignments
+                      {managingStudents 
+                        ? `Manage students for Bus ${managingStudents.bus_number}`
+                        : 'Manage buses, drivers, and student assignments'
+                      }
                     </CardDescription>
                   </div>
-                  <Button onClick={() => setShowAddDialog(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Bus
-                  </Button>
+                  {managingStudents ? (
+                    <div className="flex gap-2">
+                      <Button onClick={() => setManagingStudents(null)} variant="outline">
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Buses
+                      </Button>
+                      <Button>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Add Student
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button onClick={() => setShowAddDialog(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Bus
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Search and Filters */}
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        placeholder="Search buses or drivers..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
+                {managingStudents ? (
+                  /* Student Management View */
+                  <div className="space-y-4">
+                    {isLoadingStudents ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Students Table */}
+                        <div className="rounded-md border bg-background/50">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-border hover:bg-muted/50">
+                                <TableHead>Student Name</TableHead>
+                                <TableHead>Grade</TableHead>
+                                <TableHead>Class</TableHead>
+                                <TableHead>Ride Status</TableHead>
+                                <TableHead className="w-[50px]">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {busStudents.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                    No students assigned to this bus yet.
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                busStudents.map((student) => (
+                                  <TableRow key={student.id} className="border-border hover:bg-muted/30">
+                                    <TableCell className="font-medium">{student.student_name}</TableCell>
+                                    <TableCell>{student.grade_level}</TableCell>
+                                    <TableCell>{student.class_name}</TableCell>
+                                    <TableCell>
+                                      <Select 
+                                        value={student.ride_status} 
+                                        onValueChange={(value) => handleUpdateRideStatus(student.id, value)}
+                                      >
+                                        <SelectTrigger className="w-[140px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="active_rider">Active Rider</SelectItem>
+                                          <SelectItem value="guest_rider">Guest Rider</SelectItem>
+                                          <SelectItem value="non_rider">Non-rider</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => handleRemoveStudent(student.id, student.student_name)}
+                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  /* Bus Management View */
+                  <div className="space-y-4">
+                    {/* Search and Filters */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Input
+                          placeholder="Search buses or drivers..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+
+                      {/* Status Filter */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-10">
+                            Status: {filterStatus === 'all' ? 'All' : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                          <DropdownMenuItem onClick={() => handleFilterChange('all')}>
+                            All Status
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleFilterChange('active')}>
+                            Active
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleFilterChange('inactive')}>
+                            Inactive
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleFilterChange('maintenance')}>
+                            Maintenance
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
-                    {/* Status Filter */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-10">
-                          Status: {filterStatus === 'all' ? 'All' : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
-                          <ChevronDown className="h-3 w-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                        <DropdownMenuItem onClick={() => handleFilterChange('all')}>
-                          All Status
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange('active')}>
-                          Active
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange('inactive')}>
-                          Inactive
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange('maintenance')}>
-                          Maintenance
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Transportation Table */}
-                  <div className="rounded-md border bg-background/50">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border hover:bg-muted/50">
-                          <TableHead 
-                            className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('bus_number', sortBy === 'bus_number' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                          >
-                            Bus Number
-                            {sortBy === 'bus_number' && (
-                              <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                            )}
-                          </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('driver_first_name', sortBy === 'driver_first_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                          >
-                            Driver
-                            {sortBy === 'driver_first_name' && (
-                              <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                            )}
-                          </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('students_count', sortBy === 'students_count' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                          >
-                            Students
-                            {sortBy === 'students_count' && (
-                              <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                            )}
-                          </TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="w-[50px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {currentTransportation.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                              {searchTerm || filterStatus !== 'all' 
-                                ? 'No buses match your search criteria.' 
-                                : 'No buses found. Add your first bus to get started.'
-                              }
-                            </TableCell>
+                    {/* Transportation Table */}
+                    <div className="rounded-md border bg-background/50">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border hover:bg-muted/50">
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/30"
+                              onClick={() => handleSortChange('bus_number', sortBy === 'bus_number' && sortOrder === 'asc' ? 'desc' : 'asc')}
+                            >
+                              Bus Number
+                              {sortBy === 'bus_number' && (
+                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/30"
+                              onClick={() => handleSortChange('driver_first_name', sortBy === 'driver_first_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
+                            >
+                              Driver
+                              {sortBy === 'driver_first_name' && (
+                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/30"
+                              onClick={() => handleSortChange('students_count', sortBy === 'students_count' && sortOrder === 'asc' ? 'desc' : 'asc')}
+                            >
+                              Students
+                              {sortBy === 'students_count' && (
+                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="w-[50px]">Actions</TableHead>
                           </TableRow>
-                        ) : (
-                          currentTransportation.map((bus) => (
-                            <TableRow key={bus.id} className="border-border hover:bg-muted/30">
-                              <TableCell className="font-medium">{bus.bus_number}</TableCell>
-                              <TableCell>{bus.driver_first_name} {bus.driver_last_name}</TableCell>
-                              <TableCell>{bus.students_count}</TableCell>
-                              <TableCell>{getStatusBadge(bus.status)}</TableCell>
-                              <TableCell>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50" align="end">
-                                    <DropdownMenuItem onClick={() => setEditingRecord(bus)}>
-                                      <Edit className="h-4 w-4 mr-2" />
-                                      Edit
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                        </TableHeader>
+                        <TableBody>
+                          {currentTransportation.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                {searchTerm || filterStatus !== 'all' 
+                                  ? 'No buses match your search criteria.' 
+                                  : 'No buses found. Add your first bus to get started.'
+                                }
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">
-                        Showing {startIndex + 1} to {Math.min(endIndex, filteredTransportation.length)} of {filteredTransportation.length} buses
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                        >
-                          Previous
-                        </Button>
-                        <span className="text-sm">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                        >
-                          Next
-                        </Button>
-                      </div>
+                          ) : (
+                            currentTransportation.map((bus) => (
+                              <TableRow key={bus.id} className="border-border hover:bg-muted/30">
+                                <TableCell className="font-medium">{bus.bus_number}</TableCell>
+                                <TableCell>{bus.driver_first_name} {bus.driver_last_name}</TableCell>
+                                <TableCell>{bus.students_count}</TableCell>
+                                <TableCell>{getStatusBadge(bus.status)}</TableCell>
+                                <TableCell>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="bg-background border border-border shadow-lg z-50" align="end">
+                                      <DropdownMenuItem onClick={() => setEditingRecord(bus)}>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleManageStudents(bus)}>
+                                        <Users className="h-4 w-4 mr-2" />
+                                        Manage Students
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
                     </div>
-                  )}
-                </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Showing {startIndex + 1} to {Math.min(endIndex, filteredTransportation.length)} of {filteredTransportation.length} buses
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            Previous
+                          </Button>
+                          <span className="text-sm">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </main>
