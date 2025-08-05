@@ -18,6 +18,7 @@ import People from "./pages/admin/People";
 import PeopleManagement from "./pages/People";
 import AdminSettings from "./pages/admin/Settings";
 import Settings from "./pages/Settings";
+import CarLines from "./pages/CarLines";
 import { AuthProvider } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/dashboard/transportation" element={<Transportation />} />
             <Route path="/dashboard/dismissals" element={<Dismissals />} />
             <Route path="/dashboard/settings" element={<Settings />} />
+            <Route path="/dashboard/car-lines" element={<CarLines />} />
             <Route path="/dashboard/import" element={<Import />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />

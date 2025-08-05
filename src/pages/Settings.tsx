@@ -153,9 +153,19 @@ const Settings = () => {
                     <Switch id="enable-walkers" defaultChecked />
                     <Label htmlFor="enable-walkers">Enable Walkers</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="enable-car-lines" defaultChecked />
-                    <Label htmlFor="enable-car-lines">Enable Car Lines</Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Switch id="enable-car-lines" defaultChecked />
+                      <Label htmlFor="enable-car-lines">Enable Car Lines</Label>
+                    </div>
+                    <Button 
+                      variant="link" 
+                      size="sm"
+                      onClick={() => navigate('/dashboard/car-lines')}
+                      className="h-auto p-0 text-primary hover:text-primary/80"
+                    >
+                      Manage Car Lines
+                    </Button>
                   </div>
                   <Button>Save Settings</Button>
                 </CardContent>
