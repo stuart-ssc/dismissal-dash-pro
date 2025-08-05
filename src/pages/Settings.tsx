@@ -149,6 +149,14 @@ const Settings = () => {
                     <Switch id="auto-dismissal" defaultChecked />
                     <Label htmlFor="auto-dismissal">Enable automatic dismissal announcements</Label>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch id="enable-walkers" defaultChecked />
+                    <Label htmlFor="enable-walkers">Enable Walkers</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch id="enable-car-lines" defaultChecked />
+                    <Label htmlFor="enable-car-lines">Enable Car Lines</Label>
+                  </div>
                   <Button>Save Settings</Button>
                 </CardContent>
               </Card>
