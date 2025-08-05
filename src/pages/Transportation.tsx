@@ -429,7 +429,7 @@ const Transportation = () => {
           class_rosters(
             classes(class_name)
           ),
-          student_bus_assignments!inner(bus_id)
+          student_bus_assignments(bus_id)
         `)
         .eq('school_id', profile.school_id)
         .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`)
@@ -446,9 +446,9 @@ const Transportation = () => {
         last_name: student.last_name,
         grade_level: student.grade_level,
         class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        already_assigned: student.student_bus_assignments.some(
+        already_assigned: student.student_bus_assignments?.some(
           (assignment: any) => assignment.bus_id === managingStudents.id
-        )
+        ) || false
       })) || [];
 
       setStudentSearchResults(searchResults);
