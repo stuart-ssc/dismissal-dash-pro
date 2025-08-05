@@ -371,7 +371,6 @@ const CarLines = () => {
                           </TableHead>
                           <TableHead>Color</TableHead>
                           <TableHead>Pickup Location</TableHead>
-                          <TableHead className="text-center">Students</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -392,12 +391,6 @@ const CarLines = () => {
                               </div>
                             </TableCell>
                             <TableCell>{carLine.pickup_location}</TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="secondary" className="flex items-center gap-1 w-fit mx-auto">
-                                <Users className="h-3 w-3" />
-                                {carLine.students_count}
-                              </Badge>
-                            </TableCell>
                             <TableCell>
                               {getStatusBadge(carLine.status)}
                             </TableCell>
