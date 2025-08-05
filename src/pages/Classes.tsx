@@ -19,6 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { AddPersonDialog } from "@/components/AddPersonDialog";
 
 const editClassSchema = z.object({
   class_name: z.string().min(1, "Class name is required"),
@@ -59,6 +60,10 @@ const Classes = () => {
   const [editingRecord, setEditingRecord] = useState<ClassRecord | null>(null);
   const [schoolName, setSchoolName] = useState<string>('');
   const [availableTeachers, setAvailableTeachers] = useState<Teacher[]>([]);
+  const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
+  const [teacherSearchResults, setTeacherSearchResults] = useState<Teacher[]>([]);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [schoolId, setSchoolId] = useState<number | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -137,6 +142,7 @@ const Classes = () => {
         .single();
 
       if (profile?.school_id) {
+        setSchoolId(profile.school_id);
         const { data: school } = await supabase
           .from('schools')
           .select('school_name')
@@ -175,6 +181,39 @@ const Classes = () => {
     } catch (error) {
       console.error('Error fetching teachers:', error);
     }
+  };
+
+  const searchTeachers = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setTeacherSearchResults([]);
+      return;
+    }
+    
+    const filtered = availableTeachers.filter(teacher => 
+      teacher.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${teacher.first_name} ${teacher.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    setTeacherSearchResults(filtered);
+  };
+
+  const handleTeacherSelect = (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    setTeacherSearchTerm(`${teacher.first_name} ${teacher.last_name}`);
+    setTeacherSearchResults([]);
+    form.setValue('teacher_id', teacher.id);
+  };
+
+  const clearTeacherSelection = () => {
+    setSelectedTeacher(null);
+    setTeacherSearchTerm('');
+    setTeacherSearchResults([]);
+    form.setValue('teacher_id', '');
+  };
+
+  const handlePersonAdded = () => {
+    fetchTeachers(); // Refresh teachers list
   };
 
   // Search and filter logic
@@ -304,23 +343,42 @@ const Classes = () => {
         return;
       }
 
-      const { error } = await supabase
+      // First create the class
+      const { data: classData, error: classError } = await supabase
         .from('classes')
         .insert({
           class_name: values.class_name,
           grade_level: values.grade_level,
           room_number: values.room_number || null,
           school_id: profile.school_id,
-        });
+        })
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Error creating class:', error);
+      if (classError) {
+        console.error('Error creating class:', classError);
         toast.error('Failed to create class');
         return;
       }
 
+      // If a teacher is selected, assign them to the class
+      if (values.teacher_id && classData) {
+        const { error: teacherError } = await supabase
+          .from('class_teachers')
+          .insert({
+            class_id: classData.id,
+            teacher_id: values.teacher_id,
+          });
+
+        if (teacherError) {
+          console.error('Error assigning teacher:', teacherError);
+          toast.error('Class created but failed to assign teacher');
+        }
+      }
+
       toast.success('Class created successfully');
       setShowAddDialog(false);
+      clearTeacherSelection();
       form.reset();
       fetchClasses();
     } catch (error) {
@@ -601,6 +659,7 @@ const Classes = () => {
         <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
           setShowAddDialog(false);
           setEditingRecord(null);
+          clearTeacherSelection();
         }}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -663,11 +722,75 @@ const Classes = () => {
                     </FormItem>
                   )}
                 />
+
+                {/* Teacher Search */}
+                <div className="space-y-2">
+                  <Label htmlFor="teacher">Teacher (Optional)</Label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="teacher"
+                          placeholder="Search for a teacher..."
+                          value={teacherSearchTerm}
+                          onChange={(e) => {
+                            setTeacherSearchTerm(e.target.value);
+                            searchTeachers(e.target.value);
+                          }}
+                        />
+                        {selectedTeacher && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-1 top-1 h-8 w-8 p-0"
+                            onClick={clearTeacherSelection}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </div>
+                      {schoolId && (
+                        <AddPersonDialog
+                          schoolId={schoolId}
+                          onPersonAdded={handlePersonAdded}
+                        />
+                      )}
+                    </div>
+                    
+                    {/* Teacher Search Results */}
+                    {teacherSearchResults.length > 0 && (
+                      <div className="border rounded-md bg-background max-h-32 overflow-y-auto">
+                        {teacherSearchResults.map((teacher) => (
+                          <div
+                            key={teacher.id}
+                            className="p-2 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                            onClick={() => handleTeacherSelect(teacher)}
+                          >
+                            <div className="text-sm font-medium">
+                              {teacher.first_name} {teacher.last_name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {selectedTeacher && (
+                      <div className="p-2 bg-muted rounded-md">
+                        <div className="text-sm font-medium">
+                          Selected: {selectedTeacher.first_name} {selectedTeacher.last_name}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
                 
                 <div className="flex justify-end gap-2 pt-4">
                   <Button type="button" variant="outline" onClick={() => {
                     setShowAddDialog(false);
                     setEditingRecord(null);
+                    clearTeacherSelection();
                   }}>
                     Cancel
                   </Button>
