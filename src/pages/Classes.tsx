@@ -291,6 +291,9 @@ const Classes = () => {
         room_number: editingRecord.room_number || "",
         teacher_id: "",
       });
+      
+      // Fetch and set the current teacher for this class
+      fetchCurrentTeacher(editingRecord.id);
     } else if (showAddDialog) {
       form.reset({
         class_name: "",
@@ -298,14 +301,44 @@ const Classes = () => {
         room_number: "",
         teacher_id: "",
       });
+      clearTeacherSelection();
     }
   }, [editingRecord, showAddDialog, form]);
+
+  const fetchCurrentTeacher = async (classId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('class_teachers')
+        .select(`
+          teachers(id, first_name, last_name)
+        `)
+        .eq('class_id', classId)
+        .limit(1);
+
+      if (error) {
+        console.error('Error fetching current teacher:', error);
+        return;
+      }
+
+      if (data && data.length > 0 && data[0].teachers) {
+        const teacher = data[0].teachers as Teacher;
+        setSelectedTeacher(teacher);
+        setTeacherSearchTerm(`${teacher.first_name} ${teacher.last_name}`);
+        form.setValue('teacher_id', teacher.id);
+      } else {
+        clearTeacherSelection();
+      }
+    } catch (error) {
+      console.error('Error fetching current teacher:', error);
+    }
+  };
 
   const handleEditClass = async (values: z.infer<typeof editClassSchema>) => {
     if (!editingRecord) return;
 
     try {
-      const { error } = await supabase
+      // Update class information
+      const { error: classError } = await supabase
         .from('classes')
         .update({
           class_name: values.class_name,
@@ -314,14 +347,38 @@ const Classes = () => {
         })
         .eq('id', editingRecord.id);
 
-      if (error) {
-        console.error('Error updating class:', error);
+      if (classError) {
+        console.error('Error updating class:', classError);
         toast.error('Failed to update class information');
         return;
       }
 
+      // Handle teacher assignment changes
+      // First, remove existing teacher assignment
+      await supabase
+        .from('class_teachers')
+        .delete()
+        .eq('class_id', editingRecord.id);
+
+      // If a teacher is selected, assign them to the class
+      if (values.teacher_id) {
+        const { error: teacherError } = await supabase
+          .from('class_teachers')
+          .insert({
+            class_id: editingRecord.id,
+            teacher_id: values.teacher_id,
+          });
+
+        if (teacherError) {
+          console.error('Error assigning teacher:', teacherError);
+          toast.error('Class updated but failed to assign teacher');
+          return;
+        }
+      }
+
       toast.success('Class information updated successfully');
       setEditingRecord(null);
+      clearTeacherSelection();
       form.reset();
       fetchClasses();
     } catch (error) {
