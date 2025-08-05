@@ -29,9 +29,6 @@ export function AdminSidebar() {
   const currentPath = location.pathname;
 
   const isActive = (path: string) => currentPath === path;
-  
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50";
 
   return (
     <Sidebar
@@ -57,7 +54,11 @@ export function AdminSidebar() {
                     <NavLink 
                       to={item.url} 
                       end 
-                      className={getNavCls}
+                      className={({ isActive }) =>
+                        isActive 
+                          ? "bg-primary/10 text-primary font-medium border-r-2 border-primary" 
+                          : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                      }
                     >
                       <item.icon className="h-5 w-5" />
                       <span className="ml-3">{item.title}</span>
