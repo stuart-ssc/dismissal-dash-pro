@@ -288,15 +288,6 @@ const CarLines = () => {
           <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/dashboard/settings')}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Settings
-              </Button>
             </div>
             <div>
               <h1 className="text-2xl font-bold">{schoolName || 'Car Lines'}</h1>
@@ -315,6 +306,16 @@ const CarLines = () => {
                     Manage your school's car pickup lines and locations
                   </p>
                 </div>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/dashboard/settings')}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Settings
+                </Button>
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
                     <Button>
@@ -323,6 +324,7 @@ const CarLines = () => {
                     </Button>
                   </DialogTrigger>
                 </Dialog>
+              </div>
               </div>
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
