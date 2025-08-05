@@ -230,22 +230,34 @@ export type Database = {
       }
       schools: {
         Row: {
+          address: string | null
           created_at: string
           id: number
+          phone_number: string | null
+          primary_color: string | null
           school_logo: string | null
           school_name: string | null
+          secondary_color: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string
           id?: number
+          phone_number?: string | null
+          primary_color?: string | null
           school_logo?: string | null
           school_name?: string | null
+          secondary_color?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string
           id?: number
+          phone_number?: string | null
+          primary_color?: string | null
           school_logo?: string | null
           school_name?: string | null
+          secondary_color?: string | null
         }
         Relationships: []
       }
