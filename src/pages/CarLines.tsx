@@ -350,7 +350,7 @@ const CarLines = () => {
                     </Button>
                     <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                       <DialogTrigger asChild>
-                        <Button>
+                        <Button className="ml-auto">
                           <Plus className="mr-2 h-4 w-4" />
                           Add Car Line
                         </Button>
