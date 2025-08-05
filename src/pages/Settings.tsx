@@ -16,6 +16,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import * as z from "zod";
 
+const formatPhoneNumber = (value: string): string => {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, '');
+  
+  // Apply formatting based on length
+  if (digits.length <= 3) {
+    return digits;
+  } else if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  } else {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  }
+};
+
 const schoolFormSchema = z.object({
   school_name: z.string().min(1, "School name is required"),
   address: z.string().optional(),
@@ -391,7 +405,15 @@ const Settings = () => {
                           <FormItem>
                             <FormLabel>Phone Number</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter phone number" {...field} />
+                              <Input 
+                                placeholder="(555) 123-4567" 
+                                {...field}
+                                onChange={(e) => {
+                                  const formatted = formatPhoneNumber(e.target.value);
+                                  field.onChange(formatted);
+                                }}
+                                maxLength={14}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
