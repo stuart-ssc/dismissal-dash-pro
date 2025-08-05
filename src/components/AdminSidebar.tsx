@@ -20,7 +20,7 @@ const adminNavItems = [
   { title: "Classes", url: "/dashboard/classes", icon: Users },
   { title: "People", url: "/dashboard/people", icon: UserCog },
   { title: "Transportation", url: "/dashboard/transportation", icon: Bus },
-  { title: "Settings", url: "/admin/settings", icon: Settings },
+  { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
 
 export function AdminSidebar() {
