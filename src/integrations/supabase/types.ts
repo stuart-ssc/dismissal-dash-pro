@@ -47,6 +47,39 @@ export type Database = {
         }
         Relationships: []
       }
+      car_lines: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          line_name: string
+          pickup_location: string
+          school_id: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          line_name: string
+          pickup_location: string
+          school_id: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          line_name?: string
+          pickup_location?: string
+          school_id?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       class_rosters: {
         Row: {
           class_id: string

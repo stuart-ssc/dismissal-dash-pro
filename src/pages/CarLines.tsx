@@ -28,10 +28,10 @@ const carLineSchema = z.object({
 
 interface CarLineRecord {
   id: string;
+  school_id: number;
   line_name: string;
   color: string;
   pickup_location: string;
-  students_count: number;
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
@@ -76,43 +76,35 @@ const CarLines = () => {
     try {
       setIsLoading(true);
       
-      // For now, we'll simulate car lines data since the table doesn't exist yet
-      // This would be replaced with actual supabase query when the table is created
-      const mockData: CarLineRecord[] = [
-        {
-          id: '1',
-          line_name: 'Red Line',
-          color: '#EF4444',
-          pickup_location: 'Main Entrance',
-          students_count: 25,
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          line_name: 'Blue Line',
-          color: '#3B82F6',
-          pickup_location: 'Side Gate',
-          students_count: 18,
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: '3',
-          line_name: 'Green Line',
-          color: '#10B981',
-          pickup_location: 'Back Parking Lot',
-          students_count: 12,
-          status: 'inactive',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ];
+      // Get user's school_id first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
 
-      setCarLines(mockData);
-      setFilteredCarLines(mockData);
+      if (!profile?.school_id) {
+        console.error('No school_id found for user');
+        setCarLines([]);
+        setFilteredCarLines([]);
+        return;
+      }
+
+      // Fetch car lines for the school
+      const { data: carLinesData, error } = await supabase
+        .from('car_lines')
+        .select('*')
+        .eq('school_id', profile.school_id)
+        .order('line_name');
+
+      if (error) {
+        console.error('Error fetching car lines:', error);
+        toast.error('Failed to load car lines data');
+        return;
+      }
+
+      setCarLines((carLinesData || []) as CarLineRecord[]);
+      setFilteredCarLines((carLinesData || []) as CarLineRecord[]);
     } catch (error) {
       console.error('Error fetching car lines data:', error);
       toast.error('Failed to load car lines data');
@@ -220,32 +212,62 @@ const CarLines = () => {
 
   const handleFormSubmit = async (values: z.infer<typeof carLineSchema>) => {
     try {
+      // Get user's school_id first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user!.id)
+        .single();
+
+      if (!profile?.school_id) {
+        toast.error('No school found for user');
+        return;
+      }
+
       if (editingRecord) {
         // Update existing car line
-        const updatedCarLines = carLines.map(line => 
-          line.id === editingRecord.id 
-            ? { ...line, ...values, updated_at: new Date().toISOString() }
-            : line
-        );
-        setCarLines(updatedCarLines);
+        const { error } = await supabase
+          .from('car_lines')
+          .update({
+            line_name: values.line_name,
+            color: values.color,
+            pickup_location: values.pickup_location,
+            status: values.status,
+          })
+          .eq('id', editingRecord.id);
+
+        if (error) {
+          console.error('Error updating car line:', error);
+          toast.error('Failed to update car line');
+          return;
+        }
+
         toast.success('Car line updated successfully');
         setEditingRecord(null);
       } else {
         // Add new car line
-        const newCarLine: CarLineRecord = {
-          id: Date.now().toString(),
-          line_name: values.line_name,
-          color: values.color,
-          pickup_location: values.pickup_location,
-          status: values.status,
-          students_count: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setCarLines([...carLines, newCarLine]);
+        const { error } = await supabase
+          .from('car_lines')
+          .insert({
+            school_id: profile.school_id,
+            line_name: values.line_name,
+            color: values.color,
+            pickup_location: values.pickup_location,
+            status: values.status,
+          });
+
+        if (error) {
+          console.error('Error creating car line:', error);
+          toast.error('Failed to create car line');
+          return;
+        }
+
         toast.success('Car line created successfully');
         setShowAddDialog(false);
       }
+      
+      // Refresh the data
+      await fetchCarLines();
       form.reset();
     } catch (error) {
       console.error('Error saving car line:', error);
@@ -259,9 +281,20 @@ const CarLines = () => {
     }
 
     try {
-      const updatedCarLines = carLines.filter(line => line.id !== carLine.id);
-      setCarLines(updatedCarLines);
+      const { error } = await supabase
+        .from('car_lines')
+        .delete()
+        .eq('id', carLine.id);
+
+      if (error) {
+        console.error('Error deleting car line:', error);
+        toast.error('Failed to delete car line');
+        return;
+      }
+
       toast.success('Car line deleted successfully');
+      // Refresh the data
+      await fetchCarLines();
     } catch (error) {
       console.error('Error deleting car line:', error);
       toast.error('Failed to delete car line');
