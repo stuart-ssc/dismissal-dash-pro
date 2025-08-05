@@ -570,33 +570,35 @@ const Transportation = () => {
                   )}
                 />
                 
-                <FormField
-                  control={form.control}
-                  name="driver_first_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Driver First Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter driver first name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="driver_last_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Driver Last Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter driver last name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="driver_first_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver First Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter first name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="driver_last_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver Last Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter last name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 
                 <FormField
                   control={form.control}
