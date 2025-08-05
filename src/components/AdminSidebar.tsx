@@ -56,7 +56,7 @@ export function AdminSidebar() {
                       end 
                       className={({ isActive }) =>
                         isActive 
-                          ? "bg-primary text-primary-foreground font-medium border-r-2 border-primary" 
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium border-r-2 border-sidebar-primary" 
                           : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                       }
                     >
