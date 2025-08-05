@@ -8,24 +8,188 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Edit, MoreHorizontal, ChevronDown, GraduationCap, Users, Calendar, BarChart3 } from "lucide-react";
+import { Search, Plus, Edit, MoreHorizontal, ChevronDown, GraduationCap, Users, Calendar, BarChart3, UserPlus } from "lucide-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { AddPersonDialog } from "@/components/AddPersonDialog";
 
+interface AddTeacherDialogProps {
+  schoolId: number;
+  onTeacherAdded: (teacher: Teacher) => void;
+}
+
+const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) => {
+  const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+  });
+  const { toast } = useToast();
+
+  const resetForm = () => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Create teacher record
+      const { data: teacherData, error: teacherError } = await supabase
+        .from('teachers')
+        .insert({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          school_id: schoolId
+        })
+        .select()
+        .single();
+
+      if (teacherError) throw teacherError;
+
+      // Create user account
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: 'TempPassword123!', // Temporary password
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            school_id: schoolId,
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (signUpError) throw signUpError;
+
+      // Add teacher role
+      if (signUpData.user) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: signUpData.user.id,
+            role: 'teacher'
+          });
+
+        if (roleError) throw roleError;
+      }
+
+      toast({
+        title: "Success",
+        description: "Teacher added successfully. They will receive an email to set up their account."
+      });
+
+      resetForm();
+      setOpen(false);
+      onTeacherAdded({
+        id: teacherData.id,
+        first_name: teacherData.first_name,
+        last_name: teacherData.last_name
+      });
+    } catch (error) {
+      console.error('Error adding teacher:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add teacher. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="flex items-center gap-2">
+          <UserPlus className="h-4 w-4" />
+          Add Teacher
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add New Teacher</DialogTitle>
+          <DialogDescription>
+            Create a new teacher account for your school.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name *</Label>
+              <Input
+                id="firstName"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name *</Label>
+              <Input
+                id="lastName"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email *</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetForm();
+                setOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Adding...' : 'Add Teacher'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const editClassSchema = z.object({
   class_name: z.string().min(1, "Class name is required"),
   grade_level: z.string().min(1, "Grade level is required"),
   room_number: z.string().optional(),
-  teacher_id: z.string().optional(),
+  teacher_id: z.string().min(1, "Teacher is required"),
 });
 
 interface ClassRecord {
@@ -214,6 +378,11 @@ const Classes = () => {
 
   const handlePersonAdded = () => {
     fetchTeachers(); // Refresh teachers list
+  };
+
+  const handleTeacherAdded = (teacher: Teacher) => {
+    fetchTeachers(); // Refresh teachers list
+    handleTeacherSelect(teacher); // Auto-select the new teacher
   };
 
   // Search and filter logic
@@ -782,7 +951,7 @@ const Classes = () => {
 
                 {/* Teacher Search */}
                 <div className="space-y-2">
-                  <Label htmlFor="teacher">Teacher (Optional)</Label>
+                  <Label htmlFor="teacher">Teacher *</Label>
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <div className="relative flex-1">
@@ -808,9 +977,9 @@ const Classes = () => {
                         )}
                       </div>
                       {schoolId && (
-                        <AddPersonDialog
+                        <AddTeacherDialog
                           schoolId={schoolId}
-                          onPersonAdded={handlePersonAdded}
+                          onTeacherAdded={handleTeacherAdded}
                         />
                       )}
                     </div>
