@@ -7,12 +7,13 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Transportation from "./pages/Transportation";
+import Classes from "./pages/Classes";
 import Dismissals from "./pages/Dismissals";
 import Import from "./pages/Import";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import DismissalGroups from "./pages/admin/DismissalGroups";
-import Classes from "./pages/admin/Classes";
+import AdminClasses from "./pages/admin/Classes";
 import People from "./pages/admin/People";
 import PeopleManagement from "./pages/People";
 import Settings from "./pages/admin/Settings";
@@ -32,12 +33,13 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/people" element={<PeopleManagement />} />
+            <Route path="/dashboard/classes" element={<Classes />} />
             <Route path="/dashboard/transportation" element={<Transportation />} />
             <Route path="/dashboard/dismissals" element={<Dismissals />} />
             <Route path="/dashboard/import" element={<Import />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
-            <Route path="/admin/classes" element={<Classes />} />
+            <Route path="/admin/classes" element={<AdminClasses />} />
             <Route path="/admin/users" element={<People />} />
             <Route path="/admin/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

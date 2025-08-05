@@ -17,7 +17,7 @@ import {
 const adminNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Dismissal Plans", url: "/dashboard/dismissals", icon: GraduationCap },
-  { title: "Classes", url: "/admin/classes", icon: Users },
+  { title: "Classes", url: "/dashboard/classes", icon: Users },
   { title: "People", url: "/dashboard/people", icon: UserCog },
   { title: "Transportation", url: "/dashboard/transportation", icon: Bus },
   { title: "Settings", url: "/admin/settings", icon: Settings },
