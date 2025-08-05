@@ -15,6 +15,17 @@ import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, 
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const editBusSchema = z.object({
+  bus_number: z.string().min(1, "Bus number is required"),
+  driver_first_name: z.string().min(1, "Driver first name is required"),
+  driver_last_name: z.string().min(1, "Driver last name is required"),
+  status: z.enum(["active", "inactive", "maintenance"]),
+});
 
 interface TransportationRecord {
   id: string;
@@ -161,6 +172,57 @@ const Transportation = () => {
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Maintenance</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const form = useForm<z.infer<typeof editBusSchema>>({
+    resolver: zodResolver(editBusSchema),
+    defaultValues: {
+      bus_number: "",
+      driver_first_name: "",
+      driver_last_name: "",
+      status: "active",
+    },
+  });
+
+  useEffect(() => {
+    if (editingRecord) {
+      form.reset({
+        bus_number: editingRecord.bus_number,
+        driver_first_name: editingRecord.driver_first_name,
+        driver_last_name: editingRecord.driver_last_name,
+        status: editingRecord.status,
+      });
+    }
+  }, [editingRecord, form]);
+
+  const handleEditBus = async (values: z.infer<typeof editBusSchema>) => {
+    if (!editingRecord) return;
+
+    try {
+      const { error } = await supabase
+        .from('buses')
+        .update({
+          bus_number: values.bus_number,
+          driver_first_name: values.driver_first_name,
+          driver_last_name: values.driver_last_name,
+          status: values.status,
+        })
+        .eq('id', editingRecord.id);
+
+      if (error) {
+        console.error('Error updating bus:', error);
+        toast.error('Failed to update bus information');
+        return;
+      }
+
+      toast.success('Bus information updated successfully');
+      setEditingRecord(null);
+      form.reset();
+      fetchTransportation(); // Refresh the data
+    } catch (error) {
+      console.error('Error updating bus:', error);
+      toast.error('Failed to update bus information');
     }
   };
 
@@ -422,6 +484,93 @@ const Transportation = () => {
             </Card>
           </main>
         </div>
+
+        {/* Edit Bus Dialog */}
+        <Dialog open={!!editingRecord} onOpenChange={() => setEditingRecord(null)}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Bus Information</DialogTitle>
+              <DialogDescription>
+                Update the bus details below. Click save when you're done.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleEditBus)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="bus_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bus Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter bus number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="driver_first_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Driver First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter driver first name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="driver_last_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Driver Last Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter driver last name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="maintenance">Maintenance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setEditingRecord(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Save Changes</Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </SidebarProvider>
   );
