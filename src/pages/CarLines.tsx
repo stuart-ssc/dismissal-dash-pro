@@ -298,34 +298,7 @@ const CarLines = () => {
           </header>
 
           <div className="flex-1 p-6">
-            <div className="space-y-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold tracking-tight">Car Lines</h2>
-                  <p className="text-muted-foreground">
-                    Manage your school's car pickup lines and locations
-                  </p>
-                </div>
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/dashboard/settings')}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Settings
-                </Button>
-                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Car Line
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
-              </div>
-              </div>
+              <div className="space-y-6">
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
@@ -366,6 +339,23 @@ const CarLines = () => {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/dashboard/settings')}
+                      className="flex items-center gap-2"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to Settings
+                    </Button>
+                    <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Car Line
+                        </Button>
+                      </DialogTrigger>
+                    </Dialog>
                   </div>
 
                   <div className="rounded-md border">
