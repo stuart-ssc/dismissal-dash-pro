@@ -288,12 +288,12 @@ const CarLines = () => {
           <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{schoolName || 'Car Lines'}</h1>
-              <p className="text-sm text-muted-foreground">
-                Manage car pickup lines and locations
-              </p>
+              <div>
+                <h1 className="text-2xl font-bold">{schoolName || 'Car Lines'}</h1>
+                <p className="text-sm text-muted-foreground">
+                  Manage car pickup lines and locations
+                </p>
+              </div>
             </div>
           </header>
 
