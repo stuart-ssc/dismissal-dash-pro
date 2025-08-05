@@ -193,8 +193,15 @@ const Transportation = () => {
         driver_last_name: editingRecord.driver_last_name,
         status: editingRecord.status,
       });
+    } else if (showAddDialog) {
+      form.reset({
+        bus_number: "",
+        driver_first_name: "",
+        driver_last_name: "",
+        status: "active",
+      });
     }
-  }, [editingRecord, form]);
+  }, [editingRecord, showAddDialog, form]);
 
   const handleEditBus = async (values: z.infer<typeof editBusSchema>) => {
     if (!editingRecord) return;
@@ -223,6 +230,54 @@ const Transportation = () => {
     } catch (error) {
       console.error('Error updating bus:', error);
       toast.error('Failed to update bus information');
+    }
+  };
+
+  const handleAddBus = async (values: z.infer<typeof editBusSchema>) => {
+    try {
+      // Get user's school_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user?.id)
+        .single();
+
+      if (!profile?.school_id) {
+        toast.error('Unable to determine school information');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('buses')
+        .insert({
+          bus_number: values.bus_number,
+          driver_first_name: values.driver_first_name,
+          driver_last_name: values.driver_last_name,
+          status: values.status,
+          school_id: profile.school_id,
+        });
+
+      if (error) {
+        console.error('Error creating bus:', error);
+        toast.error('Failed to create bus');
+        return;
+      }
+
+      toast.success('Bus created successfully');
+      setShowAddDialog(false);
+      form.reset();
+      fetchTransportation(); // Refresh the data
+    } catch (error) {
+      console.error('Error creating bus:', error);
+      toast.error('Failed to create bus');
+    }
+  };
+
+  const handleFormSubmit = (values: z.infer<typeof editBusSchema>) => {
+    if (editingRecord) {
+      handleEditBus(values);
+    } else {
+      handleAddBus(values);
     }
   };
 
@@ -485,17 +540,22 @@ const Transportation = () => {
           </main>
         </div>
 
-        {/* Edit Bus Dialog */}
-        <Dialog open={!!editingRecord} onOpenChange={() => setEditingRecord(null)}>
+        {/* Add/Edit Bus Dialog */}
+        <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
+          setShowAddDialog(false);
+          setEditingRecord(null);
+        }}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Edit Bus Information</DialogTitle>
+              <DialogTitle>{editingRecord ? 'Edit Bus Information' : 'Add New Bus'}</DialogTitle>
               <DialogDescription>
-                Update the bus details below. Click save when you're done.
+                {editingRecord 
+                  ? 'Update the bus details below. Click save when you\'re done.'
+                  : 'Enter the new bus details below. Click save to add the bus.'}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleEditBus)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="bus_number"
@@ -562,10 +622,15 @@ const Transportation = () => {
                 />
                 
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setEditingRecord(null)}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowAddDialog(false);
+                    setEditingRecord(null);
+                  }}>
                     Cancel
                   </Button>
-                  <Button type="submit">Save Changes</Button>
+                  <Button type="submit">
+                    {editingRecord ? 'Save Changes' : 'Add Bus'}
+                  </Button>
                 </div>
               </form>
             </Form>
