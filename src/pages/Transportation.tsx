@@ -18,11 +18,10 @@ import { toast } from "sonner";
 
 interface TransportationRecord {
   id: string;
-  route_name: string;
   bus_number: string;
-  driver_name: string;
+  driver_first_name: string;
+  driver_last_name: string;
   students_count: number;
-  departure_time: string;
   status: 'active' | 'inactive' | 'maintenance';
   created_at: string;
   updated_at: string;
@@ -36,7 +35,7 @@ const Transportation = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState<keyof TransportationRecord>('route_name');
+  const [sortBy, setSortBy] = useState<keyof TransportationRecord>('bus_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'maintenance'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -65,56 +64,34 @@ const Transportation = () => {
     try {
       setIsLoading(true);
       
-      // Mock data for transportation records
-      const mockData: TransportationRecord[] = [
-        {
-          id: '1',
-          route_name: 'Route A - North',
-          bus_number: 'BUS-001',
-          driver_name: 'John Smith',
-          students_count: 45,
-          departure_time: '08:00',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          route_name: 'Route B - South',
-          bus_number: 'BUS-002',
-          driver_name: 'Sarah Johnson',
-          students_count: 38,
-          departure_time: '08:15',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: '3',
-          route_name: 'Route C - East',
-          bus_number: 'BUS-003',
-          driver_name: 'Mike Davis',
-          students_count: 42,
-          departure_time: '08:30',
-          status: 'maintenance',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: '4',
-          route_name: 'Route D - West',
-          bus_number: 'BUS-004',
-          driver_name: 'Lisa Wilson',
-          students_count: 35,
-          departure_time: '08:45',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ];
+      const { data: buses, error } = await supabase
+        .from('buses')
+        .select(`
+          *,
+          student_bus_assignments(
+            student_id
+          )
+        `);
 
-      setTransportation(mockData);
-      setFilteredTransportation(mockData);
+      if (error) {
+        console.error('Error fetching buses:', error);
+        toast.error('Failed to load transportation data');
+        return;
+      }
+
+      const transportationData: TransportationRecord[] = buses?.map(bus => ({
+        id: bus.id,
+        bus_number: bus.bus_number,
+        driver_first_name: bus.driver_first_name,
+        driver_last_name: bus.driver_last_name,
+        students_count: bus.student_bus_assignments?.length || 0,
+        status: bus.status as 'active' | 'inactive' | 'maintenance',
+        created_at: bus.created_at,
+        updated_at: bus.updated_at,
+      })) || [];
+
+      setTransportation(transportationData);
+      setFilteredTransportation(transportationData);
     } catch (error) {
       console.error('Error fetching transportation data:', error);
       toast.error('Failed to load transportation data');
@@ -126,10 +103,10 @@ const Transportation = () => {
   // Search and filter logic
   useEffect(() => {
     let filtered = transportation.filter(record => {
+      const driverName = `${record.driver_first_name} ${record.driver_last_name}`;
       const matchesSearch = 
-        record.route_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.bus_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.driver_name.toLowerCase().includes(searchTerm.toLowerCase());
+        driverName.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = filterStatus === 'all' || record.status === filterStatus;
       
@@ -138,8 +115,14 @@ const Transportation = () => {
 
     // Apply sorting
     filtered.sort((a, b) => {
-      const aVal = a[sortBy];
-      const bVal = b[sortBy];
+      let aVal: any = a[sortBy];
+      let bVal: any = b[sortBy];
+      
+      // Special handling for driver name
+      if (sortBy === 'driver_first_name') {
+        aVal = `${a.driver_first_name} ${a.driver_last_name}`;
+        bVal = `${b.driver_first_name} ${b.driver_last_name}`;
+      }
       
       if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
@@ -204,7 +187,7 @@ const Transportation = () => {
               <div>
                 <h1 className="text-2xl font-bold">Transportation</h1>
                 <p className="text-sm text-muted-foreground">
-                  Manage school transportation routes and buses
+                  Manage school buses and student assignments
                 </p>
               </div>
             </div>
@@ -218,13 +201,13 @@ const Transportation = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Routes</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Buses</CardTitle>
                   <Bus className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{transportation.length}</div>
                   <p className="text-xs text-muted-foreground">
-                    Active transportation routes
+                    Total buses in fleet
                   </p>
                 </CardContent>
               </Card>
@@ -236,7 +219,7 @@ const Transportation = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {transportation.reduce((sum, route) => sum + route.students_count, 0)}
+                    {transportation.reduce((sum, bus) => sum + bus.students_count, 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Students using transportation
@@ -251,7 +234,7 @@ const Transportation = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {transportation.filter(route => route.status === 'active').length}
+                    {transportation.filter(bus => bus.status === 'active').length}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Currently operational
@@ -261,13 +244,15 @@ const Transportation = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avg. Departure</CardTitle>
+                  <CardTitle className="text-sm font-medium">In Maintenance</CardTitle>
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">8:22 AM</div>
+                  <div className="text-2xl font-bold">
+                    {transportation.filter(bus => bus.status === 'maintenance').length}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Average departure time
+                    Buses in maintenance
                   </p>
                 </CardContent>
               </Card>
@@ -280,12 +265,12 @@ const Transportation = () => {
                   <div>
                     <CardTitle>Transportation Management</CardTitle>
                     <CardDescription>
-                      Manage bus routes, drivers, and schedules
+                      Manage buses, drivers, and student assignments
                     </CardDescription>
                   </div>
                   <Button onClick={() => setShowAddDialog(true)}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Route
+                    Add Bus
                   </Button>
                 </div>
               </CardHeader>
@@ -296,7 +281,7 @@ const Transportation = () => {
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                       <Input
-                        placeholder="Search routes, buses, or drivers..."
+                        placeholder="Search buses or drivers..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10"
@@ -335,15 +320,6 @@ const Transportation = () => {
                         <TableRow className="border-border hover:bg-muted/50">
                           <TableHead 
                             className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('route_name', sortBy === 'route_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                          >
-                            Route Name
-                            {sortBy === 'route_name' && (
-                              <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                            )}
-                          </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover:bg-muted/30"
                             onClick={() => handleSortChange('bus_number', sortBy === 'bus_number' && sortOrder === 'asc' ? 'desc' : 'asc')}
                           >
                             Bus Number
@@ -353,10 +329,10 @@ const Transportation = () => {
                           </TableHead>
                           <TableHead 
                             className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('driver_name', sortBy === 'driver_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
+                            onClick={() => handleSortChange('driver_first_name', sortBy === 'driver_first_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
                           >
                             Driver
-                            {sortBy === 'driver_name' && (
+                            {sortBy === 'driver_first_name' && (
                               <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                             )}
                           </TableHead>
@@ -369,15 +345,6 @@ const Transportation = () => {
                               <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                             )}
                           </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('departure_time', sortBy === 'departure_time' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                          >
-                            Departure
-                            {sortBy === 'departure_time' && (
-                              <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                            )}
-                          </TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="w-[50px]">Actions</TableHead>
                         </TableRow>
@@ -385,22 +352,20 @@ const Transportation = () => {
                       <TableBody>
                         {currentTransportation.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                               {searchTerm || filterStatus !== 'all' 
-                                ? 'No transportation routes match your search criteria.' 
-                                : 'No transportation routes found.'
+                                ? 'No buses match your search criteria.' 
+                                : 'No buses found. Add your first bus to get started.'
                               }
                             </TableCell>
                           </TableRow>
                         ) : (
-                          currentTransportation.map((route) => (
-                            <TableRow key={route.id} className="border-border hover:bg-muted/30">
-                              <TableCell className="font-medium">{route.route_name}</TableCell>
-                              <TableCell>{route.bus_number}</TableCell>
-                              <TableCell>{route.driver_name}</TableCell>
-                              <TableCell>{route.students_count}</TableCell>
-                              <TableCell>{route.departure_time}</TableCell>
-                              <TableCell>{getStatusBadge(route.status)}</TableCell>
+                          currentTransportation.map((bus) => (
+                            <TableRow key={bus.id} className="border-border hover:bg-muted/30">
+                              <TableCell className="font-medium">{bus.bus_number}</TableCell>
+                              <TableCell>{bus.driver_first_name} {bus.driver_last_name}</TableCell>
+                              <TableCell>{bus.students_count}</TableCell>
+                              <TableCell>{getStatusBadge(bus.status)}</TableCell>
                               <TableCell>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
@@ -409,7 +374,7 @@ const Transportation = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent className="bg-background border border-border shadow-lg z-50" align="end">
-                                    <DropdownMenuItem onClick={() => setEditingRecord(route)}>
+                                    <DropdownMenuItem onClick={() => setEditingRecord(bus)}>
                                       <Edit className="h-4 w-4 mr-2" />
                                       Edit
                                     </DropdownMenuItem>
@@ -427,7 +392,7 @@ const Transportation = () => {
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">
-                        Showing {startIndex + 1} to {Math.min(endIndex, filteredTransportation.length)} of {filteredTransportation.length} routes
+                        Showing {startIndex + 1} to {Math.min(endIndex, filteredTransportation.length)} of {filteredTransportation.length} buses
                       </p>
                       <div className="flex items-center gap-2">
                         <Button

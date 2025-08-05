@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      buses: {
+        Row: {
+          bus_number: string
+          created_at: string
+          driver_first_name: string
+          driver_last_name: string
+          id: string
+          school_id: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bus_number: string
+          created_at?: string
+          driver_first_name: string
+          driver_last_name: string
+          id?: string
+          school_id: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bus_number?: string
+          created_at?: string
+          driver_first_name?: string
+          driver_last_name?: string
+          id?: string
+          school_id?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       class_rosters: {
         Row: {
           class_id: string
@@ -180,6 +213,27 @@ export type Database = {
           id?: number
           school_logo?: string | null
           school_name?: string | null
+        }
+        Relationships: []
+      }
+      student_bus_assignments: {
+        Row: {
+          assigned_at: string
+          bus_id: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          bus_id: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          assigned_at?: string
+          bus_id?: string
+          id?: string
+          student_id?: string
         }
         Relationships: []
       }
