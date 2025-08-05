@@ -50,7 +50,7 @@ const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) =
     setIsSubmitting(true);
 
     try {
-      // Create teacher record
+      // Create teacher record only
       const { data: teacherData, error: teacherError } = await supabase
         .from('teachers')
         .insert({
@@ -64,38 +64,39 @@ const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) =
 
       if (teacherError) throw teacherError;
 
-      // Create user account
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: 'TempPassword123!', // Temporary password
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            school_id: schoolId,
-          },
-          emailRedirectTo: `${window.location.origin}/`
+      // Get school name for the invitation email
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('school_name')
+        .eq('id', schoolId)
+        .single();
+
+      // Send invitation email via edge function
+      const inviteUrl = `${window.location.origin}/auth?mode=teacher-signup&email=${encodeURIComponent(formData.email)}&teacher_id=${teacherData.id}`;
+      
+      const { error: emailError } = await supabase.functions.invoke('send-teacher-invitation', {
+        body: {
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          schoolName: schoolData?.school_name || 'Your School',
+          inviteUrl: inviteUrl
         }
       });
 
-      if (signUpError) throw signUpError;
-
-      // Add teacher role
-      if (signUpData.user) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: signUpData.user.id,
-            role: 'teacher'
-          });
-
-        if (roleError) throw roleError;
+      if (emailError) {
+        console.error('Error sending invitation email:', emailError);
+        toast({
+          title: "Teacher Created",
+          description: "Teacher record created but invitation email failed to send. Please contact the teacher manually.",
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Teacher created and invitation email sent successfully!"
+        });
       }
-
-      toast({
-        title: "Success",
-        description: "Teacher added successfully. They will receive an email to set up their account."
-      });
 
       resetForm();
       setOpen(false);
