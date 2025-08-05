@@ -339,6 +339,7 @@ const CarLines = () => {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    <div className="flex-1"></div>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -350,7 +351,7 @@ const CarLines = () => {
                     </Button>
                     <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                       <DialogTrigger asChild>
-                        <Button className="ml-auto">
+                        <Button>
                           <Plus className="mr-2 h-4 w-4" />
                           Add Car Line
                         </Button>
