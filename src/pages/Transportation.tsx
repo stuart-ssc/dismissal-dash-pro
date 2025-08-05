@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3, UserPlus, Trash2, ArrowLeft } from "lucide-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -36,6 +37,15 @@ interface TransportationRecord {
   status: 'active' | 'inactive' | 'maintenance';
   created_at: string;
   updated_at: string;
+}
+
+interface StudentSearchResult {
+  id: string;
+  first_name: string;
+  last_name: string;
+  grade_level: string;
+  class_name: string;
+  already_assigned: boolean;
 }
 
 interface StudentBusRecord {
@@ -63,6 +73,19 @@ const Transportation = () => {
   const [managingStudents, setManagingStudents] = useState<TransportationRecord | null>(null);
   const [busStudents, setBusStudents] = useState<StudentBusRecord[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [studentSearchResults, setStudentSearchResults] = useState<StudentSearchResult[]>([]);
+  const [isSearchingStudents, setIsSearchingStudents] = useState(false);
+  const [showCreateStudentForm, setShowCreateStudentForm] = useState(false);
+  const [newStudentData, setNewStudentData] = useState({
+    firstName: '',
+    lastName: '',
+    gradeLevel: '',
+    classId: '',
+    studentId: ''
+  });
+  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; class_name: string }>>([]);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -382,6 +405,195 @@ const Transportation = () => {
     }
   };
 
+  const searchStudents = async (searchTerm: string) => {
+    if (!searchTerm.trim() || !managingStudents) return;
+    
+    setIsSearchingStudents(true);
+    try {
+      // Get current user's school_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user?.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          ),
+          student_bus_assignments!inner(bus_id)
+        `)
+        .eq('school_id', profile.school_id)
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`)
+        .limit(10);
+
+      if (error) {
+        console.error('Error searching students:', error);
+        return;
+      }
+
+      const searchResults: StudentSearchResult[] = data?.map(student => ({
+        id: student.id,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        grade_level: student.grade_level,
+        class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
+        already_assigned: student.student_bus_assignments.some(
+          (assignment: any) => assignment.bus_id === managingStudents.id
+        )
+      })) || [];
+
+      setStudentSearchResults(searchResults);
+    } catch (error) {
+      console.error('Error searching students:', error);
+    } finally {
+      setIsSearchingStudents(false);
+    }
+  };
+
+  const handleAssignStudent = async (studentId: string, rideStatus: string) => {
+    if (!managingStudents) return;
+
+    try {
+      const { error } = await supabase
+        .from('student_bus_assignments')
+        .insert({
+          student_id: studentId,
+          bus_id: managingStudents.id
+        });
+
+      if (error) {
+        console.error('Error assigning student:', error);
+        toast.error('Failed to assign student to bus');
+        return;
+      }
+
+      toast.success('Student assigned to bus successfully');
+      fetchBusStudents(managingStudents.id);
+      fetchTransportation(); // Refresh to update student counts
+      setStudentSearchTerm('');
+      setStudentSearchResults([]);
+    } catch (error) {
+      console.error('Error assigning student:', error);
+      toast.error('Failed to assign student to bus');
+    }
+  };
+
+  const fetchClasses = async (gradeLevel: string) => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, class_name')
+        .eq('school_id', profile.school_id)
+        .eq('grade_level', gradeLevel);
+      
+      if (!error && data) {
+        setAvailableClasses(data);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    }
+  };
+
+  const handleCreateStudent = async () => {
+    if (!managingStudents || !user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) {
+        toast.error('Unable to determine school information');
+        return;
+      }
+
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .insert({
+          first_name: newStudentData.firstName,
+          last_name: newStudentData.lastName,
+          grade_level: newStudentData.gradeLevel,
+          student_id: newStudentData.studentId || null,
+          school_id: profile.school_id
+        })
+        .select()
+        .single();
+
+      if (studentError) throw studentError;
+
+      // If a class is selected, add the student to the class roster
+      if (newStudentData.classId && studentData) {
+        const { error: rosterError } = await supabase
+          .from('class_rosters')
+          .insert({
+            student_id: studentData.id,
+            class_id: newStudentData.classId
+          });
+
+        if (rosterError) throw rosterError;
+      }
+
+      // Assign student to the bus
+      const { error: assignmentError } = await supabase
+        .from('student_bus_assignments')
+        .insert({
+          student_id: studentData.id,
+          bus_id: managingStudents.id
+        });
+
+      if (assignmentError) throw assignmentError;
+
+      toast.success('Student created and assigned to bus successfully');
+      
+      // Reset form
+      setNewStudentData({
+        firstName: '',
+        lastName: '',
+        gradeLevel: '',
+        classId: '',
+        studentId: ''
+      });
+      setShowCreateStudentForm(false);
+      setShowAddStudentDialog(false);
+      
+      fetchBusStudents(managingStudents.id);
+      fetchTransportation();
+    } catch (error) {
+      console.error('Error creating student:', error);
+      toast.error('Failed to create student');
+    }
+  };
+
+  // Fetch classes when grade level changes
+  useEffect(() => {
+    if (newStudentData.gradeLevel) {
+      fetchClasses(newStudentData.gradeLevel);
+    } else {
+      setAvailableClasses([]);
+    }
+  }, [newStudentData.gradeLevel, user]);
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -497,7 +709,7 @@ const Transportation = () => {
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back to Buses
                       </Button>
-                      <Button>
+                      <Button onClick={() => setShowAddStudentDialog(true)}>
                         <UserPlus className="h-4 w-4 mr-2" />
                         Add Student
                       </Button>
@@ -735,6 +947,286 @@ const Transportation = () => {
         </div>
 
         {/* Add/Edit Bus Dialog */}
+        <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
+          setShowAddDialog(false);
+          setEditingRecord(null);
+        }}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>{editingRecord ? 'Edit Bus Information' : 'Add New Bus'}</DialogTitle>
+              <DialogDescription>
+                {editingRecord 
+                  ? 'Update the bus details below. Click save when you\'re done.'
+                  : 'Enter the new bus details below. Click save to add the bus.'}
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="bus_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bus Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter bus number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="driver_first_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver First Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter first name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="driver_last_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver Last Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter last name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="maintenance">Maintenance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowAddDialog(false);
+                    setEditingRecord(null);
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    {editingRecord ? 'Save Changes' : 'Add Bus'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Student Dialog */}
+        <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add Student to Bus {managingStudents?.bus_number}</DialogTitle>
+              <DialogDescription>
+                Search for existing students or create a new student record.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {!showCreateStudentForm ? (
+              <div className="space-y-4">
+                {/* Student Search */}
+                <div className="space-y-2">
+                  <Label>Search Students</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter student name..."
+                      value={studentSearchTerm}
+                      onChange={(e) => {
+                        setStudentSearchTerm(e.target.value);
+                        if (e.target.value.length >= 2) {
+                          searchStudents(e.target.value);
+                        } else {
+                          setStudentSearchResults([]);
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowCreateStudentForm(true)}
+                    >
+                      Create New
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Search Results */}
+                {isSearchingStudents && (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  </div>
+                )}
+
+                {studentSearchResults.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Search Results</Label>
+                    <div className="border rounded-md">
+                      {studentSearchResults.map((student) => (
+                        <div key={student.id} className="p-3 border-b last:border-b-0 flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{student.first_name} {student.last_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Grade {student.grade_level} • {student.class_name}
+                            </p>
+                          </div>
+                          {student.already_assigned ? (
+                            <Badge variant="secondary">Already on this bus</Badge>
+                          ) : (
+                            <div className="flex gap-2 items-center">
+                              <Select onValueChange={(value) => handleAssignStudent(student.id, value)}>
+                                <SelectTrigger className="w-[140px]">
+                                  <SelectValue placeholder="Ride Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active_rider">Active Rider</SelectItem>
+                                  <SelectItem value="guest_rider">Guest Rider</SelectItem>
+                                  <SelectItem value="non_rider">Non-rider</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {studentSearchTerm.length >= 2 && !isSearchingStudents && studentSearchResults.length === 0 && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    No students found. <Button variant="link" onClick={() => setShowCreateStudentForm(true)} className="p-0 h-auto">Create a new student record</Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Create Student Form */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg">Create New Student</Label>
+                  <Button variant="outline" onClick={() => setShowCreateStudentForm(false)}>
+                    Back to Search
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>First Name *</Label>
+                    <Input
+                      value={newStudentData.firstName}
+                      onChange={(e) => setNewStudentData({ ...newStudentData, firstName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Last Name *</Label>
+                    <Input
+                      value={newStudentData.lastName}
+                      onChange={(e) => setNewStudentData({ ...newStudentData, lastName: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Grade Level *</Label>
+                  <Select value={newStudentData.gradeLevel} onValueChange={(value) => setNewStudentData({ ...newStudentData, gradeLevel: value, classId: '' })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select grade level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="6">6th Grade</SelectItem>
+                      <SelectItem value="7">7th Grade</SelectItem>
+                      <SelectItem value="8">8th Grade</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {newStudentData.gradeLevel && availableClasses.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Class</Label>
+                    <Select value={newStudentData.classId} onValueChange={(value) => setNewStudentData({ ...newStudentData, classId: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select class" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableClasses.map((classItem) => (
+                          <SelectItem key={classItem.id} value={classItem.id}>
+                            {classItem.class_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>Student ID</Label>
+                  <Input
+                    value={newStudentData.studentId}
+                    onChange={(e) => setNewStudentData({ ...newStudentData, studentId: e.target.value })}
+                    placeholder="Optional student ID"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowCreateStudentForm(false);
+                    setShowAddStudentDialog(false);
+                    setNewStudentData({ firstName: '', lastName: '', gradeLevel: '', classId: '', studentId: '' });
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleCreateStudent}
+                    disabled={!newStudentData.firstName || !newStudentData.lastName || !newStudentData.gradeLevel}
+                  >
+                    Create & Assign Student
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!showCreateStudentForm && (
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setShowAddStudentDialog(false)}>
+                  Close
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
         <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
           setShowAddDialog(false);
           setEditingRecord(null);
