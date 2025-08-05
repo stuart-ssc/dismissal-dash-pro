@@ -86,6 +86,7 @@ const Transportation = () => {
     studentId: ''
   });
   const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; class_name: string }>>([]);
+  const [schoolName, setSchoolName] = useState<string>('');
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -102,6 +103,7 @@ const Transportation = () => {
 
   useEffect(() => {
     fetchTransportation();
+    fetchSchoolName();
   }, [user]);
 
   const fetchTransportation = async () => {
@@ -143,6 +145,32 @@ const Transportation = () => {
       toast.error('Failed to load transportation data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchSchoolName = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.school_id) {
+        const { data: school } = await supabase
+          .from('schools')
+          .select('school_name')
+          .eq('id', profile.school_id)
+          .single();
+
+        if (school?.school_name) {
+          setSchoolName(school.school_name);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching school name:', error);
     }
   };
 
@@ -615,7 +643,7 @@ const Transportation = () => {
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <div>
-                <h1 className="text-2xl font-bold">Transportation</h1>
+                <h1 className="text-2xl font-bold">{schoolName || 'Transportation'}</h1>
                 <p className="text-sm text-muted-foreground">
                   Manage school buses and student assignments
                 </p>
