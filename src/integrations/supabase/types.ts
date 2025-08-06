@@ -453,6 +453,36 @@ export type Database = {
           },
         ]
       }
+      walker_locations: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          location_name: string
+          school_id: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          location_name: string
+          school_id: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          location_name?: string
+          school_id?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
