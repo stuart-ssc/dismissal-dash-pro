@@ -1,16 +1,65 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Settings as SettingsIcon, School, Bell, Shield, Clock } from "lucide-react";
+import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import * as z from "zod";
+
+const formatPhoneNumber = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  
+  if (digits.length <= 3) {
+    return digits;
+  } else if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  } else {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  }
+};
+
+const schoolFormSchema = z.object({
+  school_name: z.string().min(1, "School name is required"),
+  address: z.string().optional(),
+  phone_number: z.string().optional(),
+  primary_color: z.string().min(1, "Primary color is required"),
+  secondary_color: z.string().min(1, "Secondary color is required"),
+});
+
+interface SchoolData {
+  id: number;
+  school_name: string;
+  address?: string;
+  phone_number?: string;
+  primary_color: string;
+  secondary_color: string;
+  school_logo?: string;
+}
 
 const Settings = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const form = useForm<z.infer<typeof schoolFormSchema>>({
+    resolver: zodResolver(schoolFormSchema),
+    defaultValues: {
+      school_name: "",
+      address: "",
+      phone_number: "",
+      primary_color: "#3B82F6",
+      secondary_color: "#EF4444",
+    },
+  });
 
   useEffect(() => {
     if (!loading && (!user || userRole !== 'school_admin')) {
@@ -18,7 +67,87 @@ const Settings = () => {
     }
   }, [user, userRole, loading, navigate]);
 
-  if (loading) {
+  useEffect(() => {
+    fetchSchoolData();
+  }, [user]);
+
+  const fetchSchoolData = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        return;
+      }
+
+      if (profile?.school_id) {
+        const { data: school, error: schoolError } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('id', profile.school_id)
+          .maybeSingle();
+
+        if (schoolError) {
+          console.error('Error fetching school:', schoolError);
+          return;
+        }
+
+        if (school) {
+          setSchoolData(school as SchoolData);
+          form.reset({
+            school_name: school.school_name || "",
+            address: school.address || "",
+            phone_number: school.phone_number || "",
+            primary_color: school.primary_color || "#3B82F6",
+            secondary_color: school.secondary_color || "#EF4444",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching school data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onSubmit = async (values: z.infer<typeof schoolFormSchema>) => {
+    if (!schoolData) return;
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          school_name: values.school_name,
+          address: values.address,
+          phone_number: values.phone_number,
+          primary_color: values.primary_color,
+          secondary_color: values.secondary_color,
+        })
+        .eq('id', schoolData.id);
+
+      if (error) {
+        console.error('Error updating school:', error);
+        toast.error('Failed to update school information');
+        return;
+      }
+
+      toast.success('School information updated successfully');
+      await fetchSchoolData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating school:', error);
+      toast.error('Failed to update school information');
+    }
+  };
+
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -46,20 +175,100 @@ const Settings = () => {
             </CardTitle>
             <CardDescription>Update your school's basic information</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="school-name">School Name</Label>
-              <Input id="school-name" placeholder="Enter school name" defaultValue="Lincoln Elementary School" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="school-address">Address</Label>
-              <Input id="school-address" placeholder="Enter school address" defaultValue="123 Main Street, City, State" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="school-phone">Phone Number</Label>
-              <Input id="school-phone" placeholder="Enter phone number" defaultValue="(555) 123-4567" />
-            </div>
-            <Button>Save Changes</Button>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="school_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>School Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter school name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter school address" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="(555) 123-4567" 
+                          {...field}
+                          onChange={(e) => {
+                            const formatted = formatPhoneNumber(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          maxLength={14}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="primary_color"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Primary Color</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                            <Input type="color" className="w-16 h-10" {...field} />
+                            <Input placeholder="#3B82F6" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="secondary_color"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Secondary Color</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                            <Input type="color" className="w-16 h-10" {...field} />
+                            <Input placeholder="#EF4444" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Button type="submit" className="w-full">
+                  Save Changes
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
 
