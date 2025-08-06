@@ -38,6 +38,27 @@ const schoolFormSchema = z.object({
   secondary_color: z.string().min(1, "Secondary color is required"),
 });
 
+const dismissalFormSchema = z.object({
+  dismissal_time: z.string().optional(),
+  preparation_time_minutes: z.number().min(1).max(60),
+  auto_dismissal_enabled: z.boolean(),
+  walkers_enabled: z.boolean(),
+  car_lines_enabled: z.boolean(),
+});
+
+const notificationFormSchema = z.object({
+  email_notifications_enabled: z.boolean(),
+  sms_notifications_enabled: z.boolean(),
+  parent_notifications_enabled: z.boolean(),
+  emergency_alerts_enabled: z.boolean(),
+});
+
+const securityFormSchema = z.object({
+  two_factor_required: z.boolean(),
+  session_timeout_enabled: z.boolean(),
+  audit_logs_enabled: z.boolean(),
+});
+
 interface SchoolData {
   id: number;
   school_name: string;
@@ -46,6 +67,18 @@ interface SchoolData {
   primary_color: string;
   secondary_color: string;
   school_logo?: string;
+  dismissal_time?: string;
+  preparation_time_minutes?: number;
+  auto_dismissal_enabled?: boolean;
+  walkers_enabled?: boolean;
+  car_lines_enabled?: boolean;
+  email_notifications_enabled?: boolean;
+  sms_notifications_enabled?: boolean;
+  parent_notifications_enabled?: boolean;
+  emergency_alerts_enabled?: boolean;
+  two_factor_required?: boolean;
+  session_timeout_enabled?: boolean;
+  audit_logs_enabled?: boolean;
 }
 
 const Settings = () => {
@@ -66,6 +99,36 @@ const Settings = () => {
       phone_number: "",
       primary_color: "#3B82F6",
       secondary_color: "#EF4444",
+    },
+  });
+
+  const dismissalForm = useForm<z.infer<typeof dismissalFormSchema>>({
+    resolver: zodResolver(dismissalFormSchema),
+    defaultValues: {
+      dismissal_time: "",
+      preparation_time_minutes: 5,
+      auto_dismissal_enabled: false,
+      walkers_enabled: true,
+      car_lines_enabled: true,
+    },
+  });
+
+  const notificationForm = useForm<z.infer<typeof notificationFormSchema>>({
+    resolver: zodResolver(notificationFormSchema),
+    defaultValues: {
+      email_notifications_enabled: true,
+      sms_notifications_enabled: false,
+      parent_notifications_enabled: true,
+      emergency_alerts_enabled: true,
+    },
+  });
+
+  const securityForm = useForm<z.infer<typeof securityFormSchema>>({
+    resolver: zodResolver(securityFormSchema),
+    defaultValues: {
+      two_factor_required: false,
+      session_timeout_enabled: false,
+      audit_logs_enabled: true,
     },
   });
 
@@ -122,6 +185,27 @@ const Settings = () => {
             phone_number: school.phone_number || "",
             primary_color: school.primary_color || "#3B82F6",
             secondary_color: school.secondary_color || "#EF4444",
+          });
+
+          dismissalForm.reset({
+            dismissal_time: school.dismissal_time || "",
+            preparation_time_minutes: school.preparation_time_minutes || 5,
+            auto_dismissal_enabled: school.auto_dismissal_enabled || false,
+            walkers_enabled: school.walkers_enabled !== false,
+            car_lines_enabled: school.car_lines_enabled !== false,
+          });
+
+          notificationForm.reset({
+            email_notifications_enabled: school.email_notifications_enabled !== false,
+            sms_notifications_enabled: school.sms_notifications_enabled || false,
+            parent_notifications_enabled: school.parent_notifications_enabled !== false,
+            emergency_alerts_enabled: school.emergency_alerts_enabled !== false,
+          });
+
+          securityForm.reset({
+            two_factor_required: school.two_factor_required || false,
+            session_timeout_enabled: school.session_timeout_enabled || false,
+            audit_logs_enabled: school.audit_logs_enabled !== false,
           });
 
           // Set logo URL if exists
@@ -273,6 +357,90 @@ const Settings = () => {
     } catch (error) {
       console.error('Error updating school:', error);
       toast.error('Failed to update school information');
+    }
+  };
+
+  const onDismissalSubmit = async (values: z.infer<typeof dismissalFormSchema>) => {
+    if (!schoolData) return;
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          dismissal_time: values.dismissal_time || null,
+          preparation_time_minutes: values.preparation_time_minutes,
+          auto_dismissal_enabled: values.auto_dismissal_enabled,
+          walkers_enabled: values.walkers_enabled,
+          car_lines_enabled: values.car_lines_enabled,
+        })
+        .eq('id', schoolData.id);
+
+      if (error) {
+        console.error('Error updating dismissal settings:', error);
+        toast.error('Failed to update dismissal settings');
+        return;
+      }
+
+      toast.success('Dismissal settings updated successfully');
+      await fetchSchoolData();
+    } catch (error) {
+      console.error('Error updating dismissal settings:', error);
+      toast.error('Failed to update dismissal settings');
+    }
+  };
+
+  const onNotificationSubmit = async (values: z.infer<typeof notificationFormSchema>) => {
+    if (!schoolData) return;
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          email_notifications_enabled: values.email_notifications_enabled,
+          sms_notifications_enabled: values.sms_notifications_enabled,
+          parent_notifications_enabled: values.parent_notifications_enabled,
+          emergency_alerts_enabled: values.emergency_alerts_enabled,
+        })
+        .eq('id', schoolData.id);
+
+      if (error) {
+        console.error('Error updating notification settings:', error);
+        toast.error('Failed to update notification settings');
+        return;
+      }
+
+      toast.success('Notification settings updated successfully');
+      await fetchSchoolData();
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      toast.error('Failed to update notification settings');
+    }
+  };
+
+  const onSecuritySubmit = async (values: z.infer<typeof securityFormSchema>) => {
+    if (!schoolData) return;
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          two_factor_required: values.two_factor_required,
+          session_timeout_enabled: values.session_timeout_enabled,
+          audit_logs_enabled: values.audit_logs_enabled,
+        })
+        .eq('id', schoolData.id);
+
+      if (error) {
+        console.error('Error updating security settings:', error);
+        toast.error('Failed to update security settings');
+        return;
+      }
+
+      toast.success('Security settings updated successfully');
+      await fetchSchoolData();
+    } catch (error) {
+      console.error('Error updating security settings:', error);
+      toast.error('Failed to update security settings');
     }
   };
 
@@ -472,38 +640,108 @@ const Settings = () => {
                   </CardTitle>
                   <CardDescription>Configure dismissal times and procedures</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dismissal-time">Default Dismissal Time</Label>
-                    <Input id="dismissal-time" type="time" defaultValue="15:30" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="prep-time">Preparation Time (minutes)</Label>
-                    <Input id="prep-time" type="number" placeholder="15" defaultValue="15" />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="auto-dismissal" defaultChecked />
-                    <Label htmlFor="auto-dismissal">Enable automatic dismissal announcements</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="enable-walkers" defaultChecked />
-                    <Label htmlFor="enable-walkers">Enable Walkers</Label>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Switch id="enable-car-lines" defaultChecked />
-                      <Label htmlFor="enable-car-lines">Enable Car Lines</Label>
-                    </div>
-                    <Button 
-                      variant="link" 
-                      size="sm"
-                      onClick={() => navigate('/dashboard/car-lines')}
-                      className="h-auto p-0 text-primary hover:text-primary/80"
-                    >
-                      Manage Car Lines
-                    </Button>
-                  </div>
-                  <Button>Save Settings</Button>
+                <CardContent>
+                  <Form {...dismissalForm}>
+                    <form onSubmit={dismissalForm.handleSubmit(onDismissalSubmit)} className="space-y-4">
+                      <FormField
+                        control={dismissalForm.control}
+                        name="dismissal_time"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Default Dismissal Time</FormLabel>
+                            <FormControl>
+                              <Input type="time" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={dismissalForm.control}
+                        name="preparation_time_minutes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Preparation Time (minutes)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="5" 
+                                min="1" 
+                                max="60"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={dismissalForm.control}
+                        name="auto_dismissal_enabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Enable automatic dismissal announcements</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={dismissalForm.control}
+                        name="walkers_enabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Enable Walkers</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex items-center justify-between">
+                        <FormField
+                          control={dismissalForm.control}
+                          name="car_lines_enabled"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2">
+                              <FormControl>
+                                <Switch 
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormLabel>Enable Car Lines</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                        <Button 
+                          type="button"
+                          variant="link" 
+                          size="sm"
+                          onClick={() => navigate('/dashboard/car-lines')}
+                          className="h-auto p-0 text-primary hover:text-primary/80"
+                        >
+                          Manage Car Lines
+                        </Button>
+                      </div>
+
+                      <Button type="submit" className="w-full">
+                        Save Settings
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
 
@@ -515,24 +753,78 @@ const Settings = () => {
                   </CardTitle>
                   <CardDescription>Manage notification preferences</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch id="email-notifications" defaultChecked />
-                    <Label htmlFor="email-notifications">Email notifications</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="sms-notifications" />
-                    <Label htmlFor="sms-notifications">SMS notifications</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="parent-notifications" defaultChecked />
-                    <Label htmlFor="parent-notifications">Parent notifications</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="emergency-alerts" defaultChecked />
-                    <Label htmlFor="emergency-alerts">Emergency alerts</Label>
-                  </div>
-                  <Button>Update Preferences</Button>
+                <CardContent>
+                  <Form {...notificationForm}>
+                    <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-4">
+                      <FormField
+                        control={notificationForm.control}
+                        name="email_notifications_enabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Email notifications</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={notificationForm.control}
+                        name="sms_notifications_enabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>SMS notifications</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={notificationForm.control}
+                        name="parent_notifications_enabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Parent notifications</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={notificationForm.control}
+                        name="emergency_alerts_enabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Emergency alerts</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button type="submit" className="w-full">
+                        Update Preferences
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
 
@@ -544,20 +836,62 @@ const Settings = () => {
                   </CardTitle>
                   <CardDescription>Manage security settings and data privacy</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch id="two-factor" />
-                    <Label htmlFor="two-factor">Require two-factor authentication</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="session-timeout" defaultChecked />
-                    <Label htmlFor="session-timeout">Automatic session timeout</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="audit-logs" defaultChecked />
-                    <Label htmlFor="audit-logs">Enable audit logging</Label>
-                  </div>
-                  <Button variant="outline">View Security Logs</Button>
+                <CardContent>
+                  <Form {...securityForm}>
+                    <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)} className="space-y-4">
+                      <FormField
+                        control={securityForm.control}
+                        name="two_factor_required"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Require two-factor authentication</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={securityForm.control}
+                        name="session_timeout_enabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Automatic session timeout</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={securityForm.control}
+                        name="audit_logs_enabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch 
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Enable audit logging</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button type="submit" className="w-full">
+                        Save Settings
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </div>

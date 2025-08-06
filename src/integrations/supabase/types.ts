@@ -231,33 +231,69 @@ export type Database = {
       schools: {
         Row: {
           address: string | null
+          audit_logs_enabled: boolean | null
+          auto_dismissal_enabled: boolean | null
+          car_lines_enabled: boolean | null
           created_at: string
+          dismissal_time: string | null
+          email_notifications_enabled: boolean | null
+          emergency_alerts_enabled: boolean | null
           id: number
+          parent_notifications_enabled: boolean | null
           phone_number: string | null
+          preparation_time_minutes: number | null
           primary_color: string | null
           school_logo: string | null
           school_name: string | null
           secondary_color: string | null
+          session_timeout_enabled: boolean | null
+          sms_notifications_enabled: boolean | null
+          two_factor_required: boolean | null
+          walkers_enabled: boolean | null
         }
         Insert: {
           address?: string | null
+          audit_logs_enabled?: boolean | null
+          auto_dismissal_enabled?: boolean | null
+          car_lines_enabled?: boolean | null
           created_at?: string
+          dismissal_time?: string | null
+          email_notifications_enabled?: boolean | null
+          emergency_alerts_enabled?: boolean | null
           id?: number
+          parent_notifications_enabled?: boolean | null
           phone_number?: string | null
+          preparation_time_minutes?: number | null
           primary_color?: string | null
           school_logo?: string | null
           school_name?: string | null
           secondary_color?: string | null
+          session_timeout_enabled?: boolean | null
+          sms_notifications_enabled?: boolean | null
+          two_factor_required?: boolean | null
+          walkers_enabled?: boolean | null
         }
         Update: {
           address?: string | null
+          audit_logs_enabled?: boolean | null
+          auto_dismissal_enabled?: boolean | null
+          car_lines_enabled?: boolean | null
           created_at?: string
+          dismissal_time?: string | null
+          email_notifications_enabled?: boolean | null
+          emergency_alerts_enabled?: boolean | null
           id?: number
+          parent_notifications_enabled?: boolean | null
           phone_number?: string | null
+          preparation_time_minutes?: number | null
           primary_color?: string | null
           school_logo?: string | null
           school_name?: string | null
           secondary_color?: string | null
+          session_timeout_enabled?: boolean | null
+          sms_notifications_enabled?: boolean | null
+          two_factor_required?: boolean | null
+          walkers_enabled?: boolean | null
         }
         Relationships: []
       }
