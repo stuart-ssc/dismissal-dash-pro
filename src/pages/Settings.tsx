@@ -694,21 +694,34 @@ const Settings = () => {
                         )}
                       />
 
-                      <FormField
-                        control={dismissalForm.control}
-                        name="walkers_enabled"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <Switch 
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel>Enable Walkers</FormLabel>
-                          </FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormField
+                          control={dismissalForm.control}
+                          name="walkers_enabled"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2">
+                              <FormControl>
+                                <Switch 
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormLabel>Enable Walkers</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                        {dismissalForm.watch('walkers_enabled') && (
+                          <Button 
+                            type="button"
+                            variant="link" 
+                            size="sm"
+                            onClick={() => navigate('/dashboard/walker-locations')}
+                            className="h-auto p-0 text-primary hover:text-primary/80"
+                          >
+                            Manage Walker Locations
+                          </Button>
                         )}
-                      />
+                      </div>
 
                       <div className="flex items-center justify-between">
                         <FormField
@@ -726,15 +739,17 @@ const Settings = () => {
                             </FormItem>
                           )}
                         />
-                        <Button 
-                          type="button"
-                          variant="link" 
-                          size="sm"
-                          onClick={() => navigate('/dashboard/car-lines')}
-                          className="h-auto p-0 text-primary hover:text-primary/80"
-                        >
-                          Manage Car Lines
-                        </Button>
+                        {dismissalForm.watch('car_lines_enabled') && (
+                          <Button 
+                            type="button"
+                            variant="link" 
+                            size="sm"
+                            onClick={() => navigate('/dashboard/car-lines')}
+                            className="h-auto p-0 text-primary hover:text-primary/80"
+                          >
+                            Manage Car Lines
+                          </Button>
+                        )}
                       </div>
 
                       <Button type="submit" className="w-full">
