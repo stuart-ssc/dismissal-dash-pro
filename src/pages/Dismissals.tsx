@@ -41,6 +41,7 @@ const Dismissals = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'scheduled'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingRecord, setEditingRecord] = useState<DismissalRecord | null>(null);
+  const [schoolName, setSchoolName] = useState<string>('');
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -57,7 +58,36 @@ const Dismissals = () => {
 
   useEffect(() => {
     fetchDismissals();
+    if (user) {
+      fetchSchoolName();
+    }
   }, [user]);
+
+  const fetchSchoolName = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.school_id) {
+        const { data: school } = await supabase
+          .from('schools')
+          .select('school_name')
+          .eq('id', profile.school_id)
+          .single();
+
+        if (school?.school_name) {
+          setSchoolName(school.school_name);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching school name:', error);
+    }
+  };
 
   const fetchDismissals = async () => {
     if (!user) return;
@@ -202,7 +232,7 @@ const Dismissals = () => {
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <div>
-                <h1 className="text-2xl font-bold">Dismissal Plans</h1>
+                <h1 className="text-2xl font-bold">{schoolName || 'Dismissal Plans'}</h1>
                 <p className="text-sm text-muted-foreground">
                   Manage student dismissal plans and assignments
                 </p>
