@@ -1,126 +1,603 @@
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, GraduationCap, Users, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AdminSidebar } from "@/components/AdminSidebar";
+import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus, ArrowLeft, Bus, Users, MapPin, Car, Clock, Edit, Trash2 } from "lucide-react";
 
-const DismissalGroups = () => {
-  const { user, userRole, loading } = useAuth();
+interface DismissalPlan {
+  id: string;
+  name: string;
+  description?: string;
+  dismissal_time?: string;
+  is_default: boolean;
+  status: 'active' | 'inactive';
+}
+
+interface DismissalGroup {
+  id: string;
+  name: string;
+  group_type: 'bus' | 'class' | 'walker' | 'car';
+  release_time?: string;
+  walker_location_id?: string;
+  walker_locations?: { location_name: string };
+  dismissal_group_buses?: { buses: { bus_number: string } }[];
+  dismissal_group_classes?: { classes: { class_name: string } }[];
+  dismissal_group_students?: { students: { first_name: string; last_name: string } }[];
+}
+
+const groupFormSchema = z.object({
+  name: z.string().min(1, "Group name is required"),
+  group_type: z.enum(['bus', 'class', 'walker', 'car']),
+  release_time: z.string().optional(),
+  walker_location_id: z.string().optional(),
+});
+
+type GroupFormData = z.infer<typeof groupFormSchema>;
+
+export default function DismissalGroups() {
+  const { planId } = useParams<{ planId: string }>();
+  const { user, userRole } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const [plan, setPlan] = useState<DismissalPlan | null>(null);
+  const [groups, setGroups] = useState<DismissalGroup[]>([]);
+  const [walkerLocations, setWalkerLocations] = useState<{ id: string; location_name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<DismissalGroup | null>(null);
+
+  const form = useForm<GroupFormData>({
+    resolver: zodResolver(groupFormSchema),
+    defaultValues: {
+      name: "",
+      group_type: 'bus',
+      release_time: "",
+      walker_location_id: "",
+    },
+  });
 
   useEffect(() => {
-    if (!loading && (!user || userRole !== 'school_admin')) {
-      navigate('/dashboard');
+    if (!user) {
+      navigate('/auth');
+      return;
     }
-  }, [user, userRole, loading, navigate]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+    if (userRole !== 'school_admin') {
+      navigate('/dashboard');
+      return;
+    }
+
+    if (planId) {
+      fetchPlanAndGroups();
+      fetchWalkerLocations();
+    }
+  }, [user, userRole, planId, navigate]);
+
+  const fetchPlanAndGroups = async () => {
+    if (!planId || !user) return;
+
+    try {
+      setLoading(true);
+
+      // Fetch plan details
+      const { data: planData, error: planError } = await supabase
+        .from('dismissal_plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
+
+      if (planError) throw planError;
+      setPlan({ ...planData, status: planData.status as 'active' | 'inactive' });
+
+      // Fetch groups for this plan
+      const { data: groupsData, error: groupsError } = await supabase
+        .from('dismissal_groups')
+        .select(`
+          *,
+          walker_locations(location_name),
+          dismissal_group_buses(
+            buses(bus_number)
+          ),
+          dismissal_group_classes(
+            classes(class_name)
+          ),
+          dismissal_group_students(
+            students(first_name, last_name)
+          )
+        `)
+        .eq('dismissal_plan_id', planId);
+
+      if (groupsError) throw groupsError;
+      setGroups((groupsData || []).map(group => ({ 
+        ...group, 
+        group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car' 
+      })));
+    } catch (error) {
+      console.error('Error fetching plan and groups:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load dismissal plan and groups",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchWalkerLocations = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from('walker_locations')
+        .select('id, location_name')
+        .eq('school_id', profile.school_id)
+        .eq('status', 'active');
+
+      if (error) throw error;
+      setWalkerLocations(data || []);
+    } catch (error) {
+      console.error('Error fetching walker locations:', error);
+    }
+  };
+
+  const onSubmit = async (data: GroupFormData) => {
+    if (!planId) return;
+
+    try {
+      const groupData = {
+        name: data.name,
+        group_type: data.group_type,
+        release_time: data.release_time,
+        dismissal_plan_id: planId,
+        walker_location_id: data.group_type === 'walker' ? data.walker_location_id : null,
+      };
+
+      if (editingGroup) {
+        const { error } = await supabase
+          .from('dismissal_groups')
+          .update(groupData)
+          .eq('id', editingGroup.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Dismissal group updated successfully",
+        });
+      } else {
+        const { error } = await supabase
+          .from('dismissal_groups')
+          .insert(groupData);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Dismissal group created successfully",
+        });
+      }
+
+      setShowAddDialog(false);
+      setEditingGroup(null);
+      form.reset();
+      fetchPlanAndGroups();
+    } catch (error) {
+      console.error('Error saving group:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save dismissal group",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = (group: DismissalGroup) => {
+    setEditingGroup(group);
+    form.reset({
+      name: group.name,
+      group_type: group.group_type,
+      release_time: group.release_time || "",
+      walker_location_id: group.walker_location_id || "",
+    });
+    setShowAddDialog(true);
+  };
+
+  const handleDelete = async (groupId: string) => {
+    try {
+      const { error } = await supabase
+        .from('dismissal_groups')
+        .delete()
+        .eq('id', groupId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Dismissal group deleted successfully",
+      });
+
+      fetchPlanAndGroups();
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete dismissal group",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getGroupIcon = (type: string) => {
+    switch (type) {
+      case 'bus':
+        return <Bus className="h-5 w-5 text-blue-500" />;
+      case 'class':
+        return <Users className="h-5 w-5 text-green-500" />;
+      case 'walker':
+        return <MapPin className="h-5 w-5 text-orange-500" />;
+      case 'car':
+        return <Car className="h-5 w-5 text-purple-500" />;
+      default:
+        return <Users className="h-5 w-5" />;
+    }
+  };
+
+  const getGroupTypeLabel = (type: string) => {
+    switch (type) {
+      case 'bus':
+        return 'Bus';
+      case 'class':
+        return 'Class';
+      case 'walker':
+        return 'Walker';
+      case 'car':
+        return 'Car Rider';
+      default:
+        return type;
+    }
+  };
 
   if (!user || userRole !== 'school_admin') {
     return null;
   }
 
-  return (
-    <div className="flex-1 p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Dismissal Plans</h1>
-          <p className="text-muted-foreground">Manage student dismissal plans and assignments</p>
+  if (loading) {
+    return (
+      <SidebarProvider>
+        <div className="flex h-screen w-full">
+          <AdminSidebar />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-lg">Loading...</div>
+          </div>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Group
-        </Button>
+      </SidebarProvider>
+    );
+  }
+
+  if (!plan) {
+    return (
+      <SidebarProvider>
+        <div className="flex h-screen w-full">
+          <AdminSidebar />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold mb-2">Plan Not Found</h2>
+              <p className="text-muted-foreground mb-4">The dismissal plan you're looking for doesn't exist.</p>
+              <Button onClick={() => navigate('/dashboard/dismissal-plans')}>
+                Back to Plans
+              </Button>
+            </div>
+          </div>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen bg-background w-full">
+        <AdminSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <header className="bg-card border-b border-border p-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/dashboard/dismissal-plans')}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Plans
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">{plan.name} - Groups</h1>
+                <p className="text-sm text-muted-foreground">
+                  Manage dismissal groups for this plan
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/auth')}
+            >
+              Sign Out
+            </Button>
+          </header>
+
+          <main className="flex-1 overflow-auto p-6">
+            {/* Plan Summary */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Plan Details</span>
+                  <div className="flex gap-2">
+                    {plan.is_default && <Badge variant="default">Default</Badge>}
+                    <Badge variant={plan.status === 'active' ? 'default' : 'secondary'}>
+                      {plan.status}
+                    </Badge>
+                  </div>
+                </CardTitle>
+                {plan.description && (
+                  <CardDescription>{plan.description}</CardDescription>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Dismissal Time</p>
+                    <p className="font-medium">
+                      {plan.dismissal_time ? (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {plan.dismissal_time}
+                        </span>
+                      ) : 'Not set'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Groups</p>
+                    <p className="font-medium">{groups.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Groups</p>
+                    <p className="font-medium">{groups.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Groups Management */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Dismissal Groups</CardTitle>
+                    <CardDescription>
+                      Create and manage groups for this dismissal plan
+                    </CardDescription>
+                  </div>
+                  <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                    <DialogTrigger asChild>
+                      <Button
+                        onClick={() => {
+                          setEditingGroup(null);
+                          form.reset({
+                            name: "",
+                            group_type: 'bus',
+                            release_time: "",
+                            walker_location_id: "",
+                          });
+                        }}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Group
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingGroup ? 'Edit Dismissal Group' : 'Add New Dismissal Group'}
+                        </DialogTitle>
+                        <DialogDescription>
+                          Create a group to organize student dismissals.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Group Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter group name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="group_type"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Group Type</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select group type" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="bus">Bus</SelectItem>
+                                    <SelectItem value="class">Class</SelectItem>
+                                    <SelectItem value="walker">Walker</SelectItem>
+                                    <SelectItem value="car">Car Rider</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="release_time"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Release Time</FormLabel>
+                                <FormControl>
+                                  <Input type="time" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {form.watch('group_type') === 'walker' && (
+                            <FormField
+                              control={form.control}
+                              name="walker_location_id"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Walker Location</FormLabel>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select walker location" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {walkerLocations.map((location) => (
+                                        <SelectItem key={location.id} value={location.id}>
+                                          {location.location_name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setShowAddDialog(false)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button type="submit">
+                              {editingGroup ? 'Update Group' : 'Create Group'}
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                {groups.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No dismissal groups found. Create your first group to get started.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groups.map((group) => (
+                      <Card key={group.id} className="border-border">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center justify-between text-base">
+                            <div className="flex items-center gap-2">
+                              {getGroupIcon(group.group_type)}
+                              {group.name}
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {getGroupTypeLabel(group.group_type)}
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          {group.release_time && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Release Time:</span>
+                              <span className="text-sm font-medium">{group.release_time}</span>
+                            </div>
+                          )}
+                          
+                          {group.group_type === 'walker' && group.walker_locations && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Location:</span>
+                              <span className="text-sm font-medium">{group.walker_locations.location_name}</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Assignments:</span>
+                            <span className="text-sm font-medium">
+                              {(group.dismissal_group_buses?.length || 0) +
+                               (group.dismissal_group_classes?.length || 0) +
+                               (group.dismissal_group_students?.length || 0)}
+                            </span>
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(group)}
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDelete(group.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </main>
+        </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-primary" />
-              Bus Riders - Route 1
-            </CardTitle>
-            <CardDescription>Students taking bus route 1</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Students:</span>
-                <span className="font-medium">24</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Dismissal Time:</span>
-                <span className="font-medium">3:15 PM</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Active</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-secondary" />
-              Parent Pickup
-            </CardTitle>
-            <CardDescription>Students picked up by parents</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Students:</span>
-                <span className="font-medium">18</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Dismissal Time:</span>
-                <span className="font-medium">3:30 PM</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Active</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-500" />
-              After School Program
-            </CardTitle>
-            <CardDescription>Students staying for after-school activities</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Students:</span>
-                <span className="font-medium">12</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Dismissal Time:</span>
-                <span className="font-medium">5:00 PM</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status:</span>
-                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">Scheduled</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    </SidebarProvider>
   );
-};
-
-export default DismissalGroups;
+}
