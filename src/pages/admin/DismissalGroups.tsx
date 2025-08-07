@@ -269,7 +269,7 @@ export default function DismissalGroups() {
       const groupData = {
         name: data.name,
         group_type: data.group_type,
-        release_time: data.release_time,
+        release_time: data.release_time && data.release_time.trim() !== "" ? data.release_time : null,
         dismissal_plan_id: planId,
         walker_location_id: data.group_type === 'walker' ? data.walker_location_id : null,
       };
