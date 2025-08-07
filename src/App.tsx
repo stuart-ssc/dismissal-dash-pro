@@ -41,6 +41,7 @@ const App = () => (
             <Route path="/dashboard/transportation" element={<Transportation />} />
             <Route path="/dashboard/dismissals" element={<Dismissals />} />
             <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
+            <Route path="/dashboard/dismissal-plans/:planId/groups" element={<DismissalGroups />} />
             <Route path="/dashboard/settings" element={<Settings />} />
             <Route path="/dashboard/car-lines" element={<CarLines />} />
             <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
