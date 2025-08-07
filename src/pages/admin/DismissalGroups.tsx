@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,6 +45,7 @@ const groupFormSchema = z.object({
   group_type: z.enum(['bus', 'class', 'walker', 'car']),
   release_time: z.string().optional(),
   walker_location_id: z.string().optional(),
+  bus_ids: z.array(z.string()).optional(),
 });
 
 type GroupFormData = z.infer<typeof groupFormSchema>;
@@ -56,6 +58,7 @@ export default function DismissalGroups() {
 
   const [plan, setPlan] = useState<DismissalPlan | null>(null);
   const [groups, setGroups] = useState<DismissalGroup[]>([]);
+  const [buses, setBuses] = useState<{ id: string; bus_number: string }[]>([]);
   const [walkerLocations, setWalkerLocations] = useState<{ id: string; location_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -68,6 +71,7 @@ export default function DismissalGroups() {
       group_type: 'bus',
       release_time: "",
       walker_location_id: "",
+      bus_ids: [],
     },
   });
 
@@ -85,6 +89,7 @@ export default function DismissalGroups() {
     if (planId) {
       fetchPlanAndGroups();
       fetchWalkerLocations();
+      fetchBuses();
     }
   }, [user, userRole, planId, navigate]);
 
@@ -164,6 +169,32 @@ export default function DismissalGroups() {
     }
   };
 
+  const fetchBuses = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from('buses')
+        .select('id, bus_number')
+        .eq('school_id', profile.school_id)
+        .eq('status', 'active')
+        .order('bus_number');
+
+      if (error) throw error;
+      setBuses(data || []);
+    } catch (error) {
+      console.error('Error fetching buses:', error);
+    }
+  };
+
   const onSubmit = async (data: GroupFormData) => {
     if (!planId) return;
 
@@ -176,6 +207,8 @@ export default function DismissalGroups() {
         walker_location_id: data.group_type === 'walker' ? data.walker_location_id : null,
       };
 
+      let groupId: string;
+
       if (editingGroup) {
         const { error } = await supabase
           .from('dismissal_groups')
@@ -183,22 +216,48 @@ export default function DismissalGroups() {
           .eq('id', editingGroup.id);
 
         if (error) throw error;
+        groupId = editingGroup.id;
+
+        // Clear existing bus assignments if editing
+        if (data.group_type === 'bus') {
+          await supabase
+            .from('dismissal_group_buses')
+            .delete()
+            .eq('dismissal_group_id', editingGroup.id);
+        }
 
         toast({
           title: "Success",
           description: "Dismissal group updated successfully",
         });
       } else {
-        const { error } = await supabase
+        const { data: newGroup, error } = await supabase
           .from('dismissal_groups')
-          .insert(groupData);
+          .insert(groupData)
+          .select('id')
+          .single();
 
         if (error) throw error;
+        groupId = newGroup.id;
 
         toast({
           title: "Success",
           description: "Dismissal group created successfully",
         });
+      }
+
+      // Handle bus assignments for bus groups
+      if (data.group_type === 'bus' && data.bus_ids && data.bus_ids.length > 0) {
+        const busAssignments = data.bus_ids.map(busId => ({
+          dismissal_group_id: groupId,
+          bus_id: busId,
+        }));
+
+        const { error: busError } = await supabase
+          .from('dismissal_group_buses')
+          .insert(busAssignments);
+
+        if (busError) throw busError;
       }
 
       setShowAddDialog(false);
@@ -215,13 +274,30 @@ export default function DismissalGroups() {
     }
   };
 
-  const handleEdit = (group: DismissalGroup) => {
+  const handleEdit = async (group: DismissalGroup) => {
     setEditingGroup(group);
+
+    // Fetch existing bus assignments if it's a bus group
+    let existingBusIds: string[] = [];
+    if (group.group_type === 'bus') {
+      try {
+        const { data } = await supabase
+          .from('dismissal_group_buses')
+          .select('bus_id')
+          .eq('dismissal_group_id', group.id);
+        
+        existingBusIds = data?.map(assignment => assignment.bus_id) || [];
+      } catch (error) {
+        console.error('Error fetching bus assignments:', error);
+      }
+    }
+
     form.reset({
       name: group.name,
       group_type: group.group_type,
       release_time: group.release_time || "",
       walker_location_id: group.walker_location_id || "",
+      bus_ids: existingBusIds,
     });
     setShowAddDialog(true);
   };
@@ -410,6 +486,7 @@ export default function DismissalGroups() {
                             group_type: 'bus',
                             release_time: "",
                             walker_location_id: "",
+                            bus_ids: [],
                           });
                         }}
                       >
@@ -501,6 +578,56 @@ export default function DismissalGroups() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+
+                          {form.watch('group_type') === 'bus' && (
+                            <FormField
+                              control={form.control}
+                              name="bus_ids"
+                              render={() => (
+                                <FormItem>
+                                  <div className="mb-4">
+                                    <FormLabel className="text-base">Select Buses</FormLabel>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                                    {buses.map((bus) => (
+                                      <FormField
+                                        key={bus.id}
+                                        control={form.control}
+                                        name="bus_ids"
+                                        render={({ field }) => {
+                                          return (
+                                            <FormItem
+                                              key={bus.id}
+                                              className="flex flex-row items-start space-x-3 space-y-0"
+                                            >
+                                              <FormControl>
+                                                <Checkbox
+                                                  checked={field.value?.includes(bus.id)}
+                                                  onCheckedChange={(checked) => {
+                                                    return checked
+                                                      ? field.onChange([...field.value || [], bus.id])
+                                                      : field.onChange(
+                                                          field.value?.filter(
+                                                            (value) => value !== bus.id
+                                                          )
+                                                        )
+                                                  }}
+                                                />
+                                              </FormControl>
+                                              <FormLabel className="text-sm font-normal">
+                                                Bus {bus.bus_number}
+                                              </FormLabel>
+                                            </FormItem>
+                                          )
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
                                   <FormMessage />
                                 </FormItem>
                               )}
