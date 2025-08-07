@@ -1063,7 +1063,15 @@ export default function DismissalGroups() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {groups.map((group) => (
+                    {groups
+                      .sort((a, b) => {
+                        // Sort by release_time, earliest first
+                        if (!a.release_time && !b.release_time) return 0;
+                        if (!a.release_time) return 1; // Groups without time go to end
+                        if (!b.release_time) return -1; // Groups without time go to end
+                        return a.release_time.localeCompare(b.release_time);
+                      })
+                      .map((group) => (
                       <Card key={group.id} className="border-border">
                         <CardHeader className="pb-3">
                           <CardTitle className="flex items-center justify-between text-base">
