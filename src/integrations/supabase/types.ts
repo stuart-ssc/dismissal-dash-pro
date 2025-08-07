@@ -226,6 +226,27 @@ export type Database = {
           },
         ]
       }
+      dismissal_group_car_lines: {
+        Row: {
+          car_line_id: string
+          created_at: string
+          dismissal_group_id: string
+          id: string
+        }
+        Insert: {
+          car_line_id: string
+          created_at?: string
+          dismissal_group_id: string
+          id?: string
+        }
+        Update: {
+          car_line_id?: string
+          created_at?: string
+          dismissal_group_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       dismissal_group_classes: {
         Row: {
           class_id: string

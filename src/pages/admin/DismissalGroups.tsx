@@ -49,6 +49,7 @@ const groupFormSchema = z.object({
   release_time: z.string().optional(),
   walker_location_id: z.string().optional(),
   bus_ids: z.array(z.string()).optional(),
+  car_line_ids: z.array(z.string()).optional(),
 });
 
 type GroupFormData = z.infer<typeof groupFormSchema>;
@@ -62,6 +63,7 @@ export default function DismissalGroups() {
   const [plan, setPlan] = useState<DismissalPlan | null>(null);
   const [groups, setGroups] = useState<DismissalGroup[]>([]);
   const [buses, setBuses] = useState<{ id: string; bus_number: string }[]>([]);
+  const [carLines, setCarLines] = useState<{ id: string; line_name: string }[]>([]);
   const [walkerLocations, setWalkerLocations] = useState<{ id: string; location_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -75,6 +77,7 @@ export default function DismissalGroups() {
       release_time: "",
       walker_location_id: "",
       bus_ids: [],
+      car_line_ids: [],
     },
   });
 
@@ -93,6 +96,7 @@ export default function DismissalGroups() {
       fetchPlanAndGroups();
       fetchWalkerLocations();
       fetchBuses();
+      fetchCarLines();
     }
   }, [user, userRole, planId, navigate]);
 
@@ -198,6 +202,32 @@ export default function DismissalGroups() {
     }
   };
 
+  const fetchCarLines = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from('car_lines')
+        .select('id, line_name')
+        .eq('school_id', profile.school_id)
+        .eq('status', 'active')
+        .order('line_name');
+
+      if (error) throw error;
+      setCarLines(data || []);
+    } catch (error) {
+      console.error('Error fetching car lines:', error);
+    }
+  };
+
   const onSubmit = async (data: GroupFormData) => {
     if (!planId) return;
 
@@ -221,10 +251,16 @@ export default function DismissalGroups() {
         if (error) throw error;
         groupId = editingGroup.id;
 
-        // Clear existing bus assignments if editing
+        // Clear existing assignments if editing
         if (data.group_type === 'bus') {
           await supabase
             .from('dismissal_group_buses')
+            .delete()
+            .eq('dismissal_group_id', editingGroup.id);
+        }
+        if (data.group_type === 'car') {
+          await supabase
+            .from('dismissal_group_car_lines')
             .delete()
             .eq('dismissal_group_id', editingGroup.id);
         }
@@ -263,6 +299,20 @@ export default function DismissalGroups() {
         if (busError) throw busError;
       }
 
+      // Handle car line assignments for car groups
+      if (data.group_type === 'car' && data.car_line_ids && data.car_line_ids.length > 0) {
+        const carLineAssignments = data.car_line_ids.map(carLineId => ({
+          dismissal_group_id: groupId,
+          car_line_id: carLineId,
+        }));
+
+        const { error: carLineError } = await supabase
+          .from('dismissal_group_car_lines')
+          .insert(carLineAssignments);
+
+        if (carLineError) throw carLineError;
+      }
+
       setShowAddDialog(false);
       setEditingGroup(null);
       form.reset();
@@ -280,8 +330,10 @@ export default function DismissalGroups() {
   const handleEdit = async (group: DismissalGroup) => {
     setEditingGroup(group);
 
-    // Fetch existing bus assignments if it's a bus group
+    // Fetch existing assignments based on group type
     let existingBusIds: string[] = [];
+    let existingCarLineIds: string[] = [];
+
     if (group.group_type === 'bus') {
       try {
         const { data } = await supabase
@@ -295,12 +347,26 @@ export default function DismissalGroups() {
       }
     }
 
+    if (group.group_type === 'car') {
+      try {
+        const { data } = await supabase
+          .from('dismissal_group_car_lines')
+          .select('car_line_id')
+          .eq('dismissal_group_id', group.id);
+        
+        existingCarLineIds = data?.map(assignment => assignment.car_line_id) || [];
+      } catch (error) {
+        console.error('Error fetching car line assignments:', error);
+      }
+    }
+
     form.reset({
       name: group.name,
       group_type: group.group_type,
       release_time: group.release_time || "",
       walker_location_id: group.walker_location_id || "",
       bus_ids: existingBusIds,
+      car_line_ids: existingCarLineIds,
     });
     setShowAddDialog(true);
   };
@@ -490,6 +556,7 @@ export default function DismissalGroups() {
                             release_time: "",
                             walker_location_id: "",
                             bus_ids: [],
+                            car_line_ids: [],
                           });
                         }}
                       >
@@ -661,6 +728,95 @@ export default function DismissalGroups() {
                                               onClick={(e) => {
                                                 e.preventDefault();
                                                 field.onChange(field.value?.filter(id => id !== busId));
+                                              }}
+                                            >
+                                              <X className="h-2 w-2" />
+                                            </Button>
+                                          </Badge>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+
+                          {form.watch('group_type') === 'car' && (
+                            <FormField
+                              control={form.control}
+                              name="car_line_ids"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                  <FormLabel>Select Car Lines</FormLabel>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <FormControl>
+                                        <Button
+                                          variant="outline"
+                                          role="combobox"
+                                          className={cn(
+                                            "justify-between",
+                                            !field.value?.length && "text-muted-foreground"
+                                          )}
+                                        >
+                                          {field.value?.length
+                                            ? `${field.value.length} car line${field.value.length !== 1 ? 's' : ''} selected`
+                                            : "Select car lines"}
+                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                      </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0">
+                                      <Command>
+                                        <CommandInput placeholder="Search car lines..." />
+                                        <CommandList>
+                                          <CommandEmpty>No car lines found.</CommandEmpty>
+                                          <CommandGroup>
+                                            {carLines.map((carLine) => (
+                                              <CommandItem
+                                                key={carLine.id}
+                                                onSelect={() => {
+                                                  const currentValues = field.value || [];
+                                                  const isSelected = currentValues.includes(carLine.id);
+                                                  
+                                                  if (isSelected) {
+                                                    field.onChange(currentValues.filter(id => id !== carLine.id));
+                                                  } else {
+                                                    field.onChange([...currentValues, carLine.id]);
+                                                  }
+                                                }}
+                                              >
+                                                <Check
+                                                  className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    field.value?.includes(carLine.id) ? "opacity-100" : "opacity-0"
+                                                  )}
+                                                />
+                                                {carLine.line_name}
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
+                                  {field.value?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {field.value.map((carLineId) => {
+                                        const carLine = carLines.find(c => c.id === carLineId);
+                                        if (!carLine) return null;
+                                        return (
+                                          <Badge key={carLineId} variant="secondary" className="text-xs">
+                                            {carLine.line_name}
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="ml-1 h-3 w-3 p-0 hover:bg-transparent"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                field.onChange(field.value?.filter(id => id !== carLineId));
                                               }}
                                             >
                                               <X className="h-2 w-2" />
