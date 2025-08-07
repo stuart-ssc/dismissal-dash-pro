@@ -71,7 +71,7 @@ export default function DismissalGroups() {
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingGroup, setEditingGroup] = useState<DismissalGroup | null>(null);
-  const [selectedGrade, setSelectedGrade] = useState<string>("");
+  const [selectedGrade, setSelectedGrade] = useState<string>("ALL_GRADES");
 
   const form = useForm<GroupFormData>({
     resolver: zodResolver(groupFormSchema),
@@ -945,7 +945,7 @@ export default function DismissalGroups() {
                                         <SelectValue placeholder="Filter by grade (optional)" />
                                       </SelectTrigger>
                                       <SelectContent className="bg-background z-50">
-                                        <SelectItem value="">All Grades</SelectItem>
+                                        <SelectItem value="ALL_GRADES">All Grades</SelectItem>
                                         {Array.from(new Set(classes.map(c => c.grade_level).filter(Boolean))).sort().map((grade) => (
                                           <SelectItem key={grade} value={grade!}>{grade}</SelectItem>
                                         ))}
@@ -976,9 +976,9 @@ export default function DismissalGroups() {
                                           <CommandList>
                                             <CommandEmpty>No classes found.</CommandEmpty>
                                             <CommandGroup>
-                                              {classes
-                                                .filter(cls => !selectedGrade || cls.grade_level === selectedGrade)
-                                                .map((cls) => (
+                                               {classes
+                                                 .filter(cls => selectedGrade === "ALL_GRADES" || !selectedGrade || cls.grade_level === selectedGrade)
+                                                 .map((cls) => (
                                                 <CommandItem
                                                   key={cls.id}
                                                   onSelect={() => {
