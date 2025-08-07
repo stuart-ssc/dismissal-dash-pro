@@ -245,7 +245,22 @@ export type Database = {
           dismissal_group_id?: string
           id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_dismissal_group_car_lines_car_line"
+            columns: ["car_line_id"]
+            isOneToOne: false
+            referencedRelation: "car_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_dismissal_group_car_lines_group"
+            columns: ["dismissal_group_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dismissal_group_classes: {
         Row: {
