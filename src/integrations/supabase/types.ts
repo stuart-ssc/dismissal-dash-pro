@@ -190,6 +190,204 @@ export type Database = {
           },
         ]
       }
+      dismissal_group_buses: {
+        Row: {
+          bus_id: string
+          created_at: string
+          dismissal_group_id: string
+          id: string
+        }
+        Insert: {
+          bus_id: string
+          created_at?: string
+          dismissal_group_id: string
+          id?: string
+        }
+        Update: {
+          bus_id?: string
+          created_at?: string
+          dismissal_group_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissal_group_buses_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissal_group_buses_dismissal_group_id_fkey"
+            columns: ["dismissal_group_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dismissal_group_classes: {
+        Row: {
+          class_id: string
+          created_at: string
+          dismissal_group_id: string
+          id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          dismissal_group_id: string
+          id?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          dismissal_group_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissal_group_classes_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissal_group_classes_dismissal_group_id_fkey"
+            columns: ["dismissal_group_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dismissal_group_students: {
+        Row: {
+          created_at: string
+          dismissal_group_id: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissal_group_id: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissal_group_id?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissal_group_students_dismissal_group_id_fkey"
+            columns: ["dismissal_group_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissal_group_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dismissal_groups: {
+        Row: {
+          created_at: string
+          dismissal_plan_id: string
+          group_type: string
+          id: string
+          name: string
+          release_time: string | null
+          updated_at: string
+          walker_location_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dismissal_plan_id: string
+          group_type: string
+          id?: string
+          name: string
+          release_time?: string | null
+          updated_at?: string
+          walker_location_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dismissal_plan_id?: string
+          group_type?: string
+          id?: string
+          name?: string
+          release_time?: string | null
+          updated_at?: string
+          walker_location_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissal_groups_dismissal_plan_id_fkey"
+            columns: ["dismissal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissal_groups_walker_location_id_fkey"
+            columns: ["walker_location_id"]
+            isOneToOne: false
+            referencedRelation: "walker_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dismissal_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          dismissal_time: string | null
+          end_date: string | null
+          id: string
+          is_default: boolean
+          name: string
+          school_id: number
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          dismissal_time?: string | null
+          end_date?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          school_id: number
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          dismissal_time?: string | null
+          end_date?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          school_id?: number
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

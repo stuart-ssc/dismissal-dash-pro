@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Transportation from "./pages/Transportation";
 import Classes from "./pages/Classes";
 import Dismissals from "./pages/Dismissals";
+import DismissalPlans from "./pages/DismissalPlans";
 import Import from "./pages/Import";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/dashboard/classes" element={<Classes />} />
             <Route path="/dashboard/transportation" element={<Transportation />} />
             <Route path="/dashboard/dismissals" element={<Dismissals />} />
+            <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
             <Route path="/dashboard/settings" element={<Settings />} />
             <Route path="/dashboard/car-lines" element={<CarLines />} />
             <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
