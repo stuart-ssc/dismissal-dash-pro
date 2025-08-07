@@ -38,9 +38,10 @@ interface DismissalGroup {
   release_time?: string;
   walker_location_id?: string;
   walker_locations?: { location_name: string };
-  dismissal_group_buses?: { buses: { bus_number: string } }[];
-  dismissal_group_classes?: { classes: { class_name: string } }[];
+  dismissal_group_buses?: { buses: { bus_number: string; student_bus_assignments?: { student_id: string }[] } }[];
+  dismissal_group_classes?: { classes: { class_name: string; class_rosters?: { student_id: string }[] } }[];
   dismissal_group_students?: { students: { first_name: string; last_name: string } }[];
+  dismissal_group_car_lines?: any; // Make flexible to handle potential errors
 }
 
 const groupFormSchema = z.object({
@@ -116,20 +117,23 @@ export default function DismissalGroups() {
       if (planError) throw planError;
       setPlan({ ...planData, status: planData.status as 'active' | 'inactive' });
 
-      // Fetch groups for this plan
+      // Fetch groups for this plan with extended student data
       const { data: groupsData, error: groupsError } = await supabase
         .from('dismissal_groups')
         .select(`
           *,
           walker_locations(location_name),
           dismissal_group_buses(
-            buses(bus_number)
+            buses(bus_number, student_bus_assignments(student_id))
           ),
           dismissal_group_classes(
-            classes(class_name)
+            classes(class_name, class_rosters(student_id))
           ),
           dismissal_group_students(
             students(first_name, last_name)
+          ),
+          dismissal_group_car_lines(
+            car_lines(line_name)
           )
         `)
         .eq('dismissal_plan_id', planId);
@@ -424,6 +428,36 @@ export default function DismissalGroups() {
       default:
         return type;
     }
+  };
+
+  const getStudentCount = (group: DismissalGroup): number => {
+    let count = 0;
+
+    // Count students directly assigned to the group
+    count += group.dismissal_group_students?.length || 0;
+
+    // Count students from assigned buses
+    if (group.group_type === 'bus' && group.dismissal_group_buses) {
+      group.dismissal_group_buses.forEach(assignment => {
+        if (assignment.buses?.student_bus_assignments) {
+          count += assignment.buses.student_bus_assignments.length;
+        }
+      });
+    }
+
+    // Count students from assigned classes
+    if (group.group_type === 'class' && group.dismissal_group_classes) {
+      group.dismissal_group_classes.forEach(assignment => {
+        if (assignment.classes?.class_rosters) {
+          count += assignment.classes.class_rosters.length;
+        }
+      });
+    }
+
+    // For walker and car groups, we only have direct assignments for now
+    // since student-walker and student-car assignments may not exist yet
+
+    return count;
   };
 
   if (!user || userRole !== 'school_admin') {
@@ -889,11 +923,9 @@ export default function DismissalGroups() {
                           )}
 
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Assignments:</span>
+                            <span className="text-sm text-muted-foreground">Students:</span>
                             <span className="text-sm font-medium">
-                              {(group.dismissal_group_buses?.length || 0) +
-                               (group.dismissal_group_classes?.length || 0) +
-                               (group.dismissal_group_students?.length || 0)}
+                              {getStudentCount(group)}
                             </span>
                           </div>
 
