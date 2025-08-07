@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, ArrowLeft, Bus, Users, MapPin, Car, Clock, Edit, Trash2 } from "lucide-react";
+import { format } from "date-fns";
 
 interface DismissalPlan {
   id: string;
@@ -372,7 +373,7 @@ export default function DismissalGroups() {
                       {plan.dismissal_time ? (
                         <span className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          {plan.dismissal_time}
+                          {format(new Date(`2000-01-01T${plan.dismissal_time}`), 'h:mm a')}
                         </span>
                       ) : 'Not set'}
                     </p>
@@ -549,7 +550,9 @@ export default function DismissalGroups() {
                           {group.release_time && (
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-muted-foreground">Release Time:</span>
-                              <span className="text-sm font-medium">{group.release_time}</span>
+                              <span className="text-sm font-medium">
+                                {format(new Date(`2000-01-01T${group.release_time}`), 'h:mm a')}
+                              </span>
                             </div>
                           )}
                           

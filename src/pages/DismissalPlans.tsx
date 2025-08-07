@@ -659,7 +659,7 @@ export default function DismissalPlans() {
                         {plan.dismissal_time ? (
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            {plan.dismissal_time}
+                            {format(new Date(`2000-01-01T${plan.dismissal_time}`), 'h:mm a')}
                           </div>
                         ) : '-'}
                       </TableCell>
