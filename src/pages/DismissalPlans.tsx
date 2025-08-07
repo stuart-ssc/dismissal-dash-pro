@@ -312,11 +312,7 @@ export default function DismissalPlans() {
     }
   };
 
-  const getStatusBadge = (status: string, isDefault: boolean) => {
-    if (isDefault) {
-      return <Badge variant="default" className="bg-primary">Default</Badge>;
-    }
-    
+  const getStatusBadge = (status: string) => {
     return status === 'active' ? (
       <Badge variant="default" className="bg-green-500">Active</Badge>
     ) : (
@@ -652,7 +648,16 @@ export default function DismissalPlans() {
                 <TableBody>
                   {currentPlans.map((plan) => (
                     <TableRow key={plan.id}>
-                      <TableCell className="font-medium">{plan.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>
+                          {plan.name}
+                          {plan.is_default && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Default Plan
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{plan.description || '-'}</TableCell>
                       <TableCell>
                         {plan.dismissal_time ? (
@@ -670,7 +675,7 @@ export default function DismissalPlans() {
                         ) : '-'}
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(plan.status, plan.is_default)}
+                        {getStatusBadge(plan.status)}
                       </TableCell>
                       <TableCell>{plan.groups_count || 0}</TableCell>
                       <TableCell className="text-right">
