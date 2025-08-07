@@ -51,6 +51,7 @@ const groupFormSchema = z.object({
   walker_location_id: z.string().optional(),
   bus_ids: z.array(z.string()).optional(),
   car_line_ids: z.array(z.string()).optional(),
+  class_ids: z.array(z.string()).optional(),
 });
 
 type GroupFormData = z.infer<typeof groupFormSchema>;
@@ -65,10 +66,12 @@ export default function DismissalGroups() {
   const [groups, setGroups] = useState<DismissalGroup[]>([]);
   const [buses, setBuses] = useState<{ id: string; bus_number: string }[]>([]);
   const [carLines, setCarLines] = useState<{ id: string; line_name: string }[]>([]);
+  const [classes, setClasses] = useState<{ id: string; class_name: string; grade_level?: string }[]>([]);
   const [walkerLocations, setWalkerLocations] = useState<{ id: string; location_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingGroup, setEditingGroup] = useState<DismissalGroup | null>(null);
+  const [selectedGrade, setSelectedGrade] = useState<string>("");
 
   const form = useForm<GroupFormData>({
     resolver: zodResolver(groupFormSchema),
@@ -79,6 +82,7 @@ export default function DismissalGroups() {
       walker_location_id: "",
       bus_ids: [],
       car_line_ids: [],
+      class_ids: [],
     },
   });
 
@@ -98,6 +102,7 @@ export default function DismissalGroups() {
       fetchWalkerLocations();
       fetchBuses();
       fetchCarLines();
+      fetchClasses();
     }
   }, [user, userRole, planId, navigate]);
 
@@ -232,6 +237,31 @@ export default function DismissalGroups() {
     }
   };
 
+  const fetchClasses = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, class_name, grade_level')
+        .eq('school_id', profile.school_id)
+        .order('grade_level, class_name');
+
+      if (error) throw error;
+      setClasses(data || []);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    }
+  };
+
   const onSubmit = async (data: GroupFormData) => {
     if (!planId) return;
 
@@ -265,6 +295,12 @@ export default function DismissalGroups() {
         if (data.group_type === 'car') {
           await supabase
             .from('dismissal_group_car_lines')
+            .delete()
+            .eq('dismissal_group_id', editingGroup.id);
+        }
+        if (data.group_type === 'class') {
+          await supabase
+            .from('dismissal_group_classes')
             .delete()
             .eq('dismissal_group_id', editingGroup.id);
         }
@@ -317,6 +353,20 @@ export default function DismissalGroups() {
         if (carLineError) throw carLineError;
       }
 
+      // Handle class assignments for class groups
+      if (data.group_type === 'class' && data.class_ids && data.class_ids.length > 0) {
+        const classAssignments = data.class_ids.map(classId => ({
+          dismissal_group_id: groupId,
+          class_id: classId,
+        }));
+
+        const { error: classError } = await supabase
+          .from('dismissal_group_classes')
+          .insert(classAssignments);
+
+        if (classError) throw classError;
+      }
+
       setShowAddDialog(false);
       setEditingGroup(null);
       form.reset();
@@ -337,6 +387,7 @@ export default function DismissalGroups() {
     // Fetch existing assignments based on group type
     let existingBusIds: string[] = [];
     let existingCarLineIds: string[] = [];
+    let existingClassIds: string[] = [];
 
     if (group.group_type === 'bus') {
       try {
@@ -364,6 +415,19 @@ export default function DismissalGroups() {
       }
     }
 
+    if (group.group_type === 'class') {
+      try {
+        const { data } = await supabase
+          .from('dismissal_group_classes')
+          .select('class_id')
+          .eq('dismissal_group_id', group.id);
+        
+        existingClassIds = data?.map(assignment => assignment.class_id) || [];
+      } catch (error) {
+        console.error('Error fetching class assignments:', error);
+      }
+    }
+
     form.reset({
       name: group.name,
       group_type: group.group_type,
@@ -371,6 +435,7 @@ export default function DismissalGroups() {
       walker_location_id: group.walker_location_id || "",
       bus_ids: existingBusIds,
       car_line_ids: existingCarLineIds,
+      class_ids: existingClassIds,
     });
     setShowAddDialog(true);
   };
@@ -591,6 +656,7 @@ export default function DismissalGroups() {
                             walker_location_id: "",
                             bus_ids: [],
                             car_line_ids: [],
+                            class_ids: [],
                           });
                         }}
                       >
@@ -866,6 +932,111 @@ export default function DismissalGroups() {
                             />
                           )}
 
+                          {form.watch('group_type') === 'class' && (
+                            <FormField
+                              control={form.control}
+                              name="class_ids"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                  <FormLabel>Select Classes</FormLabel>
+                                  <div className="space-y-2">
+                                    <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Filter by grade (optional)" />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-background z-50">
+                                        <SelectItem value="">All Grades</SelectItem>
+                                        {Array.from(new Set(classes.map(c => c.grade_level).filter(Boolean))).sort().map((grade) => (
+                                          <SelectItem key={grade} value={grade!}>{grade}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <FormControl>
+                                          <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                              "justify-between",
+                                              !field.value?.length && "text-muted-foreground"
+                                            )}
+                                          >
+                                            {field.value?.length
+                                              ? `${field.value.length} class${field.value.length !== 1 ? 'es' : ''} selected`
+                                              : "Select classes"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                          </Button>
+                                        </FormControl>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-full p-0 bg-background z-50">
+                                        <Command>
+                                          <CommandInput placeholder="Search classes..." />
+                                          <CommandList>
+                                            <CommandEmpty>No classes found.</CommandEmpty>
+                                            <CommandGroup>
+                                              {classes
+                                                .filter(cls => !selectedGrade || cls.grade_level === selectedGrade)
+                                                .map((cls) => (
+                                                <CommandItem
+                                                  key={cls.id}
+                                                  onSelect={() => {
+                                                    const currentValues = field.value || [];
+                                                    const isSelected = currentValues.includes(cls.id);
+                                                    
+                                                    if (isSelected) {
+                                                      field.onChange(currentValues.filter(id => id !== cls.id));
+                                                    } else {
+                                                      field.onChange([...currentValues, cls.id]);
+                                                    }
+                                                  }}
+                                                >
+                                                  <Check
+                                                    className={cn(
+                                                      "mr-2 h-4 w-4",
+                                                      field.value?.includes(cls.id) ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                  />
+                                                  {cls.class_name}{cls.grade_level ? ` - ${cls.grade_level}` : ''}
+                                                </CommandItem>
+                                              ))}
+                                            </CommandGroup>
+                                          </CommandList>
+                                        </Command>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
+                                  {field.value?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {field.value.map((classId) => {
+                                        const cls = classes.find(c => c.id === classId);
+                                        if (!cls) return null;
+                                        return (
+                                          <Badge key={classId} variant="secondary" className="text-xs">
+                                            {cls.class_name}{cls.grade_level ? ` - ${cls.grade_level}` : ''}
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="ml-1 h-3 w-3 p-0 hover:bg-transparent"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                field.onChange(field.value?.filter(id => id !== classId));
+                                              }}
+                                            >
+                                              <X className="h-2 w-2" />
+                                            </Button>
+                                          </Badge>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+
                           <div className="flex gap-2 justify-end">
                             <Button
                               type="button"
@@ -912,13 +1083,6 @@ export default function DismissalGroups() {
                               <span className="text-sm font-medium">
                                 {format(new Date(`2000-01-01T${group.release_time}`), 'h:mm a')}
                               </span>
-                            </div>
-                          )}
-                          
-                          {group.group_type === 'walker' && group.walker_locations && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">Location:</span>
-                              <span className="text-sm font-medium">{group.walker_locations.location_name}</span>
                             </div>
                           )}
 
