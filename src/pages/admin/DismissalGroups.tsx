@@ -47,7 +47,7 @@ interface DismissalGroup {
 const groupFormSchema = z.object({
   name: z.string().min(1, "Group name is required"),
   group_type: z.enum(['bus', 'class', 'walker', 'car']),
-  release_time: z.string().optional(),
+  release_time: z.string().min(1, "Release time is required"),
   walker_location_id: z.string().optional(),
   bus_ids: z.array(z.string()).optional(),
   car_line_ids: z.array(z.string()).optional(),
@@ -269,7 +269,7 @@ export default function DismissalGroups() {
       const groupData = {
         name: data.name,
         group_type: data.group_type,
-        release_time: data.release_time && data.release_time.trim() !== "" ? data.release_time : null,
+        release_time: data.release_time,
         dismissal_plan_id: planId,
         walker_location_id: data.group_type === 'walker' ? data.walker_location_id : null,
       };
