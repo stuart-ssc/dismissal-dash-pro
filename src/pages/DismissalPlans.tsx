@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -335,19 +335,22 @@ export default function DismissalPlans() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <AdminSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-lg">Loading...</div>
+      <SidebarProvider>
+        <div className="flex h-screen w-full">
+          <AdminSidebar />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-lg">Loading...</div>
+          </div>
         </div>
-      </div>
+      </SidebarProvider>
     );
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <SidebarProvider>
+      <div className="flex h-screen bg-background w-full">
+        <AdminSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-card border-b border-border p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <SidebarTrigger />
@@ -747,7 +750,8 @@ export default function DismissalPlans() {
             </CardContent>
           </Card>
         </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
