@@ -177,7 +177,7 @@ export default function DismissalPlans() {
         .from('dismissal_plans')
         .select(`
           *,
-          dismissal_groups(count)
+          dismissal_groups(id)
         `)
         .eq('school_id', profile.school_id)
         .order('created_at', { ascending: false });
@@ -646,7 +646,6 @@ export default function DismissalPlans() {
                     <TableHead>Date Range</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Groups</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -674,9 +673,6 @@ export default function DismissalPlans() {
                         {getStatusBadge(plan.status, plan.is_default)}
                       </TableCell>
                       <TableCell>{plan.groups_count || 0}</TableCell>
-                      <TableCell>
-                        {format(parseISO(plan.created_at), 'MMM dd, yyyy')}
-                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
