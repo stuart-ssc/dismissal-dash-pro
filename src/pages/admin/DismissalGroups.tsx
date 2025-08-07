@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,8 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, ArrowLeft, Bus, Users, MapPin, Car, Clock, Edit, Trash2 } from "lucide-react";
+import { Plus, ArrowLeft, Bus, Users, MapPin, Car, Clock, Edit, Trash2, Check, ChevronsUpDown, X } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface DismissalPlan {
   id: string;
@@ -588,46 +591,85 @@ export default function DismissalGroups() {
                             <FormField
                               control={form.control}
                               name="bus_ids"
-                              render={() => (
-                                <FormItem>
-                                  <div className="mb-4">
-                                    <FormLabel className="text-base">Select Buses</FormLabel>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                                    {buses.map((bus) => (
-                                      <FormField
-                                        key={bus.id}
-                                        control={form.control}
-                                        name="bus_ids"
-                                        render={({ field }) => {
-                                          return (
-                                            <FormItem
-                                              key={bus.id}
-                                              className="flex flex-row items-start space-x-3 space-y-0"
-                                            >
-                                              <FormControl>
-                                                <Checkbox
-                                                  checked={field.value?.includes(bus.id)}
-                                                  onCheckedChange={(checked) => {
-                                                    return checked
-                                                      ? field.onChange([...field.value || [], bus.id])
-                                                      : field.onChange(
-                                                          field.value?.filter(
-                                                            (value) => value !== bus.id
-                                                          )
-                                                        )
-                                                  }}
+                              render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                  <FormLabel>Select Buses</FormLabel>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <FormControl>
+                                        <Button
+                                          variant="outline"
+                                          role="combobox"
+                                          className={cn(
+                                            "justify-between",
+                                            !field.value?.length && "text-muted-foreground"
+                                          )}
+                                        >
+                                          {field.value?.length
+                                            ? `${field.value.length} bus${field.value.length !== 1 ? 'es' : ''} selected`
+                                            : "Select buses"}
+                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                      </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0">
+                                      <Command>
+                                        <CommandInput placeholder="Search buses..." />
+                                        <CommandList>
+                                          <CommandEmpty>No buses found.</CommandEmpty>
+                                          <CommandGroup>
+                                            {buses.map((bus) => (
+                                              <CommandItem
+                                                key={bus.id}
+                                                onSelect={() => {
+                                                  const currentValues = field.value || [];
+                                                  const isSelected = currentValues.includes(bus.id);
+                                                  
+                                                  if (isSelected) {
+                                                    field.onChange(currentValues.filter(id => id !== bus.id));
+                                                  } else {
+                                                    field.onChange([...currentValues, bus.id]);
+                                                  }
+                                                }}
+                                              >
+                                                <Check
+                                                  className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    field.value?.includes(bus.id) ? "opacity-100" : "opacity-0"
+                                                  )}
                                                 />
-                                              </FormControl>
-                                              <FormLabel className="text-sm font-normal">
                                                 Bus {bus.bus_number}
-                                              </FormLabel>
-                                            </FormItem>
-                                          )
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
+                                  {field.value?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {field.value.map((busId) => {
+                                        const bus = buses.find(b => b.id === busId);
+                                        if (!bus) return null;
+                                        return (
+                                          <Badge key={busId} variant="secondary" className="text-xs">
+                                            Bus {bus.bus_number}
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="ml-1 h-3 w-3 p-0 hover:bg-transparent"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                field.onChange(field.value?.filter(id => id !== busId));
+                                              }}
+                                            >
+                                              <X className="h-2 w-2" />
+                                            </Button>
+                                          </Badge>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                   <FormMessage />
                                 </FormItem>
                               )}
