@@ -7,13 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AddPersonDialog } from "@/components/AddPersonDialog";
+import { EditPersonDialog } from "@/components/EditPersonDialog";
 
 interface PersonData {
   id: string;
@@ -38,6 +39,8 @@ const People = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<PersonData | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [personToEdit, setPersonToEdit] = useState<PersonData | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
   const [sortBy, setSortBy] = useState<'name' | 'role' | 'grade'>('name');
@@ -291,6 +294,11 @@ const People = () => {
   const openDeleteDialog = (person: PersonData) => {
     setPersonToDelete(person);
     setDeleteDialogOpen(true);
+  };
+
+  const openEditDialog = (person: PersonData) => {
+    setPersonToEdit(person);
+    setEditDialogOpen(true);
   };
 
   const getRoleIcon = (role: string) => {
@@ -618,15 +626,27 @@ const People = () => {
                               '-'
                             )}
                           </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDeleteDialog(person)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg z-50">
+                                <DropdownMenuItem onClick={() => openEditDialog(person)} className="flex items-center gap-2">
+                                  <Edit className="h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => openDeleteDialog(person)} 
+                                  className="flex items-center gap-2 text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -712,6 +732,21 @@ const People = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {schoolId && (
+          <EditPersonDialog
+            person={personToEdit}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            schoolId={schoolId}
+            onPersonUpdated={() => {
+              console.log('Person updated, refreshing data...');
+              if (schoolId) {
+                fetchPeople(schoolId);
+              }
+            }}
+          />
+        )}
       </SidebarProvider>
     );
   }
@@ -873,6 +908,7 @@ const People = () => {
                     <TableHead>Role</TableHead>
                     <TableHead>Grade</TableHead>
                     <TableHead>Classes</TableHead>
+                    {userRole === 'school_admin' && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -901,6 +937,30 @@ const People = () => {
                           '-'
                         )}
                       </TableCell>
+                      {userRole === 'school_admin' && (
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg z-50">
+                              <DropdownMenuItem onClick={() => openEditDialog(person)} className="flex items-center gap-2">
+                                <Edit className="h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => openDeleteDialog(person)} 
+                                className="flex items-center gap-2 text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -962,6 +1022,22 @@ const People = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Add edit dialog for non-admin users too */}
+        {schoolId && (
+          <EditPersonDialog
+            person={personToEdit}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            schoolId={schoolId}
+            onPersonUpdated={() => {
+              console.log('Person updated, refreshing data...');
+              if (schoolId) {
+                fetchPeople(schoolId);
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );
