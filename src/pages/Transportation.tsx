@@ -60,7 +60,9 @@ interface StudentSearchResult {
   last_name: string;
   grade_level: string;
   class_name: string;
-  already_assigned: boolean;
+  current_transportation_method: 'bus' | 'walker' | 'car_line' | null;
+  current_transportation_details: string | null;
+  current_assignment_id: string | null;
 }
 
 interface StudentBusRecord {
@@ -951,7 +953,21 @@ const Transportation = () => {
           class_rosters(
             classes(class_name)
           ),
-          student_bus_assignments(bus_id)
+          student_bus_assignments(
+            id,
+            bus_id,
+            buses(bus_number, driver_first_name, driver_last_name)
+          ),
+          student_walker_assignments(
+            id,
+            walker_location_id,
+            walker_locations(location_name)
+          ),
+          student_car_assignments(
+            id,
+            car_line_id,
+            car_lines(line_name)
+          )
         `)
         .eq('school_id', profile.school_id)
         .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`)
@@ -962,22 +978,130 @@ const Transportation = () => {
         return;
       }
 
-      const searchResults: StudentSearchResult[] = data?.map(student => ({
-        id: student.id,
-        first_name: student.first_name,
-        last_name: student.last_name,
-        grade_level: student.grade_level,
-        class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        already_assigned: student.student_bus_assignments?.some(
-          (assignment: any) => assignment.bus_id === managingStudents.id
-        ) || false
-      })) || [];
+      const searchResults: StudentSearchResult[] = data?.map(student => {
+        // Check current transportation assignments
+        let currentMethod: 'bus' | 'walker' | 'car_line' | null = null;
+        let currentDetails: string | null = null;
+        let currentAssignmentId: string | null = null;
+
+        // Check bus assignment
+        if (student.student_bus_assignments?.length > 0) {
+          const busAssignment = student.student_bus_assignments[0];
+          const bus = busAssignment.buses;
+          currentMethod = 'bus';
+          currentDetails = `Bus ${bus?.bus_number} (${bus?.driver_first_name} ${bus?.driver_last_name})`;
+          currentAssignmentId = busAssignment.id;
+        }
+        // Check walker assignment
+        else if (student.student_walker_assignments?.length > 0) {
+          const walkerAssignment = student.student_walker_assignments[0];
+          const location = walkerAssignment.walker_locations;
+          currentMethod = 'walker';
+          currentDetails = `Walker Location: ${location?.location_name}`;
+          currentAssignmentId = walkerAssignment.id;
+        }
+        // Check car line assignment
+        else if (student.student_car_assignments?.length > 0) {
+          const carAssignment = student.student_car_assignments[0];
+          const carLine = carAssignment.car_lines;
+          currentMethod = 'car_line';
+          currentDetails = `Car Line: ${carLine?.line_name}`;
+          currentAssignmentId = carAssignment.id;
+        }
+
+        return {
+          id: student.id,
+          first_name: student.first_name,
+          last_name: student.last_name,
+          grade_level: student.grade_level,
+          class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
+          current_transportation_method: currentMethod,
+          current_transportation_details: currentDetails,
+          current_assignment_id: currentAssignmentId
+        };
+      }) || [];
 
       setStudentSearchResults(searchResults);
     } catch (error) {
       console.error('Error searching students:', error);
     } finally {
       setIsSearchingStudents(false);
+    }
+  };
+
+  const handleSwitchStudent = async (
+    studentId: string, 
+    currentMethod: 'bus' | 'walker' | 'car_line', 
+    currentAssignmentId: string,
+    newMethod: 'bus' | 'walker' | 'car_line',
+    newTransportationId: string
+  ) => {
+    try {
+      // First, remove the existing assignment
+      if (currentMethod === 'bus') {
+        const { error: deleteError } = await supabase
+          .from('student_bus_assignments')
+          .delete()
+          .eq('id', currentAssignmentId);
+        if (deleteError) throw deleteError;
+      } else if (currentMethod === 'walker') {
+        const { error: deleteError } = await supabase
+          .from('student_walker_assignments')
+          .delete()
+          .eq('id', currentAssignmentId);
+        if (deleteError) throw deleteError;
+      } else if (currentMethod === 'car_line') {
+        const { error: deleteError } = await supabase
+          .from('student_car_assignments')
+          .delete()
+          .eq('id', currentAssignmentId);
+        if (deleteError) throw deleteError;
+      }
+
+      // Then, add the new assignment
+      if (newMethod === 'bus') {
+        const { error: insertError } = await supabase
+          .from('student_bus_assignments')
+          .insert({ student_id: studentId, bus_id: newTransportationId });
+        if (insertError) throw insertError;
+      } else if (newMethod === 'walker') {
+        const { error: insertError } = await supabase
+          .from('student_walker_assignments')
+          .insert({ student_id: studentId, walker_location_id: newTransportationId });
+        if (insertError) throw insertError;
+      } else if (newMethod === 'car_line') {
+        const { error: insertError } = await supabase
+          .from('student_car_assignments')
+          .insert({ student_id: studentId, car_line_id: newTransportationId });
+        if (insertError) throw insertError;
+      }
+
+      toast.success('Student transportation method switched successfully');
+      
+      // Refresh all relevant data
+      if (managingStudents) {
+        fetchBusStudents(managingStudents.id);
+        fetchTransportation();
+      }
+      if (managingWalkerStudents) {
+        fetchWalkerStudents(managingWalkerStudents.id);
+        fetchWalkerLocations();
+      }
+      if (managingCarStudents) {
+        fetchCarStudents(managingCarStudents.id);
+        fetchCarLines();
+      }
+      
+      // Clear search results
+      setStudentSearchTerm('');
+      setStudentSearchResults([]);
+      setWalkerStudentSearchTerm('');
+      setWalkerStudentSearchResults([]);
+      setCarStudentSearchTerm('');
+      setCarStudentSearchResults([]);
+    } catch (error) {
+      console.error('Error switching student transportation:', error);
+      toast.error('Failed to switch student transportation method');
     }
   };
 
@@ -1183,6 +1307,21 @@ const Transportation = () => {
           grade_level,
           class_rosters(
             classes(class_name)
+          ),
+          student_bus_assignments(
+            id,
+            bus_id,
+            buses(bus_number, driver_first_name, driver_last_name)
+          ),
+          student_walker_assignments(
+            id,
+            walker_location_id,
+            walker_locations(location_name)
+          ),
+          student_car_assignments(
+            id,
+            car_line_id,
+            car_lines(line_name)
           )
         `)
         .eq('school_id', profile.school_id)
@@ -1194,24 +1333,48 @@ const Transportation = () => {
         return;
       }
 
-      // Check for existing walker assignments
-      const studentIds = data?.map(s => s.id) || [];
-      const { data: existingAssignments } = await supabase
-        .from('student_walker_assignments')
-        .select('student_id')
-        .eq('walker_location_id', managingWalkerStudents.id)
-        .in('student_id', studentIds);
+      const searchResults: StudentSearchResult[] = data?.map(student => {
+        // Check current transportation assignments
+        let currentMethod: 'bus' | 'walker' | 'car_line' | null = null;
+        let currentDetails: string | null = null;
+        let currentAssignmentId: string | null = null;
 
-      const assignedStudentIds = new Set(existingAssignments?.map(a => a.student_id) || []);
+        // Check bus assignment
+        if (student.student_bus_assignments?.length > 0) {
+          const busAssignment = student.student_bus_assignments[0];
+          const bus = busAssignment.buses;
+          currentMethod = 'bus';
+          currentDetails = `Bus ${bus?.bus_number} (${bus?.driver_first_name} ${bus?.driver_last_name})`;
+          currentAssignmentId = busAssignment.id;
+        }
+        // Check walker assignment
+        else if (student.student_walker_assignments?.length > 0) {
+          const walkerAssignment = student.student_walker_assignments[0];
+          const location = walkerAssignment.walker_locations;
+          currentMethod = 'walker';
+          currentDetails = `Walker Location: ${location?.location_name}`;
+          currentAssignmentId = walkerAssignment.id;
+        }
+        // Check car line assignment
+        else if (student.student_car_assignments?.length > 0) {
+          const carAssignment = student.student_car_assignments[0];
+          const carLine = carAssignment.car_lines;
+          currentMethod = 'car_line';
+          currentDetails = `Car Line: ${carLine?.line_name}`;
+          currentAssignmentId = carAssignment.id;
+        }
 
-      const searchResults: StudentSearchResult[] = data?.map(student => ({
-        id: student.id,
-        first_name: student.first_name,
-        last_name: student.last_name,
-        grade_level: student.grade_level,
-        class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        already_assigned: assignedStudentIds.has(student.id)
-      })) || [];
+        return {
+          id: student.id,
+          first_name: student.first_name,
+          last_name: student.last_name,
+          grade_level: student.grade_level,
+          class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
+          current_transportation_method: currentMethod,
+          current_transportation_details: currentDetails,
+          current_assignment_id: currentAssignmentId
+        };
+      }) || [];
 
       setWalkerStudentSearchResults(searchResults);
     } catch (error) {
@@ -1343,6 +1506,21 @@ const Transportation = () => {
           grade_level,
           class_rosters(
             classes(class_name)
+          ),
+          student_bus_assignments(
+            id,
+            bus_id,
+            buses(bus_number, driver_first_name, driver_last_name)
+          ),
+          student_walker_assignments(
+            id,
+            walker_location_id,
+            walker_locations(location_name)
+          ),
+          student_car_assignments(
+            id,
+            car_line_id,
+            car_lines(line_name)
           )
         `)
         .eq('school_id', profile.school_id)
@@ -1354,24 +1532,48 @@ const Transportation = () => {
         return;
       }
 
-      // Check for existing car line assignments
-      const studentIds = data?.map(s => s.id) || [];
-      const { data: existingAssignments } = await supabase
-        .from('student_car_assignments')
-        .select('student_id')
-        .eq('car_line_id', managingCarStudents.id)
-        .in('student_id', studentIds);
+      const searchResults: StudentSearchResult[] = data?.map(student => {
+        // Check current transportation assignments
+        let currentMethod: 'bus' | 'walker' | 'car_line' | null = null;
+        let currentDetails: string | null = null;
+        let currentAssignmentId: string | null = null;
 
-      const assignedStudentIds = new Set(existingAssignments?.map(a => a.student_id) || []);
+        // Check bus assignment
+        if (student.student_bus_assignments?.length > 0) {
+          const busAssignment = student.student_bus_assignments[0];
+          const bus = busAssignment.buses;
+          currentMethod = 'bus';
+          currentDetails = `Bus ${bus?.bus_number} (${bus?.driver_first_name} ${bus?.driver_last_name})`;
+          currentAssignmentId = busAssignment.id;
+        }
+        // Check walker assignment
+        else if (student.student_walker_assignments?.length > 0) {
+          const walkerAssignment = student.student_walker_assignments[0];
+          const location = walkerAssignment.walker_locations;
+          currentMethod = 'walker';
+          currentDetails = `Walker Location: ${location?.location_name}`;
+          currentAssignmentId = walkerAssignment.id;
+        }
+        // Check car line assignment
+        else if (student.student_car_assignments?.length > 0) {
+          const carAssignment = student.student_car_assignments[0];
+          const carLine = carAssignment.car_lines;
+          currentMethod = 'car_line';
+          currentDetails = `Car Line: ${carLine?.line_name}`;
+          currentAssignmentId = carAssignment.id;
+        }
 
-      const searchResults: StudentSearchResult[] = data?.map(student => ({
-        id: student.id,
-        first_name: student.first_name,
-        last_name: student.last_name,
-        grade_level: student.grade_level,
-        class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        already_assigned: assignedStudentIds.has(student.id)
-      })) || [];
+        return {
+          id: student.id,
+          first_name: student.first_name,
+          last_name: student.last_name,
+          grade_level: student.grade_level,
+          class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
+          current_transportation_method: currentMethod,
+          current_transportation_details: currentDetails,
+          current_assignment_id: currentAssignmentId
+        };
+      }) || [];
 
       setCarStudentSearchResults(searchResults);
     } catch (error) {
@@ -2282,8 +2484,25 @@ const Transportation = () => {
                         <TableCell>{student.grade_level}</TableCell>
                         <TableCell>{student.class_name}</TableCell>
                         <TableCell className="text-right">
-                          {student.already_assigned ? (
-                            <Badge variant="secondary">Already Assigned</Badge>
+                          {student.current_transportation_method ? (
+                            <div className="space-y-2">
+                              <Badge variant="outline" className="text-xs">
+                                {student.current_transportation_details}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSwitchStudent(
+                                  student.id,
+                                  student.current_transportation_method!,
+                                  student.current_assignment_id!,
+                                  'walker',
+                                  managingWalkerStudents!.id
+                                )}
+                              >
+                                Switch
+                              </Button>
+                            </div>
                           ) : (
                             <Button
                               size="sm"
@@ -2441,8 +2660,25 @@ const Transportation = () => {
                         <TableCell>{student.grade_level}</TableCell>
                         <TableCell>{student.class_name}</TableCell>
                         <TableCell className="text-right">
-                          {student.already_assigned ? (
-                            <Badge variant="secondary">Already Assigned</Badge>
+                          {student.current_transportation_method ? (
+                            <div className="space-y-2">
+                              <Badge variant="outline" className="text-xs">
+                                {student.current_transportation_details}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSwitchStudent(
+                                  student.id,
+                                  student.current_transportation_method!,
+                                  student.current_assignment_id!,
+                                  'car_line',
+                                  managingCarStudents!.id
+                                )}
+                              >
+                                Switch
+                              </Button>
+                            </div>
                           ) : (
                             <Button
                               size="sm"
@@ -2604,8 +2840,25 @@ const Transportation = () => {
                         <TableCell>{student.grade_level}</TableCell>
                         <TableCell>{student.class_name}</TableCell>
                         <TableCell className="text-right">
-                          {student.already_assigned ? (
-                            <Badge variant="secondary">Already Assigned</Badge>
+                          {student.current_transportation_method ? (
+                            <div className="space-y-2">
+                              <Badge variant="outline" className="text-xs">
+                                {student.current_transportation_details}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSwitchStudent(
+                                  student.id,
+                                  student.current_transportation_method!,
+                                  student.current_assignment_id!,
+                                  'bus',
+                                  managingStudents!.id
+                                )}
+                              >
+                                Switch
+                              </Button>
+                            </div>
                           ) : (
                             <Button
                               size="sm"
