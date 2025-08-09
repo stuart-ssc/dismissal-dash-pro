@@ -247,7 +247,10 @@ const Transportation = () => {
 
       const { data: walkerLocationsData, error } = await supabase
         .from('walker_locations')
-        .select('*')
+        .select(`
+          *,
+          students_count:student_walker_assignments(count)
+        `)
         .eq('school_id', profile.school_id)
         .order('location_name');
 
@@ -256,8 +259,13 @@ const Transportation = () => {
         return;
       }
 
-      setWalkerLocations((walkerLocationsData || []) as WalkerLocationRecord[]);
-      setFilteredWalkerLocations((walkerLocationsData || []) as WalkerLocationRecord[]);
+      const walkerLocationsWithCounts = (walkerLocationsData || []).map(location => ({
+        ...location,
+        students_count: location.students_count?.[0]?.count || 0
+      })) as WalkerLocationRecord[];
+
+      setWalkerLocations(walkerLocationsWithCounts);
+      setFilteredWalkerLocations(walkerLocationsWithCounts);
     } catch (error) {
       console.error('Error fetching walker locations data:', error);
     }
@@ -281,7 +289,10 @@ const Transportation = () => {
 
       const { data: carLinesData, error } = await supabase
         .from('car_lines')
-        .select('*')
+        .select(`
+          *,
+          students_count:student_car_assignments(count)
+        `)
         .eq('school_id', profile.school_id)
         .order('line_name');
 
@@ -290,8 +301,13 @@ const Transportation = () => {
         return;
       }
 
-      setCarLines((carLinesData || []) as CarLineRecord[]);
-      setFilteredCarLines((carLinesData || []) as CarLineRecord[]);
+      const carLinesWithCounts = (carLinesData || []).map(carLine => ({
+        ...carLine,
+        students_count: carLine.students_count?.[0]?.count || 0
+      })) as CarLineRecord[];
+
+      setCarLines(carLinesWithCounts);
+      setFilteredCarLines(carLinesWithCounts);
     } catch (error) {
       console.error('Error fetching car lines data:', error);
     }
