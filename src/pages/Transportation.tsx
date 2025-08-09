@@ -1148,16 +1148,25 @@ const Transportation = () => {
             {/* Transportation Management with Tabs */}
             <Tabs defaultValue="buses" className="space-y-6">
               <div className="flex items-center justify-between">
-                <TabsList className="grid w-full max-w-[400px] grid-cols-3">
-                  <TabsTrigger value="buses" className="flex items-center gap-2">
+                <TabsList className="grid w-full max-w-[500px] grid-cols-3 h-14 p-1.5 bg-gradient-to-r from-muted/30 to-muted/50 border-2 border-border/40 rounded-lg shadow-sm">
+                  <TabsTrigger 
+                    value="buses" 
+                    className="flex items-center gap-2 h-11 px-4 text-sm font-semibold rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border data-[state=active]:border-primary/20 hover:bg-accent/60 hover:text-accent-foreground"
+                  >
                     <Bus className="h-4 w-4" />
                     Buses
                   </TabsTrigger>
-                  <TabsTrigger value="walkers" className="flex items-center gap-2">
+                  <TabsTrigger 
+                    value="walkers" 
+                    className="flex items-center gap-2 h-11 px-4 text-sm font-semibold rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border data-[state=active]:border-primary/20 hover:bg-accent/60 hover:text-accent-foreground"
+                  >
                     <MapPin className="h-4 w-4" />
                     Walkers
                   </TabsTrigger>
-                  <TabsTrigger value="car-lines" className="flex items-center gap-2">
+                  <TabsTrigger 
+                    value="car-lines" 
+                    className="flex items-center gap-2 h-11 px-4 text-sm font-semibold rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border data-[state=active]:border-primary/20 hover:bg-accent/60 hover:text-accent-foreground"
+                  >
                     <Car className="h-4 w-4" />
                     Car Lines
                   </TabsTrigger>
