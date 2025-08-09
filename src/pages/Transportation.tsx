@@ -1,6 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,8 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3, UserPlus, Trash2, ArrowLeft, Car, PersonStanding } from "lucide-react";
-import { AdminSidebar } from "@/components/AdminSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -98,8 +95,7 @@ interface CarLineRecord {
 }
 
 const Transportation = () => {
-  const { user, userRole, signOut, loading } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [transportation, setTransportation] = useState<TransportationRecord[]>([]);
   const [filteredTransportation, setFilteredTransportation] = useState<TransportationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -170,17 +166,6 @@ const Transportation = () => {
   
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
-
-  useEffect(() => {
-    if (!loading && user && userRole !== 'school_admin') {
-      navigate('/dashboard');
-    }
-  }, [user, userRole, loading, navigate]);
 
   useEffect(() => {
     fetchTransportation();
@@ -1642,39 +1627,16 @@ const Transportation = () => {
     }
   }, [newStudentData.gradeLevel, user]);
 
-  if (loading || isLoading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
+      <div className="flex items-center justify-center p-6">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (!user || userRole !== 'school_admin') {
-    return null;
-  }
-
   return (
-    <SidebarProvider>
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col">
-          <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-2xl font-bold">{schoolName || 'Transportation'}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage transportation, walker locations, and car lines
-                </p>
-              </div>
-            </div>
-            <Button onClick={signOut} variant="outline">
-              Sign Out
-            </Button>
-          </header>
-
-          <main className="flex-1 p-6 space-y-6">
+    <div className="p-6 space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
@@ -2083,9 +2045,6 @@ const Transportation = () => {
                 </TabsContent>
               </div>
             </Tabs>
-          </main>
-        </div>
-      </div>
 
       {/* Add/Edit Bus Dialog */}
       <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
@@ -2893,7 +2852,7 @@ const Transportation = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </SidebarProvider>
+    </div>
   );
 };
 

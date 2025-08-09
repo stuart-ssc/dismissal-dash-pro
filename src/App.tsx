@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import DashboardLayout from "./components/DashboardLayout";
 import Transportation from "./pages/Transportation";
 import Classes from "./pages/Classes";
 import Dismissals from "./pages/Dismissals";
@@ -35,17 +36,19 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/people" element={<PeopleManagement />} />
-            <Route path="/dashboard/classes" element={<Classes />} />
-            <Route path="/dashboard/transportation" element={<Transportation />} />
-            <Route path="/dashboard/dismissals" element={<Dismissals />} />
-            <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
-            <Route path="/dashboard/dismissal-plans/:planId/groups" element={<DismissalGroups />} />
-            <Route path="/dashboard/settings" element={<Settings />} />
-            <Route path="/dashboard/car-lines" element={<CarLines />} />
-            <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
-            <Route path="/dashboard/import" element={<Import />} />
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="people" element={<PeopleManagement />} />
+              <Route path="classes" element={<Classes />} />
+              <Route path="transportation" element={<Transportation />} />
+              <Route path="dismissals" element={<Dismissals />} />
+              <Route path="dismissal-plans" element={<DismissalPlans />} />
+              <Route path="dismissal-plans/:planId/groups" element={<DismissalGroups />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="car-lines" element={<CarLines />} />
+              <Route path="walker-locations" element={<WalkerLocations />} />
+              <Route path="import" element={<Import />} />
+            </Route>
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
             <Route path="/admin/classes" element={<AdminClasses />} />
