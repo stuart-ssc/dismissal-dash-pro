@@ -1,10 +1,34 @@
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, UserCheck, UserCog, Users as UsersIcon } from "lucide-react";
 
 const Users = () => {
+  const { user, userRole, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && (!user || userRole !== 'school_admin')) {
+      navigate('/dashboard');
+    }
+  }, [user, userRole, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user || userRole !== 'school_admin') {
+    return null;
+  }
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex-1 p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">People</h1>

@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3, UserPlus, Trash2, ArrowLeft, Car, PersonStanding } from "lucide-react";
+import { AdminSidebar } from "@/components/AdminSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -95,7 +98,8 @@ interface CarLineRecord {
 }
 
 const Transportation = () => {
-  const { user } = useAuth();
+  const { user, userRole, signOut, loading } = useAuth();
+  const navigate = useNavigate();
   const [transportation, setTransportation] = useState<TransportationRecord[]>([]);
   const [filteredTransportation, setFilteredTransportation] = useState<TransportationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -166,6 +170,17 @@ const Transportation = () => {
   
   const itemsPerPage = 10;
 
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!loading && user && userRole !== 'school_admin') {
+      navigate('/dashboard');
+    }
+  }, [user, userRole, loading, navigate]);
 
   useEffect(() => {
     fetchTransportation();
@@ -1627,67 +1642,98 @@ const Transportation = () => {
     }
   }, [newStudentData.gradeLevel, user]);
 
-  if (isLoading) {
+  if (loading || isLoading) {
     return (
-      <div className="flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
     );
   }
 
+  if (!user || userRole !== 'school_admin') {
+    return null;
+  }
+
   return (
-    <div className="p-6 space-y-6">
+    <SidebarProvider>
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
+        <AdminSidebar />
+        <div className="flex-1 flex flex-col">
+          <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+              <div>
+                <h1 className="text-2xl font-bold">{schoolName || 'Transportation'}</h1>
+                <p className="text-sm text-muted-foreground">
+                  Manage transportation, walker locations, and car lines
+                </p>
+              </div>
+            </div>
+            <Button onClick={signOut} variant="outline">
+              Sign Out
+            </Button>
+          </header>
+
+          <main className="flex-1 p-6 space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur h-32">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Buses</CardTitle>
                   <Bus className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{transportation.length}</div>
+                <CardContent className="flex flex-col justify-between h-full pt-0">
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-2xl font-bold">{transportation.length}</div>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Total buses in fleet
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur h-32">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Walker Locations</CardTitle>
                   <PersonStanding className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{walkerLocations.length}</div>
+                <CardContent className="flex flex-col justify-between h-full pt-0">
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-2xl font-bold">{walkerLocations.length}</div>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Total walker pickup locations
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur h-32">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Car Lines</CardTitle>
                   <Car className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{carLines.length}</div>
+                <CardContent className="flex flex-col justify-between h-full pt-0">
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-2xl font-bold">{carLines.length}</div>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Total car pickup lines
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur h-32">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Assigned Students</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {transportation.filter(bus => bus.status === 'active').reduce((sum, bus) => sum + bus.students_count, 0) +
-                     walkerLocations.filter(location => location.status === 'active').reduce((sum, location) => sum + location.students_count, 0) +
-                     carLines.filter(line => line.status === 'active').reduce((sum, line) => sum + line.students_count, 0)}
+                <CardContent className="flex flex-col justify-between h-full pt-0">
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-2xl font-bold">
+                      {transportation.filter(bus => bus.status === 'active').reduce((sum, bus) => sum + bus.students_count, 0) +
+                       walkerLocations.filter(location => location.status === 'active').reduce((sum, location) => sum + location.students_count, 0) +
+                       carLines.filter(line => line.status === 'active').reduce((sum, line) => sum + line.students_count, 0)}
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Total students with transportation
@@ -2045,6 +2091,9 @@ const Transportation = () => {
                 </TabsContent>
               </div>
             </Tabs>
+          </main>
+        </div>
+      </div>
 
       {/* Add/Edit Bus Dialog */}
       <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
@@ -2852,7 +2901,7 @@ const Transportation = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </SidebarProvider>
   );
 };
 
