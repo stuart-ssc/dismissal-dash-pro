@@ -1292,7 +1292,6 @@ const Transportation = () => {
       toast.error('Failed to remove student from car line');
     }
   };
-  };
 
   // Fetch classes when grade level changes
   useEffect(() => {
