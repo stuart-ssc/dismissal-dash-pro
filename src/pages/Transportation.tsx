@@ -599,6 +599,31 @@ const Transportation = () => {
     }
   };
 
+  const handleDeleteBus = async (bus: TransportationRecord) => {
+    if (!confirm(`Are you sure you want to delete bus ${bus.bus_number}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('buses')
+        .delete()
+        .eq('id', bus.id);
+
+      if (error) {
+        console.error('Error deleting bus:', error);
+        toast.error('Failed to delete bus');
+        return;
+      }
+
+      toast.success('Bus deleted successfully');
+      await fetchTransportation();
+    } catch (error) {
+      console.error('Error deleting bus:', error);
+      toast.error('Failed to delete bus');
+    }
+  };
+
   const handleWalkerFormSubmit = async (values: z.infer<typeof walkerLocationSchema>) => {
     try {
       const { data: profile } = await supabase
@@ -1146,159 +1171,151 @@ const Transportation = () => {
             </div>
 
             {/* Transportation Management with Tabs */}
-            <Tabs defaultValue="buses" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <TabsList className="grid w-full max-w-[500px] grid-cols-3 h-14 p-1.5 bg-gradient-to-r from-muted/30 to-muted/50 border-2 border-border/40 rounded-lg shadow-sm">
-                  <TabsTrigger 
-                    value="buses" 
-                    className="flex items-center gap-2 h-11 px-4 text-sm font-semibold rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border data-[state=active]:border-primary/20 hover:bg-accent/60 hover:text-accent-foreground"
-                  >
-                    <Bus className="h-4 w-4" />
-                    Buses
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="walkers" 
-                    className="flex items-center gap-2 h-11 px-4 text-sm font-semibold rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border data-[state=active]:border-primary/20 hover:bg-accent/60 hover:text-accent-foreground"
-                  >
-                    <MapPin className="h-4 w-4" />
-                    Walkers
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="car-lines" 
-                    className="flex items-center gap-2 h-11 px-4 text-sm font-semibold rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:border data-[state=active]:border-primary/20 hover:bg-accent/60 hover:text-accent-foreground"
-                  >
-                    <Car className="h-4 w-4" />
-                    Car Lines
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+            <Tabs defaultValue="buses" className="space-y-0">
+              {/* Tabs Container with Connected Design */}
+              <div className="bg-card border border-border rounded-lg shadow-elevated overflow-hidden">
+                {/* Tab List positioned at top of container */}
+                <div className="bg-muted/30 border-b border-border px-6 py-4">
+                  <TabsList className="grid w-full max-w-[500px] grid-cols-3 h-12 p-1 bg-background/80 border border-border/50 rounded-md shadow-sm">
+                    <TabsTrigger 
+                      value="buses" 
+                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                    >
+                      <Bus className="h-4 w-4" />
+                      Buses
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="walkers" 
+                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      Walkers
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="car-lines" 
+                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                    >
+                      <Car className="h-4 w-4" />
+                      Car Lines
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
-              {/* Buses Tab */}
-              <TabsContent value="buses">
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
+                {/* Buses Tab */}
+                <TabsContent value="buses" className="m-0 border-0 p-0">
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-6">
                       <div>
-                        <CardTitle>Bus Management</CardTitle>
-                        <CardDescription>
+                        <h3 className="text-lg font-semibold">Bus Management</h3>
+                        <p className="text-sm text-muted-foreground">
                           Manage buses, drivers, and student assignments
-                        </CardDescription>
+                        </p>
                       </div>
                       <Button onClick={() => setShowAddDialog(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Bus
                       </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent>
                     <div className="space-y-4">
                       {/* Search and Filters */}
                       <div className="flex flex-col sm:flex-row gap-4">
                         <div className="relative flex-1">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                           <Input
-                            placeholder="Search buses or drivers..."
+                            placeholder="Search buses..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10"
                           />
                         </div>
-
-                        {/* Status Filter */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-10">
-                              Status: {filterStatus === 'all' ? 'All' : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
-                              <ChevronDown className="h-3 w-3 ml-1" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                            <DropdownMenuItem onClick={() => setFilterStatus('all')}>
-                              All Status
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setFilterStatus('active')}>
-                              Active
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setFilterStatus('inactive')}>
-                              Inactive
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setFilterStatus('maintenance')}>
-                              Maintenance
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Select 
+                          value={filterStatus} 
+                          onValueChange={(value) => setFilterStatus(value as 'all' | 'active' | 'inactive' | 'maintenance')}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter by status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="maintenance">Maintenance</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
-                      {/* Buses Table */}
-                      <div className="rounded-md border bg-background/50">
+                      {/* Bus Table */}
+                      <div className="border rounded-md">
                         <Table>
                           <TableHeader>
-                            <TableRow className="border-border hover:bg-muted/50">
+                            <TableRow>
                               <TableHead>Bus Number</TableHead>
                               <TableHead>Driver</TableHead>
-                              <TableHead>Students</TableHead>
+                              <TableHead>Route</TableHead>
                               <TableHead>Status</TableHead>
-                              <TableHead className="w-[50px]">Actions</TableHead>
+                              <TableHead>Students</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {currentTransportation.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                  No buses found. Click "Add Bus" to get started.
+                            {filteredTransportation.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((bus) => (
+                              <TableRow key={bus.id}>
+                                <TableCell className="font-medium">{bus.bus_number}</TableCell>
+                                <TableCell>{`${bus.driver_first_name || ''} ${bus.driver_last_name || ''}`.trim() || "Not assigned"}</TableCell>
+                                <TableCell>{"No route"}</TableCell>
+                                <TableCell>
+                                  <Badge variant={bus.status === 'active' ? 'default' : bus.status === 'maintenance' ? 'destructive' : 'secondary'}>
+                                    {bus.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{bus.students_count || 0}</TableCell>
+                                <TableCell className="text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => setEditingRecord(bus)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleDeleteBus(bus)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </TableCell>
                               </TableRow>
-                            ) : (
-                              currentTransportation.map((bus) => (
-                                <TableRow key={bus.id} className="border-border hover:bg-muted/30">
-                                  <TableCell className="font-medium">{bus.bus_number}</TableCell>
-                                  <TableCell>{`${bus.driver_first_name} ${bus.driver_last_name}`}</TableCell>
-                                  <TableCell>{bus.students_count}</TableCell>
-                                  <TableCell>{getStatusBadge(bus.status)}</TableCell>
-                                  <TableCell>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg z-50">
-                                        <DropdownMenuItem onClick={() => setEditingRecord(bus)}>
-                                          <Edit className="mr-2 h-4 w-4" />
-                                          Edit
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
+                            ))}
                           </TableBody>
                         </Table>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </TabsContent>
 
-              {/* Walkers Tab */}
-              <TabsContent value="walkers">
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
+                {/* Walkers Tab */}
+                <TabsContent value="walkers" className="m-0 border-0 p-0">
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-6">
                       <div>
-                        <CardTitle>Walker Locations Management</CardTitle>
-                        <CardDescription>
+                        <h3 className="text-lg font-semibold">Walker Locations Management</h3>
+                        <p className="text-sm text-muted-foreground">
                           Organize and manage your school's walker pickup locations
-                        </CardDescription>
+                        </p>
                       </div>
                       <Button onClick={() => setShowAddWalkerDialog(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Walker Location
                       </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent>
                     <div className="space-y-4">
                       {/* Search and Filters */}
                       <div className="flex flex-col sm:flex-row gap-4">
@@ -1333,46 +1350,47 @@ const Transportation = () => {
                       </div>
 
                       {/* Walker Locations Table */}
-                      <div className="rounded-md border">
+                      <div className="border rounded-md">
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead>Location Name</TableHead>
-                              <TableHead>Default</TableHead>
+                              <TableHead>Address</TableHead>
                               <TableHead>Status</TableHead>
+                              <TableHead>Students</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {currentWalkerLocations.map((walkerLocation) => (
-                              <TableRow key={walkerLocation.id}>
-                                <TableCell className="font-medium">
-                                  <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                                    {walkerLocation.location_name}
-                                  </div>
-                                </TableCell>
+                            {filteredWalkerLocations.slice((walkerCurrentPage - 1) * itemsPerPage, walkerCurrentPage * itemsPerPage).map((location) => (
+                              <TableRow key={location.id}>
+                                <TableCell className="font-medium">{location.location_name}</TableCell>
+                                <TableCell>{"No address"}</TableCell>
                                 <TableCell>
-                                  {walkerLocation.is_default && (
-                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                      Default
-                                    </Badge>
-                                  )}
+                                  <Badge variant={location.status === 'active' ? 'default' : 'secondary'}>
+                                    {location.status}
+                                  </Badge>
                                 </TableCell>
-                                <TableCell>
-                                  {getWalkerStatusBadge(walkerLocation.status)}
-                                </TableCell>
+                                <TableCell>{0}</TableCell>
                                 <TableCell className="text-right">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
                                         <MoreHorizontal className="h-4 w-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => setEditingWalkerRecord(walkerLocation)}>
+                                      <DropdownMenuItem onClick={() => setEditingWalkerRecord(location)}>
                                         <Edit className="mr-2 h-4 w-4" />
                                         Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleDeleteWalkerLocation(location)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
@@ -1383,28 +1401,24 @@ const Transportation = () => {
                         </Table>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </TabsContent>
 
-              {/* Car Lines Tab */}
-              <TabsContent value="car-lines">
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
+                {/* Car Lines Tab */}
+                <TabsContent value="car-lines" className="m-0 border-0 p-0">
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-6">
                       <div>
-                        <CardTitle>Car Lines Management</CardTitle>
-                        <CardDescription>
-                          Organize and manage your school's car pickup lines
-                        </CardDescription>
+                        <h3 className="text-lg font-semibold">Car Lines Management</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Organize and manage your school's car line pickup areas
+                        </p>
                       </div>
                       <Button onClick={() => setShowAddCarDialog(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Car Line
                       </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent>
                     <div className="space-y-4">
                       {/* Search and Filters */}
                       <div className="flex flex-col sm:flex-row gap-4">
@@ -1439,40 +1453,33 @@ const Transportation = () => {
                       </div>
 
                       {/* Car Lines Table */}
-                      <div className="rounded-md border">
+                      <div className="border rounded-md">
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead>Line Name</TableHead>
-                              <TableHead>Color</TableHead>
-                              <TableHead>Pickup Location</TableHead>
+                              <TableHead>Zone</TableHead>
                               <TableHead>Status</TableHead>
+                              <TableHead>Students</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {currentCarLines.map((carLine) => (
+                            {filteredCarLines.slice((carCurrentPage - 1) * itemsPerPage, carCurrentPage * itemsPerPage).map((carLine) => (
                               <TableRow key={carLine.id}>
-                                <TableCell className="font-medium">
-                                  {carLine.line_name}
-                                </TableCell>
+                                <TableCell className="font-medium">{carLine.line_name}</TableCell>
+                                <TableCell>{carLine.pickup_location || "No zone"}</TableCell>
                                 <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <div 
-                                      className="w-4 h-4 rounded-full border"
-                                      style={{ backgroundColor: carLine.color }}
-                                    />
-                                    {carLine.color}
-                                  </div>
+                                  <Badge variant={carLine.status === 'active' ? 'default' : 'secondary'}>
+                                    {carLine.status}
+                                  </Badge>
                                 </TableCell>
-                                <TableCell>{carLine.pickup_location}</TableCell>
-                                <TableCell>
-                                  {getCarStatusBadge(carLine.status)}
-                                </TableCell>
+                                <TableCell>{0}</TableCell>
                                 <TableCell className="text-right">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
                                         <MoreHorizontal className="h-4 w-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
@@ -1480,6 +1487,13 @@ const Transportation = () => {
                                       <DropdownMenuItem onClick={() => setEditingCarRecord(carLine)}>
                                         <Edit className="mr-2 h-4 w-4" />
                                         Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleDeleteCarLine(carLine)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
@@ -1490,9 +1504,9 @@ const Transportation = () => {
                         </Table>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </div>
+                </TabsContent>
+              </div>
             </Tabs>
           </main>
         </div>
