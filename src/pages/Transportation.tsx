@@ -1098,8 +1098,8 @@ const Transportation = () => {
         .select(`
           id,
           assigned_at,
-          students!inner (
-            id,
+          student_id,
+          students (
             first_name,
             last_name,
             grade_level,
@@ -1115,13 +1115,16 @@ const Transportation = () => {
       if (error) throw error;
 
       const students = assignments?.map(assignment => ({
-        id: assignment.students.id,
-        first_name: assignment.students.first_name,
-        last_name: assignment.students.last_name,
-        grade_level: assignment.students.grade_level,
-        class_name: assignment.students.class_rosters?.[0]?.classes?.class_name || 'No Class',
+        student_id: assignment.student_id,
+        student_name: `${assignment.students?.first_name} ${assignment.students?.last_name}`,
+        id: assignment.student_id,
+        first_name: assignment.students?.first_name || '',
+        last_name: assignment.students?.last_name || '',
+        grade_level: assignment.students?.grade_level || '',
+        class_name: assignment.students?.class_rosters?.[0]?.classes?.class_name || 'No Class',
         assigned_at: assignment.assigned_at,
-        assignment_id: assignment.id
+        assignment_id: assignment.id,
+        ride_status: 'active_rider' as const
       })) || [];
 
       setWalkerStudents(students);
@@ -1173,13 +1176,23 @@ const Transportation = () => {
         return;
       }
 
+      // Check for existing walker assignments
+      const studentIds = data?.map(s => s.id) || [];
+      const { data: existingAssignments } = await supabase
+        .from('student_walker_assignments')
+        .select('student_id')
+        .eq('walker_location_id', managingWalkerStudents.id)
+        .in('student_id', studentIds);
+
+      const assignedStudentIds = new Set(existingAssignments?.map(a => a.student_id) || []);
+
       const searchResults: StudentSearchResult[] = data?.map(student => ({
         id: student.id,
         first_name: student.first_name,
         last_name: student.last_name,
         grade_level: student.grade_level,
         class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        already_assigned: false // Would need to check against walker assignments table
+        already_assigned: assignedStudentIds.has(student.id)
       })) || [];
 
       setWalkerStudentSearchResults(searchResults);
@@ -1243,8 +1256,8 @@ const Transportation = () => {
         .select(`
           id,
           assigned_at,
-          students!inner (
-            id,
+          student_id,
+          students (
             first_name,
             last_name,
             grade_level,
@@ -1260,13 +1273,16 @@ const Transportation = () => {
       if (error) throw error;
 
       const students = assignments?.map(assignment => ({
-        id: assignment.students.id,
-        first_name: assignment.students.first_name,
-        last_name: assignment.students.last_name,
-        grade_level: assignment.students.grade_level,
-        class_name: assignment.students.class_rosters?.[0]?.classes?.class_name || 'No Class',
+        student_id: assignment.student_id,
+        student_name: `${assignment.students?.first_name} ${assignment.students?.last_name}`,
+        id: assignment.student_id,
+        first_name: assignment.students?.first_name || '',
+        last_name: assignment.students?.last_name || '',
+        grade_level: assignment.students?.grade_level || '',
+        class_name: assignment.students?.class_rosters?.[0]?.classes?.class_name || 'No Class',
         assigned_at: assignment.assigned_at,
-        assignment_id: assignment.id
+        assignment_id: assignment.id,
+        ride_status: 'active_rider' as const
       })) || [];
 
       setCarStudents(students);
@@ -1318,13 +1334,23 @@ const Transportation = () => {
         return;
       }
 
+      // Check for existing car line assignments
+      const studentIds = data?.map(s => s.id) || [];
+      const { data: existingAssignments } = await supabase
+        .from('student_car_assignments')
+        .select('student_id')
+        .eq('car_line_id', managingCarStudents.id)
+        .in('student_id', studentIds);
+
+      const assignedStudentIds = new Set(existingAssignments?.map(a => a.student_id) || []);
+
       const searchResults: StudentSearchResult[] = data?.map(student => ({
         id: student.id,
         first_name: student.first_name,
         last_name: student.last_name,
         grade_level: student.grade_level,
         class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        already_assigned: false // Would need to check against car line assignments table
+        already_assigned: assignedStudentIds.has(student.id)
       })) || [];
 
       setCarStudentSearchResults(searchResults);

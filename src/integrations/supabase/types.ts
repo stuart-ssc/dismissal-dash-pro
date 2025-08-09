@@ -586,7 +586,22 @@ export type Database = {
           id?: string
           student_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_student_car_line"
+            columns: ["car_line_id"]
+            isOneToOne: false
+            referencedRelation: "car_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_student_car_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_walker_assignments: {
         Row: {
@@ -607,7 +622,22 @@ export type Database = {
           student_id?: string
           walker_location_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_student_walker_location"
+            columns: ["walker_location_id"]
+            isOneToOne: false
+            referencedRelation: "walker_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_student_walker_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       students: {
         Row: {
