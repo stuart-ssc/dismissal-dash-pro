@@ -150,6 +150,29 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
 
         <div className="space-y-6">
           <section className="space-y-3">
+            <Label>Add Student</Label>
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+              <div className="flex-1">
+                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={candidates.length ? 'Select a student' : 'No available students'} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border shadow-lg z-50 max-h-[240px]">
+                    {candidates.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.last_name}, {s.first_name}{s.student_id ? ` · ${s.student_id}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleAdd} disabled={!selectedStudentId || isSubmitting || candidates.length === 0}>
+                <UserPlus className="h-4 w-4 mr-2" /> Add
+              </Button>
+            </div>
+          </section>
+
+          <section className="space-y-3">
             <Label>Current Students</Label>
             <div className="rounded-md border bg-background/50">
               <Table>
@@ -184,29 +207,6 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
                   )}
                 </TableBody>
               </Table>
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <Label>Add Student</Label>
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch">
-              <div className="flex-1">
-                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={candidates.length ? 'Select a student' : 'No available students'} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border border-border shadow-lg z-50 max-h-[240px]">
-                    {candidates.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.last_name}, {s.first_name}{s.student_id ? ` · ${s.student_id}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleAdd} disabled={!selectedStudentId || isSubmitting || candidates.length === 0}>
-                <UserPlus className="h-4 w-4 mr-2" /> Add
-              </Button>
             </div>
           </section>
         </div>
