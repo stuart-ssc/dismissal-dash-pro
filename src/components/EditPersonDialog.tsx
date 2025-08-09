@@ -29,13 +29,18 @@ interface EditPersonDialogProps {
 export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPersonUpdated }: EditPersonDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; class_name: string }>>([]);
+  const [availableBuses, setAvailableBuses] = useState<Array<{ id: string; bus_number: string }>>([]);
+  const [availableCarLines, setAvailableCarLines] = useState<Array<{ id: string; line_name: string }>>([]);
+  const [availableWalkerLocations, setAvailableWalkerLocations] = useState<Array<{ id: string; location_name: string }>>([]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     gradeLevel: '',
     classId: '',
-    studentId: ''
+    studentId: '',
+    transportMethod: '', // 'bus' | 'walker' | 'car'
+    transportTargetId: '',
   });
   const { toast } = useToast();
 
