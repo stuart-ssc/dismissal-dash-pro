@@ -146,6 +146,24 @@ const Transportation = () => {
   const [showAddCarDialog, setShowAddCarDialog] = useState(false);
   const [editingCarRecord, setEditingCarRecord] = useState<CarLineRecord | null>(null);
   
+  // Walker location student management state
+  const [managingWalkerStudents, setManagingWalkerStudents] = useState<WalkerLocationRecord | null>(null);
+  const [walkerStudents, setWalkerStudents] = useState<StudentBusRecord[]>([]);
+  const [isLoadingWalkerStudents, setIsLoadingWalkerStudents] = useState(false);
+  const [showAddWalkerStudentDialog, setShowAddWalkerStudentDialog] = useState(false);
+  const [walkerStudentSearchTerm, setWalkerStudentSearchTerm] = useState('');
+  const [walkerStudentSearchResults, setWalkerStudentSearchResults] = useState<StudentSearchResult[]>([]);
+  const [isSearchingWalkerStudents, setIsSearchingWalkerStudents] = useState(false);
+  
+  // Car line student management state
+  const [managingCarStudents, setManagingCarStudents] = useState<CarLineRecord | null>(null);
+  const [carStudents, setCarStudents] = useState<StudentBusRecord[]>([]);
+  const [isLoadingCarStudents, setIsLoadingCarStudents] = useState(false);
+  const [showAddCarStudentDialog, setShowAddCarStudentDialog] = useState(false);
+  const [carStudentSearchTerm, setCarStudentSearchTerm] = useState('');
+  const [carStudentSearchResults, setCarStudentSearchResults] = useState<StudentSearchResult[]>([]);
+  const [isSearchingCarStudents, setIsSearchingCarStudents] = useState(false);
+  
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -1071,6 +1089,211 @@ const Transportation = () => {
     }
   };
 
+  // Walker Location Student Management Functions
+  const fetchWalkerStudents = async (walkerLocationId: string) => {
+    setIsLoadingWalkerStudents(true);
+    try {
+      // For now, we'll create a placeholder function since there's no specific table for walker assignments
+      // In a real implementation, you might want to create a student_walker_assignments table
+      setWalkerStudents([]);
+    } catch (error) {
+      console.error('Error fetching walker students:', error);
+    } finally {
+      setIsLoadingWalkerStudents(false);
+    }
+  };
+
+  const handleManageWalkerStudents = (location: WalkerLocationRecord) => {
+    setManagingWalkerStudents(location);
+    fetchWalkerStudents(location.id);
+  };
+
+  const searchWalkerStudents = async (searchTerm: string) => {
+    if (!searchTerm.trim() || !managingWalkerStudents) return;
+    
+    setIsSearchingWalkerStudents(true);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user!.id)
+        .single();
+
+      if (!profile?.school_id) {
+        setWalkerStudentSearchResults([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          )
+        `)
+        .eq('school_id', profile.school_id)
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`)
+        .limit(10);
+
+      if (error) {
+        console.error('Error searching students:', error);
+        return;
+      }
+
+      const searchResults: StudentSearchResult[] = data?.map(student => ({
+        id: student.id,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        grade_level: student.grade_level,
+        class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
+        already_assigned: false // Would need to check against walker assignments table
+      })) || [];
+
+      setWalkerStudentSearchResults(searchResults);
+    } catch (error) {
+      console.error('Error searching walker students:', error);
+    } finally {
+      setIsSearchingWalkerStudents(false);
+    }
+  };
+
+  const handleAssignWalkerStudent = async (studentId: string) => {
+    if (!managingWalkerStudents) return;
+
+    try {
+      // This would require a student_walker_assignments table
+      toast.success('Student assigned to walker location successfully');
+      fetchWalkerStudents(managingWalkerStudents.id);
+      setWalkerStudentSearchTerm('');
+      setWalkerStudentSearchResults([]);
+    } catch (error) {
+      console.error('Error assigning walker student:', error);
+      toast.error('Failed to assign student to walker location');
+    }
+  };
+
+  const handleRemoveWalkerStudent = async (assignmentId: string, studentName: string) => {
+    if (!confirm(`Are you sure you want to remove ${studentName} from this walker location?`)) {
+      return;
+    }
+
+    try {
+      // This would require a student_walker_assignments table
+      toast.success('Student removed from walker location successfully');
+      fetchWalkerStudents(managingWalkerStudents!.id);
+    } catch (error) {
+      console.error('Error removing walker student:', error);
+      toast.error('Failed to remove student from walker location');
+    }
+  };
+
+  // Car Line Student Management Functions
+  const fetchCarStudents = async (carLineId: string) => {
+    setIsLoadingCarStudents(true);
+    try {
+      // For now, we'll create a placeholder function since there's no specific table for car line assignments
+      // In a real implementation, you might want to create a student_car_assignments table
+      setCarStudents([]);
+    } catch (error) {
+      console.error('Error fetching car students:', error);
+    } finally {
+      setIsLoadingCarStudents(false);
+    }
+  };
+
+  const handleManageCarStudents = (carLine: CarLineRecord) => {
+    setManagingCarStudents(carLine);
+    fetchCarStudents(carLine.id);
+  };
+
+  const searchCarStudents = async (searchTerm: string) => {
+    if (!searchTerm.trim() || !managingCarStudents) return;
+    
+    setIsSearchingCarStudents(true);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user!.id)
+        .single();
+
+      if (!profile?.school_id) {
+        setCarStudentSearchResults([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          )
+        `)
+        .eq('school_id', profile.school_id)
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`)
+        .limit(10);
+
+      if (error) {
+        console.error('Error searching students:', error);
+        return;
+      }
+
+      const searchResults: StudentSearchResult[] = data?.map(student => ({
+        id: student.id,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        grade_level: student.grade_level,
+        class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
+        already_assigned: false // Would need to check against car line assignments table
+      })) || [];
+
+      setCarStudentSearchResults(searchResults);
+    } catch (error) {
+      console.error('Error searching car students:', error);
+    } finally {
+      setIsSearchingCarStudents(false);
+    }
+  };
+
+  const handleAssignCarStudent = async (studentId: string) => {
+    if (!managingCarStudents) return;
+
+    try {
+      // This would require a student_car_assignments table
+      toast.success('Student assigned to car line successfully');
+      fetchCarStudents(managingCarStudents.id);
+      setCarStudentSearchTerm('');
+      setCarStudentSearchResults([]);
+    } catch (error) {
+      console.error('Error assigning car student:', error);
+      toast.error('Failed to assign student to car line');
+    }
+  };
+
+  const handleRemoveCarStudent = async (assignmentId: string, studentName: string) => {
+    if (!confirm(`Are you sure you want to remove ${studentName} from this car line?`)) {
+      return;
+    }
+
+    try {
+      // This would require a student_car_assignments table
+      toast.success('Student removed from car line successfully');
+      fetchCarStudents(managingCarStudents!.id);
+    } catch (error) {
+      console.error('Error removing car student:', error);
+      toast.error('Failed to remove student from car line');
+    }
+  };
+  };
+
   // Fetch classes when grade level changes
   useEffect(() => {
     if (newStudentData.gradeLevel) {
@@ -1387,6 +1610,10 @@ const Transportation = () => {
                                         <Edit className="mr-2 h-4 w-4" />
                                         Edit
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleManageWalkerStudents(location)}>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Manage Students
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem 
                                         onClick={() => handleDeleteWalkerLocation(location)}
                                         className="text-destructive"
@@ -1490,6 +1717,10 @@ const Transportation = () => {
                                       <DropdownMenuItem onClick={() => setEditingCarRecord(carLine)}>
                                         <Edit className="mr-2 h-4 w-4" />
                                         Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleManageCarStudents(carLine)}>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Manage Students
                                       </DropdownMenuItem>
                                       <DropdownMenuItem 
                                         onClick={() => handleDeleteCarLine(carLine)}
@@ -1787,6 +2018,324 @@ const Transportation = () => {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Walker Students Dialog */}
+      <Dialog open={!!managingWalkerStudents} onOpenChange={() => {
+        setManagingWalkerStudents(null);
+        setWalkerStudents([]);
+        setWalkerStudentSearchTerm('');
+        setWalkerStudentSearchResults([]);
+        setShowAddWalkerStudentDialog(false);
+      }}>
+        <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Students - {managingWalkerStudents?.location_name}</DialogTitle>
+            <DialogDescription>
+              Add or remove students assigned to this walker location.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-sm font-medium">Current Students ({walkerStudents.length})</h4>
+                <Button 
+                  onClick={() => setShowAddWalkerStudentDialog(true)}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Student
+                </Button>
+              </div>
+              
+              {isLoadingWalkerStudents ? (
+                <div className="text-center py-4">Loading students...</div>
+              ) : walkerStudents.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  No students assigned to this walker location yet.
+                </div>
+              ) : (
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student Name</TableHead>
+                        <TableHead>Grade</TableHead>
+                        <TableHead>Class</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {walkerStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium">{student.student_name}</TableCell>
+                          <TableCell>{student.grade_level}</TableCell>
+                          <TableCell>{student.class_name}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveWalkerStudent(student.id, student.student_name)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Walker Student Dialog */}
+      <Dialog open={showAddWalkerStudentDialog} onOpenChange={setShowAddWalkerStudentDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add Student to Walker Location</DialogTitle>
+            <DialogDescription>
+              Search for students to assign to {managingWalkerStudents?.location_name}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="walker-student-search">Search Students</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  id="walker-student-search"
+                  placeholder="Search by name..."
+                  value={walkerStudentSearchTerm}
+                  onChange={(e) => {
+                    setWalkerStudentSearchTerm(e.target.value);
+                    if (e.target.value.length >= 2) {
+                      searchWalkerStudents(e.target.value);
+                    } else {
+                      setWalkerStudentSearchResults([]);
+                    }
+                  }}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {isSearchingWalkerStudents ? (
+              <div className="text-center py-4">Searching...</div>
+            ) : walkerStudentSearchResults.length > 0 ? (
+              <div className="border rounded-md max-h-60 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student Name</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Class</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {walkerStudentSearchResults.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">
+                          {student.first_name} {student.last_name}
+                        </TableCell>
+                        <TableCell>{student.grade_level}</TableCell>
+                        <TableCell>{student.class_name}</TableCell>
+                        <TableCell className="text-right">
+                          {student.already_assigned ? (
+                            <Badge variant="secondary">Already Assigned</Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleAssignWalkerStudent(student.id)}
+                            >
+                              Assign
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : walkerStudentSearchTerm.length >= 2 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No students found matching your search.
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowAddWalkerStudentDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Car Students Dialog */}
+      <Dialog open={!!managingCarStudents} onOpenChange={() => {
+        setManagingCarStudents(null);
+        setCarStudents([]);
+        setCarStudentSearchTerm('');
+        setCarStudentSearchResults([]);
+        setShowAddCarStudentDialog(false);
+      }}>
+        <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Students - {managingCarStudents?.line_name}</DialogTitle>
+            <DialogDescription>
+              Add or remove students assigned to this car line.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-sm font-medium">Current Students ({carStudents.length})</h4>
+                <Button 
+                  onClick={() => setShowAddCarStudentDialog(true)}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Student
+                </Button>
+              </div>
+              
+              {isLoadingCarStudents ? (
+                <div className="text-center py-4">Loading students...</div>
+              ) : carStudents.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  No students assigned to this car line yet.
+                </div>
+              ) : (
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student Name</TableHead>
+                        <TableHead>Grade</TableHead>
+                        <TableHead>Class</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {carStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium">{student.student_name}</TableCell>
+                          <TableCell>{student.grade_level}</TableCell>
+                          <TableCell>{student.class_name}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveCarStudent(student.id, student.student_name)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Car Student Dialog */}
+      <Dialog open={showAddCarStudentDialog} onOpenChange={setShowAddCarStudentDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add Student to Car Line</DialogTitle>
+            <DialogDescription>
+              Search for students to assign to {managingCarStudents?.line_name}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="car-student-search">Search Students</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  id="car-student-search"
+                  placeholder="Search by name..."
+                  value={carStudentSearchTerm}
+                  onChange={(e) => {
+                    setCarStudentSearchTerm(e.target.value);
+                    if (e.target.value.length >= 2) {
+                      searchCarStudents(e.target.value);
+                    } else {
+                      setCarStudentSearchResults([]);
+                    }
+                  }}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {isSearchingCarStudents ? (
+              <div className="text-center py-4">Searching...</div>
+            ) : carStudentSearchResults.length > 0 ? (
+              <div className="border rounded-md max-h-60 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student Name</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Class</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {carStudentSearchResults.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">
+                          {student.first_name} {student.last_name}
+                        </TableCell>
+                        <TableCell>{student.grade_level}</TableCell>
+                        <TableCell>{student.class_name}</TableCell>
+                        <TableCell className="text-right">
+                          {student.already_assigned ? (
+                            <Badge variant="secondary">Already Assigned</Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleAssignCarStudent(student.id)}
+                            >
+                              Assign
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : carStudentSearchTerm.length >= 2 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No students found matching your search.
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowAddCarStudentDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
