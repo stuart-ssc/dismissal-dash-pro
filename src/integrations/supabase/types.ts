@@ -567,6 +567,48 @@ export type Database = {
           },
         ]
       }
+      student_car_assignments: {
+        Row: {
+          assigned_at: string
+          car_line_id: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          car_line_id: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          assigned_at?: string
+          car_line_id?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
+      student_walker_assignments: {
+        Row: {
+          assigned_at: string
+          id: string
+          student_id: string
+          walker_location_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          id?: string
+          student_id: string
+          walker_location_id: string
+        }
+        Update: {
+          assigned_at?: string
+          id?: string
+          student_id?: string
+          walker_location_id?: string
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           contact_info: string | null

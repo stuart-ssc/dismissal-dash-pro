@@ -1093,9 +1093,38 @@ const Transportation = () => {
   const fetchWalkerStudents = async (walkerLocationId: string) => {
     setIsLoadingWalkerStudents(true);
     try {
-      // For now, we'll create a placeholder function since there's no specific table for walker assignments
-      // In a real implementation, you might want to create a student_walker_assignments table
-      setWalkerStudents([]);
+      const { data: assignments, error } = await supabase
+        .from('student_walker_assignments')
+        .select(`
+          id,
+          assigned_at,
+          students!inner (
+            id,
+            first_name,
+            last_name,
+            grade_level,
+            class_rosters (
+              classes (
+                class_name
+              )
+            )
+          )
+        `)
+        .eq('walker_location_id', walkerLocationId);
+
+      if (error) throw error;
+
+      const students = assignments?.map(assignment => ({
+        id: assignment.students.id,
+        first_name: assignment.students.first_name,
+        last_name: assignment.students.last_name,
+        grade_level: assignment.students.grade_level,
+        class_name: assignment.students.class_rosters?.[0]?.classes?.class_name || 'No Class',
+        assigned_at: assignment.assigned_at,
+        assignment_id: assignment.id
+      })) || [];
+
+      setWalkerStudents(students);
     } catch (error) {
       console.error('Error fetching walker students:', error);
     } finally {
@@ -1165,7 +1194,15 @@ const Transportation = () => {
     if (!managingWalkerStudents) return;
 
     try {
-      // This would require a student_walker_assignments table
+      const { error } = await supabase
+        .from('student_walker_assignments')
+        .insert({
+          student_id: studentId,
+          walker_location_id: managingWalkerStudents.id
+        });
+
+      if (error) throw error;
+
       toast.success('Student assigned to walker location successfully');
       fetchWalkerStudents(managingWalkerStudents.id);
       setWalkerStudentSearchTerm('');
@@ -1182,7 +1219,13 @@ const Transportation = () => {
     }
 
     try {
-      // This would require a student_walker_assignments table
+      const { error } = await supabase
+        .from('student_walker_assignments')
+        .delete()
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+
       toast.success('Student removed from walker location successfully');
       fetchWalkerStudents(managingWalkerStudents!.id);
     } catch (error) {
@@ -1195,9 +1238,38 @@ const Transportation = () => {
   const fetchCarStudents = async (carLineId: string) => {
     setIsLoadingCarStudents(true);
     try {
-      // For now, we'll create a placeholder function since there's no specific table for car line assignments
-      // In a real implementation, you might want to create a student_car_assignments table
-      setCarStudents([]);
+      const { data: assignments, error } = await supabase
+        .from('student_car_assignments')
+        .select(`
+          id,
+          assigned_at,
+          students!inner (
+            id,
+            first_name,
+            last_name,
+            grade_level,
+            class_rosters (
+              classes (
+                class_name
+              )
+            )
+          )
+        `)
+        .eq('car_line_id', carLineId);
+
+      if (error) throw error;
+
+      const students = assignments?.map(assignment => ({
+        id: assignment.students.id,
+        first_name: assignment.students.first_name,
+        last_name: assignment.students.last_name,
+        grade_level: assignment.students.grade_level,
+        class_name: assignment.students.class_rosters?.[0]?.classes?.class_name || 'No Class',
+        assigned_at: assignment.assigned_at,
+        assignment_id: assignment.id
+      })) || [];
+
+      setCarStudents(students);
     } catch (error) {
       console.error('Error fetching car students:', error);
     } finally {
@@ -1267,7 +1339,15 @@ const Transportation = () => {
     if (!managingCarStudents) return;
 
     try {
-      // This would require a student_car_assignments table
+      const { error } = await supabase
+        .from('student_car_assignments')
+        .insert({
+          student_id: studentId,
+          car_line_id: managingCarStudents.id
+        });
+
+      if (error) throw error;
+
       toast.success('Student assigned to car line successfully');
       fetchCarStudents(managingCarStudents.id);
       setCarStudentSearchTerm('');
@@ -1284,7 +1364,13 @@ const Transportation = () => {
     }
 
     try {
-      // This would require a student_car_assignments table
+      const { error } = await supabase
+        .from('student_car_assignments')
+        .delete()
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+
       toast.success('Student removed from car line successfully');
       fetchCarStudents(managingCarStudents!.id);
     } catch (error) {
