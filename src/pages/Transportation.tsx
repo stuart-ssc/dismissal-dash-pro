@@ -1281,6 +1281,10 @@ const Transportation = () => {
                                         <Edit className="mr-2 h-4 w-4" />
                                         Edit
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleManageStudents(bus)}>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Manage Students
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem 
                                         onClick={() => handleDeleteBus(bus)}
                                         className="text-destructive"
@@ -1783,6 +1787,169 @@ const Transportation = () => {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Students Dialog */}
+      <Dialog open={!!managingStudents} onOpenChange={() => {
+        setManagingStudents(null);
+        setBusStudents([]);
+        setStudentSearchTerm('');
+        setStudentSearchResults([]);
+        setShowAddStudentDialog(false);
+        setShowCreateStudentForm(false);
+      }}>
+        <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Students - Bus {managingStudents?.bus_number}</DialogTitle>
+            <DialogDescription>
+              Add or remove students assigned to this bus.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Current Students */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-sm font-medium">Current Students ({busStudents.length})</h4>
+                <Button 
+                  onClick={() => setShowAddStudentDialog(true)}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Student
+                </Button>
+              </div>
+              
+              {isLoadingStudents ? (
+                <div className="text-center py-4">Loading students...</div>
+              ) : busStudents.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  No students assigned to this bus yet.
+                </div>
+              ) : (
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student Name</TableHead>
+                        <TableHead>Grade</TableHead>
+                        <TableHead>Class</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {busStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium">{student.student_name}</TableCell>
+                          <TableCell>{student.grade_level}</TableCell>
+                          <TableCell>{student.class_name}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveStudent(student.id, student.student_name)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Student Dialog */}
+      <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add Student to Bus</DialogTitle>
+            <DialogDescription>
+              Search for students to assign to Bus {managingStudents?.bus_number}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Search Students */}
+            <div>
+              <Label htmlFor="student-search">Search Students</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  id="student-search"
+                  placeholder="Search by name..."
+                  value={studentSearchTerm}
+                  onChange={(e) => {
+                    setStudentSearchTerm(e.target.value);
+                    if (e.target.value.length >= 2) {
+                      searchStudents(e.target.value);
+                    } else {
+                      setStudentSearchResults([]);
+                    }
+                  }}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Search Results */}
+            {isSearchingStudents ? (
+              <div className="text-center py-4">Searching...</div>
+            ) : studentSearchResults.length > 0 ? (
+              <div className="border rounded-md max-h-60 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student Name</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Class</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {studentSearchResults.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">
+                          {student.first_name} {student.last_name}
+                        </TableCell>
+                        <TableCell>{student.grade_level}</TableCell>
+                        <TableCell>{student.class_name}</TableCell>
+                        <TableCell className="text-right">
+                          {student.already_assigned ? (
+                            <Badge variant="secondary">Already Assigned</Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleAssignStudent(student.id, 'active_rider')}
+                            >
+                              Assign
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : studentSearchTerm.length >= 2 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No students found matching your search.
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowAddStudentDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </SidebarProvider>
