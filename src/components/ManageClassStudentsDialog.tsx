@@ -42,7 +42,7 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchRoster = async () => {
+  const fetchRoster = async (): Promise<RosterItem[]> => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -62,15 +62,17 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
       // Sort by last name
       items.sort((a, b) => a.last_name.localeCompare(b.last_name));
       setRoster(items);
+      return items;
     } catch (err) {
       console.error('Error fetching roster', err);
       toast({ title: 'Error', description: 'Failed to load class roster', variant: 'destructive' });
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCandidates = async () => {
+  const fetchCandidates = async (currentIds?: Set<string>) => {
     try {
       const { data, error } = await supabase
         .from('students')
@@ -79,8 +81,8 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
         .eq('grade_level', gradeLevel);
       if (error) throw error;
 
-      const currentIds = new Set(roster.map(r => r.student_id));
-      const available = (data || []).filter(s => !currentIds.has(s.id));
+      const ids = currentIds ?? new Set(roster.map(r => r.student_id));
+      const available = (data || []).filter(s => !ids.has(s.id));
       available.sort((a, b) => a.last_name.localeCompare(b.last_name));
       setCandidates(available);
     } catch (err) {
@@ -91,27 +93,26 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
 
   useEffect(() => {
     if (!open) return;
-    fetchRoster();
-  }, [open, classId]);
-
-  useEffect(() => {
-    if (!open) return;
-    fetchCandidates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, classId, roster.length, schoolId, gradeLevel]);
+    (async () => {
+      const items = await fetchRoster();
+      const ids = new Set(items.map(i => i.student_id));
+      await fetchCandidates(ids);
+    })();
+  }, [open, classId, schoolId, gradeLevel]);
 
   const handleAdd = async () => {
     if (!selectedStudentId) return;
     setIsSubmitting(true);
+    const addedId = selectedStudentId;
     try {
       const { error } = await supabase
         .from('class_rosters')
-        .insert({ student_id: selectedStudentId, class_id: classId });
+        .insert({ student_id: addedId, class_id: classId });
       if (error) throw error;
       toast({ title: 'Student added', description: 'Student added to class successfully.' });
       setSelectedStudentId('');
       await fetchRoster();
-      await fetchCandidates();
+      setCandidates((prev) => prev.filter((s) => s.id !== addedId));
       onUpdated?.();
     } catch (err) {
       console.error('Error adding student', err);
@@ -123,12 +124,27 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
 
   const handleRemove = async (rosterId: string) => {
     setIsSubmitting(true);
+    const removed = roster.find((r) => r.roster_id === rosterId);
     try {
       const { error } = await supabase.from('class_rosters').delete().eq('id', rosterId);
       if (error) throw error;
       toast({ title: 'Student removed', description: 'Student removed from class.' });
       await fetchRoster();
-      await fetchCandidates();
+      if (removed) {
+        setCandidates((prev) => {
+          if (prev.some((s) => s.id === removed.student_id)) return prev;
+          const newCandidate: CandidateStudent = {
+            id: removed.student_id,
+            first_name: removed.first_name,
+            last_name: removed.last_name,
+            student_id: removed.student_code,
+            grade_level: gradeLevel,
+          };
+          const next = [...prev, newCandidate];
+          next.sort((a, b) => a.last_name.localeCompare(b.last_name));
+          return next;
+        });
+      }
       onUpdated?.();
     } catch (err) {
       console.error('Error removing student', err);
