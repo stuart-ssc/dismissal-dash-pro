@@ -47,14 +47,15 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
   // Update form data when person changes
   useEffect(() => {
     if (person) {
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         firstName: person.firstName || '',
         lastName: person.lastName || '',
         email: person.email || '',
         gradeLevel: person.grade || '',
         classId: '', // Will be set after fetching current class
         studentId: person.studentId || ''
-      });
+      }));
     }
   }, [person]);
 
@@ -86,6 +87,50 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
 
     fetchClasses();
   }, [formData.gradeLevel, person, schoolId]);
+
+  // Fetch transportation options when dialog opens for students
+  useEffect(() => {
+    const fetchTransportationOptions = async () => {
+      if (!open || person?.role !== 'Student') return;
+      const [{ data: buses }, { data: carLines }, { data: walkerLocs }] = await Promise.all([
+        supabase.from('buses').select('id, bus_number').eq('school_id', schoolId).order('bus_number', { ascending: true }),
+        supabase.from('car_lines').select('id, line_name').eq('school_id', schoolId).order('line_name', { ascending: true }),
+        supabase.from('walker_locations').select('id, location_name').eq('school_id', schoolId).order('location_name', { ascending: true })
+      ]);
+      setAvailableBuses(buses || []);
+      setAvailableCarLines(carLines || []);
+      setAvailableWalkerLocations(walkerLocs || []);
+    };
+    fetchTransportationOptions();
+  }, [open, person, schoolId]);
+
+  // Load existing transportation assignment for this student
+  useEffect(() => {
+    const loadTransportation = async () => {
+      if (!open || !person || person.role !== 'Student') return;
+      const studentUuid = person.id;
+      const [busRes, walkerRes, carRes] = await Promise.all([
+        supabase.from('student_bus_assignments').select('bus_id').eq('student_id', studentUuid).maybeSingle(),
+        supabase.from('student_walker_assignments').select('walker_location_id').eq('student_id', studentUuid).maybeSingle(),
+        supabase.from('student_car_assignments').select('car_line_id').eq('student_id', studentUuid).maybeSingle(),
+      ]);
+
+      const busAssign = busRes.data;
+      const walkerAssign = walkerRes.data;
+      const carAssign = carRes.data;
+
+      if (busAssign) {
+        setFormData((prev) => ({ ...prev, transportMethod: 'bus', transportTargetId: busAssign.bus_id }));
+      } else if (walkerAssign) {
+        setFormData((prev) => ({ ...prev, transportMethod: 'walker', transportTargetId: walkerAssign.walker_location_id }));
+      } else if (carAssign) {
+        setFormData((prev) => ({ ...prev, transportMethod: 'car', transportTargetId: carAssign.car_line_id }));
+      } else {
+        setFormData((prev) => ({ ...prev, transportMethod: '', transportTargetId: '' }));
+      }
+    };
+    loadTransportation();
+  }, [open, person]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +170,31 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
             });
 
           if (rosterError) throw rosterError;
+        }
+
+        // Update transportation assignment
+        // Clear existing assignments to enforce a single method
+        await supabase.from('student_bus_assignments').delete().eq('student_id', person.id);
+        await supabase.from('student_walker_assignments').delete().eq('student_id', person.id);
+        await supabase.from('student_car_assignments').delete().eq('student_id', person.id);
+
+        if (formData.transportMethod && formData.transportTargetId) {
+          if (formData.transportMethod === 'bus') {
+            const { error: insErr } = await supabase
+              .from('student_bus_assignments')
+              .insert({ student_id: person.id, bus_id: formData.transportTargetId });
+            if (insErr) throw insErr;
+          } else if (formData.transportMethod === 'walker') {
+            const { error: insErr } = await supabase
+              .from('student_walker_assignments')
+              .insert({ student_id: person.id, walker_location_id: formData.transportTargetId });
+            if (insErr) throw insErr;
+          } else if (formData.transportMethod === 'car') {
+            const { error: insErr } = await supabase
+              .from('student_car_assignments')
+              .insert({ student_id: person.id, car_line_id: formData.transportTargetId });
+            if (insErr) throw insErr;
+          }
         }
       } else if (person.role === 'Teacher') {
         const { error } = await supabase
@@ -259,6 +329,80 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
                   placeholder="Optional student ID"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="transportMethod">Transportation</Label>
+                <Select
+                  value={formData.transportMethod}
+                  onValueChange={(value) => setFormData({ ...formData, transportMethod: value, transportTargetId: '' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select method (optional)" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border shadow-lg z-50">
+                    <SelectItem value="bus">Bus</SelectItem>
+                    <SelectItem value="walker">Walker</SelectItem>
+                    <SelectItem value="car">Car Rider</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.transportMethod === 'bus' && (
+                <div className="space-y-2">
+                  <Label htmlFor="transportTargetId">Bus</Label>
+                  <Select
+                    value={formData.transportTargetId}
+                    onValueChange={(value) => setFormData({ ...formData, transportTargetId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select bus" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border shadow-lg z-50">
+                      {availableBuses.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>{b.bus_number}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {formData.transportMethod === 'walker' && (
+                <div className="space-y-2">
+                  <Label htmlFor="transportTargetId">Walker Location</Label>
+                  <Select
+                    value={formData.transportTargetId}
+                    onValueChange={(value) => setFormData({ ...formData, transportTargetId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border shadow-lg z-50">
+                      {availableWalkerLocations.map((w) => (
+                        <SelectItem key={w.id} value={w.id}>{w.location_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {formData.transportMethod === 'car' && (
+                <div className="space-y-2">
+                  <Label htmlFor="transportTargetId">Car Line</Label>
+                  <Select
+                    value={formData.transportTargetId}
+                    onValueChange={(value) => setFormData({ ...formData, transportTargetId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select car line" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border shadow-lg z-50">
+                      {availableCarLines.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.line_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </>
           )}
 
