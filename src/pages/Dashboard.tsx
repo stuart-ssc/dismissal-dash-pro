@@ -79,7 +79,7 @@ const Dashboard = () => {
   // For school admins, show the sidebar layout
   if (userRole === 'school_admin') {
     return (
-      <SidebarProvider defaultOpen={false}>
+      <SidebarProvider>
         <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
           <AdminSidebar />
           <div className="flex-1 flex flex-col">
