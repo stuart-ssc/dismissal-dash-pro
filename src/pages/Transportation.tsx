@@ -1355,7 +1355,6 @@ const Transportation = () => {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Location Name</TableHead>
-                              <TableHead>Address</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Students</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -1365,10 +1364,10 @@ const Transportation = () => {
                             {filteredWalkerLocations.slice((walkerCurrentPage - 1) * itemsPerPage, walkerCurrentPage * itemsPerPage).map((location) => (
                               <TableRow key={location.id}>
                                 <TableCell className="font-medium">{location.location_name}</TableCell>
-                                <TableCell>{"No address"}</TableCell>
                                 <TableCell>
-                                  <Badge variant={location.status === 'active' ? 'default' : 'secondary'}>
-                                    {location.status}
+                                  <Badge variant={location.status === 'active' ? 'default' : 'secondary'} 
+                                         className={location.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}>
+                                    {location.status === 'active' ? 'Active' : location.status.charAt(0).toUpperCase() + location.status.slice(1)}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>{0}</TableCell>
