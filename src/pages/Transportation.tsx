@@ -1718,15 +1718,17 @@ const Transportation = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Buses</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Assigned Students</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {transportation.filter(bus => bus.status === 'active').length}
+                    {transportation.filter(bus => bus.status === 'active').reduce((sum, bus) => sum + bus.students_count, 0) +
+                     walkerLocations.filter(location => location.status === 'active').reduce((sum, location) => sum + location.students_count, 0) +
+                     carLines.filter(line => line.status === 'active').reduce((sum, line) => sum + line.students_count, 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Currently operational
+                    Total students with transportation
                   </p>
                 </CardContent>
               </Card>
