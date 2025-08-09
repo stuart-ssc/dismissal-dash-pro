@@ -1264,8 +1264,9 @@ const Transportation = () => {
                                 <TableCell>{`${bus.driver_first_name || ''} ${bus.driver_last_name || ''}`.trim() || "Not assigned"}</TableCell>
                                 <TableCell>{"No route"}</TableCell>
                                 <TableCell>
-                                  <Badge variant={bus.status === 'active' ? 'default' : bus.status === 'maintenance' ? 'destructive' : 'secondary'}>
-                                    {bus.status}
+                                  <Badge variant={bus.status === 'active' ? 'default' : bus.status === 'maintenance' ? 'destructive' : 'secondary'}
+                                         className={bus.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}>
+                                    {bus.status === 'active' ? 'Active' : bus.status.charAt(0).toUpperCase() + bus.status.slice(1)}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>{bus.students_count || 0}</TableCell>
@@ -1469,8 +1470,9 @@ const Transportation = () => {
                                 <TableCell className="font-medium">{carLine.line_name}</TableCell>
                                 <TableCell>{carLine.pickup_location || "No zone"}</TableCell>
                                 <TableCell>
-                                  <Badge variant={carLine.status === 'active' ? 'default' : 'secondary'}>
-                                    {carLine.status}
+                                  <Badge variant={carLine.status === 'active' ? 'default' : 'secondary'}
+                                         className={carLine.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}>
+                                    {carLine.status === 'active' ? 'Active' : carLine.status.charAt(0).toUpperCase() + carLine.status.slice(1)}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>{0}</TableCell>
