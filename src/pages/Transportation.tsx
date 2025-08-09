@@ -1251,7 +1251,6 @@ const Transportation = () => {
                             <TableRow>
                               <TableHead>Bus Number</TableHead>
                               <TableHead>Driver</TableHead>
-                              <TableHead>Route</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Students</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -1262,7 +1261,6 @@ const Transportation = () => {
                               <TableRow key={bus.id}>
                                 <TableCell className="font-medium">{bus.bus_number}</TableCell>
                                 <TableCell>{`${bus.driver_first_name || ''} ${bus.driver_last_name || ''}`.trim() || "Not assigned"}</TableCell>
-                                <TableCell>{"No route"}</TableCell>
                                 <TableCell>
                                   <Badge variant={bus.status === 'active' ? 'default' : bus.status === 'maintenance' ? 'destructive' : 'secondary'}
                                          className={bus.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}>
