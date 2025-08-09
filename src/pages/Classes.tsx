@@ -21,6 +21,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { AddPersonDialog } from "@/components/AddPersonDialog";
+import { ManageClassStudentsDialog } from "@/components/ManageClassStudentsDialog";
 
 interface AddTeacherDialogProps {
   schoolId: number;
@@ -183,6 +184,7 @@ const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) =
         </form>
       </DialogContent>
     </Dialog>
+
   );
 };
 
@@ -229,6 +231,7 @@ const Classes = () => {
   const [teacherSearchResults, setTeacherSearchResults] = useState<Teacher[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [schoolId, setSchoolId] = useState<number | null>(null);
+  const [managingClass, setManagingClass] = useState<ClassRecord | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -837,6 +840,10 @@ const Classes = () => {
                                       <Edit className="h-4 w-4 mr-2" />
                                       Edit
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setManagingClass(classRecord)}>
+                                      <Users className="h-4 w-4 mr-2" />
+                                      Manage Students
+                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </TableCell>
@@ -1029,6 +1036,18 @@ const Classes = () => {
             </Form>
           </DialogContent>
         </Dialog>
+
+        {managingClass && schoolId && (
+          <ManageClassStudentsDialog
+            open={!!managingClass}
+            onOpenChange={(o) => !o && setManagingClass(null)}
+            classId={managingClass.id}
+            className={managingClass.class_name}
+            gradeLevel={managingClass.grade_level}
+            schoolId={schoolId}
+            onUpdated={fetchClasses}
+          />
+        )}
       </div>
     </SidebarProvider>
   );
