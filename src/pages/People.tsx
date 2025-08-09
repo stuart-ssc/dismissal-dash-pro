@@ -25,6 +25,7 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
+  transportation?: 'Bus' | 'Walker' | 'Car Rider';
 }
 
 const People = () => {
@@ -180,7 +181,10 @@ const People = () => {
           grade_level,
           class_rosters(
             classes(class_name)
-          )
+          ),
+          student_bus_assignments(bus_id),
+          student_walker_assignments(walker_location_id),
+          student_car_assignments(car_line_id)
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
@@ -197,11 +201,17 @@ const People = () => {
         
         for (const student of studentsData) {
           const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
+
+          const hasBus = (student.student_bus_assignments?.length || 0) > 0;
+          const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
+          const hasCar = (student.student_car_assignments?.length || 0) > 0;
+          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : undefined;
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
             grade: student.grade_level,
-            classes: studentClasses
+            classes: studentClasses,
+            transportation,
           });
           
           allPeople.push({
@@ -212,6 +222,7 @@ const People = () => {
             role: 'Student',
             grade: student.grade_level,
             classes: studentClasses,
+            transportation,
           });
         }
       }
@@ -596,6 +607,7 @@ const People = () => {
                         <TableHead>Name</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Grade</TableHead>
+                        <TableHead>Transportation</TableHead>
                         <TableHead>Classes</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -613,6 +625,7 @@ const People = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>{person.grade || '-'}</TableCell>
+                          <TableCell>{person.transportation || '-'}</TableCell>
                           <TableCell>
                             {person.classes.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
@@ -902,15 +915,16 @@ const People = () => {
               </div>
 
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Grade</TableHead>
-                    <TableHead>Classes</TableHead>
-                    {userRole === 'school_admin' && <TableHead className="text-right">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Transportation</TableHead>
+                      <TableHead>Classes</TableHead>
+                      {userRole === 'school_admin' && <TableHead className="text-right">Actions</TableHead>}
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {currentPeople.map((person) => (
                     <TableRow key={person.id}>
@@ -924,6 +938,7 @@ const People = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>{person.grade || '-'}</TableCell>
+                      <TableCell>{person.transportation || '-'}</TableCell>
                       <TableCell>
                         {person.classes.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
