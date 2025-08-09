@@ -78,12 +78,20 @@ const SidebarProvider = React.forwardRef<
           .find(row => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
           ?.split('=')[1];
         
+        console.log('Sidebar: Reading cookie value:', cookieValue);
+        console.log('Sidebar: isMobile:', isMobile);
+        console.log('Sidebar: defaultOpen:', defaultOpen);
+        
         if (cookieValue !== undefined) {
-          return cookieValue === 'true';
+          const savedState = cookieValue === 'true';
+          console.log('Sidebar: Using saved state from cookie:', savedState);
+          return savedState;
         }
       }
       // On mobile, default to collapsed unless explicitly set
-      return isMobile ? false : defaultOpen;
+      const initialState = isMobile ? false : defaultOpen;
+      console.log('Sidebar: No cookie found, using initial state:', initialState);
+      return initialState;
     })
     const open = openProp ?? _open
     const setOpen = React.useCallback(
