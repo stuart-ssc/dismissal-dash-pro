@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3, UserPlus, Trash2, ArrowLeft, Car, MapPin } from "lucide-react";
+import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3, UserPlus, Trash2, ArrowLeft, Car, PersonStanding } from "lucide-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -1487,7 +1487,7 @@ const Transportation = () => {
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Walker Locations</CardTitle>
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <PersonStanding className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{walkerLocations.length}</div>
@@ -1544,7 +1544,7 @@ const Transportation = () => {
                       value="walkers" 
                       className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
                     >
-                      <MapPin className="h-4 w-4" />
+                      <PersonStanding className="h-4 w-4" />
                       Walkers
                     </TabsTrigger>
                     <TabsTrigger 
