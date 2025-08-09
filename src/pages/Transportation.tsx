@@ -1677,63 +1677,55 @@ const Transportation = () => {
           <main className="flex-1 p-6 space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur h-32">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Buses</CardTitle>
                   <Bus className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent className="flex flex-col justify-between h-full pt-0">
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-2xl font-bold">{transportation.length}</div>
-                  </div>
+                <CardContent>
+                  <div className="text-2xl font-bold">{transportation.length}</div>
                   <p className="text-xs text-muted-foreground">
                     Total buses in fleet
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur h-32">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Walker Locations</CardTitle>
                   <PersonStanding className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent className="flex flex-col justify-between h-full pt-0">
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-2xl font-bold">{walkerLocations.length}</div>
-                  </div>
+                <CardContent>
+                  <div className="text-2xl font-bold">{walkerLocations.length}</div>
                   <p className="text-xs text-muted-foreground">
                     Total walker pickup locations
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur h-32">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Car Lines</CardTitle>
                   <Car className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent className="flex flex-col justify-between h-full pt-0">
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-2xl font-bold">{carLines.length}</div>
-                  </div>
+                <CardContent>
+                  <div className="text-2xl font-bold">{carLines.length}</div>
                   <p className="text-xs text-muted-foreground">
                     Total car pickup lines
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur h-32">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Assigned Students</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent className="flex flex-col justify-between h-full pt-0">
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-2xl font-bold">
-                      {transportation.filter(bus => bus.status === 'active').reduce((sum, bus) => sum + bus.students_count, 0) +
-                       walkerLocations.filter(location => location.status === 'active').reduce((sum, location) => sum + location.students_count, 0) +
-                       carLines.filter(line => line.status === 'active').reduce((sum, line) => sum + line.students_count, 0)}
-                    </div>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {transportation.filter(bus => bus.status === 'active').reduce((sum, bus) => sum + bus.students_count, 0) +
+                     walkerLocations.filter(location => location.status === 'active').reduce((sum, location) => sum + location.students_count, 0) +
+                     carLines.filter(line => line.status === 'active').reduce((sum, line) => sum + line.students_count, 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Total students with transportation
