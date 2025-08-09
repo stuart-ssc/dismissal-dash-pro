@@ -1511,6 +1511,281 @@ const Transportation = () => {
           </main>
         </div>
       </div>
+
+      {/* Add/Edit Bus Dialog */}
+      <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
+        setShowAddDialog(false);
+        setEditingRecord(null);
+        form.reset();
+      }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingRecord ? 'Edit Bus' : 'Add New Bus'}</DialogTitle>
+            <DialogDescription>
+              {editingRecord ? 'Update the bus information below.' : 'Enter the details for the new bus.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="bus_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bus Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="B-001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="maintenance">Maintenance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="driver_first_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Driver First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="driver_last_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Driver Last Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowAddDialog(false);
+                  setEditingRecord(null);
+                  form.reset();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingRecord ? 'Update Bus' : 'Add Bus'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Walker Location Dialog */}
+      <Dialog open={showAddWalkerDialog || !!editingWalkerRecord} onOpenChange={() => {
+        setShowAddWalkerDialog(false);
+        setEditingWalkerRecord(null);
+        walkerForm.reset();
+      }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingWalkerRecord ? 'Edit Walker Location' : 'Add New Walker Location'}</DialogTitle>
+            <DialogDescription>
+              {editingWalkerRecord ? 'Update the walker location information below.' : 'Enter the details for the new walker location.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...walkerForm}>
+            <form onSubmit={walkerForm.handleSubmit(handleWalkerFormSubmit)} className="space-y-4">
+              <FormField
+                control={walkerForm.control}
+                name="location_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Front Door Pickup" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={walkerForm.control}
+                name="is_default"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Default Location</FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        Set this as the default walker pickup location
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={walkerForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowAddWalkerDialog(false);
+                  setEditingWalkerRecord(null);
+                  walkerForm.reset();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingWalkerRecord ? 'Update Location' : 'Add Location'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Car Line Dialog */}
+      <Dialog open={showAddCarDialog || !!editingCarRecord} onOpenChange={() => {
+        setShowAddCarDialog(false);
+        setEditingCarRecord(null);
+        carForm.reset();
+      }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingCarRecord ? 'Edit Car Line' : 'Add New Car Line'}</DialogTitle>
+            <DialogDescription>
+              {editingCarRecord ? 'Update the car line information below.' : 'Enter the details for the new car line.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...carForm}>
+            <form onSubmit={carForm.handleSubmit(handleCarFormSubmit)} className="space-y-4">
+              <FormField
+                control={carForm.control}
+                name="line_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Line Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Primary Line" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={carForm.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Color</FormLabel>
+                    <FormControl>
+                      <Input type="color" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={carForm.control}
+                name="pickup_location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pickup Location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Main entrance car line" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={carForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowAddCarDialog(false);
+                  setEditingCarRecord(null);
+                  carForm.reset();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingCarRecord ? 'Update Car Line' : 'Add Car Line'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 };
