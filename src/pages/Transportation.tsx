@@ -11,7 +11,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3, UserPlus, Trash2, ArrowLeft } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Search, Plus, Edit, MoreHorizontal, ChevronDown, Bus, Users, Calendar, BarChart3, UserPlus, Trash2, ArrowLeft, Car, MapPin } from "lucide-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -26,6 +28,19 @@ const editBusSchema = z.object({
   driver_first_name: z.string().min(1, "Driver first name is required"),
   driver_last_name: z.string().min(1, "Driver last name is required"),
   status: z.enum(["active", "inactive", "maintenance"]),
+});
+
+const walkerLocationSchema = z.object({
+  location_name: z.string().min(1, "Location name is required"),
+  is_default: z.boolean(),
+  status: z.enum(["active", "inactive"]),
+});
+
+const carLineSchema = z.object({
+  line_name: z.string().min(1, "Line name is required"),
+  color: z.string().min(1, "Color is required"),
+  pickup_location: z.string().min(1, "Pickup location is required"),
+  status: z.enum(["active", "inactive"]),
 });
 
 interface TransportationRecord {
@@ -55,6 +70,27 @@ interface StudentBusRecord {
   grade_level: string;
   class_name: string;
   ride_status: 'active_rider' | 'guest_rider' | 'non_rider';
+}
+
+interface WalkerLocationRecord {
+  id: string;
+  school_id: number;
+  location_name: string;
+  is_default: boolean;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+interface CarLineRecord {
+  id: string;
+  school_id: number;
+  line_name: string;
+  color: string;
+  pickup_location: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
 }
 
 const Transportation = () => {
@@ -87,6 +123,29 @@ const Transportation = () => {
   });
   const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; class_name: string }>>([]);
   const [schoolName, setSchoolName] = useState<string>('');
+  
+  // Walker locations state
+  const [walkerLocations, setWalkerLocations] = useState<WalkerLocationRecord[]>([]);
+  const [filteredWalkerLocations, setFilteredWalkerLocations] = useState<WalkerLocationRecord[]>([]);
+  const [walkerSearchTerm, setWalkerSearchTerm] = useState('');
+  const [walkerCurrentPage, setWalkerCurrentPage] = useState(1);
+  const [walkerSortBy, setWalkerSortBy] = useState<keyof WalkerLocationRecord>('location_name');
+  const [walkerSortOrder, setWalkerSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [walkerFilterStatus, setWalkerFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [showAddWalkerDialog, setShowAddWalkerDialog] = useState(false);
+  const [editingWalkerRecord, setEditingWalkerRecord] = useState<WalkerLocationRecord | null>(null);
+  
+  // Car lines state  
+  const [carLines, setCarLines] = useState<CarLineRecord[]>([]);
+  const [filteredCarLines, setFilteredCarLines] = useState<CarLineRecord[]>([]);
+  const [carSearchTerm, setCarSearchTerm] = useState('');
+  const [carCurrentPage, setCarCurrentPage] = useState(1);
+  const [carSortBy, setCarSortBy] = useState<keyof CarLineRecord>('line_name');
+  const [carSortOrder, setCarSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [carFilterStatus, setCarFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [showAddCarDialog, setShowAddCarDialog] = useState(false);
+  const [editingCarRecord, setEditingCarRecord] = useState<CarLineRecord | null>(null);
+  
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -103,6 +162,8 @@ const Transportation = () => {
 
   useEffect(() => {
     fetchTransportation();
+    fetchWalkerLocations();
+    fetchCarLines();
     fetchSchoolName();
   }, [user]);
 
@@ -148,6 +209,74 @@ const Transportation = () => {
     }
   };
 
+  const fetchWalkerLocations = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) {
+        setWalkerLocations([]);
+        setFilteredWalkerLocations([]);
+        return;
+      }
+
+      const { data: walkerLocationsData, error } = await supabase
+        .from('walker_locations')
+        .select('*')
+        .eq('school_id', profile.school_id)
+        .order('location_name');
+
+      if (error) {
+        console.error('Error fetching walker locations:', error);
+        return;
+      }
+
+      setWalkerLocations((walkerLocationsData || []) as WalkerLocationRecord[]);
+      setFilteredWalkerLocations((walkerLocationsData || []) as WalkerLocationRecord[]);
+    } catch (error) {
+      console.error('Error fetching walker locations data:', error);
+    }
+  };
+
+  const fetchCarLines = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) {
+        setCarLines([]);
+        setFilteredCarLines([]);
+        return;
+      }
+
+      const { data: carLinesData, error } = await supabase
+        .from('car_lines')
+        .select('*')
+        .eq('school_id', profile.school_id)
+        .order('line_name');
+
+      if (error) {
+        console.error('Error fetching car lines:', error);
+        return;
+      }
+
+      setCarLines((carLinesData || []) as CarLineRecord[]);
+      setFilteredCarLines((carLinesData || []) as CarLineRecord[]);
+    } catch (error) {
+      console.error('Error fetching car lines data:', error);
+    }
+  };
+
   const fetchSchoolName = async () => {
     if (!user) return;
 
@@ -174,7 +303,7 @@ const Transportation = () => {
     }
   };
 
-  // Search and filter logic
+  // Search and filter logic for buses
   useEffect(() => {
     let filtered = transportation.filter(record => {
       const driverName = `${record.driver_first_name} ${record.driver_last_name}`;
@@ -207,23 +336,74 @@ const Transportation = () => {
     setCurrentPage(1);
   }, [transportation, searchTerm, filterStatus, sortBy, sortOrder]);
 
+  // Walker locations search and filter logic
+  useEffect(() => {
+    let filtered = walkerLocations.filter(record => {
+      const matchesSearch = 
+        record.location_name.toLowerCase().includes(walkerSearchTerm.toLowerCase());
+      
+      const matchesStatus = walkerFilterStatus === 'all' || record.status === walkerFilterStatus;
+      
+      return matchesSearch && matchesStatus;
+    });
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aVal: any = a[walkerSortBy];
+      let bVal: any = b[walkerSortBy];
+      
+      if (aVal < bVal) return walkerSortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return walkerSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    setFilteredWalkerLocations(filtered);
+    setWalkerCurrentPage(1);
+  }, [walkerLocations, walkerSearchTerm, walkerFilterStatus, walkerSortBy, walkerSortOrder]);
+
+  // Car lines search and filter logic
+  useEffect(() => {
+    let filtered = carLines.filter(record => {
+      const matchesSearch = 
+        record.line_name.toLowerCase().includes(carSearchTerm.toLowerCase()) ||
+        record.pickup_location.toLowerCase().includes(carSearchTerm.toLowerCase());
+      
+      const matchesStatus = carFilterStatus === 'all' || record.status === carFilterStatus;
+      
+      return matchesSearch && matchesStatus;
+    });
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aVal: any = a[carSortBy];
+      let bVal: any = b[carSortBy];
+      
+      if (aVal < bVal) return carSortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return carSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    setFilteredCarLines(filtered);
+    setCarCurrentPage(1);
+  }, [carLines, carSearchTerm, carFilterStatus, carSortBy, carSortOrder]);
+
   // Pagination logic
   const totalPages = Math.ceil(filteredTransportation.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentTransportation = filteredTransportation.slice(startIndex, endIndex);
 
-  // Reset page when filters change
-  const handleFilterChange = (newFilterStatus?: typeof filterStatus) => {
-    setCurrentPage(1);
-    if (newFilterStatus !== undefined) setFilterStatus(newFilterStatus);
-  };
+  // Walker pagination
+  const walkerTotalPages = Math.ceil(filteredWalkerLocations.length / itemsPerPage);
+  const walkerStartIndex = (walkerCurrentPage - 1) * itemsPerPage;
+  const walkerEndIndex = walkerStartIndex + itemsPerPage;
+  const currentWalkerLocations = filteredWalkerLocations.slice(walkerStartIndex, walkerEndIndex);
 
-  const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
-    setSortBy(newSortBy);
-    if (newSortOrder) setSortOrder(newSortOrder);
-    setCurrentPage(1);
-  };
+  // Car lines pagination
+  const carTotalPages = Math.ceil(filteredCarLines.length / itemsPerPage);
+  const carStartIndex = (carCurrentPage - 1) * itemsPerPage;
+  const carEndIndex = carStartIndex + itemsPerPage;
+  const currentCarLines = filteredCarLines.slice(carStartIndex, carEndIndex);
 
   const getStatusBadge = (status: TransportationRecord['status']) => {
     switch (status) {
@@ -238,12 +418,53 @@ const Transportation = () => {
     }
   };
 
+  const getWalkerStatusBadge = (status: WalkerLocationRecord['status']) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>;
+      case 'inactive':
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Inactive</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const getCarStatusBadge = (status: CarLineRecord['status']) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>;
+      case 'inactive':
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Inactive</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
   const form = useForm<z.infer<typeof editBusSchema>>({
     resolver: zodResolver(editBusSchema),
     defaultValues: {
       bus_number: "",
       driver_first_name: "",
       driver_last_name: "",
+      status: "active",
+    },
+  });
+
+  const walkerForm = useForm<z.infer<typeof walkerLocationSchema>>({
+    resolver: zodResolver(walkerLocationSchema),
+    defaultValues: {
+      location_name: "",
+      is_default: false,
+      status: "active",
+    },
+  });
+
+  const carForm = useForm<z.infer<typeof carLineSchema>>({
+    resolver: zodResolver(carLineSchema),
+    defaultValues: {
+      line_name: "",
+      color: "#EF4444",
+      pickup_location: "",
       status: "active",
     },
   });
@@ -265,6 +486,40 @@ const Transportation = () => {
       });
     }
   }, [editingRecord, showAddDialog, form]);
+
+  useEffect(() => {
+    if (editingWalkerRecord) {
+      walkerForm.reset({
+        location_name: editingWalkerRecord.location_name,
+        is_default: editingWalkerRecord.is_default,
+        status: editingWalkerRecord.status,
+      });
+    } else if (showAddWalkerDialog) {
+      walkerForm.reset({
+        location_name: "",
+        is_default: false,
+        status: "active",
+      });
+    }
+  }, [editingWalkerRecord, showAddWalkerDialog, walkerForm]);
+
+  useEffect(() => {
+    if (editingCarRecord) {
+      carForm.reset({
+        line_name: editingCarRecord.line_name,
+        color: editingCarRecord.color,
+        pickup_location: editingCarRecord.pickup_location,
+        status: editingCarRecord.status,
+      });
+    } else if (showAddCarDialog) {
+      carForm.reset({
+        line_name: "",
+        color: "#EF4444",
+        pickup_location: "",
+        status: "active",
+      });
+    }
+  }, [editingCarRecord, showAddCarDialog, carForm]);
 
   const handleEditBus = async (values: z.infer<typeof editBusSchema>) => {
     if (!editingRecord) return;
@@ -341,6 +596,184 @@ const Transportation = () => {
       handleEditBus(values);
     } else {
       handleAddBus(values);
+    }
+  };
+
+  const handleWalkerFormSubmit = async (values: z.infer<typeof walkerLocationSchema>) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user!.id)
+        .single();
+
+      if (!profile?.school_id) {
+        toast.error('No school found for user');
+        return;
+      }
+
+      if (values.is_default) {
+        await supabase
+          .from('walker_locations')
+          .update({ is_default: false })
+          .eq('school_id', profile.school_id)
+          .neq('id', editingWalkerRecord?.id || '');
+      }
+
+      if (editingWalkerRecord) {
+        const { error } = await supabase
+          .from('walker_locations')
+          .update({
+            location_name: values.location_name,
+            is_default: values.is_default,
+            status: values.status,
+          })
+          .eq('id', editingWalkerRecord.id);
+
+        if (error) {
+          console.error('Error updating walker location:', error);
+          toast.error('Failed to update walker location');
+          return;
+        }
+
+        toast.success('Walker location updated successfully');
+        setEditingWalkerRecord(null);
+      } else {
+        const { error } = await supabase
+          .from('walker_locations')
+          .insert({
+            school_id: profile.school_id,
+            location_name: values.location_name,
+            is_default: values.is_default,
+            status: values.status,
+          });
+
+        if (error) {
+          console.error('Error creating walker location:', error);
+          toast.error('Failed to create walker location');
+          return;
+        }
+
+        toast.success('Walker location created successfully');
+        setShowAddWalkerDialog(false);
+      }
+      
+      await fetchWalkerLocations();
+      walkerForm.reset();
+    } catch (error) {
+      console.error('Error saving walker location:', error);
+      toast.error('Failed to save walker location');
+    }
+  };
+
+  const handleDeleteWalkerLocation = async (walkerLocation: WalkerLocationRecord) => {
+    if (!confirm(`Are you sure you want to delete ${walkerLocation.location_name}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('walker_locations')
+        .delete()
+        .eq('id', walkerLocation.id);
+
+      if (error) {
+        console.error('Error deleting walker location:', error);
+        toast.error('Failed to delete walker location');
+        return;
+      }
+
+      toast.success('Walker location deleted successfully');
+      await fetchWalkerLocations();
+    } catch (error) {
+      console.error('Error deleting walker location:', error);
+      toast.error('Failed to delete walker location');
+    }
+  };
+
+  const handleCarFormSubmit = async (values: z.infer<typeof carLineSchema>) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user!.id)
+        .single();
+
+      if (!profile?.school_id) {
+        toast.error('No school found for user');
+        return;
+      }
+
+      if (editingCarRecord) {
+        const { error } = await supabase
+          .from('car_lines')
+          .update({
+            line_name: values.line_name,
+            color: values.color,
+            pickup_location: values.pickup_location,
+            status: values.status,
+          })
+          .eq('id', editingCarRecord.id);
+
+        if (error) {
+          console.error('Error updating car line:', error);
+          toast.error('Failed to update car line');
+          return;
+        }
+
+        toast.success('Car line updated successfully');
+        setEditingCarRecord(null);
+      } else {
+        const { error } = await supabase
+          .from('car_lines')
+          .insert({
+            school_id: profile.school_id,
+            line_name: values.line_name,
+            color: values.color,
+            pickup_location: values.pickup_location,
+            status: values.status,
+          });
+
+        if (error) {
+          console.error('Error creating car line:', error);
+          toast.error('Failed to create car line');
+          return;
+        }
+
+        toast.success('Car line created successfully');
+        setShowAddCarDialog(false);
+      }
+      
+      await fetchCarLines();
+      carForm.reset();
+    } catch (error) {
+      console.error('Error saving car line:', error);
+      toast.error('Failed to save car line');
+    }
+  };
+
+  const handleDeleteCarLine = async (carLine: CarLineRecord) => {
+    if (!confirm(`Are you sure you want to delete ${carLine.line_name}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('car_lines')
+        .delete()
+        .eq('id', carLine.id);
+
+      if (error) {
+        console.error('Error deleting car line:', error);
+        toast.error('Failed to delete car line');
+        return;
+      }
+
+      toast.success('Car line deleted successfully');
+      await fetchCarLines();
+    } catch (error) {
+      console.error('Error deleting car line:', error);
+      toast.error('Failed to delete car line');
     }
   };
 
@@ -645,7 +1078,7 @@ const Transportation = () => {
               <div>
                 <h1 className="text-2xl font-bold">{schoolName || 'Transportation'}</h1>
                 <p className="text-sm text-muted-foreground">
-                  Manage school buses and student assignments
+                  Manage transportation, walker locations, and car lines
                 </p>
               </div>
             </div>
@@ -672,15 +1105,26 @@ const Transportation = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Walker Locations</CardTitle>
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {transportation.reduce((sum, bus) => sum + bus.students_count, 0)}
-                  </div>
+                  <div className="text-2xl font-bold">{walkerLocations.length}</div>
                   <p className="text-xs text-muted-foreground">
-                    Students using transportation
+                    Total walker pickup locations
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Car Lines</CardTitle>
+                  <Car className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{carLines.length}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Total car pickup lines
                   </p>
                 </CardContent>
               </Card>
@@ -699,659 +1143,350 @@ const Transportation = () => {
                   </p>
                 </CardContent>
               </Card>
-
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">In Maintenance</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {transportation.filter(bus => bus.status === 'maintenance').length}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Buses in maintenance
-                  </p>
-                </CardContent>
-              </Card>
             </div>
 
-            {/* Transportation Management */}
-            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>
-                      {managingStudents ? `Transportation Management: ${managingStudents.bus_number}` : 'Transportation Management'}
-                    </CardTitle>
-                    <CardDescription>
-                      {managingStudents 
-                        ? `Manage students for Bus ${managingStudents.bus_number}`
-                        : 'Manage buses, drivers, and student assignments'
-                      }
-                    </CardDescription>
-                  </div>
-                  {managingStudents ? (
-                    <div className="flex gap-2">
-                      <Button onClick={() => setManagingStudents(null)} variant="outline">
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to Buses
-                      </Button>
-                      <Button onClick={() => setShowAddStudentDialog(true)}>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Add Student
+            {/* Transportation Management with Tabs */}
+            <Tabs defaultValue="buses" className="space-y-6">
+              <div className="flex items-center justify-between">
+                <TabsList className="grid w-full max-w-[400px] grid-cols-3">
+                  <TabsTrigger value="buses" className="flex items-center gap-2">
+                    <Bus className="h-4 w-4" />
+                    Buses
+                  </TabsTrigger>
+                  <TabsTrigger value="walkers" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Walkers
+                  </TabsTrigger>
+                  <TabsTrigger value="car-lines" className="flex items-center gap-2">
+                    <Car className="h-4 w-4" />
+                    Car Lines
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              {/* Buses Tab */}
+              <TabsContent value="buses">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <CardTitle>Bus Management</CardTitle>
+                        <CardDescription>
+                          Manage buses, drivers, and student assignments
+                        </CardDescription>
+                      </div>
+                      <Button onClick={() => setShowAddDialog(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Bus
                       </Button>
                     </div>
-                  ) : (
-                    <Button onClick={() => setShowAddDialog(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Bus
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {managingStudents ? (
-                  /* Student Management View */
-                  <div className="space-y-4">
-                    {isLoadingStudents ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Search and Filters */}
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                          <Input
+                            placeholder="Search buses or drivers..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+
+                        {/* Status Filter */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-10">
+                              Status: {filterStatus === 'all' ? 'All' : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
+                              <ChevronDown className="h-3 w-3 ml-1" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                            <DropdownMenuItem onClick={() => setFilterStatus('all')}>
+                              All Status
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setFilterStatus('active')}>
+                              Active
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setFilterStatus('inactive')}>
+                              Inactive
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setFilterStatus('maintenance')}>
+                              Maintenance
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                    ) : (
-                      <>
-                        {/* Students Table */}
-                        <div className="rounded-md border bg-background/50">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="border-border hover:bg-muted/50">
-                                <TableHead>Student Name</TableHead>
-                                <TableHead>Grade</TableHead>
-                                <TableHead>Class</TableHead>
-                                <TableHead>Ride Status</TableHead>
-                                <TableHead className="w-[50px]">Actions</TableHead>
+
+                      {/* Buses Table */}
+                      <div className="rounded-md border bg-background/50">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="border-border hover:bg-muted/50">
+                              <TableHead>Bus Number</TableHead>
+                              <TableHead>Driver</TableHead>
+                              <TableHead>Students</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="w-[50px]">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {currentTransportation.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                  No buses found. Click "Add Bus" to get started.
+                                </TableCell>
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {busStudents.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                    No students assigned to this bus yet.
+                            ) : (
+                              currentTransportation.map((bus) => (
+                                <TableRow key={bus.id} className="border-border hover:bg-muted/30">
+                                  <TableCell className="font-medium">{bus.bus_number}</TableCell>
+                                  <TableCell>{`${bus.driver_first_name} ${bus.driver_last_name}`}</TableCell>
+                                  <TableCell>{bus.students_count}</TableCell>
+                                  <TableCell>{getStatusBadge(bus.status)}</TableCell>
+                                  <TableCell>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg z-50">
+                                        <DropdownMenuItem onClick={() => setEditingRecord(bus)}>
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          Edit
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </TableCell>
                                 </TableRow>
-                              ) : (
-                                busStudents.map((student) => (
-                                  <TableRow key={student.id} className="border-border hover:bg-muted/30">
-                                    <TableCell className="font-medium">{student.student_name}</TableCell>
-                                    <TableCell>{student.grade_level}</TableCell>
-                                    <TableCell>{student.class_name}</TableCell>
-                                    <TableCell>
-                                      <Select 
-                                        value={student.ride_status} 
-                                        onValueChange={(value) => handleUpdateRideStatus(student.id, value)}
-                                      >
-                                        <SelectTrigger className="w-[140px]">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="active_rider">Active Rider</SelectItem>
-                                          <SelectItem value="guest_rider">Guest Rider</SelectItem>
-                                          <SelectItem value="non_rider">Non-rider</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm"
-                                        onClick={() => handleRemoveStudent(student.id, student.student_name)}
-                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Walkers Tab */}
+              <TabsContent value="walkers">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <CardTitle>Walker Locations Management</CardTitle>
+                        <CardDescription>
+                          Organize and manage your school's walker pickup locations
+                        </CardDescription>
+                      </div>
+                      <Button onClick={() => setShowAddWalkerDialog(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Walker Location
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Search and Filters */}
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                          <Input
+                            placeholder="Search walker locations..."
+                            value={walkerSearchTerm}
+                            onChange={(e) => setWalkerSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
                         </div>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  /* Bus Management View */
-                  <div className="space-y-4">
-                    {/* Search and Filters */}
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                        <Input
-                          placeholder="Search buses or drivers..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
-                        />
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                              Status: {walkerFilterStatus === 'all' ? 'All' : walkerFilterStatus}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => setWalkerFilterStatus('all')}>
+                              All
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setWalkerFilterStatus('active')}>
+                              Active
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setWalkerFilterStatus('inactive')}>
+                              Inactive
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
 
-                      {/* Status Filter */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-10">
-                            Status: {filterStatus === 'all' ? 'All' : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
-                            <ChevronDown className="h-3 w-3 ml-1" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                          <DropdownMenuItem onClick={() => handleFilterChange('all')}>
-                            All Status
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleFilterChange('active')}>
-                            Active
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleFilterChange('inactive')}>
-                            Inactive
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleFilterChange('maintenance')}>
-                            Maintenance
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Transportation Table */}
-                    <div className="rounded-md border bg-background/50">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-border hover:bg-muted/50">
-                            <TableHead 
-                              className="cursor-pointer hover:bg-muted/30"
-                              onClick={() => handleSortChange('bus_number', sortBy === 'bus_number' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                            >
-                              Bus Number
-                              {sortBy === 'bus_number' && (
-                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </TableHead>
-                            <TableHead 
-                              className="cursor-pointer hover:bg-muted/30"
-                              onClick={() => handleSortChange('driver_first_name', sortBy === 'driver_first_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                            >
-                              Driver
-                              {sortBy === 'driver_first_name' && (
-                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </TableHead>
-                            <TableHead 
-                              className="cursor-pointer hover:bg-muted/30"
-                              onClick={() => handleSortChange('students_count', sortBy === 'students_count' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                            >
-                              Students
-                              {sortBy === 'students_count' && (
-                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                              )}
-                            </TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[50px]">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {currentTransportation.length === 0 ? (
+                      {/* Walker Locations Table */}
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                                {searchTerm || filterStatus !== 'all' 
-                                  ? 'No buses match your search criteria.' 
-                                  : 'No buses found. Add your first bus to get started.'
-                                }
-                              </TableCell>
+                              <TableHead>Location Name</TableHead>
+                              <TableHead>Default</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                          ) : (
-                            currentTransportation.map((bus) => (
-                              <TableRow key={bus.id} className="border-border hover:bg-muted/30">
-                                <TableCell className="font-medium">{bus.bus_number}</TableCell>
-                                <TableCell>{bus.driver_first_name} {bus.driver_last_name}</TableCell>
-                                <TableCell>{bus.students_count}</TableCell>
-                                <TableCell>{getStatusBadge(bus.status)}</TableCell>
+                          </TableHeader>
+                          <TableBody>
+                            {currentWalkerLocations.map((walkerLocation) => (
+                              <TableRow key={walkerLocation.id}>
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                                    {walkerLocation.location_name}
+                                  </div>
+                                </TableCell>
                                 <TableCell>
+                                  {walkerLocation.is_default && (
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                      Default
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {getWalkerStatusBadge(walkerLocation.status)}
+                                </TableCell>
+                                <TableCell className="text-right">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" className="h-8 w-8 p-0">
                                         <MoreHorizontal className="h-4 w-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="bg-background border border-border shadow-lg z-50" align="end">
-                                      <DropdownMenuItem onClick={() => setEditingRecord(bus)}>
-                                        <Edit className="h-4 w-4 mr-2" />
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => setEditingWalkerRecord(walkerLocation)}>
+                                        <Edit className="mr-2 h-4 w-4" />
                                         Edit
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleManageStudents(bus)}>
-                                        <Users className="h-4 w-4 mr-2" />
-                                        Manage Students
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </TableCell>
                               </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">
-                          Showing {startIndex + 1} to {Math.min(endIndex, filteredTransportation.length)} of {filteredTransportation.length} buses
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                          >
-                            Previous
-                          </Button>
-                          <span className="text-sm">
-                            Page {currentPage} of {totalPages}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                          >
-                            Next
-                          </Button>
-                        </div>
+                            ))}
+                          </TableBody>
+                        </Table>
                       </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Car Lines Tab */}
+              <TabsContent value="car-lines">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <CardTitle>Car Lines Management</CardTitle>
+                        <CardDescription>
+                          Organize and manage your school's car pickup lines
+                        </CardDescription>
+                      </div>
+                      <Button onClick={() => setShowAddCarDialog(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Car Line
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Search and Filters */}
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                          <Input
+                            placeholder="Search car lines..."
+                            value={carSearchTerm}
+                            onChange={(e) => setCarSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                              Status: {carFilterStatus === 'all' ? 'All' : carFilterStatus}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => setCarFilterStatus('all')}>
+                              All
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setCarFilterStatus('active')}>
+                              Active
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setCarFilterStatus('inactive')}>
+                              Inactive
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Car Lines Table */}
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Line Name</TableHead>
+                              <TableHead>Color</TableHead>
+                              <TableHead>Pickup Location</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {currentCarLines.map((carLine) => (
+                              <TableRow key={carLine.id}>
+                                <TableCell className="font-medium">
+                                  {carLine.line_name}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-4 h-4 rounded-full border"
+                                      style={{ backgroundColor: carLine.color }}
+                                    />
+                                    {carLine.color}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{carLine.pickup_location}</TableCell>
+                                <TableCell>
+                                  {getCarStatusBadge(carLine.status)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => setEditingCarRecord(carLine)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </main>
         </div>
-
-        {/* Add/Edit Bus Dialog */}
-        <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
-          setShowAddDialog(false);
-          setEditingRecord(null);
-        }}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{editingRecord ? 'Edit Bus Information' : 'Add New Bus'}</DialogTitle>
-              <DialogDescription>
-                {editingRecord 
-                  ? 'Update the bus details below. Click save when you\'re done.'
-                  : 'Enter the new bus details below. Click save to add the bus.'}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="bus_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bus Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter bus number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="driver_first_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Driver First Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter first name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="driver_last_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Driver Last Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter last name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                          <SelectItem value="maintenance">Maintenance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => {
-                    setShowAddDialog(false);
-                    setEditingRecord(null);
-                  }}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingRecord ? 'Save Changes' : 'Add Bus'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Add Student Dialog */}
-        <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Student to Bus {managingStudents?.bus_number}</DialogTitle>
-              <DialogDescription>
-                Search for existing students or create a new student record.
-              </DialogDescription>
-            </DialogHeader>
-            
-            {!showCreateStudentForm ? (
-              <div className="space-y-4">
-                {/* Student Search */}
-                <div className="space-y-2">
-                  <Label>Search Students</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter student name..."
-                      value={studentSearchTerm}
-                      onChange={(e) => {
-                        setStudentSearchTerm(e.target.value);
-                        if (e.target.value.length >= 2) {
-                          searchStudents(e.target.value);
-                        } else {
-                          setStudentSearchResults([]);
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowCreateStudentForm(true)}
-                    >
-                      Create New
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Search Results */}
-                {isSearchingStudents && (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                  </div>
-                )}
-
-                {studentSearchResults.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Search Results</Label>
-                    <div className="border rounded-md">
-                      {studentSearchResults.map((student) => (
-                        <div key={student.id} className="p-3 border-b last:border-b-0 flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{student.first_name} {student.last_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Grade {student.grade_level} • {student.class_name}
-                            </p>
-                          </div>
-                          {student.already_assigned ? (
-                            <Badge variant="secondary">Already on this bus</Badge>
-                          ) : (
-                            <div className="flex gap-2 items-center">
-                              <Select onValueChange={(value) => handleAssignStudent(student.id, value)}>
-                                <SelectTrigger className="w-[140px]">
-                                  <SelectValue placeholder="Ride Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="active_rider">Active Rider</SelectItem>
-                                  <SelectItem value="guest_rider">Guest Rider</SelectItem>
-                                  <SelectItem value="non_rider">Non-rider</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {studentSearchTerm.length >= 2 && !isSearchingStudents && studentSearchResults.length === 0 && (
-                  <div className="text-center py-4 text-muted-foreground">
-                    No students found. <Button variant="link" onClick={() => setShowCreateStudentForm(true)} className="p-0 h-auto">Create a new student record</Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* Create Student Form */
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-lg">Create New Student</Label>
-                  <Button variant="outline" onClick={() => setShowCreateStudentForm(false)}>
-                    Back to Search
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>First Name *</Label>
-                    <Input
-                      value={newStudentData.firstName}
-                      onChange={(e) => setNewStudentData({ ...newStudentData, firstName: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Last Name *</Label>
-                    <Input
-                      value={newStudentData.lastName}
-                      onChange={(e) => setNewStudentData({ ...newStudentData, lastName: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Grade Level *</Label>
-                  <Select value={newStudentData.gradeLevel} onValueChange={(value) => setNewStudentData({ ...newStudentData, gradeLevel: value, classId: '' })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select grade level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="6">6th Grade</SelectItem>
-                      <SelectItem value="7">7th Grade</SelectItem>
-                      <SelectItem value="8">8th Grade</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {newStudentData.gradeLevel && availableClasses.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Class</Label>
-                    <Select value={newStudentData.classId} onValueChange={(value) => setNewStudentData({ ...newStudentData, classId: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select class" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableClasses.map((classItem) => (
-                          <SelectItem key={classItem.id} value={classItem.id}>
-                            {classItem.class_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Student ID</Label>
-                  <Input
-                    value={newStudentData.studentId}
-                    onChange={(e) => setNewStudentData({ ...newStudentData, studentId: e.target.value })}
-                    placeholder="Optional student ID"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => {
-                    setShowCreateStudentForm(false);
-                    setShowAddStudentDialog(false);
-                    setNewStudentData({ firstName: '', lastName: '', gradeLevel: '', classId: '', studentId: '' });
-                  }}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleCreateStudent}
-                    disabled={!newStudentData.firstName || !newStudentData.lastName || !newStudentData.gradeLevel}
-                  >
-                    Create & Assign Student
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {!showCreateStudentForm && (
-              <div className="flex justify-end">
-                <Button variant="outline" onClick={() => setShowAddStudentDialog(false)}>
-                  Close
-                </Button>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-        <Dialog open={showAddDialog || !!editingRecord} onOpenChange={() => {
-          setShowAddDialog(false);
-          setEditingRecord(null);
-        }}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{editingRecord ? 'Edit Bus Information' : 'Add New Bus'}</DialogTitle>
-              <DialogDescription>
-                {editingRecord 
-                  ? 'Update the bus details below. Click save when you\'re done.'
-                  : 'Enter the new bus details below. Click save to add the bus.'}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="bus_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bus Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter bus number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="driver_first_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Driver First Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter first name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="driver_last_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Driver Last Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter last name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                          <SelectItem value="maintenance">Maintenance</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => {
-                    setShowAddDialog(false);
-                    setEditingRecord(null);
-                  }}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingRecord ? 'Save Changes' : 'Add Bus'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
       </div>
     </SidebarProvider>
   );
