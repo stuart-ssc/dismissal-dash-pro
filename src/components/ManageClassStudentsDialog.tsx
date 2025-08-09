@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +42,12 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
   const [roster, setRoster] = useState<RosterItem[]>([]);
   const [candidates, setCandidates] = useState<CandidateStudent[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [selectedStudentLabel, setSelectedStudentLabel] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const rosterIds = useMemo(() => new Set(roster.map(r => r.student_id)), [roster]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
 
   const fetchRoster = async (): Promise<RosterItem[]> => {
     setLoading(true);
@@ -72,33 +79,61 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
     }
   };
 
-  const fetchCandidates = async (currentIds?: Set<string>) => {
+  const fetchSearchResults = async (query: string) => {
     try {
+      if (!query || query.length < 2) {
+        setCandidates([]);
+        setAssignedIds(new Set());
+        return;
+      }
       const { data, error } = await supabase
         .from('students')
         .select('id, first_name, last_name, student_id, grade_level')
         .eq('school_id', schoolId)
-        .eq('grade_level', gradeLevel);
+        .eq('grade_level', gradeLevel)
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,student_id.ilike.%${query}%`)
+        .order('last_name', { ascending: true })
+        .limit(25);
       if (error) throw error;
 
-      const ids = currentIds ?? new Set(roster.map(r => r.student_id));
-      const available = (data || []).filter(s => !ids.has(s.id));
-      available.sort((a, b) => a.last_name.localeCompare(b.last_name));
-      setCandidates(available);
+      const results = data || [];
+      setCandidates(results);
+
+      const ids = results.map((s) => s.id);
+      if (ids.length > 0) {
+        const { data: rosterRows, error: rosterErr } = await supabase
+          .from('class_rosters')
+          .select('student_id')
+          .in('student_id', ids);
+        if (rosterErr) throw rosterErr;
+        setAssignedIds(new Set((rosterRows || []).map((r: any) => r.student_id)));
+      } else {
+        setAssignedIds(new Set());
+      }
     } catch (err) {
-      console.error('Error fetching candidates', err);
-      toast({ title: 'Error', description: 'Failed to load available students', variant: 'destructive' });
+      console.error('Error searching students', err);
+      toast({ title: 'Error', description: 'Failed to search students', variant: 'destructive' });
     }
   };
 
   useEffect(() => {
     if (!open) return;
-    (async () => {
-      const items = await fetchRoster();
-      const ids = new Set(items.map(i => i.student_id));
-      await fetchCandidates(ids);
-    })();
-  }, [open, classId, schoolId, gradeLevel]);
+    fetchRoster();
+    setSelectedStudentId('');
+    setSelectedStudentLabel('');
+    setCandidates([]);
+    setAssignedIds(new Set());
+    setSearchTerm('');
+  }, [open, classId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const q = searchTerm.trim();
+    const handle = setTimeout(() => {
+      fetchSearchResults(q);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchTerm, open, schoolId, gradeLevel]);
 
   const handleAdd = async () => {
     if (!selectedStudentId) return;
@@ -111,8 +146,13 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
       if (error) throw error;
       toast({ title: 'Student added', description: 'Student added to class successfully.' });
       setSelectedStudentId('');
+      setSelectedStudentLabel('');
       await fetchRoster();
-      setCandidates((prev) => prev.filter((s) => s.id !== addedId));
+      setAssignedIds((prev) => {
+        const next = new Set(prev);
+        next.add(addedId);
+        return next;
+      });
       onUpdated?.();
     } catch (err) {
       console.error('Error adding student', err);
@@ -131,17 +171,9 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
       toast({ title: 'Student removed', description: 'Student removed from class.' });
       await fetchRoster();
       if (removed) {
-        setCandidates((prev) => {
-          if (prev.some((s) => s.id === removed.student_id)) return prev;
-          const newCandidate: CandidateStudent = {
-            id: removed.student_id,
-            first_name: removed.first_name,
-            last_name: removed.last_name,
-            student_id: removed.student_code,
-            grade_level: gradeLevel,
-          };
-          const next = [...prev, newCandidate];
-          next.sort((a, b) => a.last_name.localeCompare(b.last_name));
+        setAssignedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(removed.student_id);
           return next;
         });
       }
@@ -169,20 +201,50 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
             <Label>Add Student</Label>
             <div className="flex flex-col sm:flex-row gap-3 items-stretch">
               <div className="flex-1">
-                <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={candidates.length ? 'Select a student' : 'No available students'} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border border-border shadow-lg z-50 max-h-[240px]">
-                    {candidates.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.last_name}, {s.first_name}{s.student_id ? ` · ${s.student_id}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={searchOpen} className="w-full justify-between">
+                      {selectedStudentLabel || "Search students by name or ID"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[480px] z-50">
+                    <Command>
+                      <CommandInput placeholder="Type a name or student ID..." value={searchTerm} onValueChange={setSearchTerm} />
+                      <CommandEmpty>No students found.</CommandEmpty>
+                      <CommandList>
+                        <CommandGroup heading="Students">
+                          {candidates.map((s) => {
+                            const label = `${s.last_name}, ${s.first_name}${s.student_id ? ` · ${s.student_id}` : ""}`;
+                            const inThisClass = rosterIds.has(s.id);
+                            const assignedElsewhere = assignedIds.has(s.id) && !inThisClass;
+                            return (
+                              <CommandItem
+                                key={s.id}
+                                value={label}
+                                onSelect={() => {
+                                  setSelectedStudentId(s.id);
+                                  setSelectedStudentLabel(label);
+                                  setSearchOpen(false);
+                                }}
+                              >
+                                <span>{label}</span>
+                                <div className="ml-auto flex items-center gap-2">
+                                  {inThisClass ? (
+                                    <Badge variant="secondary">In this class</Badge>
+                                  ) : assignedElsewhere ? (
+                                    <Badge variant="outline">Assigned</Badge>
+                                  ) : null}
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
-              <Button onClick={handleAdd} disabled={!selectedStudentId || isSubmitting || candidates.length === 0}>
+              <Button onClick={handleAdd} disabled={!selectedStudentId || isSubmitting || rosterIds.has(selectedStudentId)}>
                 <UserPlus className="h-4 w-4 mr-2" /> Add
               </Button>
             </div>
