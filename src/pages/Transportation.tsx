@@ -1078,18 +1078,22 @@ const Transportation = () => {
 
       toast.success('Student transportation method switched successfully');
       
-      // Refresh all relevant data
+      // Refresh ALL transportation data to update all student counts
+      await Promise.all([
+        fetchTransportation(), // Refresh bus data and counts
+        fetchWalkerLocations(), // Refresh walker location data and counts
+        fetchCarLines() // Refresh car line data and counts
+      ]);
+
+      // Refresh the specific student lists if any are currently being managed
       if (managingStudents) {
         fetchBusStudents(managingStudents.id);
-        fetchTransportation();
       }
       if (managingWalkerStudents) {
         fetchWalkerStudents(managingWalkerStudents.id);
-        fetchWalkerLocations();
       }
       if (managingCarStudents) {
         fetchCarStudents(managingCarStudents.id);
-        fetchCarLines();
       }
       
       // Clear search results
