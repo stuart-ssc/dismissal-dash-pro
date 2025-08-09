@@ -80,6 +80,7 @@ interface WalkerLocationRecord {
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
+  students_count: number;
 }
 
 interface CarLineRecord {
@@ -91,6 +92,7 @@ interface CarLineRecord {
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
+  students_count: number;
 }
 
 const Transportation = () => {
@@ -1218,6 +1220,7 @@ const Transportation = () => {
 
       toast.success('Student assigned to walker location successfully');
       fetchWalkerStudents(managingWalkerStudents.id);
+      fetchWalkerLocations(); // Refresh to update student counts
       setWalkerStudentSearchTerm('');
       setWalkerStudentSearchResults([]);
     } catch (error) {
@@ -1241,6 +1244,7 @@ const Transportation = () => {
 
       toast.success('Student removed from walker location successfully');
       fetchWalkerStudents(managingWalkerStudents!.id);
+      fetchWalkerLocations(); // Refresh to update student counts
     } catch (error) {
       console.error('Error removing walker student:', error);
       toast.error('Failed to remove student from walker location');
@@ -1376,6 +1380,7 @@ const Transportation = () => {
 
       toast.success('Student assigned to car line successfully');
       fetchCarStudents(managingCarStudents.id);
+      fetchCarLines(); // Refresh to update student counts
       setCarStudentSearchTerm('');
       setCarStudentSearchResults([]);
     } catch (error) {
@@ -1399,9 +1404,10 @@ const Transportation = () => {
 
       toast.success('Student removed from car line successfully');
       fetchCarStudents(managingCarStudents!.id);
+      fetchCarLines(); // Refresh to update student counts
     } catch (error) {
       console.error('Error removing car student:', error);
-      toast.error('Failed to remove student from car line');
+      toast.error('Failed to remove car line');
     }
   };
 
@@ -1707,7 +1713,7 @@ const Transportation = () => {
                                     {location.status === 'active' ? 'Active' : location.status.charAt(0).toUpperCase() + location.status.slice(1)}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>{0}</TableCell>
+                                <TableCell>{location.students_count || 0}</TableCell>
                                 <TableCell className="text-right">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -1815,7 +1821,7 @@ const Transportation = () => {
                                     {carLine.status === 'active' ? 'Active' : carLine.status.charAt(0).toUpperCase() + carLine.status.slice(1)}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>{0}</TableCell>
+                                <TableCell>{carLine.students_count || 0}</TableCell>
                                 <TableCell className="text-right">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
