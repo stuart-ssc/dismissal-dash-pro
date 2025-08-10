@@ -1,21 +1,46 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
-
+import { supabase } from "@/integrations/supabase/client";
 export default function DismissalLauncher() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+
+  const [schoolName, setSchoolName] = useState<string>('');
 
   useEffect(() => {
     document.title = "Launch Dismissal | Dashboard";
   }, []);
 
+  useEffect(() => {
+    const fetchSchoolName = async () => {
+      if (!user) return;
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', user.id)
+          .single();
+        if (profile?.school_id) {
+          const { data: school } = await supabase
+            .from('schools')
+            .select('school_name')
+            .eq('id', profile.school_id)
+            .single();
+          if (school?.school_name) setSchoolName(school.school_name);
+        }
+      } catch (e) {
+        console.error('Error fetching school name:', e);
+      }
+    };
+    fetchSchoolName();
+  }, [user]);
   return (
     <>
       <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <SidebarTrigger />
-          <h1 className="text-2xl font-bold">Launch Dismissal</h1>
+          <h1 className="text-2xl font-bold">{schoolName || '—'}</h1>
         </div>
         <Button onClick={signOut} variant="outline">Sign Out</Button>
       </header>
