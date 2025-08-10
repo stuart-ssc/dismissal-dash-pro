@@ -1,12 +1,16 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+
 export default function DismissalLauncher() {
   const { signOut, user } = useAuth();
 
   const [schoolName, setSchoolName] = useState<string>('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.title = "Launch Dismissal | Dashboard";
@@ -50,10 +54,34 @@ export default function DismissalLauncher() {
         <section aria-labelledby="dismissal-modes" className="max-w-5xl">
           <h2 id="dismissal-modes" className="sr-only">Dismissal Modes</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Button variant="outline" className="h-32 text-lg justify-center">Classroom Mode</Button>
-            <Button variant="outline" className="h-32 text-lg justify-center">Bus Dismissal Mode</Button>
-            <Button variant="outline" className="h-32 text-lg justify-center">Car Line Mode</Button>
-            <Button variant="outline" className="h-32 text-lg justify-center">Walker Mode</Button>
+            <Button
+              variant="outline"
+              className="h-32 text-lg justify-center"
+              onClick={() => navigate("/dashboard/dismissal/classroom")}
+            >
+              Classroom Mode
+            </Button>
+            <Button
+              variant="outline"
+              className="h-32 text-lg justify-center"
+              onClick={() => navigate("/dashboard/dismissal/bus")}
+            >
+              Bus Dismissal Mode
+            </Button>
+            <Button
+              variant="outline"
+              className="h-32 text-lg justify-center"
+              onClick={() => navigate("/dashboard/dismissal/car-line")}
+            >
+              Car Line Mode
+            </Button>
+            <Button
+              variant="outline"
+              className="h-32 text-lg justify-center"
+              onClick={() => navigate("/dashboard/dismissal/walker")}
+            >
+              Walker Mode
+            </Button>
           </div>
         </section>
       </main>

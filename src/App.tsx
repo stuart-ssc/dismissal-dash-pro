@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,6 +25,10 @@ import WalkerLocations from "./pages/WalkerLocations";
 import { AuthProvider } from "./hooks/useAuth";
 import DismissalLauncher from "./pages/DismissalLauncher";
 import AdminLayout from "./layouts/AdminLayout";
+import ClassroomMode from "./pages/modes/ClassroomMode";
+import BusMode from "./pages/modes/BusMode";
+import CarLineMode from "./pages/modes/CarLineMode";
+import WalkerMode from "./pages/modes/WalkerMode";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +59,12 @@ const App = () => (
               <Route path="/dashboard/import" element={<Import />} />
             </Route>
 
+            {/* Fullscreen dismissal modes (no left navigation) */}
+            <Route path="/dashboard/dismissal/classroom" element={<ClassroomMode />} />
+            <Route path="/dashboard/dismissal/bus" element={<BusMode />} />
+            <Route path="/dashboard/dismissal/car-line" element={<CarLineMode />} />
+            <Route path="/dashboard/dismissal/walker" element={<WalkerMode />} />
+
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
             <Route path="/admin/classes" element={<AdminClasses />} />
@@ -69,4 +80,3 @@ const App = () => (
 );
 
 export default App;
-

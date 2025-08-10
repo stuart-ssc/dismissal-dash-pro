@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      bus_run_events: {
+        Row: {
+          bus_id: string
+          check_in_time: string | null
+          checked_in_by: string | null
+          created_at: string
+          departed_at: string | null
+          departed_by: string | null
+          dismissal_run_id: string
+          id: string
+          order_index: number | null
+          school_id: number
+          updated_at: string
+        }
+        Insert: {
+          bus_id: string
+          check_in_time?: string | null
+          checked_in_by?: string | null
+          created_at?: string
+          departed_at?: string | null
+          departed_by?: string | null
+          dismissal_run_id: string
+          id?: string
+          order_index?: number | null
+          school_id: number
+          updated_at?: string
+        }
+        Update: {
+          bus_id?: string
+          check_in_time?: string | null
+          checked_in_by?: string | null
+          created_at?: string
+          departed_at?: string | null
+          departed_by?: string | null
+          dismissal_run_id?: string
+          id?: string
+          order_index?: number | null
+          school_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bus_run_events_dismissal_run_id_fkey"
+            columns: ["dismissal_run_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buses: {
         Row: {
           bus_number: string
@@ -46,6 +96,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      car_line_sessions: {
+        Row: {
+          arrived_at: string
+          car_line_id: string
+          created_at: string
+          dismissal_run_id: string
+          finished_at: string | null
+          id: string
+          managed_by: string
+          school_id: number
+        }
+        Insert: {
+          arrived_at?: string
+          car_line_id: string
+          created_at?: string
+          dismissal_run_id: string
+          finished_at?: string | null
+          id?: string
+          managed_by: string
+          school_id: number
+        }
+        Update: {
+          arrived_at?: string
+          car_line_id?: string
+          created_at?: string
+          dismissal_run_id?: string
+          finished_at?: string | null
+          id?: string
+          managed_by?: string
+          school_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_line_sessions_dismissal_run_id_fkey"
+            columns: ["dismissal_run_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       car_lines: {
         Row: {
@@ -424,6 +515,83 @@ export type Database = {
         }
         Relationships: []
       }
+      dismissal_run_groups: {
+        Row: {
+          activated_at: string
+          created_at: string
+          created_by: string
+          deactivated_at: string | null
+          dismissal_group_id: string
+          dismissal_run_id: string
+          id: string
+        }
+        Insert: {
+          activated_at?: string
+          created_at?: string
+          created_by: string
+          deactivated_at?: string | null
+          dismissal_group_id: string
+          dismissal_run_id: string
+          id?: string
+        }
+        Update: {
+          activated_at?: string
+          created_at?: string
+          created_by?: string
+          deactivated_at?: string | null
+          dismissal_group_id?: string
+          dismissal_run_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissal_run_groups_dismissal_run_id_fkey"
+            columns: ["dismissal_run_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dismissal_runs: {
+        Row: {
+          created_at: string
+          date: string
+          ended_at: string | null
+          id: string
+          plan_id: string | null
+          school_id: number
+          started_at: string
+          started_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          ended_at?: string | null
+          id?: string
+          plan_id?: string | null
+          school_id: number
+          started_at?: string
+          started_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          ended_at?: string | null
+          id?: string
+          plan_id?: string | null
+          school_id?: number
+          started_at?: string
+          started_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -788,6 +956,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      walker_sessions: {
+        Row: {
+          arrived_at: string
+          created_at: string
+          dismissal_run_id: string
+          finished_at: string | null
+          id: string
+          managed_by: string
+          school_id: number
+          walker_location_id: string
+        }
+        Insert: {
+          arrived_at?: string
+          created_at?: string
+          dismissal_run_id: string
+          finished_at?: string | null
+          id?: string
+          managed_by: string
+          school_id: number
+          walker_location_id: string
+        }
+        Update: {
+          arrived_at?: string
+          created_at?: string
+          dismissal_run_id?: string
+          finished_at?: string | null
+          id?: string
+          managed_by?: string
+          school_id?: number
+          walker_location_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "walker_sessions_dismissal_run_id_fkey"
+            columns: ["dismissal_run_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
