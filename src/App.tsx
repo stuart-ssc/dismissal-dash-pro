@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import CarLines from "./pages/CarLines";
 import WalkerLocations from "./pages/WalkerLocations";
 import { AuthProvider } from "./hooks/useAuth";
+import AdminLayout from "./layouts/AdminLayout";
 
 const queryClient = new QueryClient();
 
@@ -35,17 +36,22 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/people" element={<PeopleManagement />} />
-            <Route path="/dashboard/classes" element={<Classes />} />
-            <Route path="/dashboard/transportation" element={<Transportation />} />
-            <Route path="/dashboard/dismissals" element={<Dismissals />} />
-            <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
-            <Route path="/dashboard/dismissal-plans/:planId/groups" element={<DismissalGroups />} />
-            <Route path="/dashboard/settings" element={<Settings />} />
-            <Route path="/dashboard/car-lines" element={<CarLines />} />
-            <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
-            <Route path="/dashboard/import" element={<Import />} />
+
+            {/* Admin layout for dashboard routes */}
+            <Route element={<AdminLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/people" element={<PeopleManagement />} />
+              <Route path="/dashboard/classes" element={<Classes />} />
+              <Route path="/dashboard/transportation" element={<Transportation />} />
+              <Route path="/dashboard/dismissals" element={<Dismissals />} />
+              <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
+              <Route path="/dashboard/dismissal-plans/:planId/groups" element={<DismissalGroups />} />
+              <Route path="/dashboard/settings" element={<Settings />} />
+              <Route path="/dashboard/car-lines" element={<CarLines />} />
+              <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
+              <Route path="/dashboard/import" element={<Import />} />
+            </Route>
+
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
             <Route path="/admin/classes" element={<AdminClasses />} />
@@ -61,3 +67,4 @@ const App = () => (
 );
 
 export default App;
+

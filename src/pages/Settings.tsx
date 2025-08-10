@@ -457,23 +457,20 @@ const Settings = () => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col">
-          <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-2xl font-bold">{schoolData?.school_name || 'Settings'}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Configure your school's dismissal system preferences
-                </p>
-              </div>
-            </div>
-          </header>
+    <>
+      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">{schoolData?.school_name || 'Settings'}</h1>
+            <p className="text-sm text-muted-foreground">
+              Configure your school's dismissal system preferences
+            </p>
+          </div>
+        </div>
+      </header>
 
-          <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-6 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
@@ -911,9 +908,8 @@ const Settings = () => {
               </Card>
             </div>
           </div>
-        </div>
       </div>
-    </SidebarProvider>
+    </>
   );
 };
 

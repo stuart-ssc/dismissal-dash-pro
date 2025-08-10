@@ -331,41 +331,35 @@ export default function DismissalPlans() {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <AdminSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-lg">Loading...</div>
-          </div>
+      <div className="flex h-screen w-full">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-lg">Loading...</div>
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen bg-background w-full">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-card border-b border-border p-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger />
-            <div>
-              <h1 className="text-2xl font-bold">{schoolName || 'Dismissal Plans'}</h1>
-              <p className="text-sm text-muted-foreground">
-                Manage dismissal plans and schedules
-              </p>
-            </div>
+    <>
+      <header className="bg-card border-b border-border p-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">{schoolName || 'Dismissal Plans'}</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage dismissal plans and schedules
+            </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => navigate('/auth')}
-          >
-            Sign Out
-          </Button>
-        </header>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => navigate('/auth')}
+        >
+          Sign Out
+        </Button>
+      </header>
 
-        <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <Card>

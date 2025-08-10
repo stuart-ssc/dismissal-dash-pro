@@ -438,28 +438,25 @@ const People = () => {
   // For school admins, show the sidebar layout
   if (userRole === 'school_admin') {
     return (
-      <SidebarProvider>
-        <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
-          <AdminSidebar />
-          <div className="flex-1 flex flex-col">
-            <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger />
-                <div>
-                  <h1 className="text-2xl font-bold">
-                    {schoolName}
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    Welcome back, {firstName} {lastName}
-                  </p>
-                </div>
-              </div>
-              <Button onClick={signOut} variant="outline">
-                Sign Out
-              </Button>
-            </header>
+      <>
+        <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <div>
+              <h1 className="text-2xl font-bold">
+                {schoolName}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Welcome back, {firstName} {lastName}
+              </p>
+            </div>
+          </div>
+          <Button onClick={signOut} variant="outline">
+            Sign Out
+          </Button>
+        </header>
 
-            <main className="flex-1 p-6 space-y-6">
+        <main className="flex-1 p-6 space-y-6">
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
                   <div className="flex items-center justify-between">

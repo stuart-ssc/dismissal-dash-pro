@@ -314,24 +314,21 @@ const CarLines = () => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col">
-          <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-2xl font-bold">{schoolName || 'Car Lines'}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage car pickup lines and locations
-                </p>
-              </div>
-            </div>
-          </header>
+    <>
+      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">{schoolName || 'Car Lines'}</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage car pickup lines and locations
+            </p>
+          </div>
+        </div>
+      </header>
 
-          <div className="flex-1 p-6">
-              <div className="space-y-6">
+      <div className="flex-1 p-6">
+          <div className="space-y-6">
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
