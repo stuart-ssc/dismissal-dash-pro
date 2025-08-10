@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
+import { useAuth } from "@/hooks/useAuth";
 import ExitModeButton from "@/components/ExitModeButton";
 import { Loader2 } from "lucide-react";
 
@@ -21,6 +22,8 @@ export default function ClassroomMode() {
   const [groups, setGroups] = useState<ActiveGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [planName, setPlanName] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [teacherClassName, setTeacherClassName] = useState<string | null>(null);
 
   const runId = run?.id;
   const planId = run?.plan_id ?? null;
@@ -39,6 +42,38 @@ export default function ClassroomMode() {
       if (!error) setPlanName(data?.name ?? null);
     })();
   }, [planId]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setTeacherClassName(null);
+      return;
+    }
+    (async () => {
+      const { data: ct, error: ctErr } = await supabase
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", user.id)
+        .order("assigned_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (ctErr || !ct?.class_id) {
+        if (ctErr) console.warn("Error fetching teacher class:", ctErr.message);
+        setTeacherClassName(null);
+        return;
+      }
+      const { data: cls, error: clsErr } = await supabase
+        .from("classes")
+        .select("class_name")
+        .eq("id", ct.class_id)
+        .maybeSingle();
+      if (clsErr) {
+        console.warn("Error fetching class name:", clsErr.message);
+        setTeacherClassName(null);
+        return;
+      }
+      setTeacherClassName(cls?.class_name ?? null);
+    })();
+  }, [user?.id]);
 
   const fetchActiveGroups = useMemo(
     () => async () => {
@@ -171,7 +206,8 @@ export default function ClassroomMode() {
       <div className="mx-auto max-w-6xl">
         <header className="mb-6">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
-            Classroom Announcements {planName && (
+            {teacherClassName ? `${teacherClassName} Dismissal` : "Classroom Dismissal"}{" "}
+            {planName && (
               <span className="text-muted-foreground">— {planName}</span>
             )}
           </h1>
