@@ -593,16 +593,18 @@ export default function DismissalGroups() {
           <header className="bg-card border-b border-border p-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => navigate('/dashboard/dismissal-plans')}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Plans
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">{schoolName || plan.name}</h1>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold">{schoolName || plan.name}</h1>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => navigate('/dashboard/dismissal-plans')}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Plans
+                  </Button>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Manage dismissal groups for this plan
                 </p>
