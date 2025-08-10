@@ -621,7 +621,7 @@ export default function DismissalGroups() {
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>Plan Details</span>
+                  <span>{plan?.name ? plan.name + " Details" : "Plan Details"}</span>
                   <div className="flex gap-2">
                     {plan.is_default && <Badge variant="default">Default</Badge>}
                     <Badge variant={plan.status === 'active' ? 'default' : 'secondary'}>
