@@ -73,12 +73,25 @@ export default function ClassroomMode() {
 
           const busIds = (gb || []).map((x) => x.bus_id);
           if (busIds.length > 0) {
-            const { data: busList } = await supabase
-              .from("buses")
-              .select("id,bus_number")
-              .in("id", busIds)
-              .eq("school_id", schoolId ?? -1);
-            buses = (busList || []).map((b) => ({ id: b.id, bus_number: b.bus_number }));
+            // Only include buses that have been checked in (present) and not departed for this run
+            const { data: presentEvents } = await supabase
+              .from("bus_run_events")
+              .select("bus_id, check_in_time, departed_at")
+              .eq("dismissal_run_id", runId!)
+              .in("bus_id", busIds)
+              .not("check_in_time", "is", null)
+              .is("departed_at", null);
+
+            const presentBusIds = (presentEvents || []).map((e) => e.bus_id);
+
+            if (presentBusIds.length > 0) {
+              const { data: busList } = await supabase
+                .from("buses")
+                .select("id,bus_number")
+                .in("id", presentBusIds)
+                .eq("school_id", schoolId ?? -1);
+              buses = (busList || []).map((b) => ({ id: b.id, bus_number: b.bus_number }));
+            }
           }
         }
 
