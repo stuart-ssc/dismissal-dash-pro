@@ -624,8 +624,11 @@ export default function DismissalGroups() {
                   <span>{plan?.name ? plan.name + " Details" : "Plan Details"}</span>
                   <div className="flex gap-2">
                     {plan.is_default && <Badge variant="default">Default</Badge>}
-                    <Badge variant={plan.status === 'active' ? 'default' : 'secondary'}>
-                      {plan.status}
+                    <Badge
+                      variant={plan.status === 'active' ? 'secondary' : 'outline'}
+                      className={plan.status === 'active' ? undefined : 'bg-muted text-muted-foreground border-transparent'}
+                    >
+                      {plan.status === 'active' ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
                 </CardTitle>
