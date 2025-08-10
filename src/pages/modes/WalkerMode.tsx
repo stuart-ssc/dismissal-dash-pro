@@ -169,9 +169,6 @@ export default function WalkerMode() {
         </header>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Setup</CardTitle>
-          </CardHeader>
           <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="w-full sm:w-80">
               <label className="text-sm text-muted-foreground">Walker location</label>
