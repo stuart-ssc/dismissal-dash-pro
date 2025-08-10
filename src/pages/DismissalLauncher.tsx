@@ -46,6 +46,7 @@ export default function DismissalLauncher() {
       </header>
 
       <main className="flex-1 p-6">
+        <h2 className="text-3xl font-bold mb-6">Launch Dismissal</h2>
         <section aria-labelledby="dismissal-modes" className="max-w-5xl">
           <h2 id="dismissal-modes" className="sr-only">Dismissal Modes</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
