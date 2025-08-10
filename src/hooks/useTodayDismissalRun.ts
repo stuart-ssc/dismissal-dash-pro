@@ -11,6 +11,7 @@ type DismissalRun = {
   started_by: string;
   started_at: string;
   ended_at: string | null;
+  plan_id: string | null;
 };
 
 export const useTodayDismissalRun = () => {
@@ -33,9 +34,50 @@ export const useTodayDismissalRun = () => {
       const schoolId = profile?.school_id;
       if (!schoolId) throw new Error("User has no school assigned");
 
-      // Find or create today's run
+      // Find or create today's run and ensure it has today's plan
       const today = new Date().toISOString().slice(0, 10);
 
+      // 1) Select today's plan (date-specific) or default
+      let selectedPlanId: string | null = null;
+
+      // Try date-specific or open-ended active plan
+      const { data: datePlan, error: datePlanErr } = await supabase
+        .from("dismissal_plans")
+        .select("id")
+        .eq("school_id", schoolId)
+        .eq("status", "active")
+        .or(
+          `and(start_date.lte.${today},end_date.gte.${today}),` +
+          `and(start_date.lte.${today},end_date.is.null),` +
+          `and(start_date.is.null,end_date.gte.${today}),` +
+          `and(start_date.is.null,end_date.is.null)`
+        )
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (datePlanErr) {
+        console.warn("Error fetching date-specific plan:", datePlanErr.message);
+      }
+      if (datePlan?.id) {
+        selectedPlanId = datePlan.id;
+      } else {
+        const { data: defaultPlan, error: defaultPlanErr } = await supabase
+          .from("dismissal_plans")
+          .select("id")
+          .eq("school_id", schoolId)
+          .eq("status", "active")
+          .eq("is_default", true)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (defaultPlanErr) {
+          console.warn("Error fetching default plan:", defaultPlanErr.message);
+        }
+        selectedPlanId = defaultPlan?.id ?? null;
+      }
+
+      // 2) Find existing run
       const { data: existing, error: findErr } = await supabase
         .from("dismissal_runs")
         .select("*")
@@ -47,14 +89,27 @@ export const useTodayDismissalRun = () => {
       if (findErr) throw findErr;
 
       if (existing) {
+        // If run exists without a plan, attach the selected plan (idempotent)
+        if (!existing.plan_id && selectedPlanId) {
+          const { data: updated, error: updateErr } = await supabase
+            .from("dismissal_runs")
+            .update({ plan_id: selectedPlanId })
+            .eq("id", existing.id)
+            .select("*")
+            .single();
+          if (updateErr) throw updateErr;
+          return { run: updated as DismissalRun, schoolId };
+        }
         return { run: existing as DismissalRun, schoolId };
       }
 
+      // 3) Create new run with plan if available
       const { data: inserted, error: insertErr } = await supabase
         .from("dismissal_runs")
         .insert({
           school_id: schoolId,
           started_by: user.id,
+          plan_id: selectedPlanId,
         })
         .select("*")
         .single();

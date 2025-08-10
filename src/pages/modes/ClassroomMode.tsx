@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import ExitModeButton from "@/components/ExitModeButton";
@@ -19,12 +20,34 @@ export default function ClassroomMode() {
   const { run, schoolId, isLoading } = useTodayDismissalRun();
   const [groups, setGroups] = useState<ActiveGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
+  const [planName, setPlanName] = useState<string | null>(null);
 
   const runId = run?.id;
+  const planId = run?.plan_id ?? null;
+
+  useEffect(() => {
+    if (!planId) {
+      setPlanName(null);
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from("dismissal_plans")
+        .select("name")
+        .eq("id", planId)
+        .single();
+      if (!error) setPlanName(data?.name ?? null);
+    })();
+  }, [planId]);
 
   const fetchActiveGroups = useMemo(
     () => async () => {
       if (!runId) return;
+      if (!planId) {
+        setGroups([]);
+        setLoadingGroups(false);
+        return;
+      }
       setLoadingGroups(true);
 
       // 1) Get active run groups
@@ -47,7 +70,7 @@ export default function ClassroomMode() {
         groupIds.map(async (gid) => {
           const { data, error } = await supabase
             .from("dismissal_groups")
-            .select("id,name,group_type")
+            .select("id,name,group_type,dismissal_plan_id")
             .eq("id", gid)
             .single();
           if (error) {
@@ -63,7 +86,11 @@ export default function ClassroomMode() {
       for (const rg of drg || []) {
         const info = groupsInfo.find((g) => g?.id === rg.dismissal_group_id);
         const groupType = info?.group_type ?? null;
-
+        
+        const groupPlanId = (info as any)?.dismissal_plan_id ?? null;
+        if (!groupPlanId || groupPlanId !== planId) {
+          continue;
+        }
         let buses: { id: string; bus_number: string }[] = [];
         if (groupType && groupType.toLowerCase().includes("bus")) {
           const { data: gb } = await supabase
@@ -108,7 +135,7 @@ export default function ClassroomMode() {
       setGroups(result);
       setLoadingGroups(false);
     },
-    [runId, schoolId]
+    [runId, schoolId, planId]
   );
 
   useEffect(() => {
@@ -144,12 +171,23 @@ export default function ClassroomMode() {
       <div className="mx-auto max-w-6xl">
         <header className="mb-6">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
-            Classroom Announcements
+            Classroom Announcements {planName && (
+              <span className="text-muted-foreground">— {planName}</span>
+            )}
           </h1>
           <p className="text-muted-foreground mt-2">
             Groups currently being dismissed will appear here in real-time.
           </p>
         </header>
+
+        {run && !planId && (
+          <Alert className="mb-6">
+            <AlertTitle>No dismissal plan assigned for today</AlertTitle>
+            <AlertDescription>
+              Please set a date-specific plan for today or mark a default plan in Dismissal Plans.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {isLoading || loadingGroups ? (
           <div className="flex items-center gap-2 text-muted-foreground">
