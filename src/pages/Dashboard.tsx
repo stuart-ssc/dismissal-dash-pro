@@ -163,7 +163,7 @@ const Dashboard = () => {
               </Button>
               <Button size="lg" variant="softDestructive" className="w-full h-14 text-base">
                 <Pause className="mr-2" />
-                PAUSE
+                PAUSE DISMISSAL
               </Button>
             </section>
           )}
