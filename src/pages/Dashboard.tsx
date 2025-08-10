@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Users, Calendar, BarChart3, Upload } from "lucide-react";
@@ -14,6 +15,10 @@ const Dashboard = () => {
   const [schoolName, setSchoolName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
+  const { run, schoolId, isLoading: runLoading } = useTodayDismissalRun();
+  const [prepMinutes, setPrepMinutes] = useState<number | null>(null);
+  const [planDismissalTime, setPlanDismissalTime] = useState<string | null>(null);
+  const [nowTs, setNowTs] = useState<number>(Date.now());
 
   useEffect(() => {
     if (!loading && !user) {
@@ -58,6 +63,42 @@ const Dashboard = () => {
     fetchSchoolName();
   }, [user]);
 
+  // Periodically update time to refresh button states
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Fetch school's preparation time
+  useEffect(() => {
+    if (!schoolId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('schools')
+        .select('preparation_time_minutes')
+        .eq('id', schoolId)
+        .single();
+      setPrepMinutes((data as any)?.preparation_time_minutes ?? 5);
+    })();
+  }, [schoolId]);
+
+  // Fetch today's plan dismissal time
+  useEffect(() => {
+    const planId = run?.plan_id as string | null | undefined;
+    if (!planId) {
+      setPlanDismissalTime(null);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from('dismissal_plans')
+        .select('dismissal_time')
+        .eq('id', planId)
+        .single();
+      setPlanDismissalTime((data as any)?.dismissal_time ?? null);
+    })();
+  }, [run?.plan_id]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -73,6 +114,23 @@ const Dashboard = () => {
   // Debug: Log the current user role
   console.log('Current user role:', userRole);
   console.log('User object:', user);
+
+  // Compute dismissal timing state
+  const planStartDate = (() => {
+    if (!planDismissalTime) return null;
+    const parts = planDismissalTime.split(':');
+    const h = parseInt(parts[0] || '0', 10);
+    const m = parseInt(parts[1] || '0', 10);
+    const s = parseInt(parts[2] || '0', 10);
+    const d = new Date(nowTs);
+    d.setHours(h, m, s, 0);
+    return d;
+  })();
+
+  const now = new Date(nowTs);
+  const prep = prepMinutes ?? null;
+  const showDismissalControls = !!planStartDate && prep !== null && now >= new Date(planStartDate.getTime() - (prep as number) * 60000);
+  const afterStart = !!planStartDate && now >= planStartDate;
 
   // For school admins, show the sidebar layout
   if (userRole === 'school_admin') {
@@ -96,6 +154,18 @@ const Dashboard = () => {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
+          {showDismissalControls && (
+            <section aria-label="Dismissal controls" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button asChild size="lg" variant={afterStart ? "default" : "success"} className="w-full h-14 text-base">
+                <Link to="/dashboard/dismissal">
+                  {afterStart ? "Dismissal Has Already Begun Today" : "Launch Dismissal"}
+                </Link>
+              </Button>
+              <Button size="lg" variant="softDestructive" className="w-full h-14 text-base">
+                Pause
+              </Button>
+            </section>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -242,6 +312,19 @@ const Dashboard = () => {
             </Button>
           </div>
         </div>
+
+        {showDismissalControls && (
+          <section aria-label="Dismissal controls" className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <Button asChild size="lg" variant={afterStart ? "default" : "success"} className="w-full h-14 text-base">
+              <Link to="/dashboard/dismissal">
+                {afterStart ? "Dismissal Has Already Begun Today" : "Launch Dismissal"}
+              </Link>
+            </Button>
+            <Button size="lg" variant="softDestructive" className="w-full h-14 text-base">
+              Pause
+            </Button>
+          </section>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
