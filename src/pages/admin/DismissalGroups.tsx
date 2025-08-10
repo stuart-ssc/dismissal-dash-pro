@@ -594,17 +594,7 @@ export default function DismissalGroups() {
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <div className="flex flex-col">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold">{schoolName || plan.name}</h1>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => navigate('/dashboard/dismissal-plans')}
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Plans
-                  </Button>
-                </div>
+                <h1 className="text-2xl font-bold">{schoolName || plan.name}</h1>
                 <p className="text-sm text-muted-foreground">
                   Manage dismissal groups for this plan
                 </p>
@@ -624,7 +614,7 @@ export default function DismissalGroups() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>{plan?.name ? plan.name + " Details" : "Plan Details"}</span>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     {plan.is_default && <Badge variant="default">Default</Badge>}
                     <Badge
                       variant={plan.status === 'active' ? 'secondary' : 'outline'}
@@ -632,6 +622,14 @@ export default function DismissalGroups() {
                     >
                       {plan.status === 'active' ? 'Active' : 'Inactive'}
                     </Badge>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => navigate('/dashboard/dismissal-plans')}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Plans
+                    </Button>
                   </div>
                 </CardTitle>
                 {plan.description && (
