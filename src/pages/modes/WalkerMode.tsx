@@ -170,7 +170,7 @@ export default function WalkerMode() {
 
         <Card>
           <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="w-full sm:w-80">
+            <div className="mt-6 w-full sm:w-80">
               <label className="text-sm text-muted-foreground">Walker location</label>
               <Select
                 value={selectedLoc}
