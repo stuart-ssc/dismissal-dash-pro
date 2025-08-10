@@ -72,6 +72,7 @@ export default function DismissalGroups() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingGroup, setEditingGroup] = useState<DismissalGroup | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<string>("ALL_GRADES");
+  const [schoolName, setSchoolName] = useState<string>("");
 
   const form = useForm<GroupFormData>({
     resolver: zodResolver(groupFormSchema),
@@ -103,6 +104,7 @@ export default function DismissalGroups() {
       fetchBuses();
       fetchCarLines();
       fetchClasses();
+      fetchSchoolName();
     }
   }, [user, userRole, planId, navigate]);
 
@@ -259,6 +261,30 @@ export default function DismissalGroups() {
       setClasses(data || []);
     } catch (error) {
       console.error('Error fetching classes:', error);
+    }
+  };
+
+  const fetchSchoolName = async () => {
+    if (!user) return;
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data: school, error } = await supabase
+        .from('schools')
+        .select('school_name')
+        .eq('id', profile.school_id)
+        .single();
+
+      if (error) throw error;
+      setSchoolName(school?.school_name || '');
+    } catch (error) {
+      console.error('Error fetching school name:', error);
     }
   };
 
@@ -576,7 +602,7 @@ export default function DismissalGroups() {
                 Back to Plans
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">{plan.name} - Groups</h1>
+                <h1 className="text-2xl font-bold">{schoolName || plan.name} - Groups</h1>
                 <p className="text-sm text-muted-foreground">
                   Manage dismissal groups for this plan
                 </p>
