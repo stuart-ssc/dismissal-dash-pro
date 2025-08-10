@@ -175,41 +175,41 @@ export default function CarLineMode() {
         </header>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Setup</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="w-full sm:w-80">
-              <label className="text-sm text-muted-foreground">Car line location</label>
-              <Select
-                value={selectedLine}
-                onValueChange={(v) => {
-                  setSelectedLine(v);
-                  startSession(v);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select car line" />
-                </SelectTrigger>
-                <SelectContent>
-                  {carLines.map((cl) => (
-                    <SelectItem key={cl.id} value={cl.id}>
-                      {cl.line_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {session && (
-              <div className="text-sm text-muted-foreground">
-                Session started • {session.finished_at ? "Finished" : "Active"}
+          <CardContent>
+            <CardTitle className="mb-4">Setup</CardTitle>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="w-full sm:w-80">
+                <label className="text-sm text-muted-foreground">Car line location</label>
+                <Select
+                  value={selectedLine}
+                  onValueChange={(v) => {
+                    setSelectedLine(v);
+                    startSession(v);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select car line" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {carLines.map((cl) => (
+                      <SelectItem key={cl.id} value={cl.id}>
+                        {cl.line_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-            {session && !session.finished_at && (
-              <Button variant="secondary" onClick={finishSession}>
-                Mark Dismissal As Finished
-              </Button>
-            )}
+              {session && (
+                <div className="text-sm text-muted-foreground">
+                  Session started • {session.finished_at ? "Finished" : "Active"}
+                </div>
+              )}
+              {session && !session.finished_at && (
+                <Button variant="secondary" onClick={finishSession}>
+                  Mark Dismissal As Finished
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 
