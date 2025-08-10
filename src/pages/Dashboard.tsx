@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Users, Calendar, BarChart3, Upload } from "lucide-react";
+import { GraduationCap, Users, Calendar, BarChart3, Upload, Pause } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -162,7 +162,8 @@ const Dashboard = () => {
                 </Link>
               </Button>
               <Button size="lg" variant="softDestructive" className="w-full h-14 text-base">
-                Pause
+                <Pause className="mr-2" />
+                PAUSE
               </Button>
             </section>
           )}
