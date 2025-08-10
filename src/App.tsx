@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import CarLines from "./pages/CarLines";
 import WalkerLocations from "./pages/WalkerLocations";
 import { AuthProvider } from "./hooks/useAuth";
+import DismissalLauncher from "./pages/DismissalLauncher";
 import AdminLayout from "./layouts/AdminLayout";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/dashboard/classes" element={<Classes />} />
               <Route path="/dashboard/transportation" element={<Transportation />} />
               <Route path="/dashboard/dismissals" element={<Dismissals />} />
+              <Route path="/dashboard/dismissal" element={<DismissalLauncher />} />
               <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
               <Route path="/dashboard/dismissal-plans/:planId/groups" element={<DismissalGroups />} />
               <Route path="/dashboard/settings" element={<Settings />} />

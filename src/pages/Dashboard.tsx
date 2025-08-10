@@ -159,9 +159,11 @@ const Dashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-4">
-                <Button className="w-full justify-start" variant="outline">
-                  <Users className="mr-2 h-4 w-4" />
-                  Manage All Classes
+                <Button asChild className="w-full justify-start" variant="outline">
+                  <Link to="/dashboard/dismissal">
+                    <Users className="mr-2 h-4 w-4" />
+                    Launch Dismissal
+                  </Link>
                 </Button>
                 <Button className="w-full justify-start" variant="outline">
                   <GraduationCap className="mr-2 h-4 w-4" />
