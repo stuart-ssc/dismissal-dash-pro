@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { Home, Users, GraduationCap, UserCog, Settings, Menu, Bus } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
   SidebarContent,
@@ -23,12 +23,18 @@ const adminNavItems = [
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
 
+const teacherNavItems = [
+  { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "People", url: "/dashboard/people", icon: UserCog },
+];
+
 export function AdminSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const { userRole } = useAuth();
   const currentPath = location.pathname;
 
-  const isActive = (path: string) => currentPath === path;
+  const navItems = userRole === 'teacher' ? teacherNavItems : adminNavItems;
   
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50";
@@ -51,7 +57,7 @@ export function AdminSidebar() {
 
           <SidebarGroupContent>
             <SidebarMenu className="pt-4">
-              {adminNavItems.map((item) => (
+              {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink 
