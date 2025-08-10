@@ -11,8 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Search, Plus, Edit, MoreHorizontal, Users, ArrowLeft, Trash2, MapPin } from "lucide-react";
-import { AdminSidebar } from "@/components/AdminSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";

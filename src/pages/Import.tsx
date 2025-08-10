@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Users, GraduationCap, UserCheck } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Navbar from "@/components/Navbar";
-import { AdminSidebar } from "@/components/AdminSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface RosterRow {
   studentId?: string;

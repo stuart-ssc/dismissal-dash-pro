@@ -531,22 +531,20 @@ export default function DismissalGroups() {
 
   if (loading) {
     return (
-      <SidebarProvider>
+      <>
         <div className="flex h-screen w-full">
-          <AdminSidebar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-lg">Loading...</div>
           </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   if (!plan) {
     return (
-      <SidebarProvider>
+      <>
         <div className="flex h-screen w-full">
-          <AdminSidebar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <h2 className="text-xl font-semibold mb-2">Plan Not Found</h2>
@@ -557,14 +555,14 @@ export default function DismissalGroups() {
             </div>
           </div>
         </div>
-      </SidebarProvider>
+      </>
     );
   }
 
   return (
-    <SidebarProvider>
+    <>
       <div className="flex h-screen bg-background w-full">
-        <AdminSidebar />
+        
         <div className="flex-1 flex flex-col overflow-hidden">
           <header className="bg-card border-b border-border p-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -1130,6 +1128,6 @@ export default function DismissalGroups() {
           </main>
         </div>
       </div>
-    </SidebarProvider>
+    </>
   );
 }

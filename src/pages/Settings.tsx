@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { AdminSidebar } from "@/components/AdminSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Settings as SettingsIcon, School, Bell, Shield, Clock, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
