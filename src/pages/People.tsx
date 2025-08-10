@@ -48,6 +48,7 @@ const People = () => {
   const [filterRole, setFilterRole] = useState<'all' | 'School Admin' | 'Teacher' | 'Student'>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [filterClass, setFilterClass] = useState<string>('all');
+  const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -95,6 +96,24 @@ const People = () => {
 
     fetchUserData();
   }, [user]);
+
+  // Fetch classes for teacher users
+  useEffect(() => {
+    if (userRole !== 'teacher' || !user?.id) {
+      setTeacherClasses([]);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from('class_teachers')
+        .select('classes(class_name)')
+        .eq('teacher_id', user.id);
+      const names = (data || [])
+        .map((ct: any) => ct.classes?.class_name as string | undefined)
+        .filter(Boolean) as string[];
+      setTeacherClasses(names);
+    })();
+  }, [userRole, user?.id]);
 
   const fetchPeople = async (schoolId: number) => {
     setIsLoading(true);
@@ -351,6 +370,15 @@ const People = () => {
   // Apply filters and sorting
   const filteredAndSortedPeople = people
     .filter(person => {
+      if (userRole === 'teacher') {
+        const inMyClasses = person.classes?.some((c) => teacherClasses.includes(c));
+        if (person.role === 'Student') return inMyClasses;
+        if (person.role === 'Teacher') {
+          const isMe = person.email && user?.email && person.email === user.email;
+          return isMe || inMyClasses;
+        }
+        return false;
+      }
       if (filterRole !== 'all' && person.role !== filterRole) return false;
       if (filterGrade !== 'all' && person.grade !== filterGrade) return false;
       if (filterClass !== 'all' && !person.classes.includes(filterClass)) return false;
@@ -794,76 +822,80 @@ const People = () => {
             <CardContent>
               {/* Filters and Sort Controls */}
               <div className="flex items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Filters:</span>
-                </div>
-                
-                {/* Role Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8">
-                      Role: {filterRole === 'all' ? 'All' : filterRole}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                    <DropdownMenuItem onClick={() => handleFilterChange('all')}>
-                      All Roles
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleFilterChange('School Admin')}>
-                      School Admin
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleFilterChange('Teacher')}>
-                      Teacher
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleFilterChange('Student')}>
-                      Student
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {userRole !== 'teacher' && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Filters:</span>
+                    </div>
+                    
+                    {/* Role Filter */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          Role: {filterRole === 'all' ? 'All' : filterRole}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                        <DropdownMenuItem onClick={() => handleFilterChange('all')}>
+                          All Roles
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleFilterChange('School Admin')}>
+                          School Admin
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleFilterChange('Teacher')}>
+                          Teacher
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleFilterChange('Student')}>
+                          Student
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                {/* Grade Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8">
-                      Grade: {filterGrade === 'all' ? 'All' : filterGrade}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                    <DropdownMenuItem onClick={() => handleFilterChange(undefined, 'all')}>
-                      All Grades
-                    </DropdownMenuItem>
-                    {uniqueGrades.map((grade) => (
-                      <DropdownMenuItem key={grade} onClick={() => handleFilterChange(undefined, grade)}>
-                        {grade}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    {/* Grade Filter */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          Grade: {filterGrade === 'all' ? 'All' : filterGrade}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, 'all')}>
+                          All Grades
+                        </DropdownMenuItem>
+                        {uniqueGrades.map((grade) => (
+                          <DropdownMenuItem key={grade} onClick={() => handleFilterChange(undefined, grade)}>
+                            {grade}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                {/* Class Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8">
-                      Class: {filterClass === 'all' ? 'All' : filterClass}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                    <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, 'all')}>
-                      All Classes
-                    </DropdownMenuItem>
-                    {uniqueClasses.map((className) => (
-                      <DropdownMenuItem key={className} onClick={() => handleFilterChange(undefined, undefined, className)}>
-                        {className}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    {/* Class Filter */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          Class: {filterClass === 'all' ? 'All' : filterClass}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, 'all')}>
+                          All Classes
+                        </DropdownMenuItem>
+                        {uniqueClasses.map((className) => (
+                          <DropdownMenuItem key={className} onClick={() => handleFilterChange(undefined, undefined, className)}>
+                            {className}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                <div className="h-4 w-px bg-border mx-2" />
+                    <div className="h-4 w-px bg-border mx-2" />
+                  </>
+                )}
 
                 <div className="flex items-center gap-2">
                   <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
