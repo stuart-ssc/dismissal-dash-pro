@@ -615,13 +615,6 @@ export default function DismissalGroups() {
                 <CardTitle className="flex items-center justify-between">
                   <span>{plan?.name ? plan.name + " Details" : "Plan Details"}</span>
                   <div className="flex items-center gap-2">
-                    {plan.is_default && <Badge variant="default">Default</Badge>}
-                    <Badge
-                      variant={plan.status === 'active' ? 'secondary' : 'outline'}
-                      className={plan.status === 'active' ? undefined : 'bg-muted text-muted-foreground border-transparent'}
-                    >
-                      {plan.status === 'active' ? 'Active' : 'Inactive'}
-                    </Badge>
                     <Button 
                       variant="ghost" 
                       size="sm"
@@ -630,6 +623,13 @@ export default function DismissalGroups() {
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       Back to Plans
                     </Button>
+                    {plan.is_default && <Badge variant="default">Default</Badge>}
+                    <Badge
+                      variant={plan.status === 'active' ? 'secondary' : 'outline'}
+                      className={plan.status === 'active' ? undefined : 'bg-muted text-muted-foreground border-transparent'}
+                    >
+                      {plan.status === 'active' ? 'Active' : 'Inactive'}
+                    </Badge>
                   </div>
                 </CardTitle>
                 {plan.description && (
