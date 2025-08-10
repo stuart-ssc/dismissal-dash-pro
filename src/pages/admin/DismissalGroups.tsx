@@ -602,7 +602,7 @@ export default function DismissalGroups() {
                 Back to Plans
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">{schoolName || plan.name} - Groups</h1>
+                <h1 className="text-2xl font-bold">{schoolName || plan.name}</h1>
                 <p className="text-sm text-muted-foreground">
                   Manage dismissal groups for this plan
                 </p>
