@@ -586,7 +586,6 @@ const WalkerLocations = () => {
               </Dialog>
             </div>
           </div>
-      </div>
     </>
   );
 };

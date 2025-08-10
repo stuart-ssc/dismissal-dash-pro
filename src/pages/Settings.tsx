@@ -908,7 +908,6 @@ const Settings = () => {
               </Card>
             </div>
           </div>
-      </div>
     </>
   );
 };

@@ -483,8 +483,6 @@ const CarLines = () => {
               </Card>
             </div>
           </div>
-        </div>
-      </div>
 
       {/* Add/Edit Dialog */}
       <Dialog open={showAddDialog || !!editingRecord} onOpenChange={(open) => {
