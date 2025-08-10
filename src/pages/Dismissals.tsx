@@ -12,8 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Search, Plus, Edit, MoreHorizontal, ChevronDown, GraduationCap, Users, Calendar, BarChart3 } from "lucide-react";
-import { AdminSidebar } from "@/components/AdminSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 
 interface DismissalRecord {
@@ -483,9 +482,7 @@ const Dismissals = () => {
               </CardContent>
             </Card>
           </main>
-        </div>
-      </div>
-    </SidebarProvider>
+    </>
   );
 };
 
