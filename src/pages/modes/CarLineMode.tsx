@@ -176,7 +176,6 @@ export default function CarLineMode() {
 
         <Card>
           <CardContent>
-            <CardTitle className="mb-4">Setup</CardTitle>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
               <div className="w-full sm:w-80">
                 <label className="text-sm text-muted-foreground">Car line location</label>
