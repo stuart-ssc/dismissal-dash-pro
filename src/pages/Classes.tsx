@@ -34,7 +34,7 @@ const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) =
     lastName: '',
     email: '',
   });
-  const { toast } = useToast();
+  
 
   const resetForm = () => {
     setFormData({
@@ -85,15 +85,12 @@ const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) =
 
       if (emailError) {
         console.error('Error sending invitation email:', emailError);
-        toast({
-          title: "Teacher Created",
+        toast("Teacher Created", {
           description: "Teacher record created but invitation email failed to send. Please contact the teacher manually.",
-          variant: "default"
         });
       } else {
-        toast({
-          title: "Success",
-          description: "Teacher created and invitation email sent successfully!"
+        toast.success("Success", {
+          description: "Teacher created and invitation email sent successfully!",
         });
       }
 
@@ -106,10 +103,8 @@ const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) =
       });
     } catch (error) {
       console.error('Error adding teacher:', error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to add teacher. Please try again.",
-        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
