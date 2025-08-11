@@ -15,6 +15,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
+import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 
 // Types matching public.schools table (simplified)
@@ -420,12 +421,10 @@ export default function AdminSchools() {
                   <TableRow>
                     
                     <TableHead className="min-w-[200px]">Name</TableHead>
+                    <TableHead>City</TableHead>
+                    <TableHead>State</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Dismissal</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>SMS</TableHead>
-                    <TableHead>2FA</TableHead>
-                    <TableHead>Audit</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -433,12 +432,10 @@ export default function AdminSchools() {
                   {data?.map(s => <TableRow key={s.id}>
                       
                       <TableCell>{s.school_name}</TableCell>
+                      <TableCell>{s.city}</TableCell>
+                      <TableCell>{s.state}</TableCell>
                       <TableCell>{s.phone_number}</TableCell>
-                      <TableCell>{s.dismissal_time?.slice(0, 5)}</TableCell>
-                      <TableCell>{s.email_notifications_enabled ? "On" : "Off"}</TableCell>
-                      <TableCell>{s.sms_notifications_enabled ? "On" : "Off"}</TableCell>
-                      <TableCell>{s.two_factor_required ? "On" : "Off"}</TableCell>
-                      <TableCell>{s.audit_logs_enabled ? "On" : "Off"}</TableCell>
+                      <TableCell>{s.dismissal_time ? format(new Date(`1970-01-01T${s.dismissal_time}`), 'hh:mm a') : ''}</TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="secondary" size="sm" onClick={() => openEdit(s)}>
                           <Pencil className="h-4 w-4" />
