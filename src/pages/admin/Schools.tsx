@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -330,7 +330,7 @@ export default function AdminSchools() {
       return data as School[];
     }
   });
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -358,11 +358,11 @@ export default function AdminSchools() {
   });
   const openCreate = () => {
     setEditing(null);
-    setDialogOpen(true);
+    setShowForm(true);
   };
   const openEdit = (school: School) => {
     setEditing(school);
-    setDialogOpen(true);
+    setShowForm(true);
   };
   if (loading || userRole !== "system_admin") {
     return <main className="p-6">
@@ -389,23 +389,26 @@ export default function AdminSchools() {
           </Button>
         </header>
 
+      {showForm && (
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>{editing ? "Edit School" : "Add School"}</CardTitle>
+            <Button variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
+              Cancel
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <SchoolForm initial={editing ?? undefined} onClose={() => { setShowForm(false); setEditing(null); }} />
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Schools</CardTitle>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add School
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>{editing ? "Edit School" : "Add School"}</DialogTitle>
-              </DialogHeader>
-              <SchoolForm initial={editing ?? undefined} onClose={() => setDialogOpen(false)} />
-            </DialogContent>
-          </Dialog>
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add School
+            </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? <div className="py-6 text-muted-foreground flex items-center gap-2">
