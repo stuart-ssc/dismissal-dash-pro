@@ -208,12 +208,7 @@ const Transportation = () => {
       
       const { data: buses, error } = await supabase
         .from('buses')
-        .select(`
-          *,
-          student_bus_assignments(
-            student_id
-          )
-        `)
+        .select('*')
         .eq('school_id', profile.school_id)
         .order('bus_number', { ascending: true });
 
@@ -633,6 +628,12 @@ const Transportation = () => {
       }
 
       toast.success('Bus created successfully');
+      // Reset filters to ensure the new bus is visible
+      setFilterStatus('all');
+      setSearchTerm('');
+      setSortBy('bus_number');
+      setSortOrder('asc');
+      setCurrentPage(1);
       setShowAddDialog(false);
       form.reset();
       fetchTransportation(); // Refresh the data
