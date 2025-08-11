@@ -118,10 +118,11 @@ const People = () => {
   const fetchPeople = async (schoolId: number) => {
     setIsLoading(true);
     try {
+      console.log('Fetching people for school_id:', schoolId);
       const allPeople: PersonData[] = [];
 
       // Fetch profiles with roles in one query
-      const { data: profilesData } = await supabase
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
           id, 
@@ -131,6 +132,8 @@ const People = () => {
           user_roles(role)
         `)
         .eq('school_id', schoolId);
+
+      console.log('Profiles query result:', { profilesData, profilesError });
 
       // Process profiles with roles
       if (profilesData) {
@@ -150,7 +153,7 @@ const People = () => {
       }
 
       // Fetch teachers with their classes in one query using joins
-      const { data: teachersData } = await supabase
+      const { data: teachersData, error: teachersError } = await supabase
         .from('teachers')
         .select(`
           id, 
@@ -162,6 +165,8 @@ const People = () => {
           )
         `)
         .eq('school_id', schoolId);
+
+      console.log('Teachers query result:', { teachersData, teachersError });
 
       if (teachersData) {
         for (const teacher of teachersData) {

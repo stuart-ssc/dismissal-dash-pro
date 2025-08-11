@@ -212,6 +212,8 @@ const Transportation = () => {
         .eq('school_id', profile.school_id)
         .order('bus_number', { ascending: true });
 
+      console.log('Buses query result:', { buses, error, schoolId: profile.school_id });
+
       if (error) {
         console.error('Error fetching buses:', error);
         toast.error('Failed to load transportation data');

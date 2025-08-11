@@ -251,6 +251,23 @@ const Classes = () => {
     try {
       setIsLoading(true);
       
+      // Get user's school_id first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      console.log('User profile for classes:', profile);
+
+      if (!profile?.school_id) {
+        console.log('No school_id found for user');
+        setClasses([]);
+        setFilteredClasses([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data: classesData, error } = await supabase
         .from('classes')
         .select(`
@@ -261,7 +278,10 @@ const Classes = () => {
           class_rosters(
             student_id
           )
-        `);
+        `)
+        .eq('school_id', profile.school_id);
+
+      console.log('Classes query result:', { classesData, error, schoolId: profile.school_id });
 
       if (error) {
         console.error('Error fetching classes:', error);
