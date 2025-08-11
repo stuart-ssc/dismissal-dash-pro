@@ -1,10 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, School, Users, Settings, BarChart3, Database } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import { supabase } from "@/integrations/supabase/client";
 const Admin = () => {
   const {
     user,
@@ -12,7 +13,10 @@ const Admin = () => {
     signOut,
     loading
   } = useAuth();
-  const navigate = useNavigate();
+const navigate = useNavigate();
+  const [totalSchools, setTotalSchools] = useState<number | null>(null);
+  const [newSchoolsThisMonth, setNewSchoolsThisMonth] = useState<number | null>(null);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
@@ -20,6 +24,31 @@ const Admin = () => {
       navigate('/dashboard');
     }
   }, [user, userRole, loading, navigate]);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const { count: total } = await supabase
+        .from('schools')
+        .select('*', { count: 'exact', head: true });
+
+      const firstDayOfMonth = new Date();
+      firstDayOfMonth.setDate(1);
+      firstDayOfMonth.setHours(0, 0, 0, 0);
+
+      const { count: newThisMonth } = await supabase
+        .from('schools')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', firstDayOfMonth.toISOString());
+
+      setTotalSchools(total ?? 0);
+      setNewSchoolsThisMonth(newThisMonth ?? 0);
+    };
+
+    if (user && userRole === 'system_admin') {
+      fetchCounts();
+    }
+  }, [user, userRole]);
+
   if (loading) {
     return <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -51,9 +80,9 @@ const Admin = () => {
               <School className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">147</div>
+              <div className="text-2xl font-bold">{totalSchools ?? '—'}</div>
               <p className="text-xs text-muted-foreground">
-                +5 new this month
+                {newSchoolsThisMonth !== null ? `+${newSchoolsThisMonth} new this month` : 'Loading...'}
               </p>
             </CardContent>
           </Card>
