@@ -192,6 +192,19 @@ const Transportation = () => {
 
     try {
       setIsLoading(true);
+
+      // Get user's school to scope the query and avoid any RLS ambiguity
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!profile?.school_id) {
+        setTransportation([]);
+        setFilteredTransportation([]);
+        return;
+      }
       
       const { data: buses, error } = await supabase
         .from('buses')
@@ -200,7 +213,9 @@ const Transportation = () => {
           student_bus_assignments(
             student_id
           )
-        `);
+        `)
+        .eq('school_id', profile.school_id)
+        .order('bus_number', { ascending: true });
 
       if (error) {
         console.error('Error fetching buses:', error);
@@ -208,7 +223,7 @@ const Transportation = () => {
         return;
       }
 
-      const transportationData: TransportationRecord[] = buses?.map(bus => ({
+      const transportationData: TransportationRecord[] = (buses ?? []).map((bus: any) => ({
         id: bus.id,
         bus_number: bus.bus_number,
         driver_first_name: bus.driver_first_name,
@@ -217,7 +232,7 @@ const Transportation = () => {
         status: bus.status as 'active' | 'inactive' | 'maintenance',
         created_at: bus.created_at,
         updated_at: bus.updated_at,
-      })) || [];
+      }));
 
       setTransportation(transportationData);
       setFilteredTransportation(transportationData);
