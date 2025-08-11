@@ -40,6 +40,7 @@ export function AdminSidebar() {
       ...navItems,
       { title: "System Administration", url: "/admin", icon: Shield },
       { title: "Manage Schools", url: "/admin/schools", icon: Building2 },
+      { title: "Manage Users", url: "/admin/users", icon: Users },
     ];
   }
   

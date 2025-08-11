@@ -16,7 +16,7 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import DismissalGroups from "./pages/admin/DismissalGroups";
 import AdminClasses from "./pages/admin/Classes";
-import People from "./pages/admin/People";
+import AdminUsers from "./pages/admin/Users";
 import PeopleManagement from "./pages/People";
 import AdminSettings from "./pages/admin/Settings";
 import AdminSchools from "./pages/admin/Schools";
@@ -70,7 +70,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
             <Route path="/admin/classes" element={<AdminClasses />} />
-            <Route path="/admin/users" element={<People />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/schools" element={<AdminSchools />} />
             <Route path="/admin-enable" element={<AdminPromote />} />
