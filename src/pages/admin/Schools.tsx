@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 
@@ -478,30 +479,57 @@ export default function AdminSchools() {
                   <TableRow>
                     
                     <TableHead className="min-w-[200px]">Name</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Dismissal</TableHead>
+                    <TableHead className="hidden md:table-cell">City</TableHead>
+                    <TableHead className="hidden md:table-cell">State</TableHead>
+                    <TableHead className="hidden lg:table-cell">Phone</TableHead>
+                    <TableHead className="hidden lg:table-cell">Dismissal</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.map(s => <TableRow key={s.id}>
-                      
-                      <TableCell>{s.school_name}</TableCell>
-                      <TableCell>{s.city}</TableCell>
-                      <TableCell>{s.state}</TableCell>
-                      <TableCell>{s.phone_number}</TableCell>
-                      <TableCell>{s.dismissal_time ? format(new Date(`1970-01-01T${s.dismissal_time}`), 'hh:mm a') : ''}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="secondary" size="sm" onClick={() => openEdit(s)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="softDestructive" size="sm" onClick={() => deleteMutation.mutate(s.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  {data?.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span>{s.school_name || '—'}</span>
+                          <span className="md:hidden text-xs text-muted-foreground">
+                            {(s.city || s.state) ? `(${[s.city, s.state].filter(Boolean).join(', ')})` : ''}
+                          </span>
+                        </div>
                       </TableCell>
-                    </TableRow>)}
+                      <TableCell className="hidden md:table-cell">{s.city || '—'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{s.state || '—'}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{s.phone_number || '—'}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{s.dismissal_time ? format(new Date(`1970-01-01T${s.dismissal_time}`), "hh:mm a") : ''}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="hidden lg:flex justify-end gap-2">
+                          <Button variant="secondary" size="sm" onClick={() => openEdit(s)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="softDestructive" size="sm" onClick={() => deleteMutation.mutate(s.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="lg:hidden flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" aria-label={`Actions for ${s.school_name || 'school'}`}>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="z-[60] bg-background">
+                              <DropdownMenuItem onClick={() => openEdit(s)}>
+                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => deleteMutation.mutate(s.id)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>}
