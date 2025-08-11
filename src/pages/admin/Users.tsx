@@ -311,9 +311,9 @@ export default function AdminUsers() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Email</TableHead>
-                  <TableHead className="hidden md:table-cell">Role</TableHead>
-                  <TableHead className="hidden md:table-cell">School</TableHead>
+                  <TableHead className="hidden lg:table-cell">Email</TableHead>
+                  <TableHead className="hidden lg:table-cell">Role</TableHead>
+                  <TableHead className="hidden lg:table-cell">School</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -324,12 +324,12 @@ export default function AdminUsers() {
                   return (
                     <TableRow key={p.id}>
                       <TableCell>{[p.first_name, p.last_name].filter(Boolean).join(' ') || '—'}</TableCell>
-                      <TableCell className="hidden md:table-cell">{p.email || '—'}</TableCell>
-                      <TableCell className="hidden md:table-cell">{role === '—' ? '—' : getRoleLabel(role as UserRoleRow["role"])}</TableCell>
-                      <TableCell className="hidden md:table-cell">{schoolName}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{p.email || '—'}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{role === '—' ? '—' : getRoleLabel(role as UserRoleRow["role"])}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{schoolName}</TableCell>
                       <TableCell className="text-right">
                         {/* Desktop actions */}
-                        <div className="hidden md:flex justify-end gap-2">
+                        <div className="hidden lg:flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => { setEditing(p); setShowForm(true); }}>
                             <Pencil className="mr-2 h-4 w-4" /> Edit
                           </Button>
@@ -358,7 +358,7 @@ export default function AdminUsers() {
                         </div>
 
                         {/* Mobile actions */}
-                        <div className="md:hidden flex justify-end">
+                        <div className="lg:hidden flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="outline" size="sm" aria-label={`Actions for ${[p.first_name, p.last_name].filter(Boolean).join(' ') || p.email || 'user'}`}>
