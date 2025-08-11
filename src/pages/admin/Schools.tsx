@@ -21,7 +21,10 @@ import Navbar from "@/components/Navbar";
 interface School {
   id: number;
   school_name: string | null;
-  address: string | null;
+  street_address: string | null;
+  city: string | null;
+  state: string | null;
+  zipcode: string | null;
   phone_number: string | null;
   school_logo: string | null;
   primary_color: string | null;
@@ -41,7 +44,10 @@ interface School {
 }
 const schema = z.object({
   school_name: z.string().min(1, "Name is required"),
-  address: z.string().optional().nullable(),
+  street_address: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  zipcode: z.string().optional().nullable(),
   phone_number: z.string().optional().nullable(),
   school_logo: z.string().url().optional().nullable(),
   primary_color: z.string().optional().nullable(),
@@ -74,9 +80,11 @@ function SchoolForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      
       school_name: initial?.school_name ?? "",
-      address: initial?.address ?? "",
+      street_address: initial?.street_address ?? "",
+      city: initial?.city ?? "",
+      state: initial?.state ?? "",
+      zipcode: initial?.zipcode ?? "",
       phone_number: initial?.phone_number ?? "",
       school_logo: initial?.school_logo ?? "",
       primary_color: initial?.primary_color ?? "#3B82F6",
@@ -94,6 +102,7 @@ function SchoolForm({
       audit_logs_enabled: initial?.audit_logs_enabled ?? true
     }
   });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const upsertMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const payload = {
@@ -130,6 +139,23 @@ function SchoolForm({
       });
     }
   });
+  const handleFile = async (file: File) => {
+    try {
+      setUploadingLogo(true);
+      const ext = file.name.split('.').pop() || 'png';
+      const filePath = `logos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('school-logos').upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('school-logos').getPublicUrl(filePath);
+      form.setValue('school_logo', data.publicUrl, { shouldDirty: true });
+      toast({ title: 'Logo uploaded', description: 'Logo has been uploaded successfully.' });
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err.message ?? 'Could not upload logo.', variant: 'destructive' as any });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   return <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={form.handleSubmit(values => upsertMutation.mutate(values))}>
 
       <div className="space-y-2">
@@ -137,9 +163,24 @@ function SchoolForm({
         <Input id="school_name" {...form.register("school_name")} />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="address">Address</Label>
-        <Input id="address" {...form.register("address")} />
+      <div className="space-y-2 md:col-span-2">
+        <Label htmlFor="street_address">Street Address</Label>
+        <Input id="street_address" {...form.register("street_address")} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2">
+        <div className="space-y-2">
+          <Label htmlFor="city">City</Label>
+          <Input id="city" {...form.register("city")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="state">State</Label>
+          <Input id="state" maxLength={2} {...form.register("state")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="zipcode">Zip Code</Label>
+          <Input id="zipcode" {...form.register("zipcode")} />
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -147,19 +188,43 @@ function SchoolForm({
         <Input id="phone_number" {...form.register("phone_number")} />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="school_logo">Logo URL</Label>
-        <Input id="school_logo" {...form.register("school_logo")} />
+      <div className="space-y-2 md:col-span-2">
+        <Label htmlFor="school_logo">Logo</Label>
+        {form.watch("school_logo") && (
+          <img
+            src={form.watch("school_logo") || ''}
+            alt="School logo preview"
+            className="h-12 w-auto rounded border"
+          />
+        )}
+        <div
+          className="border-2 border-dashed rounded-md p-6 text-center text-sm text-muted-foreground"
+          onDragOver={(e) => { e.preventDefault(); }}
+          onDrop={async (e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) await handleFile(f); }}
+        >
+          <p>Drag and drop an image here, or click to browse</p>
+          <Input
+            id="school_logo_file"
+            type="file"
+            accept="image/*"
+            onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleFile(file); }}
+          />
+          {uploadingLogo && (
+            <div className="mt-2 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="primary_color">Primary Color</Label>
-        <Input id="primary_color" {...form.register("primary_color")} />
+        <Input id="primary_color" type="color" {...form.register("primary_color")} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="secondary_color">Secondary Color</Label>
-        <Input id="secondary_color" {...form.register("secondary_color")} />
+        <Input id="secondary_color" type="color" {...form.register("secondary_color")} />
       </div>
 
       <div className="space-y-2">

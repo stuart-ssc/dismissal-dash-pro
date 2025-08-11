@@ -636,6 +636,7 @@ export type Database = {
           audit_logs_enabled: boolean | null
           auto_dismissal_enabled: boolean | null
           car_lines_enabled: boolean | null
+          city: string | null
           created_at: string
           dismissal_time: string | null
           email_notifications_enabled: boolean | null
@@ -650,14 +651,18 @@ export type Database = {
           secondary_color: string | null
           session_timeout_enabled: boolean | null
           sms_notifications_enabled: boolean | null
+          state: string | null
+          street_address: string | null
           two_factor_required: boolean | null
           walkers_enabled: boolean | null
+          zipcode: string | null
         }
         Insert: {
           address?: string | null
           audit_logs_enabled?: boolean | null
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
+          city?: string | null
           created_at?: string
           dismissal_time?: string | null
           email_notifications_enabled?: boolean | null
@@ -672,14 +677,18 @@ export type Database = {
           secondary_color?: string | null
           session_timeout_enabled?: boolean | null
           sms_notifications_enabled?: boolean | null
+          state?: string | null
+          street_address?: string | null
           two_factor_required?: boolean | null
           walkers_enabled?: boolean | null
+          zipcode?: string | null
         }
         Update: {
           address?: string | null
           audit_logs_enabled?: boolean | null
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
+          city?: string | null
           created_at?: string
           dismissal_time?: string | null
           email_notifications_enabled?: boolean | null
@@ -694,8 +703,11 @@ export type Database = {
           secondary_color?: string | null
           session_timeout_enabled?: boolean | null
           sms_notifications_enabled?: boolean | null
+          state?: string | null
+          street_address?: string | null
           two_factor_required?: boolean | null
           walkers_enabled?: boolean | null
+          zipcode?: string | null
         }
         Relationships: []
       }
