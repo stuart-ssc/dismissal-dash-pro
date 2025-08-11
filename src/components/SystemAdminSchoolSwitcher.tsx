@@ -26,7 +26,7 @@ export default function SystemAdminSchoolSwitcher() {
       <Select
         value={value}
         onValueChange={(v) => {
-          if (!v) { setImpersonatedSchoolId(null); return; }
+          if (v === '__none__') { setImpersonatedSchoolId(null); return; }
           const id = Number(v);
           setImpersonatedSchoolId(Number.isNaN(id) ? null : id);
         }}
@@ -35,7 +35,7 @@ export default function SystemAdminSchoolSwitcher() {
           <SelectValue placeholder="Impersonate school" />
         </SelectTrigger>
         <SelectContent className="z-[60] bg-background">
-          <SelectItem key="none" value="">Stop impersonating</SelectItem>
+          <SelectItem key="none" value="__none__">Stop impersonating</SelectItem>
           {schools.map((s) => (
             <SelectItem key={s.id} value={String(s.id)}>
               {s.school_name || `School #${s.id}`}
