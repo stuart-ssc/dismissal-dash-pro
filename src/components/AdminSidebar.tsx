@@ -1,4 +1,4 @@
-import { Home, Users, GraduationCap, UserCog, Settings, Menu, Bus } from "lucide-react";
+import { Home, Users, GraduationCap, UserCog, Settings, Menu, Bus, Shield } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -34,7 +34,10 @@ export function AdminSidebar() {
   const { userRole } = useAuth();
   const currentPath = location.pathname;
 
-  const navItems = userRole === 'teacher' ? teacherNavItems : adminNavItems;
+  let navItems = userRole === 'teacher' ? teacherNavItems : adminNavItems;
+  if (userRole === 'system_admin') {
+    navItems = [...navItems, { title: "System Administration", url: "/admin", icon: Shield }];
+  }
   
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50";

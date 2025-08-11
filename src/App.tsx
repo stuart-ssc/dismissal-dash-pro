@@ -29,6 +29,7 @@ import ClassroomMode from "./pages/modes/ClassroomMode";
 import BusMode from "./pages/modes/BusMode";
 import CarLineMode from "./pages/modes/CarLineMode";
 import WalkerMode from "./pages/modes/WalkerMode";
+import AdminPromote from "./pages/AdminPromote";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/admin/classes" element={<AdminClasses />} />
             <Route path="/admin/users" element={<People />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin-enable" element={<AdminPromote />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
