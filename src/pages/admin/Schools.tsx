@@ -51,7 +51,7 @@ const schema = z.object({
   state: z.string().optional().nullable(),
   zipcode: z.string().optional().nullable(),
   phone_number: z.string().optional().nullable(),
-  school_logo: z.string().url().optional().nullable(),
+  school_logo: z.union([z.string().url(), z.literal("")]).optional().nullable(),
   primary_color: z.string().optional().nullable(),
   secondary_color: z.string().optional().nullable(),
   dismissal_time: z.string().optional().nullable(),
