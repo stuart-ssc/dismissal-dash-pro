@@ -19,6 +19,7 @@ import AdminClasses from "./pages/admin/Classes";
 import People from "./pages/admin/People";
 import PeopleManagement from "./pages/People";
 import AdminSettings from "./pages/admin/Settings";
+import AdminSchools from "./pages/admin/Schools";
 import Settings from "./pages/Settings";
 import CarLines from "./pages/CarLines";
 import WalkerLocations from "./pages/WalkerLocations";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/admin/classes" element={<AdminClasses />} />
             <Route path="/admin/users" element={<People />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/schools" element={<AdminSchools />} />
             <Route path="/admin-enable" element={<AdminPromote />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

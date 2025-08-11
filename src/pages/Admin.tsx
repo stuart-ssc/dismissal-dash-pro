@@ -112,7 +112,7 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4">
-              <Button className="w-full justify-start" variant="outline">
+              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/schools')}>
                 <School className="mr-2 h-4 w-4" />
                 Manage Schools
               </Button>
