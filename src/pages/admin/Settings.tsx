@@ -124,16 +124,17 @@ const Settings = () => {
     if (!schoolData) return;
 
     try {
-      const { error } = await supabase
-        .from('schools')
-        .update({
-          school_name: values.school_name,
-          address: values.address,
-          phone_number: values.phone_number,
-          primary_color: values.primary_color,
-          secondary_color: values.secondary_color,
-        })
-        .eq('id', schoolData.id);
+    const { error } = await supabase
+      .from('schools')
+      .update({
+        school_name: values.school_name,
+        address: values.address,
+        phone_number: values.phone_number,
+        primary_color: values.primary_color,
+        secondary_color: values.secondary_color,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', schoolData.id);
 
       if (error) {
         console.error('Error updating school:', error);

@@ -9,6 +9,8 @@ import { GraduationCap, Users, Calendar, BarChart3, Upload, Pause } from "lucide
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import SetupChecklistCard from "@/components/SetupChecklistCard";
+import { useSchoolSetupStatus } from "@/hooks/useSchoolSetupStatus";
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -19,6 +21,7 @@ const Dashboard = () => {
   const [prepMinutes, setPrepMinutes] = useState<number | null>(null);
   const [planDismissalTime, setPlanDismissalTime] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
+  const { loading: setupLoading, isReady, statuses } = useSchoolSetupStatus();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -154,6 +157,9 @@ const Dashboard = () => {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
+          {!setupLoading && !isReady && (
+            <SetupChecklistCard statuses={statuses} />
+          )}
           {showDismissalControls && (
             <section aria-label="Dismissal controls" className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Button asChild size="lg" variant={afterStart ? "default" : "success"} className="w-full h-14 text-base">

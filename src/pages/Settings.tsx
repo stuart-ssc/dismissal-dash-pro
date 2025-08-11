@@ -255,7 +255,7 @@ const Settings = () => {
       // Update school record with new logo path
       const { error: updateError } = await supabase
         .from('schools')
-        .update({ school_logo: filePath })
+        .update({ school_logo: filePath, updated_at: new Date().toISOString() })
         .eq('id', schoolData.id);
 
       if (updateError) {
@@ -312,7 +312,7 @@ const Settings = () => {
       // Update school record
       const { error } = await supabase
         .from('schools')
-        .update({ school_logo: null })
+        .update({ school_logo: null, updated_at: new Date().toISOString() })
         .eq('id', schoolData.id);
 
       if (error) {
@@ -343,6 +343,7 @@ const Settings = () => {
           phone_number: values.phone_number,
           primary_color: values.primary_color,
           secondary_color: values.secondary_color,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', schoolData.id);
 
@@ -372,6 +373,7 @@ const Settings = () => {
           auto_dismissal_enabled: values.auto_dismissal_enabled,
           walkers_enabled: values.walkers_enabled,
           car_lines_enabled: values.car_lines_enabled,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', schoolData.id);
 
@@ -400,6 +402,7 @@ const Settings = () => {
           sms_notifications_enabled: values.sms_notifications_enabled,
           parent_notifications_enabled: values.parent_notifications_enabled,
           emergency_alerts_enabled: values.emergency_alerts_enabled,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', schoolData.id);
 
@@ -427,6 +430,7 @@ const Settings = () => {
           two_factor_required: values.two_factor_required,
           session_timeout_enabled: values.session_timeout_enabled,
           audit_logs_enabled: values.audit_logs_enabled,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', schoolData.id);
 
