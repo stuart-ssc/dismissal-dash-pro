@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import SystemAdminSchoolSwitcher from "@/components/SystemAdminSchoolSwitcher";
 
 const Navbar = () => {
   const location = useLocation();
@@ -25,7 +26,10 @@ const Navbar = () => {
               <Button variant="ghost">← Back to Home</Button>
             </Link>
           ) : isSystemAdmin ? (
-            <Button variant="hero" onClick={signOut}>Sign Out</Button>
+            <>
+              <SystemAdminSchoolSwitcher />
+              <Button variant="hero" onClick={signOut}>Sign Out</Button>
+            </>
           ) : (
             <Link to="/auth">
               <Button variant="hero">Get Started</Button>

@@ -20,6 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, MoreHorizontal, Edit, Trash2, Settings, CalendarDays, Users, Clock, CheckCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { useImpersonation } from "@/hooks/useImpersonation";
 
 interface DismissalPlan {
   id: string;
@@ -50,6 +51,7 @@ export default function DismissalPlans() {
   const { user, userRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { impersonatedSchoolId } = useImpersonation();
 
   const [plans, setPlans] = useState<DismissalPlan[]>([]);
   const [filteredPlans, setFilteredPlans] = useState<DismissalPlan[]>([]);
@@ -83,12 +85,12 @@ export default function DismissalPlans() {
       navigate('/auth');
       return;
     }
-
-    if (userRole !== 'school_admin') {
+    const canAccess = userRole === 'school_admin' || (userRole === 'system_admin' && !!impersonatedSchoolId);
+    if (!canAccess) {
       navigate('/dashboard');
       return;
     }
-  }, [user, userRole, navigate]);
+  }, [user, userRole, impersonatedSchoolId, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -135,6 +137,19 @@ export default function DismissalPlans() {
     if (!user) return;
 
     try {
+      if (userRole === 'system_admin' && impersonatedSchoolId) {
+        const { data: school } = await supabase
+          .from('schools')
+          .select('school_name, dismissal_time')
+          .eq('id', impersonatedSchoolId)
+          .single();
+        if (school) {
+          setSchoolName(school.school_name || '');
+          setSchoolDismissalTime(school.dismissal_time || '');
+        }
+        return;
+      }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('school_id')
@@ -164,13 +179,19 @@ export default function DismissalPlans() {
     try {
       setLoading(true);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
+      const effectiveSchoolId = (userRole === 'system_admin' && impersonatedSchoolId) ? impersonatedSchoolId : null;
+      let schoolIdToUse: number | null = effectiveSchoolId;
 
-      if (!profile?.school_id) return;
+      if (!schoolIdToUse) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', user.id)
+          .single();
+        schoolIdToUse = profile?.school_id ?? null;
+      }
+
+      if (!schoolIdToUse) return;
 
       const { data, error } = await supabase
         .from('dismissal_plans')
@@ -178,7 +199,7 @@ export default function DismissalPlans() {
           *,
           dismissal_groups(id)
         `)
-        .eq('school_id', profile.school_id)
+        .eq('school_id', schoolIdToUse)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -206,20 +227,24 @@ export default function DismissalPlans() {
     if (!user) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
+      let schoolIdToUse: number | null = (userRole === 'system_admin' && impersonatedSchoolId) ? impersonatedSchoolId : null;
+      if (!schoolIdToUse) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', user.id)
+          .single();
+        schoolIdToUse = profile?.school_id ?? null;
+      }
 
-      if (!profile?.school_id) return;
+      if (!schoolIdToUse) return;
 
       // If setting as default, remove default from other plans
       if (data.is_default) {
         await supabase
           .from('dismissal_plans')
           .update({ is_default: false })
-          .eq('school_id', profile.school_id);
+          .eq('school_id', schoolIdToUse);
       }
 
       const planData = {
@@ -230,7 +255,7 @@ export default function DismissalPlans() {
         status: data.status,
         start_date: data.start_date || null,
         end_date: data.end_date || null,
-        school_id: profile.school_id,
+        school_id: schoolIdToUse,
       };
 
       if (editingPlan) {
@@ -324,7 +349,7 @@ export default function DismissalPlans() {
   const endIndex = startIndex + itemsPerPage;
   const currentPlans = filteredPlans.slice(startIndex, endIndex);
 
-  if (!user || userRole !== 'school_admin') {
+  if (!user || (userRole !== 'school_admin' && !(userRole === 'system_admin' && impersonatedSchoolId))) {
     return null;
   }
 
