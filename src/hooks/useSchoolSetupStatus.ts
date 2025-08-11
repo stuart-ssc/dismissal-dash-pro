@@ -61,7 +61,8 @@ export const useSchoolSetupStatus = () => {
         const hasTeacher = (teachersRes.count ?? 0) > 0;
         const hasStudent = (studentsRes.count ?? 0) > 0;
         const hasClass = (classesRes.count ?? 0) > 0;
-        const schoolUpdated = schoolRes.data ? new Date(schoolRes.data.updated_at).getTime() > new Date(schoolRes.data.created_at).getTime() : false;
+        const meta = (schoolRes as any)?.data;
+        const schoolUpdated = meta ? new Date(meta.updated_at).getTime() > new Date(meta.created_at).getTime() : false;
 
         setStatuses({ transportationReady, hasTeacher, hasStudent, hasClass, schoolUpdated });
       } catch (e: any) {

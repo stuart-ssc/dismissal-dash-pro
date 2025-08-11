@@ -654,6 +654,7 @@ export type Database = {
           state: string | null
           street_address: string | null
           two_factor_required: boolean | null
+          updated_at: string
           walkers_enabled: boolean | null
           zipcode: string | null
         }
@@ -680,6 +681,7 @@ export type Database = {
           state?: string | null
           street_address?: string | null
           two_factor_required?: boolean | null
+          updated_at?: string
           walkers_enabled?: boolean | null
           zipcode?: string | null
         }
@@ -706,6 +708,7 @@ export type Database = {
           state?: string | null
           street_address?: string | null
           two_factor_required?: boolean | null
+          updated_at?: string
           walkers_enabled?: boolean | null
           zipcode?: string | null
         }
