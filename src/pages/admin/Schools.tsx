@@ -336,7 +336,7 @@ export default function AdminSchools() {
             </DialogTrigger>
             <DialogContent className="max-w-3xl">
               <DialogHeader>
-                <DialogTitle>{editing ? `Edit School #${editing.id}` : "Add School"}</DialogTitle>
+                <DialogTitle>{editing ? "Edit School" : "Add School"}</DialogTitle>
               </DialogHeader>
               <SchoolForm initial={editing ?? undefined} onClose={() => setDialogOpen(false)} />
             </DialogContent>
@@ -350,7 +350,7 @@ export default function AdminSchools() {
                 
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[100px]">ID</TableHead>
+                    
                     <TableHead className="min-w-[200px]">Name</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Dismissal</TableHead>
@@ -363,7 +363,7 @@ export default function AdminSchools() {
                 </TableHeader>
                 <TableBody>
                   {data?.map(s => <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.id}</TableCell>
+                      
                       <TableCell>{s.school_name}</TableCell>
                       <TableCell>{s.phone_number}</TableCell>
                       <TableCell>{s.dismissal_time?.slice(0, 5)}</TableCell>
