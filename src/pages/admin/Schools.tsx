@@ -39,9 +39,10 @@ interface School {
   audit_logs_enabled: boolean | null;
   created_at?: string;
 }
-
 const schema = z.object({
-  id: z.coerce.number({ required_error: "ID is required" }),
+  id: z.coerce.number({
+    required_error: "ID is required"
+  }),
   school_name: z.string().min(1, "Name is required"),
   address: z.string().optional().nullable(),
   phone_number: z.string().optional().nullable(),
@@ -58,20 +59,25 @@ const schema = z.object({
   emergency_alerts_enabled: z.boolean().optional().nullable(),
   two_factor_required: z.boolean().optional().nullable(),
   session_timeout_enabled: z.boolean().optional().nullable(),
-  audit_logs_enabled: z.boolean().optional().nullable(),
+  audit_logs_enabled: z.boolean().optional().nullable()
 });
-
 type FormValues = z.infer<typeof schema>;
-
-function SchoolForm({ initial, onClose }: { initial?: Partial<School>; onClose: () => void }) {
+function SchoolForm({
+  initial,
+  onClose
+}: {
+  initial?: Partial<School>;
+  onClose: () => void;
+}) {
   const isEdit = !!initial?.id;
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const qc = useQueryClient();
-
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      id: initial?.id ?? ("" as unknown as number),
+      id: initial?.id ?? "" as unknown as number,
       school_name: initial?.school_name ?? "",
       address: initial?.address ?? "",
       phone_number: initial?.phone_number ?? "",
@@ -88,43 +94,51 @@ function SchoolForm({ initial, onClose }: { initial?: Partial<School>; onClose: 
       emergency_alerts_enabled: initial?.emergency_alerts_enabled ?? true,
       two_factor_required: initial?.two_factor_required ?? false,
       session_timeout_enabled: initial?.session_timeout_enabled ?? false,
-      audit_logs_enabled: initial?.audit_logs_enabled ?? true,
-    },
+      audit_logs_enabled: initial?.audit_logs_enabled ?? true
+    }
   });
-
   const upsertMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const payload = {
         ...values,
-        dismissal_time: values.dismissal_time ? `${values.dismissal_time}:00` : null,
+        dismissal_time: values.dismissal_time ? `${values.dismissal_time}:00` : null
       } as Partial<School>;
-
       if (isEdit) {
-        const { error } = await supabase.from("schools").update(payload).eq("id", initial!.id!);
+        const {
+          error
+        } = await supabase.from("schools").update(payload).eq("id", initial!.id!);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("schools").insert(payload as School);
+        const {
+          error
+        } = await supabase.from("schools").insert(payload as School);
         if (error) throw error;
       }
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["schools"] });
-      toast({ title: "Saved", description: "School has been saved." });
+      await qc.invalidateQueries({
+        queryKey: ["schools"]
+      });
+      toast({
+        title: "Saved",
+        description: "School has been saved."
+      });
       onClose();
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message ?? "Failed to save school.", variant: "destructive" as any });
-    },
+      toast({
+        title: "Error",
+        description: err.message ?? "Failed to save school.",
+        variant: "destructive" as any
+      });
+    }
   });
-
-  return (
-    <form
-      className="grid grid-cols-1 md:grid-cols-2 gap-4"
-      onSubmit={form.handleSubmit((values) => upsertMutation.mutate(values))}
-    >
+  return <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={form.handleSubmit(values => upsertMutation.mutate(values))}>
       <div className="space-y-2">
         <Label htmlFor="id">School ID</Label>
-        <Input id="id" type="number" disabled={isEdit} {...form.register("id", { valueAsNumber: true })} />
+        <Input id="id" type="number" disabled={isEdit} {...form.register("id", {
+        valueAsNumber: true
+      })} />
       </div>
 
       <div className="space-y-2">
@@ -164,53 +178,55 @@ function SchoolForm({ initial, onClose }: { initial?: Partial<School>; onClose: 
 
       <div className="space-y-2">
         <Label htmlFor="preparation_time_minutes">Preparation Minutes</Label>
-        <Input id="preparation_time_minutes" type="number" {...form.register("preparation_time_minutes", { valueAsNumber: true })} />
+        <Input id="preparation_time_minutes" type="number" {...form.register("preparation_time_minutes", {
+        valueAsNumber: true
+      })} />
       </div>
 
       {/* Boolean toggles */}
       <div className="flex items-center justify-between">
         <Label htmlFor="auto_dismissal_enabled">Auto Dismissal</Label>
-        <Switch id="auto_dismissal_enabled" checked={!!form.watch("auto_dismissal_enabled")} onCheckedChange={(v) => form.setValue("auto_dismissal_enabled", v)} />
+        <Switch id="auto_dismissal_enabled" checked={!!form.watch("auto_dismissal_enabled")} onCheckedChange={v => form.setValue("auto_dismissal_enabled", v)} />
       </div>
 
       <div className="flex items-center justify-between">
         <Label htmlFor="walkers_enabled">Walkers Enabled</Label>
-        <Switch id="walkers_enabled" checked={!!form.watch("walkers_enabled")} onCheckedChange={(v) => form.setValue("walkers_enabled", v)} />
+        <Switch id="walkers_enabled" checked={!!form.watch("walkers_enabled")} onCheckedChange={v => form.setValue("walkers_enabled", v)} />
       </div>
 
       <div className="flex items-center justify-between">
         <Label htmlFor="car_lines_enabled">Car Lines Enabled</Label>
-        <Switch id="car_lines_enabled" checked={!!form.watch("car_lines_enabled")} onCheckedChange={(v) => form.setValue("car_lines_enabled", v)} />
+        <Switch id="car_lines_enabled" checked={!!form.watch("car_lines_enabled")} onCheckedChange={v => form.setValue("car_lines_enabled", v)} />
       </div>
 
       <div className="flex items-center justify-between">
         <Label htmlFor="email_notifications_enabled">Email Notifications</Label>
-        <Switch id="email_notifications_enabled" checked={!!form.watch("email_notifications_enabled")} onCheckedChange={(v) => form.setValue("email_notifications_enabled", v)} />
+        <Switch id="email_notifications_enabled" checked={!!form.watch("email_notifications_enabled")} onCheckedChange={v => form.setValue("email_notifications_enabled", v)} />
       </div>
 
       <div className="flex items-center justify-between">
         <Label htmlFor="sms_notifications_enabled">SMS Notifications</Label>
-        <Switch id="sms_notifications_enabled" checked={!!form.watch("sms_notifications_enabled")} onCheckedChange={(v) => form.setValue("sms_notifications_enabled", v)} />
+        <Switch id="sms_notifications_enabled" checked={!!form.watch("sms_notifications_enabled")} onCheckedChange={v => form.setValue("sms_notifications_enabled", v)} />
       </div>
 
       <div className="flex items-center justify-between">
         <Label htmlFor="emergency_alerts_enabled">Emergency Alerts</Label>
-        <Switch id="emergency_alerts_enabled" checked={!!form.watch("emergency_alerts_enabled")} onCheckedChange={(v) => form.setValue("emergency_alerts_enabled", v)} />
+        <Switch id="emergency_alerts_enabled" checked={!!form.watch("emergency_alerts_enabled")} onCheckedChange={v => form.setValue("emergency_alerts_enabled", v)} />
       </div>
 
       <div className="flex items-center justify-between">
         <Label htmlFor="two_factor_required">Two Factor Required</Label>
-        <Switch id="two_factor_required" checked={!!form.watch("two_factor_required")} onCheckedChange={(v) => form.setValue("two_factor_required", v)} />
+        <Switch id="two_factor_required" checked={!!form.watch("two_factor_required")} onCheckedChange={v => form.setValue("two_factor_required", v)} />
       </div>
 
       <div className="flex items-center justify-between">
         <Label htmlFor="session_timeout_enabled">Session Timeout</Label>
-        <Switch id="session_timeout_enabled" checked={!!form.watch("session_timeout_enabled")} onCheckedChange={(v) => form.setValue("session_timeout_enabled", v)} />
+        <Switch id="session_timeout_enabled" checked={!!form.watch("session_timeout_enabled")} onCheckedChange={v => form.setValue("session_timeout_enabled", v)} />
       </div>
 
       <div className="flex items-center justify-between">
         <Label htmlFor="audit_logs_enabled">Audit Logs</Label>
-        <Switch id="audit_logs_enabled" checked={!!form.watch("audit_logs_enabled")} onCheckedChange={(v) => form.setValue("audit_logs_enabled", v)} />
+        <Switch id="audit_logs_enabled" checked={!!form.watch("audit_logs_enabled")} onCheckedChange={v => form.setValue("audit_logs_enabled", v)} />
       </div>
 
       <div className="col-span-1 md:col-span-2 flex gap-3 justify-end pt-2">
@@ -219,57 +235,71 @@ function SchoolForm({ initial, onClose }: { initial?: Partial<School>; onClose: 
           {isEdit ? "Update" : "Create"}
         </Button>
       </div>
-    </form>
-  );
+    </form>;
 }
-
 export default function AdminSchools() {
-  const { userRole, loading } = useAuth();
+  const {
+    userRole,
+    loading
+  } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const qc = useQueryClient();
-
   useEffect(() => {
     document.title = "Manage Schools | System Administration";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "Manage schools, settings, and access for Dismissal Pro.");
   }, []);
-
   useEffect(() => {
     if (!loading && userRole !== "system_admin") {
       navigate("/dashboard");
     }
   }, [loading, userRole, navigate]);
-
-  const { data, isLoading, error } = useQuery<School[]>({
+  const {
+    data,
+    isLoading,
+    error
+  } = useQuery<School[]>({
     queryKey: ["schools"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schools")
-        .select("*")
-        .order("id", { ascending: true });
+      const {
+        data,
+        error
+      } = await supabase.from("schools").select("*").order("id", {
+        ascending: true
+      });
       if (error) throw error;
       return data as School[];
-    },
+    }
   });
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
-
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await supabase.from("schools").delete().eq("id", id);
+      const {
+        error
+      } = await supabase.from("schools").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["schools"] });
-      toast({ title: "Deleted", description: "School has been deleted." });
+      await qc.invalidateQueries({
+        queryKey: ["schools"]
+      });
+      toast({
+        title: "Deleted",
+        description: "School has been deleted."
+      });
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message ?? "Failed to delete school.", variant: "destructive" as any });
-    },
+      toast({
+        title: "Error",
+        description: err.message ?? "Failed to delete school.",
+        variant: "destructive" as any
+      });
+    }
   });
-
   const openCreate = () => {
     setEditing(null);
     setDialogOpen(true);
@@ -278,10 +308,8 @@ export default function AdminSchools() {
     setEditing(school);
     setDialogOpen(true);
   };
-
   if (loading || userRole !== "system_admin") {
-    return (
-      <main className="p-6">
+    return <main className="p-6">
         <Card>
           <CardHeader>
             <CardTitle>Manage Schools</CardTitle>
@@ -290,12 +318,9 @@ export default function AdminSchools() {
             <div className="text-muted-foreground">{loading ? "Loading..." : "Redirecting..."}</div>
           </CardContent>
         </Card>
-      </main>
-    );
+      </main>;
   }
-
-  return (
-    <>
+  return <>
       <Navbar />
       <main className="p-6">
         <header className="mb-4 flex items-center justify-between">
@@ -327,16 +352,11 @@ export default function AdminSchools() {
           </Dialog>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="py-6 text-muted-foreground flex items-center gap-2">
+          {isLoading ? <div className="py-6 text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading schools...
-            </div>
-          ) : error ? (
-            <div className="text-destructive">Error loading schools</div>
-          ) : (
-            <div className="overflow-x-auto">
+            </div> : error ? <div className="text-destructive">Error loading schools</div> : <div className="overflow-x-auto">
               <Table>
-                <TableCaption>All schools with platform access.</TableCaption>
+                
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[100px]">ID</TableHead>
@@ -351,8 +371,7 @@ export default function AdminSchools() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.map((s) => (
-                    <TableRow key={s.id}>
+                  {data?.map(s => <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.id}</TableCell>
                       <TableCell>{s.school_name}</TableCell>
                       <TableCell>{s.phone_number}</TableCell>
@@ -365,23 +384,16 @@ export default function AdminSchools() {
                         <Button variant="secondary" size="sm" onClick={() => openEdit(s)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="softDestructive"
-                          size="sm"
-                          onClick={() => deleteMutation.mutate(s.id)}
-                        >
+                        <Button variant="softDestructive" size="sm" onClick={() => deleteMutation.mutate(s.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
-                    </TableRow>
-                  ))}
+                    </TableRow>)}
                 </TableBody>
               </Table>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
     </main>
-    </>
-  );
+    </>;
 }
