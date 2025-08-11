@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -101,14 +102,24 @@ serve(async (req) => {
 
     console.log(`Processing ${rosterData.length} roster entries for school ${profile.school_id}`);
 
-    // Track unique classes, teachers, and transportation items to avoid duplicates
-    const processedClasses = new Map<string, string>(); // key -> classId
-    const processedTeachers = new Map<string, string>(); // email -> userId
-    const processedBuses = new Map<string, string>(); // busNumber -> busId
-    const processedCarLines = new Map<string, string>(); // lineName -> carLineId
-    const processedWalkerLocations = new Map<string, string>(); // locationName -> walkerLocationId
+    // Set up PostgreSQL client for transactions
+    const dbUrl = Deno.env.get('SUPABASE_DB_URL')!;
+    const client = new Client(dbUrl);
+    await client.connect();
 
-    for (let i = 0; i < rosterData.length; i++) {
+    try {
+      // Begin transaction
+      await client.queryObject('BEGIN');
+      console.log('Transaction started');
+
+      // Track unique classes, teachers, and transportation items to avoid duplicates
+      const processedClasses = new Map<string, string>(); // key -> classId
+      const processedTeachers = new Map<string, string>(); // email -> userId
+      const processedBuses = new Map<string, string>(); // busNumber -> busId
+      const processedCarLines = new Map<string, string>(); // lineName -> carLineId
+      const processedWalkerLocations = new Map<string, string>(); // locationName -> walkerLocationId
+
+      for (let i = 0; i < rosterData.length; i++) {
       const row = rosterData[i];
       
       try {
@@ -117,33 +128,24 @@ serve(async (req) => {
         let classId = processedClasses.get(classKey);
         
         if (!classId) {
-          const { data: existingClass } = await supabase
-            .from('classes')
-            .select('id')
-            .eq('class_name', row.className)
-            .eq('room_number', row.roomNumber || null)
-            .eq('school_id', profile.school_id)
-            .single();
+          const existingClassResult = await client.queryObject(
+            `SELECT id FROM classes WHERE class_name = $1 AND room_number = $2 AND school_id = $3`,
+            [row.className, row.roomNumber || null, profile.school_id]
+          );
 
-          if (existingClass) {
-            classId = existingClass.id;
+          if (existingClassResult.rows.length > 0) {
+            classId = existingClassResult.rows[0].id as string;
           } else {
-            const { data: newClass, error: classError } = await supabase
-              .from('classes')
-              .insert({
-                class_name: row.className,
-                room_number: row.roomNumber || null,
-                school_id: profile.school_id,
-                grade_level: row.gradeLevel,
-              })
-              .select('id')
-              .single();
+            const newClassResult = await client.queryObject(
+              `INSERT INTO classes (class_name, room_number, school_id, grade_level) 
+               VALUES ($1, $2, $3, $4) RETURNING id`,
+              [row.className, row.roomNumber || null, profile.school_id, row.gradeLevel]
+            );
 
-            if (classError) {
-              results.errors.push(`Row ${i + 1}: Failed to create class ${row.className} - ${classError.message}`);
-              continue;
+            if (newClassResult.rows.length === 0) {
+              throw new Error(`Failed to create class ${row.className}`);
             }
-            classId = newClass.id;
+            classId = newClassResult.rows[0].id as string;
             results.classesCreated++;
           }
           processedClasses.set(classKey, classId);
@@ -154,103 +156,84 @@ serve(async (req) => {
         
         if (!teacherId) {
           // Check if teacher exists in teachers table
-          const { data: existingTeacher } = await supabase
-            .from('teachers')
-            .select('id')
-            .eq('email', row.teacherEmail)
-            .eq('school_id', profile.school_id)
-            .single();
+          const existingTeacherResult = await client.queryObject(
+            `SELECT id FROM teachers WHERE email = $1 AND school_id = $2`,
+            [row.teacherEmail, profile.school_id]
+          );
 
-          if (existingTeacher) {
-            teacherId = existingTeacher.id;
+          if (existingTeacherResult.rows.length > 0) {
+            teacherId = existingTeacherResult.rows[0].id as string;
           } else {
             // Create teacher record
-            const { data: newTeacher, error: teacherError } = await supabase
-              .from('teachers')
-              .insert({
-                first_name: row.teacherFirstName,
-                last_name: row.teacherLastName,
-                email: row.teacherEmail,
-                school_id: profile.school_id,
-              })
-              .select('id')
-              .single();
+            const newTeacherResult = await client.queryObject(
+              `INSERT INTO teachers (first_name, last_name, email, school_id) 
+               VALUES ($1, $2, $3, $4) RETURNING id`,
+              [row.teacherFirstName, row.teacherLastName, row.teacherEmail, profile.school_id]
+            );
 
-            if (teacherError) {
-              results.errors.push(`Row ${i + 1}: Failed to create teacher ${row.teacherFirstName} ${row.teacherLastName} - ${teacherError.message}`);
-              continue;
+            if (newTeacherResult.rows.length === 0) {
+              throw new Error(`Failed to create teacher ${row.teacherFirstName} ${row.teacherLastName}`);
             }
-            teacherId = newTeacher.id;
+            teacherId = newTeacherResult.rows[0].id as string;
             results.teachersCreated++;
           }
           processedTeachers.set(row.teacherEmail, teacherId);
         }
 
         // Assign teacher to class
-        const { error: assignError } = await supabase
-          .from('class_teachers')
-          .upsert({
-            teacher_id: teacherId,
-            class_id: classId,
-          });
-
-        if (!assignError) {
-          results.teachersAssigned++;
-        }
+        await client.queryObject(
+          `INSERT INTO class_teachers (teacher_id, class_id) VALUES ($1, $2) 
+           ON CONFLICT (teacher_id, class_id) DO NOTHING`,
+          [teacherId, classId]
+        );
+        results.teachersAssigned++;
 
         // 3. Create student
         let studentId: string;
-        let existingStudent = null;
+        let existingStudentResult;
         
         // Only check for existing student if student_id is provided
         if (row.studentId) {
-          const { data: existing } = await supabase
-            .from('students')
-            .select('id')
-            .eq('student_id', row.studentId)
-            .eq('school_id', profile.school_id)
-            .single();
-          existingStudent = existing;
+          existingStudentResult = await client.queryObject(
+            `SELECT id FROM students WHERE student_id = $1 AND school_id = $2`,
+            [row.studentId, profile.school_id]
+          );
         }
         
-        if (existingStudent) {
-          studentId = existingStudent.id;
+        if (existingStudentResult?.rows.length > 0) {
+          studentId = existingStudentResult.rows[0].id as string;
         } else {
-          const { data: newStudent, error: studentError } = await supabase
-            .from('students')
-            .insert({
-              student_id: row.studentId || null,
-              first_name: row.firstName,
-              last_name: row.lastName,
-              grade_level: row.gradeLevel,
-              school_id: profile.school_id,
-              parent_guardian_name: row.parentGuardianName,
-              contact_info: row.contactInfo,
-              special_notes: row.specialNotes,
-              dismissal_group: row.dismissalGroup,
-            })
-            .select('id')
-            .single();
+          const newStudentResult = await client.queryObject(
+            `INSERT INTO students (student_id, first_name, last_name, grade_level, school_id, 
+                                 parent_guardian_name, contact_info, special_notes, dismissal_group) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+            [
+              row.studentId || null,
+              row.firstName,
+              row.lastName,
+              row.gradeLevel,
+              profile.school_id,
+              row.parentGuardianName || null,
+              row.contactInfo || null,
+              row.specialNotes || null,
+              row.dismissalGroup || null
+            ]
+          );
 
-          if (studentError) {
-            results.errors.push(`Row ${i + 1}: Failed to create student ${row.firstName} ${row.lastName} - ${studentError.message}`);
-            continue;
+          if (newStudentResult.rows.length === 0) {
+            throw new Error(`Failed to create student ${row.firstName} ${row.lastName}`);
           }
-          studentId = newStudent.id;
+          studentId = newStudentResult.rows[0].id as string;
           results.studentsCreated++;
         }
 
         // 4. Enroll student in class
-        const { error: enrollError } = await supabase
-          .from('class_rosters')
-          .upsert({
-            student_id: studentId,
-            class_id: classId,
-          });
-
-        if (!enrollError) {
-          results.studentsEnrolled++;
-        }
+        await client.queryObject(
+          `INSERT INTO class_rosters (student_id, class_id) VALUES ($1, $2) 
+           ON CONFLICT (student_id, class_id) DO NOTHING`,
+          [studentId, classId]
+        );
+        results.studentsEnrolled++;
 
         // 5. Handle transportation assignments
         if (row.transportation && row.transportationMethod) {
@@ -264,51 +247,37 @@ serve(async (req) => {
               
               if (!busId) {
                 // Check if bus exists
-                const { data: existingBus } = await supabase
-                  .from('buses')
-                  .select('id')
-                  .eq('bus_number', transportationMethod)
-                  .eq('school_id', profile.school_id)
-                  .single();
+                const existingBusResult = await client.queryObject(
+                  `SELECT id FROM buses WHERE bus_number = $1 AND school_id = $2`,
+                  [transportationMethod, profile.school_id]
+                );
 
-                if (existingBus) {
-                  busId = existingBus.id;
+                if (existingBusResult.rows.length > 0) {
+                  busId = existingBusResult.rows[0].id as string;
                 } else {
                   // Create new bus
-                  const { data: newBus, error: busError } = await supabase
-                    .from('buses')
-                    .insert({
-                      bus_number: transportationMethod,
-                      school_id: profile.school_id,
-                      driver_first_name: 'TBD',
-                      driver_last_name: 'TBD',
-                    })
-                    .select('id')
-                    .single();
+                  const newBusResult = await client.queryObject(
+                    `INSERT INTO buses (bus_number, school_id, driver_first_name, driver_last_name) 
+                     VALUES ($1, $2, $3, $4) RETURNING id`,
+                    [transportationMethod, profile.school_id, 'TBD', 'TBD']
+                  );
 
-                  if (busError) {
-                    results.errors.push(`Row ${i + 1}: Failed to create bus ${transportationMethod} - ${busError.message}`);
-                  } else {
-                    busId = newBus.id;
-                    results.busesCreated++;
+                  if (newBusResult.rows.length === 0) {
+                    throw new Error(`Failed to create bus ${transportationMethod}`);
                   }
+                  busId = newBusResult.rows[0].id as string;
+                  results.busesCreated++;
                 }
-                if (busId) processedBuses.set(transportationMethod, busId);
+                processedBuses.set(transportationMethod, busId);
               }
 
               // Assign student to bus
-              if (busId) {
-                const { error: assignError } = await supabase
-                  .from('student_bus_assignments')
-                  .upsert({
-                    student_id: studentId,
-                    bus_id: busId,
-                  });
-
-                if (!assignError) {
-                  results.transportationAssignments++;
-                }
-              }
+              await client.queryObject(
+                `INSERT INTO student_bus_assignments (student_id, bus_id) VALUES ($1, $2) 
+                 ON CONFLICT (student_id, bus_id) DO NOTHING`,
+                [studentId, busId]
+              );
+              results.transportationAssignments++;
 
             } else if (transportationType === 'car') {
               // Handle car line assignment
@@ -316,51 +285,37 @@ serve(async (req) => {
               
               if (!carLineId) {
                 // Check if car line exists
-                const { data: existingCarLine } = await supabase
-                  .from('car_lines')
-                  .select('id')
-                  .eq('line_name', transportationMethod)
-                  .eq('school_id', profile.school_id)
-                  .single();
+                const existingCarLineResult = await client.queryObject(
+                  `SELECT id FROM car_lines WHERE line_name = $1 AND school_id = $2`,
+                  [transportationMethod, profile.school_id]
+                );
 
-                if (existingCarLine) {
-                  carLineId = existingCarLine.id;
+                if (existingCarLineResult.rows.length > 0) {
+                  carLineId = existingCarLineResult.rows[0].id as string;
                 } else {
                   // Create new car line
-                  const { data: newCarLine, error: carLineError } = await supabase
-                    .from('car_lines')
-                    .insert({
-                      line_name: transportationMethod,
-                      school_id: profile.school_id,
-                      color: '#3B82F6',
-                      pickup_location: transportationMethod,
-                    })
-                    .select('id')
-                    .single();
+                  const newCarLineResult = await client.queryObject(
+                    `INSERT INTO car_lines (line_name, school_id, color, pickup_location) 
+                     VALUES ($1, $2, $3, $4) RETURNING id`,
+                    [transportationMethod, profile.school_id, '#3B82F6', transportationMethod]
+                  );
 
-                  if (carLineError) {
-                    results.errors.push(`Row ${i + 1}: Failed to create car line ${transportationMethod} - ${carLineError.message}`);
-                  } else {
-                    carLineId = newCarLine.id;
-                    results.carLinesCreated++;
+                  if (newCarLineResult.rows.length === 0) {
+                    throw new Error(`Failed to create car line ${transportationMethod}`);
                   }
+                  carLineId = newCarLineResult.rows[0].id as string;
+                  results.carLinesCreated++;
                 }
-                if (carLineId) processedCarLines.set(transportationMethod, carLineId);
+                processedCarLines.set(transportationMethod, carLineId);
               }
 
               // Assign student to car line
-              if (carLineId) {
-                const { error: assignError } = await supabase
-                  .from('student_car_assignments')
-                  .upsert({
-                    student_id: studentId,
-                    car_line_id: carLineId,
-                  });
-
-                if (!assignError) {
-                  results.transportationAssignments++;
-                }
-              }
+              await client.queryObject(
+                `INSERT INTO student_car_assignments (student_id, car_line_id) VALUES ($1, $2) 
+                 ON CONFLICT (student_id, car_line_id) DO NOTHING`,
+                [studentId, carLineId]
+              );
+              results.transportationAssignments++;
 
             } else if (transportationType === 'walker') {
               // Handle walker location assignment
@@ -368,63 +323,55 @@ serve(async (req) => {
               
               if (!walkerLocationId) {
                 // Check if walker location exists
-                const { data: existingWalkerLocation } = await supabase
-                  .from('walker_locations')
-                  .select('id')
-                  .eq('location_name', transportationMethod)
-                  .eq('school_id', profile.school_id)
-                  .single();
+                const existingWalkerLocationResult = await client.queryObject(
+                  `SELECT id FROM walker_locations WHERE location_name = $1 AND school_id = $2`,
+                  [transportationMethod, profile.school_id]
+                );
 
-                if (existingWalkerLocation) {
-                  walkerLocationId = existingWalkerLocation.id;
+                if (existingWalkerLocationResult.rows.length > 0) {
+                  walkerLocationId = existingWalkerLocationResult.rows[0].id as string;
                 } else {
                   // Create new walker location
-                  const { data: newWalkerLocation, error: walkerLocationError } = await supabase
-                    .from('walker_locations')
-                    .insert({
-                      location_name: transportationMethod,
-                      school_id: profile.school_id,
-                    })
-                    .select('id')
-                    .single();
+                  const newWalkerLocationResult = await client.queryObject(
+                    `INSERT INTO walker_locations (location_name, school_id) 
+                     VALUES ($1, $2) RETURNING id`,
+                    [transportationMethod, profile.school_id]
+                  );
 
-                  if (walkerLocationError) {
-                    results.errors.push(`Row ${i + 1}: Failed to create walker location ${transportationMethod} - ${walkerLocationError.message}`);
-                  } else {
-                    walkerLocationId = newWalkerLocation.id;
-                    results.walkerLocationsCreated++;
+                  if (newWalkerLocationResult.rows.length === 0) {
+                    throw new Error(`Failed to create walker location ${transportationMethod}`);
                   }
+                  walkerLocationId = newWalkerLocationResult.rows[0].id as string;
+                  results.walkerLocationsCreated++;
                 }
-                if (walkerLocationId) processedWalkerLocations.set(transportationMethod, walkerLocationId);
+                processedWalkerLocations.set(transportationMethod, walkerLocationId);
               }
 
               // Assign student to walker location
-              if (walkerLocationId) {
-                const { error: assignError } = await supabase
-                  .from('student_walker_assignments')
-                  .upsert({
-                    student_id: studentId,
-                    walker_location_id: walkerLocationId,
-                  });
-
-                if (!assignError) {
-                  results.transportationAssignments++;
-                }
-              }
+              await client.queryObject(
+                `INSERT INTO student_walker_assignments (student_id, walker_location_id) VALUES ($1, $2) 
+                 ON CONFLICT (student_id, walker_location_id) DO NOTHING`,
+                [studentId, walkerLocationId]
+              );
+              results.transportationAssignments++;
 
             } else {
               console.log(`Row ${i + 1}: Unrecognized transportation type: ${transportationType}`);
             }
           } catch (transportError) {
-            results.errors.push(`Row ${i + 1}: Transportation processing error - ${transportError.message}`);
+            console.log(`Row ${i + 1}: Transportation processing error - ${transportError.message}`);
           }
         }
 
       } catch (error) {
-        results.errors.push(`Row ${i + 1}: Unexpected error - ${error.message}`);
-        console.error(`Error processing row ${i + 1}:`, error);
+        console.error(`Critical error processing row ${i + 1}:`, error);
+        throw new Error(`Row ${i + 1}: ${error.message}`);
       }
     }
+
+    // Commit transaction if everything succeeded
+    await client.queryObject('COMMIT');
+    console.log('Transaction committed successfully');
 
     console.log('Import completed:', results);
 
@@ -435,6 +382,31 @@ serve(async (req) => {
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
+  } catch (transactionError) {
+    // Rollback transaction on any error
+    try {
+      await client.queryObject('ROLLBACK');
+      console.log('Transaction rolled back due to error');
+    } catch (rollbackError) {
+      console.error('Error during rollback:', rollbackError);
+    }
+    
+    console.error('Import failed, transaction rolled back:', transactionError);
+    
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: 'Import failed and was rolled back',
+      details: transactionError.message,
+      message: 'The import failed and no changes were made to the database. Please fix the errors and try again.'
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } finally {
+    // Always close the database connection
+    await client.end();
+  }
 
   } catch (error) {
     console.error('Import error:', error);

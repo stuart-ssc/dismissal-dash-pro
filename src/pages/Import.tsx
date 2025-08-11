@@ -32,6 +32,7 @@ interface RosterRow {
 }
 
 interface ImportResults {
+  success?: boolean;
   studentsCreated: number;
   teachersCreated: number;
   classesCreated: number;
@@ -42,6 +43,7 @@ interface ImportResults {
   walkerLocationsCreated: number;
   transportationAssignments: number;
   errors: string[];
+  details?: string;
 }
 
 const Import = () => {
@@ -447,66 +449,93 @@ const Import = () => {
                   {isProcessing && (
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Import Progress</span>
-                        <span>{uploadProgress}%</span>
+                        <span>Processing (All-or-Nothing)...</span>
+                        <span>In Progress</span>
                       </div>
-                      <Progress value={uploadProgress} className="w-full" />
+                      <Progress value={50} className="w-full animate-pulse" />
+                      <div className="text-sm text-muted-foreground">
+                        Processing {parsedData.length} rows in a single transaction...
+                      </div>
+                      <div className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+                        ⚠️ Import will either succeed completely or fail with no changes made
+                      </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {importResults && (
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <Card className={`shadow-elevated border-0 backdrop-blur ${
+                  importResults.success ? 'bg-green-50/80 border-green-200' : 'bg-red-50/80 border-red-200'
+                }`}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      Import Results
+                      {importResults.success ? (
+                        <>
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          Import Completed Successfully
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-5 w-5 text-red-600" />
+                          Import Failed - No Changes Made
+                        </>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
-                       <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                         <Users className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-                         <div className="text-2xl font-bold text-blue-600">{importResults.studentsCreated}</div>
-                         <div className="text-xs text-muted-foreground">Students Created</div>
-                       </div>
-                       <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                         <UserCheck className="h-6 w-6 mx-auto mb-2 text-green-600" />
-                         <div className="text-2xl font-bold text-green-600">{importResults.teachersCreated}</div>
-                         <div className="text-xs text-muted-foreground">Teachers Created</div>
-                       </div>
-                       <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                         <GraduationCap className="h-6 w-6 mx-auto mb-2 text-purple-600" />
-                         <div className="text-2xl font-bold text-purple-600">{importResults.classesCreated}</div>
-                         <div className="text-xs text-muted-foreground">Classes Created</div>
-                       </div>
-                       <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
-                         <Users className="h-6 w-6 mx-auto mb-2 text-orange-600" />
-                        <div className="text-2xl font-bold text-orange-600">{importResults.studentsEnrolled}</div>
-                        <div className="text-xs text-muted-foreground">Students Enrolled</div>
+                    {importResults.success ? (
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+                        <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                          <Users className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                          <div className="text-2xl font-bold text-blue-600">{importResults.studentsCreated}</div>
+                          <div className="text-xs text-muted-foreground">Students Created</div>
+                        </div>
+                        <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                          <UserCheck className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                          <div className="text-2xl font-bold text-green-600">{importResults.teachersCreated}</div>
+                          <div className="text-xs text-muted-foreground">Teachers Created</div>
+                        </div>
+                        <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                          <GraduationCap className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+                          <div className="text-2xl font-bold text-purple-600">{importResults.classesCreated}</div>
+                          <div className="text-xs text-muted-foreground">Classes Created</div>
+                        </div>
+                        <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+                          <Users className="h-6 w-6 mx-auto mb-2 text-orange-600" />
+                          <div className="text-2xl font-bold text-orange-600">{importResults.studentsEnrolled}</div>
+                          <div className="text-xs text-muted-foreground">Students Enrolled</div>
+                        </div>
+                        <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg">
+                          <UserCheck className="h-6 w-6 mx-auto mb-2 text-indigo-600" />
+                          <div className="text-2xl font-bold text-indigo-600">{importResults.teachersAssigned}</div>
+                          <div className="text-xs text-muted-foreground">Teacher Assignments</div>
+                        </div>
+                        <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+                          <Users className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
+                          <div className="text-2xl font-bold text-yellow-600">{importResults.busesCreated || 0}</div>
+                          <div className="text-xs text-muted-foreground">Buses Created</div>
+                        </div>
+                        <div className="text-center p-3 bg-teal-50 dark:bg-teal-950/20 rounded-lg">
+                          <Users className="h-6 w-6 mx-auto mb-2 text-teal-600" />
+                          <div className="text-2xl font-bold text-teal-600">{importResults.carLinesCreated || 0}</div>
+                          <div className="text-xs text-muted-foreground">Car Lines Created</div>
+                        </div>
+                        <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
+                          <Users className="h-6 w-6 mx-auto mb-2 text-emerald-600" />
+                          <div className="text-2xl font-bold text-emerald-600">{importResults.walkerLocationsCreated || 0}</div>
+                          <div className="text-xs text-muted-foreground">Walker Locations</div>
+                        </div>
                       </div>
-                       <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg">
-                         <UserCheck className="h-6 w-6 mx-auto mb-2 text-indigo-600" />
-                         <div className="text-2xl font-bold text-indigo-600">{importResults.teachersAssigned}</div>
-                         <div className="text-xs text-muted-foreground">Teacher Assignments</div>
-                       </div>
-                       <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-                         <Users className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
-                         <div className="text-2xl font-bold text-yellow-600">{importResults.busesCreated || 0}</div>
-                         <div className="text-xs text-muted-foreground">Buses Created</div>
-                       </div>
-                       <div className="text-center p-3 bg-teal-50 dark:bg-teal-950/20 rounded-lg">
-                         <Users className="h-6 w-6 mx-auto mb-2 text-teal-600" />
-                         <div className="text-2xl font-bold text-teal-600">{importResults.carLinesCreated || 0}</div>
-                         <div className="text-xs text-muted-foreground">Car Lines Created</div>
-                       </div>
-                       <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
-                         <Users className="h-6 w-6 mx-auto mb-2 text-emerald-600" />
-                         <div className="text-2xl font-bold text-emerald-600">{importResults.walkerLocationsCreated || 0}</div>
-                         <div className="text-xs text-muted-foreground">Walker Locations</div>
-                       </div>
-                     </div>
+                    ) : (
+                      <div className="p-4 bg-red-100 dark:bg-red-950/20 rounded-lg">
+                        <div className="font-medium text-red-800 dark:text-red-200 mb-2">Error Details:</div>
+                        <div className="text-sm text-red-700 dark:text-red-300">{importResults.details}</div>
+                        <div className="mt-3 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2 rounded">
+                          The database transaction was automatically rolled back. Please fix the error and try again.
+                        </div>
+                      </div>
+                    )}
 
                     {importResults.errors.length > 0 && (
                       <Alert variant="destructive">
