@@ -20,6 +20,8 @@ interface RosterRow {
   contactInfo?: string;
   specialNotes?: string;
   dismissalGroup?: string;
+  transportation?: string;
+  transportationMethod?: string;
 }
 
 serve(async (req) => {
@@ -90,14 +92,21 @@ serve(async (req) => {
       classesCreated: 0,
       studentsEnrolled: 0,
       teachersAssigned: 0,
+      busesCreated: 0,
+      carLinesCreated: 0,
+      walkerLocationsCreated: 0,
+      transportationAssignments: 0,
       errors: [] as string[],
     };
 
     console.log(`Processing ${rosterData.length} roster entries for school ${profile.school_id}`);
 
-    // Track unique classes and teachers to avoid duplicates
+    // Track unique classes, teachers, and transportation items to avoid duplicates
     const processedClasses = new Map<string, string>(); // key -> classId
     const processedTeachers = new Map<string, string>(); // email -> userId
+    const processedBuses = new Map<string, string>(); // busNumber -> busId
+    const processedCarLines = new Map<string, string>(); // lineName -> carLineId
+    const processedWalkerLocations = new Map<string, string>(); // locationName -> walkerLocationId
 
     for (let i = 0; i < rosterData.length; i++) {
       const row = rosterData[i];
@@ -243,6 +252,174 @@ serve(async (req) => {
           results.studentsEnrolled++;
         }
 
+        // 5. Handle transportation assignments
+        if (row.transportation && row.transportationMethod) {
+          const transportationType = row.transportation.toLowerCase().trim();
+          const transportationMethod = row.transportationMethod.trim();
+
+          try {
+            if (transportationType === 'bus') {
+              // Handle bus assignment
+              let busId = processedBuses.get(transportationMethod);
+              
+              if (!busId) {
+                // Check if bus exists
+                const { data: existingBus } = await supabase
+                  .from('buses')
+                  .select('id')
+                  .eq('bus_number', transportationMethod)
+                  .eq('school_id', profile.school_id)
+                  .single();
+
+                if (existingBus) {
+                  busId = existingBus.id;
+                } else {
+                  // Create new bus
+                  const { data: newBus, error: busError } = await supabase
+                    .from('buses')
+                    .insert({
+                      bus_number: transportationMethod,
+                      school_id: profile.school_id,
+                      driver_first_name: 'TBD',
+                      driver_last_name: 'TBD',
+                    })
+                    .select('id')
+                    .single();
+
+                  if (busError) {
+                    results.errors.push(`Row ${i + 1}: Failed to create bus ${transportationMethod} - ${busError.message}`);
+                  } else {
+                    busId = newBus.id;
+                    results.busesCreated++;
+                  }
+                }
+                if (busId) processedBuses.set(transportationMethod, busId);
+              }
+
+              // Assign student to bus
+              if (busId) {
+                const { error: assignError } = await supabase
+                  .from('student_bus_assignments')
+                  .upsert({
+                    student_id: studentId,
+                    bus_id: busId,
+                  });
+
+                if (!assignError) {
+                  results.transportationAssignments++;
+                }
+              }
+
+            } else if (transportationType === 'car') {
+              // Handle car line assignment
+              let carLineId = processedCarLines.get(transportationMethod);
+              
+              if (!carLineId) {
+                // Check if car line exists
+                const { data: existingCarLine } = await supabase
+                  .from('car_lines')
+                  .select('id')
+                  .eq('line_name', transportationMethod)
+                  .eq('school_id', profile.school_id)
+                  .single();
+
+                if (existingCarLine) {
+                  carLineId = existingCarLine.id;
+                } else {
+                  // Create new car line
+                  const { data: newCarLine, error: carLineError } = await supabase
+                    .from('car_lines')
+                    .insert({
+                      line_name: transportationMethod,
+                      school_id: profile.school_id,
+                      color: '#3B82F6',
+                      pickup_location: transportationMethod,
+                    })
+                    .select('id')
+                    .single();
+
+                  if (carLineError) {
+                    results.errors.push(`Row ${i + 1}: Failed to create car line ${transportationMethod} - ${carLineError.message}`);
+                  } else {
+                    carLineId = newCarLine.id;
+                    results.carLinesCreated++;
+                  }
+                }
+                if (carLineId) processedCarLines.set(transportationMethod, carLineId);
+              }
+
+              // Assign student to car line
+              if (carLineId) {
+                const { error: assignError } = await supabase
+                  .from('student_car_assignments')
+                  .upsert({
+                    student_id: studentId,
+                    car_line_id: carLineId,
+                  });
+
+                if (!assignError) {
+                  results.transportationAssignments++;
+                }
+              }
+
+            } else if (transportationType === 'walker') {
+              // Handle walker location assignment
+              let walkerLocationId = processedWalkerLocations.get(transportationMethod);
+              
+              if (!walkerLocationId) {
+                // Check if walker location exists
+                const { data: existingWalkerLocation } = await supabase
+                  .from('walker_locations')
+                  .select('id')
+                  .eq('location_name', transportationMethod)
+                  .eq('school_id', profile.school_id)
+                  .single();
+
+                if (existingWalkerLocation) {
+                  walkerLocationId = existingWalkerLocation.id;
+                } else {
+                  // Create new walker location
+                  const { data: newWalkerLocation, error: walkerLocationError } = await supabase
+                    .from('walker_locations')
+                    .insert({
+                      location_name: transportationMethod,
+                      school_id: profile.school_id,
+                    })
+                    .select('id')
+                    .single();
+
+                  if (walkerLocationError) {
+                    results.errors.push(`Row ${i + 1}: Failed to create walker location ${transportationMethod} - ${walkerLocationError.message}`);
+                  } else {
+                    walkerLocationId = newWalkerLocation.id;
+                    results.walkerLocationsCreated++;
+                  }
+                }
+                if (walkerLocationId) processedWalkerLocations.set(transportationMethod, walkerLocationId);
+              }
+
+              // Assign student to walker location
+              if (walkerLocationId) {
+                const { error: assignError } = await supabase
+                  .from('student_walker_assignments')
+                  .upsert({
+                    student_id: studentId,
+                    walker_location_id: walkerLocationId,
+                  });
+
+                if (!assignError) {
+                  results.transportationAssignments++;
+                }
+              }
+
+            } else {
+              console.log(`Row ${i + 1}: Unrecognized transportation type: ${transportationType}`);
+            }
+          } catch (transportError) {
+            results.errors.push(`Row ${i + 1}: Transportation processing error - ${transportError.message}`);
+          }
+        }
+
       } catch (error) {
         results.errors.push(`Row ${i + 1}: Unexpected error - ${error.message}`);
         console.error(`Error processing row ${i + 1}:`, error);
@@ -254,7 +431,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: true, 
       results,
-      message: `Successfully processed ${rosterData.length} rows. Created ${results.studentsCreated} students, ${results.teachersCreated} teachers, ${results.classesCreated} classes.`
+      message: `Successfully processed ${rosterData.length} rows. Created ${results.studentsCreated} students, ${results.teachersCreated} teachers, ${results.classesCreated} classes, ${results.busesCreated} buses, ${results.carLinesCreated} car lines, ${results.walkerLocationsCreated} walker locations with ${results.transportationAssignments} transportation assignments.`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

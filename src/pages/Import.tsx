@@ -27,6 +27,8 @@ interface RosterRow {
   contactInfo?: string;
   specialNotes?: string;
   dismissalGroup?: string;
+  transportation?: string;
+  transportationMethod?: string;
 }
 
 interface ImportResults {
@@ -35,6 +37,10 @@ interface ImportResults {
   classesCreated: number;
   studentsEnrolled: number;
   teachersAssigned: number;
+  busesCreated: number;
+  carLinesCreated: number;
+  walkerLocationsCreated: number;
+  transportationAssignments: number;
   errors: string[];
 }
 
@@ -104,44 +110,43 @@ const Import = () => {
       throw new Error('File must contain at least a header row and one data row');
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    // Normalize headers - remove spaces and convert to lowercase
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
     console.log('Headers found:', headers);
     
     const rows: RosterRow[] = [];
     const errors: string[] = [];
 
-    // Expected column mappings
+    // Expected column mappings - normalized keys (no spaces, lowercase)
     const columnMap = {
-      'student id': 'studentId',
       'studentid': 'studentId',
       'id': 'studentId',
-      'first name': 'firstName',
       'firstname': 'firstName',
-      'last name': 'lastName',
       'lastname': 'lastName',
       'grade': 'gradeLevel',
-      'grade level': 'gradeLevel',
+      'gradelevel': 'gradeLevel',
       'class': 'className',
-      'class name': 'className',
+      'classname': 'className',
       'classroom': 'className',
       'room': 'roomNumber',
-      'room number': 'roomNumber',
-      'teacher first name': 'teacherFirstName',
+      'roomnumber': 'roomNumber',
       'teacherfirstname': 'teacherFirstName',
-      'teacher last name': 'teacherLastName',
       'teacherlastname': 'teacherLastName',
-      'teacher email': 'teacherEmail',
       'teacheremail': 'teacherEmail',
       'parent': 'parentGuardianName',
       'guardian': 'parentGuardianName',
-      'parent/guardian': 'parentGuardianName',
+      'parentguardian': 'parentGuardianName',
       'contact': 'contactInfo',
-      'contact info': 'contactInfo',
+      'contactinfo': 'contactInfo',
       'phone': 'contactInfo',
       'notes': 'specialNotes',
-      'special notes': 'specialNotes',
+      'specialnotes': 'specialNotes',
       'dismissal': 'dismissalGroup',
-      'dismissal group': 'dismissalGroup',
+      'dismissalgroup': 'dismissalGroup',
+      'transportation': 'transportation',
+      'transport': 'transportation',
+      'transportationmethod': 'transportationMethod',
+      'transportmethod': 'transportationMethod',
     };
 
     for (let i = 1; i < lines.length; i++) {
@@ -460,33 +465,48 @@ const Import = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                      <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                        <Users className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-                        <div className="text-2xl font-bold text-blue-600">{importResults.studentsCreated}</div>
-                        <div className="text-xs text-muted-foreground">Students Created</div>
-                      </div>
-                      <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                        <UserCheck className="h-6 w-6 mx-auto mb-2 text-green-600" />
-                        <div className="text-2xl font-bold text-green-600">{importResults.teachersCreated}</div>
-                        <div className="text-xs text-muted-foreground">Teachers Created</div>
-                      </div>
-                      <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                        <GraduationCap className="h-6 w-6 mx-auto mb-2 text-purple-600" />
-                        <div className="text-2xl font-bold text-purple-600">{importResults.classesCreated}</div>
-                        <div className="text-xs text-muted-foreground">Classes Created</div>
-                      </div>
-                      <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
-                        <Users className="h-6 w-6 mx-auto mb-2 text-orange-600" />
+                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+                       <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                         <Users className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                         <div className="text-2xl font-bold text-blue-600">{importResults.studentsCreated}</div>
+                         <div className="text-xs text-muted-foreground">Students Created</div>
+                       </div>
+                       <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                         <UserCheck className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                         <div className="text-2xl font-bold text-green-600">{importResults.teachersCreated}</div>
+                         <div className="text-xs text-muted-foreground">Teachers Created</div>
+                       </div>
+                       <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                         <GraduationCap className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+                         <div className="text-2xl font-bold text-purple-600">{importResults.classesCreated}</div>
+                         <div className="text-xs text-muted-foreground">Classes Created</div>
+                       </div>
+                       <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+                         <Users className="h-6 w-6 mx-auto mb-2 text-orange-600" />
                         <div className="text-2xl font-bold text-orange-600">{importResults.studentsEnrolled}</div>
                         <div className="text-xs text-muted-foreground">Students Enrolled</div>
                       </div>
-                      <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg">
-                        <UserCheck className="h-6 w-6 mx-auto mb-2 text-indigo-600" />
-                        <div className="text-2xl font-bold text-indigo-600">{importResults.teachersAssigned}</div>
-                        <div className="text-xs text-muted-foreground">Teacher Assignments</div>
-                      </div>
-                    </div>
+                       <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg">
+                         <UserCheck className="h-6 w-6 mx-auto mb-2 text-indigo-600" />
+                         <div className="text-2xl font-bold text-indigo-600">{importResults.teachersAssigned}</div>
+                         <div className="text-xs text-muted-foreground">Teacher Assignments</div>
+                       </div>
+                       <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+                         <Users className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
+                         <div className="text-2xl font-bold text-yellow-600">{importResults.busesCreated || 0}</div>
+                         <div className="text-xs text-muted-foreground">Buses Created</div>
+                       </div>
+                       <div className="text-center p-3 bg-teal-50 dark:bg-teal-950/20 rounded-lg">
+                         <Users className="h-6 w-6 mx-auto mb-2 text-teal-600" />
+                         <div className="text-2xl font-bold text-teal-600">{importResults.carLinesCreated || 0}</div>
+                         <div className="text-xs text-muted-foreground">Car Lines Created</div>
+                       </div>
+                       <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
+                         <Users className="h-6 w-6 mx-auto mb-2 text-emerald-600" />
+                         <div className="text-2xl font-bold text-emerald-600">{importResults.walkerLocationsCreated || 0}</div>
+                         <div className="text-xs text-muted-foreground">Walker Locations</div>
+                       </div>
+                     </div>
 
                     {importResults.errors.length > 0 && (
                       <Alert variant="destructive">
@@ -531,17 +551,28 @@ const Import = () => {
                             <li>• Teacher Email (or "TeacherEmail")</li>
                           </ul>
                         </div>
-                        <div>
-                          <h4 className="font-medium mb-2">Optional Columns:</h4>
-                          <ul className="text-sm text-muted-foreground space-y-1">
-                            <li>• Student ID (or "ID", "StudentID")</li>
-                            <li>• Room Number (or "Room")</li>
-                            <li>• Parent/Guardian Name (or "Parent", "Guardian")</li>
-                            <li>• Contact Info (or "Contact", "Phone")</li>
-                            <li>• Special Notes (or "Notes")</li>
-                            <li>• Dismissal Group (or "Dismissal")</li>
-                          </ul>
-                        </div>
+                         <div>
+                           <h4 className="font-medium mb-2">Optional Columns:</h4>
+                           <ul className="text-sm text-muted-foreground space-y-1">
+                             <li>• Student ID (or "ID", "StudentID")</li>
+                             <li>• Room Number (or "Room")</li>
+                             <li>• Parent/Guardian Name (or "Parent", "Guardian")</li>
+                             <li>• Contact Info (or "Contact", "Phone")</li>
+                             <li>• Special Notes (or "Notes")</li>
+                             <li>• Dismissal Group (or "Dismissal")</li>
+                             <li>• Transportation (accepted values: "Bus", "Car", "Walker")</li>
+                             <li>• Transportation Method (bus number, car line name, or walker location)</li>
+                           </ul>
+                         </div>
+                         <div>
+                           <h4 className="font-medium mb-2">Transportation Processing:</h4>
+                           <ul className="text-sm text-muted-foreground space-y-1">
+                             <li>• If Transportation = "Bus" and Transportation Method is provided, creates bus and assigns student</li>
+                             <li>• If Transportation = "Car" and Transportation Method is provided, creates car line and assigns student</li>
+                             <li>• If Transportation = "Walker" and Transportation Method is provided, creates walker location and assigns student</li>
+                             <li>• Transportation values are case-insensitive (bus, BUS, Bus all work)</li>
+                           </ul>
+                         </div>
                         <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                           <h4 className="font-medium mb-2 text-sm">File Format:</h4>
                           <ul className="text-xs text-muted-foreground space-y-1">
