@@ -1,10 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navbar = () => {
   const location = useLocation();
   const isAuthPage = location.pathname === "/auth";
+  const { userRole, signOut } = useAuth();
+  const isSystemAdmin = userRole === "system_admin";
 
   return (
     <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -17,13 +20,15 @@ const Navbar = () => {
         </Link>
         
         <div className="flex items-center gap-4">
-          {!isAuthPage ? (
-            <Link to="/auth">
-              <Button variant="hero">Get Started</Button>
-            </Link>
-          ) : (
+          {isAuthPage ? (
             <Link to="/">
               <Button variant="ghost">← Back to Home</Button>
+            </Link>
+          ) : isSystemAdmin ? (
+            <Button variant="hero" onClick={signOut}>Sign Out</Button>
+          ) : (
+            <Link to="/auth">
+              <Button variant="hero">Get Started</Button>
             </Link>
           )}
         </div>
