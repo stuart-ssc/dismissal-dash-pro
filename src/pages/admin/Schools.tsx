@@ -14,7 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
+import Navbar from "@/components/Navbar";
 
 // Types matching public.schools table (simplified)
 interface School {
@@ -294,10 +295,18 @@ export default function AdminSchools() {
   }
 
   return (
-    <main className="p-6">
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold">Manage Schools</h1>
-      </header>
+    <>
+      <Navbar />
+      <main className="p-6">
+        <header className="mb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Manage Schools</h1>
+            <p className="text-muted-foreground">System Administration</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/admin')}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Admin
+          </Button>
+        </header>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -373,5 +382,6 @@ export default function AdminSchools() {
         </CardContent>
       </Card>
     </main>
+    </>
   );
 }
