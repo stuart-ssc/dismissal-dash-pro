@@ -101,7 +101,8 @@ export default function AdminUsers() {
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ProfileRow | null>(null);
-
+  const [search, setSearch] = useState('');
+  const [schoolFilter, setSchoolFilter] = useState<string>('all');
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { first_name: '', last_name: '', email: '', role: 'teacher', school_id: null }
@@ -120,6 +121,16 @@ export default function AdminUsers() {
       form.reset({ first_name: '', last_name: '', email: '', role: 'teacher', school_id: null });
     }
   }, [editing]);
+
+  const filteredProfiles = useMemo(() => {
+    const list = (profiles || []).filter(p => {
+      const q = search.trim().toLowerCase();
+      const matchesSearch = !q || [p.first_name, p.last_name, p.email].filter(Boolean).join(' ').toLowerCase().includes(q);
+      const matchesSchool = schoolFilter === 'all' || (p.school_id ?? -1) === Number(schoolFilter);
+      return matchesSearch && matchesSchool;
+    });
+    return list;
+  }, [profiles, search, schoolFilter]);
 
   const createMutation = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -267,11 +278,31 @@ export default function AdminUsers() {
       )}
 
       <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <CardTitle>User Directory</CardTitle>
-          <Button onClick={() => { setEditing(null); setShowForm(true); }}>
-            <Plus className="mr-2 h-4 w-4" /> Add User
-          </Button>
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <div className="w-full md:w-64">
+              <Input
+                placeholder="Search users..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="w-full md:w-56">
+              <Select value={schoolFilter} onValueChange={(v) => setSchoolFilter(v)}>
+                <SelectTrigger id="filter_school"><SelectValue placeholder="Filter by school" /></SelectTrigger>
+                <SelectContent className="z-[60] bg-background">
+                  <SelectItem value="all">All Schools</SelectItem>
+                  {(schools || []).map(s => (
+                    <SelectItem key={s.id} value={String(s.id)}>{s.school_name || `School #${s.id}`}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={() => { setEditing(null); setShowForm(true); }}>
+              <Plus className="mr-2 h-4 w-4" /> Add User
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -286,7 +317,7 @@ export default function AdminUsers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(profiles || []).map((p) => {
+                {filteredProfiles.map((p) => {
                   const role = byUserRole.get(p.id) || '—';
                   const schoolName = schools?.find(s => s.id === (p.school_id ?? -1))?.school_name || (p.school_id ? `#${p.school_id}` : '—');
                   return (
