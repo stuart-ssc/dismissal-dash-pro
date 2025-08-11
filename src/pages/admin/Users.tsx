@@ -31,6 +31,9 @@ interface School { id: number; school_name: string | null }
 
 const roleOptions: UserRoleRow["role"][] = ["teacher", "school_admin", "system_admin"];
 
+const getRoleLabel = (r: UserRoleRow["role"]) =>
+  r.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+
 const schema = z.object({
   first_name: z.string().min(1, "First name required"),
   last_name: z.string().min(1, "Last name required"),
@@ -234,7 +237,7 @@ export default function AdminUsers() {
                 <Select value={form.watch('role')} onValueChange={(v: any) => form.setValue('role', v, { shouldDirty: true })}>
                   <SelectTrigger id="role"><SelectValue placeholder="Select a role" /></SelectTrigger>
                   <SelectContent className="z-[60] bg-background">
-                    {roleOptions.map(r => (<SelectItem key={r} value={r}>{r.replace('_',' ')}</SelectItem>))}
+                    {roleOptions.map(r => (<SelectItem key={r} value={r}>{getRoleLabel(r)}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
@@ -287,7 +290,7 @@ export default function AdminUsers() {
                     <TableRow key={p.id}>
                       <TableCell>{[p.first_name, p.last_name].filter(Boolean).join(' ') || '—'}</TableCell>
                       <TableCell>{p.email || '—'}</TableCell>
-                      <TableCell className="uppercase">{String(role).replace('_',' ')}</TableCell>
+                      <TableCell>{role === '—' ? '—' : getRoleLabel(role as UserRoleRow["role"])}</TableCell>
                       <TableCell>{schoolName}</TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="sm" onClick={() => { setEditing(p); setShowForm(true); }}>
