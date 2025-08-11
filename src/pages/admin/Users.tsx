@@ -208,8 +208,8 @@ export default function AdminUsers() {
           <h1 className="text-3xl font-bold">Users</h1>
           <p className="text-muted-foreground">Manage users, roles, and school assignments</p>
         </div>
-        <Button onClick={() => { setEditing(null); setShowForm(true); }}>
-          <Plus className="mr-2 h-4 w-4" /> Add User
+        <Button variant="outline" onClick={() => navigate('/admin')}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Admin
         </Button>
       </div>
 
@@ -267,8 +267,11 @@ export default function AdminUsers() {
       )}
 
       <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>User Directory</CardTitle>
+          <Button onClick={() => { setEditing(null); setShowForm(true); }}>
+            <Plus className="mr-2 h-4 w-4" /> Add User
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
