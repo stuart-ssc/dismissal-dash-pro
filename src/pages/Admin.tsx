@@ -140,7 +140,7 @@ const navigate = useNavigate();
                 <School className="mr-2 h-4 w-4" />
                 Manage Schools
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/users')}>
                 <Users className="mr-2 h-4 w-4" />
                 User Management
               </Button>
