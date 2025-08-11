@@ -22,34 +22,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  const fetchAndSetUserRole = async (userId: string) => {
+    try {
+      const { data: rolesData, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      if (error) throw error;
+      const roles = (rolesData ?? []).map((r: any) => r.role as string);
+      const effectiveRole =
+        roles.includes('system_admin')
+          ? 'system_admin'
+          : roles.includes('school_admin')
+            ? 'school_admin'
+            : roles.includes('teacher')
+              ? 'teacher'
+              : null;
+      setUserRole(effectiveRole);
+    } catch (err) {
+      console.error('Error fetching user roles:', err);
+      setUserRole(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          setLoading(true);
           // Defer role fetching to avoid deadlocks
-          setTimeout(async () => {
-            try {
-              const { data: roleData } = await supabase
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', session.user.id)
-                .single();
-              
-              setUserRole(roleData?.role || null);
-            } catch (error) {
-              console.error('Error fetching user role:', error);
-              setUserRole(null);
-            }
+          setTimeout(() => {
+            fetchAndSetUserRole(session.user!.id);
           }, 0);
         } else {
           setUserRole(null);
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
@@ -57,7 +71,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (session?.user) {
+        setLoading(true);
+        fetchAndSetUserRole(session.user.id);
+      } else {
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
