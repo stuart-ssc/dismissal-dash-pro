@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, School, Users, Settings, BarChart3, Database } from "lucide-react";
 import Navbar from "@/components/Navbar";
-
 const Admin = () => {
-  const { user, userRole, signOut, loading } = useAuth();
+  const {
+    user,
+    userRole,
+    signOut,
+    loading
+  } = useAuth();
   const navigate = useNavigate();
-
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
@@ -17,21 +20,15 @@ const Admin = () => {
       navigate('/dashboard');
     }
   }, [user, userRole, loading, navigate]);
-
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
+    return <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+      </div>;
   }
-
   if (!user || userRole !== 'system_admin') {
     return null;
   }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
       <Navbar />
       
       <div className="container mx-auto px-4 py-16">
@@ -43,9 +40,7 @@ const Admin = () => {
                 Manage the entire Dismissal Pro platform
               </p>
             </div>
-            <Button onClick={signOut} variant="outline">
-              Sign Out
-            </Button>
+            
           </div>
         </div>
 
@@ -170,8 +165,6 @@ const Admin = () => {
           </Card>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Admin;
