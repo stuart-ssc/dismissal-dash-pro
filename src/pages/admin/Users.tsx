@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft, KeyRound } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -295,6 +295,25 @@ export default function AdminUsers() {
                       <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="sm" onClick={() => { setEditing(p); setShowForm(true); }}>
                           <Pencil className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!p.email) {
+                              toast({ title: 'No email on file', description: 'This user does not have an email address.', variant: 'destructive' as any });
+                              return;
+                            }
+                            const redirectUrl = `${window.location.origin}/auth`;
+                            const { error } = await supabase.auth.resetPasswordForEmail(p.email, { redirectTo: redirectUrl });
+                            if (error) {
+                              toast({ title: 'Failed to send reset', description: error.message, variant: 'destructive' as any });
+                            } else {
+                              toast({ title: 'Reset email sent', description: 'A password reset link has been sent to the user.' });
+                            }
+                          }}
+                        >
+                          <KeyRound className="mr-2 h-4 w-4" /> Reset Password
                         </Button>
                         <Button variant="softDestructive" size="sm" onClick={() => deleteMutation.mutate(p.id)}>
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
