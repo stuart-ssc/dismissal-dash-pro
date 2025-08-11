@@ -40,9 +40,6 @@ interface School {
   created_at?: string;
 }
 const schema = z.object({
-  id: z.coerce.number({
-    required_error: "ID is required"
-  }),
   school_name: z.string().min(1, "Name is required"),
   address: z.string().optional().nullable(),
   phone_number: z.string().optional().nullable(),
@@ -77,7 +74,7 @@ function SchoolForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      id: initial?.id ?? "" as unknown as number,
+      
       school_name: initial?.school_name ?? "",
       address: initial?.address ?? "",
       phone_number: initial?.phone_number ?? "",
@@ -134,12 +131,6 @@ function SchoolForm({
     }
   });
   return <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={form.handleSubmit(values => upsertMutation.mutate(values))}>
-      <div className="space-y-2">
-        <Label htmlFor="id">School ID</Label>
-        <Input id="id" type="number" disabled={isEdit} {...form.register("id", {
-        valueAsNumber: true
-      })} />
-      </div>
 
       <div className="space-y-2">
         <Label htmlFor="school_name">Name</Label>
