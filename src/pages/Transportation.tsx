@@ -892,36 +892,58 @@ const Transportation = () => {
   const fetchBusStudents = async (busId: string) => {
     setIsLoadingStudents(true);
     try {
-      const { data, error } = await supabase
+      // Fetch assignments separately to avoid RLS issues with nested queries
+      const { data: assignments, error: assignmentError } = await supabase
         .from('student_bus_assignments')
-        .select(`
-          id,
-          student_id,
-          students!inner(
-            first_name,
-            last_name,
-            grade_level,
-            class_rosters(
-              classes(class_name)
-            )
-          )
-        `)
+        .select('id, student_id')
         .eq('bus_id', busId);
 
-      if (error) {
-        console.error('Error fetching bus students:', error);
+      if (assignmentError) {
+        console.error('Error fetching bus assignments:', assignmentError);
         toast.error('Failed to load students');
         return;
       }
 
-      const studentRecords: StudentBusRecord[] = data?.map(assignment => ({
-        id: assignment.id,
-        student_id: assignment.student_id,
-        student_name: `${assignment.students.first_name} ${assignment.students.last_name}`,
-        grade_level: assignment.students.grade_level,
-        class_name: assignment.students.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        ride_status: 'active_rider', // Default value - this could be stored in the database
-      })) || [];
+      if (!assignments || assignments.length === 0) {
+        setBusStudents([]);
+        return;
+      }
+
+      // Get student IDs to fetch student details
+      const studentIds = assignments.map(a => a.student_id);
+
+      // Fetch student details separately
+      const { data: students, error: studentError } = await supabase
+        .from('students')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          )
+        `)
+        .in('id', studentIds);
+
+      if (studentError) {
+        console.error('Error fetching student details:', studentError);
+        toast.error('Failed to load student details');
+        return;
+      }
+
+      // Join the data in JavaScript
+      const studentRecords: StudentBusRecord[] = assignments.map(assignment => {
+        const student = students?.find(s => s.id === assignment.student_id);
+        return {
+          id: assignment.id,
+          student_id: assignment.student_id,
+          student_name: student ? `${student.first_name} ${student.last_name}` : 'Unknown Student',
+          grade_level: student?.grade_level || 'Unknown',
+          class_name: student?.class_rosters?.[0]?.classes?.class_name || 'No Class',
+          ride_status: 'active_rider', // Default value - this could be stored in the database
+        };
+      });
 
       setBusStudents(studentRecords);
     } catch (error) {
@@ -1288,41 +1310,62 @@ const Transportation = () => {
   const fetchWalkerStudents = async (walkerLocationId: string) => {
     setIsLoadingWalkerStudents(true);
     try {
-      const { data: assignments, error } = await supabase
+      // Fetch assignments separately to avoid RLS issues with nested queries
+      const { data: assignments, error: assignmentError } = await supabase
         .from('student_walker_assignments')
-        .select(`
-          id,
-          assigned_at,
-          student_id,
-          students (
-            first_name,
-            last_name,
-            grade_level,
-            class_rosters (
-              classes (
-                class_name
-              )
-            )
-          )
-        `)
+        .select('id, student_id, assigned_at')
         .eq('walker_location_id', walkerLocationId);
 
-      if (error) throw error;
+      if (assignmentError) {
+        console.error('Error fetching walker assignments:', assignmentError);
+        return;
+      }
 
-      const students = assignments?.map(assignment => ({
-        student_id: assignment.student_id,
-        student_name: `${assignment.students?.first_name} ${assignment.students?.last_name}`,
-        id: assignment.student_id,
-        first_name: assignment.students?.first_name || '',
-        last_name: assignment.students?.last_name || '',
-        grade_level: assignment.students?.grade_level || '',
-        class_name: assignment.students?.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        assigned_at: assignment.assigned_at,
-        assignment_id: assignment.id,
-        ride_status: 'active_rider' as const
-      })) || [];
+      if (!assignments || assignments.length === 0) {
+        setWalkerStudents([]);
+        return;
+      }
 
-      setWalkerStudents(students);
+      // Get student IDs to fetch student details
+      const studentIds = assignments.map(a => a.student_id);
+
+      // Fetch student details separately
+      const { data: students, error: studentError } = await supabase
+        .from('students')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          )
+        `)
+        .in('id', studentIds);
+
+      if (studentError) {
+        console.error('Error fetching student details:', studentError);
+        return;
+      }
+
+      // Join the data in JavaScript
+      const studentRecords = assignments.map(assignment => {
+        const student = students?.find(s => s.id === assignment.student_id);
+        return {
+          student_id: assignment.student_id,
+          student_name: student ? `${student.first_name} ${student.last_name}` : 'Unknown Student',
+          id: assignment.student_id,
+          first_name: student?.first_name || '',
+          last_name: student?.last_name || '',
+          grade_level: student?.grade_level || '',
+          class_name: student?.class_rosters?.[0]?.classes?.class_name || 'No Class',
+          assigned_at: assignment.assigned_at,
+          assignment_id: assignment.id,
+          ride_status: 'active_rider' as const
+        };
+      });
+
+      setWalkerStudents(studentRecords);
     } catch (error) {
       console.error('Error fetching walker students:', error);
     } finally {
@@ -1487,41 +1530,62 @@ const Transportation = () => {
   const fetchCarStudents = async (carLineId: string) => {
     setIsLoadingCarStudents(true);
     try {
-      const { data: assignments, error } = await supabase
+      // Fetch assignments separately to avoid RLS issues with nested queries
+      const { data: assignments, error: assignmentError } = await supabase
         .from('student_car_assignments')
-        .select(`
-          id,
-          assigned_at,
-          student_id,
-          students (
-            first_name,
-            last_name,
-            grade_level,
-            class_rosters (
-              classes (
-                class_name
-              )
-            )
-          )
-        `)
+        .select('id, student_id, assigned_at')
         .eq('car_line_id', carLineId);
 
-      if (error) throw error;
+      if (assignmentError) {
+        console.error('Error fetching car assignments:', assignmentError);
+        return;
+      }
 
-      const students = assignments?.map(assignment => ({
-        student_id: assignment.student_id,
-        student_name: `${assignment.students?.first_name} ${assignment.students?.last_name}`,
-        id: assignment.student_id,
-        first_name: assignment.students?.first_name || '',
-        last_name: assignment.students?.last_name || '',
-        grade_level: assignment.students?.grade_level || '',
-        class_name: assignment.students?.class_rosters?.[0]?.classes?.class_name || 'No Class',
-        assigned_at: assignment.assigned_at,
-        assignment_id: assignment.id,
-        ride_status: 'active_rider' as const
-      })) || [];
+      if (!assignments || assignments.length === 0) {
+        setCarStudents([]);
+        return;
+      }
 
-      setCarStudents(students);
+      // Get student IDs to fetch student details
+      const studentIds = assignments.map(a => a.student_id);
+
+      // Fetch student details separately
+      const { data: students, error: studentError } = await supabase
+        .from('students')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          )
+        `)
+        .in('id', studentIds);
+
+      if (studentError) {
+        console.error('Error fetching student details:', studentError);
+        return;
+      }
+
+      // Join the data in JavaScript
+      const studentRecords = assignments.map(assignment => {
+        const student = students?.find(s => s.id === assignment.student_id);
+        return {
+          student_id: assignment.student_id,
+          student_name: student ? `${student.first_name} ${student.last_name}` : 'Unknown Student',
+          id: assignment.student_id,
+          first_name: student?.first_name || '',
+          last_name: student?.last_name || '',
+          grade_level: student?.grade_level || '',
+          class_name: student?.class_rosters?.[0]?.classes?.class_name || 'No Class',
+          assigned_at: assignment.assigned_at,
+          assignment_id: assignment.id,
+          ride_status: 'active_rider' as const
+        };
+      });
+
+      setCarStudents(studentRecords);
     } catch (error) {
       console.error('Error fetching car students:', error);
     } finally {
