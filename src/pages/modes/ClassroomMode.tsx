@@ -179,9 +179,8 @@ export default function ClassroomMode() {
   return <div className="min-h-screen w-full bg-background text-foreground p-6">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
-            {teacherClassName ? `${teacherClassName} Dismissal` : "Classroom Dismissal"}{" "}
-            {planName}
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">
+            Classroom Dismissal
           </h1>
           <p className="text-muted-foreground mt-2">
             Groups currently being dismissed will appear here in real-time.
