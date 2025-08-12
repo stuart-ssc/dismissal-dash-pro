@@ -23,6 +23,7 @@ interface RosterRow {
   dismissalGroup?: string;
   transportation?: string;
   transportationMethod?: string;
+  Transportation_Method?: string; // Handle CSV column name variation
 }
 
 serve(async (req) => {
@@ -236,40 +237,41 @@ serve(async (req) => {
         results.studentsEnrolled++;
 
         // 5. Handle transportation assignments
-        if (row.transportation && row.transportationMethod) {
+        const transportationMethod = row.transportationMethod || row.Transportation_Method;
+        if (row.transportation && transportationMethod) {
           const transportationType = row.transportation.toLowerCase().trim();
-          const transportationMethod = row.transportationMethod.trim();
+          const transportationMethodValue = transportationMethod.trim();
 
           try {
             if (transportationType === 'bus') {
-              // Handle bus assignment
-              let busId = processedBuses.get(transportationMethod);
-              
-              if (!busId) {
-                // Check if bus exists
-                const existingBusResult = await client.queryObject(
-                  `SELECT id FROM buses WHERE bus_number = $1 AND school_id = $2`,
-                  [transportationMethod, profile.school_id]
-                );
+               // Handle bus assignment
+               let busId = processedBuses.get(transportationMethodValue);
+               
+               if (!busId) {
+                 // Check if bus exists
+                 const existingBusResult = await client.queryObject(
+                   `SELECT id FROM buses WHERE bus_number = $1 AND school_id = $2`,
+                   [transportationMethodValue, profile.school_id]
+                 );
 
-                if (existingBusResult.rows.length > 0) {
-                  busId = existingBusResult.rows[0].id as string;
-                } else {
-                  // Create new bus
-                  const newBusResult = await client.queryObject(
-                    `INSERT INTO buses (bus_number, school_id, driver_first_name, driver_last_name) 
-                     VALUES ($1, $2, $3, $4) RETURNING id`,
-                    [transportationMethod, profile.school_id, 'TBD', 'TBD']
-                  );
+                 if (existingBusResult.rows.length > 0) {
+                   busId = existingBusResult.rows[0].id as string;
+                 } else {
+                   // Create new bus
+                   const newBusResult = await client.queryObject(
+                     `INSERT INTO buses (bus_number, school_id, driver_first_name, driver_last_name) 
+                      VALUES ($1, $2, $3, $4) RETURNING id`,
+                     [transportationMethodValue, profile.school_id, 'TBD', 'TBD']
+                   );
 
-                  if (newBusResult.rows.length === 0) {
-                    throw new Error(`Failed to create bus ${transportationMethod}`);
-                  }
-                  busId = newBusResult.rows[0].id as string;
-                  results.busesCreated++;
-                }
-                processedBuses.set(transportationMethod, busId);
-              }
+                   if (newBusResult.rows.length === 0) {
+                     throw new Error(`Failed to create bus ${transportationMethodValue}`);
+                   }
+                   busId = newBusResult.rows[0].id as string;
+                   results.busesCreated++;
+                 }
+                 processedBuses.set(transportationMethodValue, busId);
+               }
 
               // Assign student to bus
               await client.queryObject(
@@ -280,34 +282,34 @@ serve(async (req) => {
               results.transportationAssignments++;
 
             } else if (transportationType === 'car') {
-              // Handle car line assignment
-              let carLineId = processedCarLines.get(transportationMethod);
-              
-              if (!carLineId) {
-                // Check if car line exists
-                const existingCarLineResult = await client.queryObject(
-                  `SELECT id FROM car_lines WHERE line_name = $1 AND school_id = $2`,
-                  [transportationMethod, profile.school_id]
-                );
+               // Handle car line assignment
+               let carLineId = processedCarLines.get(transportationMethodValue);
+               
+               if (!carLineId) {
+                 // Check if car line exists
+                 const existingCarLineResult = await client.queryObject(
+                   `SELECT id FROM car_lines WHERE line_name = $1 AND school_id = $2`,
+                   [transportationMethodValue, profile.school_id]
+                 );
 
-                if (existingCarLineResult.rows.length > 0) {
-                  carLineId = existingCarLineResult.rows[0].id as string;
-                } else {
-                  // Create new car line
-                  const newCarLineResult = await client.queryObject(
-                    `INSERT INTO car_lines (line_name, school_id, color, pickup_location) 
-                     VALUES ($1, $2, $3, $4) RETURNING id`,
-                    [transportationMethod, profile.school_id, '#3B82F6', transportationMethod]
-                  );
+                 if (existingCarLineResult.rows.length > 0) {
+                   carLineId = existingCarLineResult.rows[0].id as string;
+                 } else {
+                   // Create new car line
+                   const newCarLineResult = await client.queryObject(
+                     `INSERT INTO car_lines (line_name, school_id, color, pickup_location) 
+                      VALUES ($1, $2, $3, $4) RETURNING id`,
+                     [transportationMethodValue, profile.school_id, '#3B82F6', transportationMethodValue]
+                   );
 
-                  if (newCarLineResult.rows.length === 0) {
-                    throw new Error(`Failed to create car line ${transportationMethod}`);
-                  }
-                  carLineId = newCarLineResult.rows[0].id as string;
-                  results.carLinesCreated++;
-                }
-                processedCarLines.set(transportationMethod, carLineId);
-              }
+                   if (newCarLineResult.rows.length === 0) {
+                     throw new Error(`Failed to create car line ${transportationMethodValue}`);
+                   }
+                   carLineId = newCarLineResult.rows[0].id as string;
+                   results.carLinesCreated++;
+                 }
+                 processedCarLines.set(transportationMethodValue, carLineId);
+               }
 
               // Assign student to car line
               await client.queryObject(
@@ -318,34 +320,34 @@ serve(async (req) => {
               results.transportationAssignments++;
 
             } else if (transportationType === 'walker') {
-              // Handle walker location assignment
-              let walkerLocationId = processedWalkerLocations.get(transportationMethod);
-              
-              if (!walkerLocationId) {
-                // Check if walker location exists
-                const existingWalkerLocationResult = await client.queryObject(
-                  `SELECT id FROM walker_locations WHERE location_name = $1 AND school_id = $2`,
-                  [transportationMethod, profile.school_id]
-                );
+               // Handle walker location assignment
+               let walkerLocationId = processedWalkerLocations.get(transportationMethodValue);
+               
+               if (!walkerLocationId) {
+                 // Check if walker location exists
+                 const existingWalkerLocationResult = await client.queryObject(
+                   `SELECT id FROM walker_locations WHERE location_name = $1 AND school_id = $2`,
+                   [transportationMethodValue, profile.school_id]
+                 );
 
-                if (existingWalkerLocationResult.rows.length > 0) {
-                  walkerLocationId = existingWalkerLocationResult.rows[0].id as string;
-                } else {
-                  // Create new walker location
-                  const newWalkerLocationResult = await client.queryObject(
-                    `INSERT INTO walker_locations (location_name, school_id) 
-                     VALUES ($1, $2) RETURNING id`,
-                    [transportationMethod, profile.school_id]
-                  );
+                 if (existingWalkerLocationResult.rows.length > 0) {
+                   walkerLocationId = existingWalkerLocationResult.rows[0].id as string;
+                 } else {
+                   // Create new walker location
+                   const newWalkerLocationResult = await client.queryObject(
+                     `INSERT INTO walker_locations (location_name, school_id) 
+                      VALUES ($1, $2) RETURNING id`,
+                     [transportationMethodValue, profile.school_id]
+                   );
 
-                  if (newWalkerLocationResult.rows.length === 0) {
-                    throw new Error(`Failed to create walker location ${transportationMethod}`);
-                  }
-                  walkerLocationId = newWalkerLocationResult.rows[0].id as string;
-                  results.walkerLocationsCreated++;
-                }
-                processedWalkerLocations.set(transportationMethod, walkerLocationId);
-              }
+                   if (newWalkerLocationResult.rows.length === 0) {
+                     throw new Error(`Failed to create walker location ${transportationMethodValue}`);
+                   }
+                   walkerLocationId = newWalkerLocationResult.rows[0].id as string;
+                   results.walkerLocationsCreated++;
+                 }
+                 processedWalkerLocations.set(transportationMethodValue, walkerLocationId);
+               }
 
               // Assign student to walker location
               await client.queryObject(
