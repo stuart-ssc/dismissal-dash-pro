@@ -268,15 +268,13 @@ const Classes = () => {
         return;
       }
 
+      // Fetch classes without nested class_rosters query to avoid RLS recursion
       const { data: classesData, error } = await supabase
         .from('classes')
         .select(`
           *,
           class_teachers(
             teachers(first_name, last_name)
-          ),
-          class_rosters(
-            student_id
           )
         `)
         .eq('school_id', profile.school_id);
@@ -289,18 +287,29 @@ const Classes = () => {
         return;
       }
 
-      const classRecords: ClassRecord[] = classesData?.map(classItem => ({
-        id: classItem.id,
-        class_name: classItem.class_name,
-        grade_level: classItem.grade_level || '',
-        room_number: classItem.room_number,
-        teacher_name: classItem.class_teachers?.[0]?.teachers 
-          ? `${classItem.class_teachers[0].teachers.first_name} ${classItem.class_teachers[0].teachers.last_name}`
-          : null,
-        student_count: classItem.class_rosters?.length || 0,
-        created_at: classItem.created_at,
-        updated_at: classItem.updated_at,
-      })) || [];
+      // Fetch student counts separately for each class
+      const classRecords: ClassRecord[] = [];
+      if (classesData) {
+        for (const classItem of classesData) {
+          const { count: studentCount } = await supabase
+            .from('class_rosters')
+            .select('*', { count: 'exact', head: true })
+            .eq('class_id', classItem.id);
+
+          classRecords.push({
+            id: classItem.id,
+            class_name: classItem.class_name,
+            grade_level: classItem.grade_level || '',
+            room_number: classItem.room_number,
+            teacher_name: classItem.class_teachers?.[0]?.teachers 
+              ? `${classItem.class_teachers[0].teachers.first_name} ${classItem.class_teachers[0].teachers.last_name}`
+              : null,
+            student_count: studentCount || 0,
+            created_at: classItem.created_at,
+            updated_at: classItem.updated_at,
+          });
+        }
+      }
 
       setClasses(classRecords);
       setFilteredClasses(classRecords);
