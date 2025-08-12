@@ -206,21 +206,31 @@ const Transportation = () => {
         return;
       }
       
-      const { data: buses, error } = await supabase
+      // Fetch buses without nested aggregation to avoid RLS issues
+      const { data: buses, error: busesError } = await supabase
         .from('buses')
-        .select(`
-          *,
-          students_count:student_bus_assignments(count)
-        `)
+        .select('*')
         .eq('school_id', profile.school_id)
         .order('bus_number', { ascending: true });
 
-      console.log('Buses query result:', { buses, error, schoolId: profile.school_id });
+      console.log('Buses query result:', { buses, error: busesError, schoolId: profile.school_id });
 
-      if (error) {
-        console.error('Error fetching buses:', error);
+      if (busesError) {
+        console.error('Error fetching buses:', busesError);
         toast.error('Failed to load transportation data');
         return;
+      }
+
+      // Fetch bus assignment counts separately
+      const busAssignmentCounts = new Map<string, number>();
+      if (buses && buses.length > 0) {
+        for (const bus of buses) {
+          const { count } = await supabase
+            .from('student_bus_assignments')
+            .select('*', { count: 'exact', head: true })
+            .eq('bus_id', bus.id);
+          busAssignmentCounts.set(bus.id, count || 0);
+        }
       }
 
       const transportationData: TransportationRecord[] = (buses ?? []).map((bus: any) => ({
@@ -228,7 +238,7 @@ const Transportation = () => {
         bus_number: bus.bus_number,
         driver_first_name: bus.driver_first_name,
         driver_last_name: bus.driver_last_name,
-        students_count: bus.students_count?.[0]?.count || 0,
+        students_count: busAssignmentCounts.get(bus.id) || 0,
         status: bus.status as 'active' | 'inactive' | 'maintenance',
         created_at: bus.created_at,
         updated_at: bus.updated_at,
@@ -260,23 +270,33 @@ const Transportation = () => {
         return;
       }
 
-      const { data: walkerLocationsData, error } = await supabase
+      // Fetch walker locations without nested aggregation to avoid RLS issues
+      const { data: walkerLocationsData, error: walkerError } = await supabase
         .from('walker_locations')
-        .select(`
-          *,
-          students_count:student_walker_assignments(count)
-        `)
+        .select('*')
         .eq('school_id', profile.school_id)
         .order('location_name');
 
-      if (error) {
-        console.error('Error fetching walker locations:', error);
+      if (walkerError) {
+        console.error('Error fetching walker locations:', walkerError);
         return;
+      }
+
+      // Fetch walker assignment counts separately
+      const walkerAssignmentCounts = new Map<string, number>();
+      if (walkerLocationsData && walkerLocationsData.length > 0) {
+        for (const location of walkerLocationsData) {
+          const { count } = await supabase
+            .from('student_walker_assignments')
+            .select('*', { count: 'exact', head: true })
+            .eq('walker_location_id', location.id);
+          walkerAssignmentCounts.set(location.id, count || 0);
+        }
       }
 
       const walkerLocationsWithCounts = (walkerLocationsData || []).map(location => ({
         ...location,
-        students_count: location.students_count?.[0]?.count || 0
+        students_count: walkerAssignmentCounts.get(location.id) || 0
       })) as WalkerLocationRecord[];
 
       setWalkerLocations(walkerLocationsWithCounts);
@@ -302,23 +322,33 @@ const Transportation = () => {
         return;
       }
 
-      const { data: carLinesData, error } = await supabase
+      // Fetch car lines without nested aggregation to avoid RLS issues
+      const { data: carLinesData, error: carError } = await supabase
         .from('car_lines')
-        .select(`
-          *,
-          students_count:student_car_assignments(count)
-        `)
+        .select('*')
         .eq('school_id', profile.school_id)
         .order('line_name');
 
-      if (error) {
-        console.error('Error fetching car lines:', error);
+      if (carError) {
+        console.error('Error fetching car lines:', carError);
         return;
+      }
+
+      // Fetch car assignment counts separately
+      const carAssignmentCounts = new Map<string, number>();
+      if (carLinesData && carLinesData.length > 0) {
+        for (const carLine of carLinesData) {
+          const { count } = await supabase
+            .from('student_car_assignments')
+            .select('*', { count: 'exact', head: true })
+            .eq('car_line_id', carLine.id);
+          carAssignmentCounts.set(carLine.id, count || 0);
+        }
       }
 
       const carLinesWithCounts = (carLinesData || []).map(carLine => ({
         ...carLine,
-        students_count: carLine.students_count?.[0]?.count || 0
+        students_count: carAssignmentCounts.get(carLine.id) || 0
       })) as CarLineRecord[];
 
       setCarLines(carLinesWithCounts);
