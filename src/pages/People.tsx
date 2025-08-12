@@ -217,27 +217,49 @@ const People = () => {
         .order('created_at', { ascending: false })
         .limit(2000);
 
-      // Fetch transportation assignments separately with names
+      if (studentsError) {
+        console.error('Error fetching students:', studentsError);
+        toast({
+          title: "Error",
+          description: "Failed to load students",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!studentsData || studentsData.length === 0) {
+        setPeople([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Extract student IDs to filter transportation assignments
+      const studentIds = studentsData.map(student => student.id);
+
+      // Fetch transportation assignments separately with names, filtered by student IDs
       const { data: busAssignments } = await supabase
         .from('student_bus_assignments')
         .select(`
           student_id,
           buses(bus_number)
-        `);
+        `)
+        .in('student_id', studentIds);
 
       const { data: walkerAssignments } = await supabase
         .from('student_walker_assignments')
         .select(`
           student_id,
           walker_locations(location_name)
-        `);
+        `)
+        .in('student_id', studentIds);
 
       const { data: carAssignments } = await supabase
         .from('student_car_assignments')
         .select(`
           student_id,
           car_lines(line_name)
-        `);
+        `)
+        .in('student_id', studentIds);
 
       // Create maps for easy lookup
       const busMap = new Map<string, string[]>();
