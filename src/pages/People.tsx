@@ -24,7 +24,7 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
-  transportation?: 'Bus' | 'Walker' | 'Car Rider';
+  transportation?: string;
 }
 
 const People = () => {
@@ -200,7 +200,7 @@ const People = () => {
         }
       }
 
-      // Fetch students with their classes in one query using joins, ordered by newest first
+      // Fetch students with their classes separately to avoid RLS issues
       const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
         .select(`
@@ -211,31 +211,87 @@ const People = () => {
           grade_level,
           class_rosters(
             classes(class_name)
-          ),
-          student_bus_assignments(bus_id),
-          student_walker_assignments(walker_location_id),
-          student_car_assignments(car_line_id)
+          )
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
-        .limit(2000); // Increase limit to ensure we get all students
+        .limit(2000);
+
+      // Fetch transportation assignments separately with names
+      const { data: busAssignments } = await supabase
+        .from('student_bus_assignments')
+        .select(`
+          student_id,
+          buses(bus_number)
+        `);
+
+      const { data: walkerAssignments } = await supabase
+        .from('student_walker_assignments')
+        .select(`
+          student_id,
+          walker_locations(location_name)
+        `);
+
+      const { data: carAssignments } = await supabase
+        .from('student_car_assignments')
+        .select(`
+          student_id,
+          car_lines(line_name)
+        `);
+
+      // Create maps for easy lookup
+      const busMap = new Map<string, string[]>();
+      const walkerMap = new Map<string, string[]>();
+      const carMap = new Map<string, string[]>();
+
+      busAssignments?.forEach(assignment => {
+        if (assignment.buses?.bus_number) {
+          if (!busMap.has(assignment.student_id)) {
+            busMap.set(assignment.student_id, []);
+          }
+          busMap.get(assignment.student_id)!.push(assignment.buses.bus_number);
+        }
+      });
+
+      walkerAssignments?.forEach(assignment => {
+        if (assignment.walker_locations?.location_name) {
+          if (!walkerMap.has(assignment.student_id)) {
+            walkerMap.set(assignment.student_id, []);
+          }
+          walkerMap.get(assignment.student_id)!.push(assignment.walker_locations.location_name);
+        }
+      });
+
+      carAssignments?.forEach(assignment => {
+        if (assignment.car_lines?.line_name) {
+          if (!carMap.has(assignment.student_id)) {
+            carMap.set(assignment.student_id, []);
+          }
+          carMap.get(assignment.student_id)!.push(assignment.car_lines.line_name);
+        }
+      });
 
       console.log('Students query result:', { studentsData, studentsError, schoolId, count });
       
-      // Specifically check for Terri Tester
-      const terriInData = studentsData?.find(s => s.first_name === 'Terri' && s.last_name === 'Tester');
-      console.log('Terri Tester in students data:', terriInData);
-
       if (studentsData) {
         console.log('Processing students:', studentsData.length);
         
         for (const student of studentsData) {
           const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
 
-          const hasBus = (student.student_bus_assignments?.length || 0) > 0;
-          const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
-          const hasCar = (student.student_car_assignments?.length || 0) > 0;
-          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : undefined;
+          // Get transportation names instead of generic types
+          const busNames = busMap.get(student.id) || [];
+          const walkerNames = walkerMap.get(student.id) || [];
+          const carNames = carMap.get(student.id) || [];
+
+          let transportation: string | undefined;
+          if (busNames.length > 0) {
+            transportation = busNames.join(', ');
+          } else if (walkerNames.length > 0) {
+            transportation = walkerNames.join(', ');
+          } else if (carNames.length > 0) {
+            transportation = carNames.join(', ');
+          }
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
