@@ -24,11 +24,11 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
-  transportation?: string;
+  transportation?: 'Bus' | 'Walker' | 'Car Rider';
 }
 
 const People = () => {
-  const { user, session, userRole, loading: authLoading, refreshSession } = useAuth();
+  const { user, userRole, signOut, loading, session } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [schoolName, setSchoolName] = useState<string>('');
@@ -37,9 +37,6 @@ const People = () => {
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [people, setPeople] = useState<PersonData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Get user school ID for RLS queries
-  const userSchoolId = schoolId;
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<PersonData | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -54,10 +51,10 @@ const People = () => {
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!loading && !user) {
       navigate('/auth');
     }
-  }, [user, authLoading, navigate, session]);
+  }, [user, loading, navigate, session]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -203,7 +200,7 @@ const People = () => {
         }
       }
 
-      // Fetch students without nested queries to avoid RLS issues
+      // Fetch students with their classes in one query using joins, ordered by newest first
       const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
         .select(`
@@ -211,183 +208,34 @@ const People = () => {
           student_id, 
           first_name, 
           last_name, 
-          grade_level
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          ),
+          student_bus_assignments(bus_id),
+          student_walker_assignments(walker_location_id),
+          student_car_assignments(car_line_id)
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
-        .limit(2000);
-
-      if (studentsError) {
-        console.error('❌ Error fetching students:', studentsError);
-        
-        // Check if it's an authentication/RLS error
-        if (studentsError.message?.includes('RLS') || studentsError.message?.includes('policy') || studentsError.code === 'PGRST301') {
-          console.log("🔄 RLS/Auth error detected, attempting session refresh...");
-          const refreshSuccess = await refreshSession();
-          if (refreshSuccess) {
-            console.log("✅ Session refreshed, retrying fetch...");
-            setTimeout(() => fetchPeople(schoolId), 1000);
-            return;
-          }
-        }
-        
-        toast({
-          title: "Error",
-          description: "Failed to load students. Please try signing out and back in.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!studentsData || studentsData.length === 0) {
-        setPeople([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Extract student IDs to filter transportation and class assignments
-      const studentIds = studentsData.map(student => student.id);
-
-      // Fetch class assignments separately to avoid RLS issues
-      const { data: classAssignments } = await supabase
-        .from('class_rosters')
-        .select(`
-          student_id,
-          classes(class_name)
-        `)
-        .in('student_id', studentIds);
-
-      // Fetch transportation assignments without nested queries to avoid RLS issues
-      console.log('Fetching transportation for student IDs:', studentIds.slice(0, 5));
-      
-      const [busAssignments, walkerAssignments, carAssignments] = await Promise.all([
-        supabase
-          .from('student_bus_assignments')
-          .select('student_id, bus_id')
-          .in('student_id', studentIds),
-          
-        supabase
-          .from('student_walker_assignments')
-          .select('student_id, walker_location_id')
-          .in('student_id', studentIds),
-          
-        supabase
-          .from('student_car_assignments')
-          .select('student_id, car_line_id')
-          .in('student_id', studentIds)
-      ]);
-
-      console.log('Assignment results:', { busAssignments, walkerAssignments, carAssignments });
-
-      // Collect all unique IDs for bulk fetching
-      const busIds = new Set(busAssignments.data?.map(a => a.bus_id).filter(Boolean) || []);
-      const walkerLocationIds = new Set(walkerAssignments.data?.map(a => a.walker_location_id).filter(Boolean) || []);
-      const carLineIds = new Set(carAssignments.data?.map(a => a.car_line_id).filter(Boolean) || []);
-
-      // Fetch location names in bulk
-      const [busData, walkerLocationData, carLineData] = await Promise.all([
-        busIds.size > 0 ? supabase
-          .from('buses')
-          .select('id, bus_number')
-          .in('id', Array.from(busIds)) : { data: [] },
-          
-        walkerLocationIds.size > 0 ? supabase
-          .from('walker_locations')
-          .select('id, location_name')
-          .in('id', Array.from(walkerLocationIds)) : { data: [] },
-          
-        carLineIds.size > 0 ? supabase
-          .from('car_lines')
-          .select('id, line_name')
-          .in('id', Array.from(carLineIds)) : { data: [] }
-      ]);
-
-      console.log('Location data:', { busData, walkerLocationData, carLineData });
-
-      // Create maps for easy lookup
-      const classMap = new Map<string, string[]>();
-      const busMap = new Map<string, string[]>();
-      const walkerMap = new Map<string, string[]>();
-      const carMap = new Map<string, string[]>();
-
-      // Process class assignments
-      classAssignments?.forEach(assignment => {
-        if (assignment.classes?.class_name) {
-          if (!classMap.has(assignment.student_id)) {
-            classMap.set(assignment.student_id, []);
-          }
-          classMap.get(assignment.student_id)!.push(assignment.classes.class_name);
-        }
-      });
-
-      // Create lookup maps for location names
-      const busLookup = new Map<string, string>();
-      busData.data?.forEach(bus => {
-        busLookup.set(bus.id, bus.bus_number);
-      });
-
-      const walkerLocationLookup = new Map<string, string>();
-      walkerLocationData.data?.forEach(location => {
-        walkerLocationLookup.set(location.id, location.location_name);
-      });
-
-      const carLineLookup = new Map<string, string>();
-      carLineData.data?.forEach(carLine => {
-        carLineLookup.set(carLine.id, carLine.line_name);
-      });
-
-      // Process assignments and join with location names
-      busAssignments.data?.forEach(assignment => {
-        const busNumber = busLookup.get(assignment.bus_id);
-        if (busNumber) {
-          if (!busMap.has(assignment.student_id)) {
-            busMap.set(assignment.student_id, []);
-          }
-          busMap.get(assignment.student_id)!.push(busNumber);
-        }
-      });
-
-      walkerAssignments.data?.forEach(assignment => {
-        const locationName = walkerLocationLookup.get(assignment.walker_location_id);
-        if (locationName) {
-          if (!walkerMap.has(assignment.student_id)) {
-            walkerMap.set(assignment.student_id, []);
-          }
-          walkerMap.get(assignment.student_id)!.push(locationName);
-        }
-      });
-
-      carAssignments.data?.forEach(assignment => {
-        const lineName = carLineLookup.get(assignment.car_line_id);
-        if (lineName) {
-          if (!carMap.has(assignment.student_id)) {
-            carMap.set(assignment.student_id, []);
-          }
-          carMap.get(assignment.student_id)!.push(lineName);
-        }
-      });
+        .limit(2000); // Increase limit to ensure we get all students
 
       console.log('Students query result:', { studentsData, studentsError, schoolId, count });
       
+      // Specifically check for Terri Tester
+      const terriInData = studentsData?.find(s => s.first_name === 'Terri' && s.last_name === 'Tester');
+      console.log('Terri Tester in students data:', terriInData);
+
       if (studentsData) {
         console.log('Processing students:', studentsData.length);
         
         for (const student of studentsData) {
-          const studentClasses = classMap.get(student.id) || [];
+          const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
 
-          // Get transportation names instead of generic types
-          const busNames = busMap.get(student.id) || [];
-          const walkerNames = walkerMap.get(student.id) || [];
-          const carNames = carMap.get(student.id) || [];
-
-          let transportation = "Not Assigned";
-          if (busNames.length > 0) {
-            transportation = busNames.join(', ');
-          } else if (walkerNames.length > 0) {
-            transportation = walkerNames.join(', ');
-          } else if (carNames.length > 0) {
-            transportation = carNames.join(', ');
-          }
+          const hasBus = (student.student_bus_assignments?.length || 0) > 0;
+          const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
+          const hasCar = (student.student_car_assignments?.length || 0) > 0;
+          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : undefined;
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
@@ -614,7 +462,7 @@ const People = () => {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
-  if (authLoading || isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -642,11 +490,7 @@ const People = () => {
               </p>
             </div>
           </div>
-          <Button onClick={() => {
-            console.log("🔄 Signing out and clearing session...");
-            localStorage.removeItem('supabase.auth.token');
-            window.location.href = '/auth';
-          }} variant="outline">
+          <Button onClick={signOut} variant="outline">
             Sign Out
           </Button>
         </header>
@@ -970,11 +814,7 @@ const People = () => {
                 Welcome back, {firstName} {lastName}
               </p>
             </div>
-            <Button onClick={() => {
-              console.log("🔄 Signing out and clearing session...");
-              localStorage.removeItem('supabase.auth.token');
-              window.location.href = '/auth';
-            }} variant="outline">
+            <Button onClick={signOut} variant="outline">
               Sign Out
             </Button>
           </div>
