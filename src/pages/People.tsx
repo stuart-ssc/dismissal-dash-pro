@@ -28,7 +28,7 @@ interface PersonData {
 }
 
 const People = () => {
-  const { user, userRole, signOut, loading } = useAuth();
+  const { user, userRole, signOut, loading, session } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [schoolName, setSchoolName] = useState<string>('');
@@ -54,7 +54,7 @@ const People = () => {
     if (!loading && !user) {
       navigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, session]);
 
   useEffect(() => {
     const fetchUserData = async () => {

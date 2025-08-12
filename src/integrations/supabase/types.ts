@@ -1018,6 +1018,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_current_user_school_id: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_teacher_class_ids: {
         Args: { teacher_uuid: string }
         Returns: string[]
