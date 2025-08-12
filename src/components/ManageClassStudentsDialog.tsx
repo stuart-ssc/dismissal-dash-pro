@@ -45,20 +45,40 @@ export const ManageClassStudentsDialog = ({ open, onOpenChange, classId, classNa
   const fetchRoster = async (): Promise<RosterItem[]> => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch class_rosters without nested students query to avoid RLS recursion
+      const { data: rosterData, error: rosterError } = await supabase
         .from('class_rosters')
-        .select(`id, student_id, students ( id, first_name, last_name, student_id )`)
+        .select('id, student_id')
         .eq('class_id', classId);
 
-      if (error) throw error;
+      if (rosterError) throw rosterError;
 
-      const items: RosterItem[] = (data || []).map((row: any) => ({
-        roster_id: row.id,
-        student_id: row.student_id,
-        first_name: row.students?.first_name || '',
-        last_name: row.students?.last_name || '',
-        student_code: row.students?.student_id || null,
-      }));
+      if (!rosterData || rosterData.length === 0) {
+        setRoster([]);
+        return [];
+      }
+
+      // Fetch student details separately
+      const studentIds = rosterData.map(r => r.student_id);
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('id, first_name, last_name, student_id')
+        .in('id', studentIds);
+
+      if (studentsError) throw studentsError;
+
+      // Combine the data
+      const items: RosterItem[] = rosterData.map((rosterRow) => {
+        const student = studentsData?.find(s => s.id === rosterRow.student_id);
+        return {
+          roster_id: rosterRow.id,
+          student_id: rosterRow.student_id,
+          first_name: student?.first_name || '',
+          last_name: student?.last_name || '',
+          student_code: student?.student_id || null,
+        };
+      });
+
       // Sort by last name
       items.sort((a, b) => a.last_name.localeCompare(b.last_name));
       setRoster(items);
