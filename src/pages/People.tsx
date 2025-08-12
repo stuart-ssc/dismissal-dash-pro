@@ -257,33 +257,41 @@ const People = () => {
         `)
         .in('student_id', studentIds);
 
-      // Fetch transportation assignments using explicit JOINs for RLS compatibility
-      const { data: busAssignments } = await supabase
-        .from('student_bus_assignments')
-        .select(`
-          student_id,
-          bus_id,
-          buses!inner(bus_number)
-        `)
-        .in('student_id', studentIds);
+      // Fetch transportation assignments using proper JOIN syntax
+      console.log('Fetching transportation for student IDs:', studentIds.slice(0, 5)); // Log first 5 for debugging
+      
+      const [busAssignments, walkerAssignments, carAssignments] = await Promise.all([
+        supabase
+          .from('student_bus_assignments')
+          .select(`
+            student_id,
+            bus_id,
+            buses(bus_number)
+          `)
+          .in('student_id', studentIds),
+          
+        supabase
+          .from('student_walker_assignments')
+          .select(`
+            student_id,
+            walker_location_id,
+            walker_locations(location_name)
+          `)
+          .in('student_id', studentIds),
+          
+        supabase
+          .from('student_car_assignments')
+          .select(`
+            student_id,
+            car_line_id,
+            car_lines(line_name)
+          `)
+          .in('student_id', studentIds)
+      ]);
 
-      const { data: walkerAssignments } = await supabase
-        .from('student_walker_assignments')
-        .select(`
-          student_id,
-          walker_location_id,
-          walker_locations!inner(location_name)
-        `)
-        .in('student_id', studentIds);
-
-      const { data: carAssignments } = await supabase
-        .from('student_car_assignments')
-        .select(`
-          student_id,
-          car_line_id,
-          car_lines!inner(line_name)
-        `)
-        .in('student_id', studentIds);
+      console.log('Bus assignments result:', busAssignments);
+      console.log('Walker assignments result:', walkerAssignments);
+      console.log('Car assignments result:', carAssignments);
 
       // Create maps for easy lookup
       const classMap = new Map<string, string[]>();
@@ -301,7 +309,7 @@ const People = () => {
         }
       });
 
-      busAssignments?.forEach(assignment => {
+      busAssignments.data?.forEach(assignment => {
         if (assignment.buses?.bus_number) {
           if (!busMap.has(assignment.student_id)) {
             busMap.set(assignment.student_id, []);
@@ -310,7 +318,7 @@ const People = () => {
         }
       });
 
-      walkerAssignments?.forEach(assignment => {
+      walkerAssignments.data?.forEach(assignment => {
         if (assignment.walker_locations?.location_name) {
           if (!walkerMap.has(assignment.student_id)) {
             walkerMap.set(assignment.student_id, []);
@@ -319,7 +327,7 @@ const People = () => {
         }
       });
 
-      carAssignments?.forEach(assignment => {
+      carAssignments.data?.forEach(assignment => {
         if (assignment.car_lines?.line_name) {
           if (!carMap.has(assignment.student_id)) {
             carMap.set(assignment.student_id, []);
