@@ -326,8 +326,13 @@ serve(async (req) => {
         // 5. Handle transportation assignments
         const transportationMethod = row.transportationMethod || row.Transportation_Method;
         if (row.transportation && transportationMethod) {
-          const transportationType = row.transportation.toLowerCase().trim();
+          let transportationType = row.transportation.toLowerCase().trim();
           const transportationMethodValue = transportationMethod.trim();
+
+          // Normalize transportation types
+          if (transportationType === 'car rider' || transportationType === 'car_rider' || transportationType === 'car line' || transportationType === 'carline') {
+            transportationType = 'car';
+          }
 
           try {
             if (transportationType === 'bus') {
@@ -445,7 +450,8 @@ serve(async (req) => {
               results.transportationAssignments++;
 
             } else {
-              console.log(`Row ${i + 1}: Unrecognized transportation type: ${transportationType}`);
+              // This is a warning, not an error - don't throw
+              console.log(`Row ${i + 1}: Unrecognized transportation type: ${transportationType} (original: ${row.transportation})`);
             }
           } catch (transportError) {
             console.log(`Row ${i + 1}: Transportation processing error - ${transportError.message}`);
