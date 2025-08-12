@@ -221,15 +221,15 @@ const Transportation = () => {
         return;
       }
 
-      // Fetch bus assignment counts separately
+      // Fetch bus assignment counts separately by getting actual records
       const busAssignmentCounts = new Map<string, number>();
       if (buses && buses.length > 0) {
         for (const bus of buses) {
-          const { count } = await supabase
+          const { data: assignments } = await supabase
             .from('student_bus_assignments')
-            .select('*', { count: 'exact', head: true })
+            .select('id')
             .eq('bus_id', bus.id);
-          busAssignmentCounts.set(bus.id, count || 0);
+          busAssignmentCounts.set(bus.id, assignments?.length || 0);
         }
       }
 
@@ -282,15 +282,15 @@ const Transportation = () => {
         return;
       }
 
-      // Fetch walker assignment counts separately
+      // Fetch walker assignment counts separately by getting actual records
       const walkerAssignmentCounts = new Map<string, number>();
       if (walkerLocationsData && walkerLocationsData.length > 0) {
         for (const location of walkerLocationsData) {
-          const { count } = await supabase
+          const { data: assignments } = await supabase
             .from('student_walker_assignments')
-            .select('*', { count: 'exact', head: true })
+            .select('id')
             .eq('walker_location_id', location.id);
-          walkerAssignmentCounts.set(location.id, count || 0);
+          walkerAssignmentCounts.set(location.id, assignments?.length || 0);
         }
       }
 
@@ -334,15 +334,15 @@ const Transportation = () => {
         return;
       }
 
-      // Fetch car assignment counts separately
+      // Fetch car assignment counts separately by getting actual records
       const carAssignmentCounts = new Map<string, number>();
       if (carLinesData && carLinesData.length > 0) {
         for (const carLine of carLinesData) {
-          const { count } = await supabase
+          const { data: assignments } = await supabase
             .from('student_car_assignments')
-            .select('*', { count: 'exact', head: true })
+            .select('id')
             .eq('car_line_id', carLine.id);
-          carAssignmentCounts.set(carLine.id, count || 0);
+          carAssignmentCounts.set(carLine.id, assignments?.length || 0);
         }
       }
 
