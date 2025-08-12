@@ -338,7 +338,7 @@ const People = () => {
           const walkerNames = walkerMap.get(student.id) || [];
           const carNames = carMap.get(student.id) || [];
 
-          let transportation: string | undefined;
+          let transportation = "Not Assigned";
           if (busNames.length > 0) {
             transportation = busNames.join(', ');
           } else if (walkerNames.length > 0) {
