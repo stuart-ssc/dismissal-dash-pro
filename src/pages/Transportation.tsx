@@ -1278,24 +1278,26 @@ const Transportation = () => {
         return;
       }
 
-      // Check if student has any existing transportation assignment
+      // Check if student has any existing transportation assignment with separate queries
       const [busCheck, walkerCheck, carCheck] = await Promise.all([
         supabase
           .from('student_bus_assignments')
-          .select('id, buses(bus_number)')
+          .select('id, bus_id')
           .eq('student_id', studentId)
           .maybeSingle(),
         supabase
           .from('student_walker_assignments')
-          .select('id, walker_locations(location_name)')
+          .select('id, walker_location_id')
           .eq('student_id', studentId)
           .maybeSingle(),
         supabase
           .from('student_car_assignments')
-          .select('id, car_lines(line_name)')
+          .select('id, car_line_id')
           .eq('student_id', studentId)
           .maybeSingle()
       ]);
+
+      console.log('Existing assignments check:', { busCheck: busCheck.data, walkerCheck: walkerCheck.data, carCheck: carCheck.data });
 
       // If student has existing assignment, offer to reassign
       if (busCheck.data || walkerCheck.data || carCheck.data) {
@@ -1304,18 +1306,38 @@ const Transportation = () => {
         let deleteId = '';
 
         if (busCheck.data) {
-          currentAssignment = `Bus ${busCheck.data.buses?.bus_number || 'Unknown'}`;
+          // Get bus details separately
+          const { data: busData } = await supabase
+            .from('buses')
+            .select('bus_number')
+            .eq('id', busCheck.data.bus_id)
+            .single();
+          currentAssignment = `Bus ${busData?.bus_number || 'Unknown'}`;
           deleteTable = 'student_bus_assignments';
           deleteId = busCheck.data.id;
         } else if (walkerCheck.data) {
-          currentAssignment = `Walker Location: ${walkerCheck.data.walker_locations?.location_name || 'Unknown'}`;
+          // Get walker location details separately
+          const { data: walkerData } = await supabase
+            .from('walker_locations')
+            .select('location_name')
+            .eq('id', walkerCheck.data.walker_location_id)
+            .single();
+          currentAssignment = `Walker Location: ${walkerData?.location_name || 'Unknown'}`;
           deleteTable = 'student_walker_assignments';
           deleteId = walkerCheck.data.id;
         } else if (carCheck.data) {
-          currentAssignment = `Car Line: ${carCheck.data.car_lines?.line_name || 'Unknown'}`;
+          // Get car line details separately
+          const { data: carData } = await supabase
+            .from('car_lines')
+            .select('line_name')
+            .eq('id', carCheck.data.car_line_id)
+            .single();
+          currentAssignment = `Car Line: ${carData?.line_name || 'Unknown'}`;
           deleteTable = 'student_car_assignments';
           deleteId = carCheck.data.id;
         }
+
+        console.log('Found existing assignment:', currentAssignment);
 
         const confirmReassign = confirm(
           `Student is currently assigned to ${currentAssignment}. Do you want to reassign them to Bus ${managingStudents.bus_number}?`
