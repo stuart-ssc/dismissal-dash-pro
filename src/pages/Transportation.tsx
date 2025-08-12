@@ -208,7 +208,10 @@ const Transportation = () => {
       
       const { data: buses, error } = await supabase
         .from('buses')
-        .select('*')
+        .select(`
+          *,
+          students_count:student_bus_assignments(count)
+        `)
         .eq('school_id', profile.school_id)
         .order('bus_number', { ascending: true });
 
@@ -225,7 +228,7 @@ const Transportation = () => {
         bus_number: bus.bus_number,
         driver_first_name: bus.driver_first_name,
         driver_last_name: bus.driver_last_name,
-        students_count: bus.student_bus_assignments?.length || 0,
+        students_count: bus.students_count?.[0]?.count || 0,
         status: bus.status as 'active' | 'inactive' | 'maintenance',
         created_at: bus.created_at,
         updated_at: bus.updated_at,
