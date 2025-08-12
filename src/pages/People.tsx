@@ -61,12 +61,19 @@ const People = () => {
       if (!user) return;
       
       try {
+        // Debug authentication
+        const { data: authTest } = await supabase.auth.getUser();
+        console.log('Auth debug - User ID:', user.id);
+        console.log('Auth debug - Session valid:', !!authTest.user);
+        
         // Get user's profile to get school_id, first_name, and last_name
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('school_id, first_name, last_name')
           .eq('id', user.id)
           .single();
+
+        console.log('Profile fetch result:', { profile, profileError });
 
         if (profile) {
           setFirstName(profile.first_name || '');
