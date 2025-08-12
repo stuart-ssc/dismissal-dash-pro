@@ -892,11 +892,15 @@ const Transportation = () => {
   const fetchBusStudents = async (busId: string) => {
     setIsLoadingStudents(true);
     try {
-      // Fetch assignments separately to avoid RLS issues with nested queries
+      console.log('Fetching students for bus ID:', busId);
+      
+      // Fetch assignments without nested queries to avoid RLS issues
       const { data: assignments, error: assignmentError } = await supabase
         .from('student_bus_assignments')
         .select('id, student_id')
         .eq('bus_id', busId);
+
+      console.log('Bus assignments result:', { assignments, assignmentError });
 
       if (assignmentError) {
         console.error('Error fetching bus assignments:', assignmentError);
@@ -905,26 +909,22 @@ const Transportation = () => {
       }
 
       if (!assignments || assignments.length === 0) {
+        console.log('No assignments found for bus');
         setBusStudents([]);
         return;
       }
 
       // Get student IDs to fetch student details
       const studentIds = assignments.map(a => a.student_id);
+      console.log('Student IDs to fetch:', studentIds);
 
-      // Fetch student details separately
+      // Fetch student details without nested queries to avoid RLS issues
       const { data: students, error: studentError } = await supabase
         .from('students')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          grade_level,
-          class_rosters(
-            classes(class_name)
-          )
-        `)
+        .select('id, first_name, last_name, grade_level')
         .in('id', studentIds);
+
+      console.log('Students query result:', { students, studentError });
 
       if (studentError) {
         console.error('Error fetching student details:', studentError);
@@ -932,19 +932,38 @@ const Transportation = () => {
         return;
       }
 
+      // Fetch class assignments separately
+      const { data: classAssignments } = await supabase
+        .from('class_rosters')
+        .select('student_id, classes(class_name)')
+        .in('student_id', studentIds);
+
+      console.log('Class assignments result:', { classAssignments });
+
+      // Create a map for easy lookup
+      const classMap = new Map<string, string>();
+      classAssignments?.forEach(assignment => {
+        if (assignment.classes?.class_name) {
+          classMap.set(assignment.student_id, assignment.classes.class_name);
+        }
+      });
+
       // Join the data in JavaScript
       const studentRecords: StudentBusRecord[] = assignments.map(assignment => {
         const student = students?.find(s => s.id === assignment.student_id);
+        const className = classMap.get(assignment.student_id) || 'No Class';
+        
         return {
           id: assignment.id,
           student_id: assignment.student_id,
           student_name: student ? `${student.first_name} ${student.last_name}` : 'Unknown Student',
           grade_level: student?.grade_level || 'Unknown',
-          class_name: student?.class_rosters?.[0]?.classes?.class_name || 'No Class',
+          class_name: className,
           ride_status: 'active_rider', // Default value - this could be stored in the database
         };
       });
 
+      console.log('Final student records:', studentRecords);
       setBusStudents(studentRecords);
     } catch (error) {
       console.error('Error fetching bus students:', error);
@@ -1005,6 +1024,8 @@ const Transportation = () => {
     
     setIsSearchingStudents(true);
     try {
+      console.log('Searching students with term:', searchTerm);
+      
       // Get current user's school_id
       const { data: profile } = await supabase
         .from('profiles')
@@ -1014,70 +1035,127 @@ const Transportation = () => {
 
       if (!profile?.school_id) return;
 
-      const { data, error } = await supabase
+      // Search students without nested queries to avoid RLS issues
+      const { data: students, error } = await supabase
         .from('students')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          grade_level,
-          class_rosters(
-            classes(class_name)
-          ),
-          student_bus_assignments(
-            id,
-            bus_id,
-            buses(bus_number, driver_first_name, driver_last_name)
-          ),
-          student_walker_assignments(
-            id,
-            walker_location_id,
-            walker_locations(location_name)
-          ),
-          student_car_assignments(
-            id,
-            car_line_id,
-            car_lines(line_name)
-          )
-        `)
+        .select('id, first_name, last_name, grade_level')
         .eq('school_id', profile.school_id)
         .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`)
         .limit(10);
+
+      console.log('Student search result:', { students, error });
 
       if (error) {
         console.error('Error searching students:', error);
         return;
       }
 
-      const searchResults: StudentSearchResult[] = data?.map(student => {
+      if (!students || students.length === 0) {
+        setStudentSearchResults([]);
+        return;
+      }
+
+      const studentIds = students.map(s => s.id);
+
+      // Fetch all assignment types separately to avoid RLS issues
+      const [busAssignments, walkerAssignments, carAssignments, classAssignments] = await Promise.all([
+        supabase
+          .from('student_bus_assignments')
+          .select('id, student_id, bus_id')
+          .in('student_id', studentIds),
+        supabase
+          .from('student_walker_assignments')
+          .select('id, student_id, walker_location_id')
+          .in('student_id', studentIds),
+        supabase
+          .from('student_car_assignments')
+          .select('id, student_id, car_line_id')
+          .in('student_id', studentIds),
+        supabase
+          .from('class_rosters')
+          .select('student_id, classes(class_name)')
+          .in('student_id', studentIds)
+      ]);
+
+      console.log('Assignment results:', { busAssignments, walkerAssignments, carAssignments, classAssignments });
+
+      // Collect unique IDs for bulk fetching
+      const busIds = new Set(busAssignments.data?.map(a => a.bus_id).filter(Boolean) || []);
+      const walkerLocationIds = new Set(walkerAssignments.data?.map(a => a.walker_location_id).filter(Boolean) || []);
+      const carLineIds = new Set(carAssignments.data?.map(a => a.car_line_id).filter(Boolean) || []);
+
+      // Fetch location names in bulk
+      const [busData, walkerLocationData, carLineData] = await Promise.all([
+        busIds.size > 0 ? supabase
+          .from('buses')
+          .select('id, bus_number, driver_first_name, driver_last_name')
+          .in('id', Array.from(busIds)) : { data: [] },
+        walkerLocationIds.size > 0 ? supabase
+          .from('walker_locations')
+          .select('id, location_name')
+          .in('id', Array.from(walkerLocationIds)) : { data: [] },
+        carLineIds.size > 0 ? supabase
+          .from('car_lines')
+          .select('id, line_name')
+          .in('id', Array.from(carLineIds)) : { data: [] }
+      ]);
+
+      // Create lookup maps
+      const busLookup = new Map<string, any>();
+      busData.data?.forEach(bus => {
+        busLookup.set(bus.id, bus);
+      });
+
+      const walkerLocationLookup = new Map<string, string>();
+      walkerLocationData.data?.forEach(location => {
+        walkerLocationLookup.set(location.id, location.location_name);
+      });
+
+      const carLineLookup = new Map<string, string>();
+      carLineData.data?.forEach(carLine => {
+        carLineLookup.set(carLine.id, carLine.line_name);
+      });
+
+      const classLookup = new Map<string, string>();
+      classAssignments.data?.forEach(assignment => {
+        if (assignment.classes?.class_name) {
+          classLookup.set(assignment.student_id, assignment.classes.class_name);
+        }
+      });
+
+      const searchResults: StudentSearchResult[] = students.map(student => {
         // Check current transportation assignments
         let currentMethod: 'bus' | 'walker' | 'car_line' | null = null;
         let currentDetails: string | null = null;
         let currentAssignmentId: string | null = null;
 
         // Check bus assignment
-        if (student.student_bus_assignments?.length > 0) {
-          const busAssignment = student.student_bus_assignments[0];
-          const bus = busAssignment.buses;
+        const busAssignment = busAssignments.data?.find(a => a.student_id === student.id);
+        if (busAssignment) {
+          const bus = busLookup.get(busAssignment.bus_id);
           currentMethod = 'bus';
-          currentDetails = `Bus ${bus?.bus_number} (${bus?.driver_first_name} ${bus?.driver_last_name})`;
+          currentDetails = bus ? `Bus ${bus.bus_number} (${bus.driver_first_name} ${bus.driver_last_name})` : 'Unknown Bus';
           currentAssignmentId = busAssignment.id;
         }
         // Check walker assignment
-        else if (student.student_walker_assignments?.length > 0) {
-          const walkerAssignment = student.student_walker_assignments[0];
-          const location = walkerAssignment.walker_locations;
-          currentMethod = 'walker';
-          currentDetails = `Walker Location: ${location?.location_name}`;
-          currentAssignmentId = walkerAssignment.id;
-        }
-        // Check car line assignment
-        else if (student.student_car_assignments?.length > 0) {
-          const carAssignment = student.student_car_assignments[0];
-          const carLine = carAssignment.car_lines;
-          currentMethod = 'car_line';
-          currentDetails = `Car Line: ${carLine?.line_name}`;
-          currentAssignmentId = carAssignment.id;
+        else {
+          const walkerAssignment = walkerAssignments.data?.find(a => a.student_id === student.id);
+          if (walkerAssignment) {
+            const locationName = walkerLocationLookup.get(walkerAssignment.walker_location_id);
+            currentMethod = 'walker';
+            currentDetails = locationName ? `Walker Location: ${locationName}` : 'Unknown Location';
+            currentAssignmentId = walkerAssignment.id;
+          }
+          // Check car line assignment
+          else {
+            const carAssignment = carAssignments.data?.find(a => a.student_id === student.id);
+            if (carAssignment) {
+              const lineName = carLineLookup.get(carAssignment.car_line_id);
+              currentMethod = 'car_line';
+              currentDetails = lineName ? `Car Line: ${lineName}` : 'Unknown Car Line';
+              currentAssignmentId = carAssignment.id;
+            }
+          }
         }
 
         return {
@@ -1085,13 +1163,14 @@ const Transportation = () => {
           first_name: student.first_name,
           last_name: student.last_name,
           grade_level: student.grade_level,
-          class_name: student.class_rosters?.[0]?.classes?.class_name || 'No Class',
+          class_name: classLookup.get(student.id) || 'No Class',
           current_transportation_method: currentMethod,
           current_transportation_details: currentDetails,
           current_assignment_id: currentAssignmentId
         };
-      }) || [];
+      });
 
+      console.log('Final search results:', searchResults);
       setStudentSearchResults(searchResults);
     } catch (error) {
       console.error('Error searching students:', error);
@@ -1184,6 +1263,96 @@ const Transportation = () => {
     if (!managingStudents) return;
 
     try {
+      console.log('Attempting to assign student:', { studentId, busId: managingStudents.id });
+      
+      // Check if student is already assigned to this bus
+      const { data: existingAssignment } = await supabase
+        .from('student_bus_assignments')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('bus_id', managingStudents.id)
+        .maybeSingle();
+
+      if (existingAssignment) {
+        toast.error('Student is already assigned to this bus');
+        return;
+      }
+
+      // Check if student has any existing transportation assignment
+      const [busCheck, walkerCheck, carCheck] = await Promise.all([
+        supabase
+          .from('student_bus_assignments')
+          .select('id, buses(bus_number)')
+          .eq('student_id', studentId)
+          .maybeSingle(),
+        supabase
+          .from('student_walker_assignments')
+          .select('id, walker_locations(location_name)')
+          .eq('student_id', studentId)
+          .maybeSingle(),
+        supabase
+          .from('student_car_assignments')
+          .select('id, car_lines(line_name)')
+          .eq('student_id', studentId)
+          .maybeSingle()
+      ]);
+
+      // If student has existing assignment, offer to reassign
+      if (busCheck.data || walkerCheck.data || carCheck.data) {
+        let currentAssignment = '';
+        let deleteTable = '';
+        let deleteId = '';
+
+        if (busCheck.data) {
+          currentAssignment = `Bus ${busCheck.data.buses?.bus_number || 'Unknown'}`;
+          deleteTable = 'student_bus_assignments';
+          deleteId = busCheck.data.id;
+        } else if (walkerCheck.data) {
+          currentAssignment = `Walker Location: ${walkerCheck.data.walker_locations?.location_name || 'Unknown'}`;
+          deleteTable = 'student_walker_assignments';
+          deleteId = walkerCheck.data.id;
+        } else if (carCheck.data) {
+          currentAssignment = `Car Line: ${carCheck.data.car_lines?.line_name || 'Unknown'}`;
+          deleteTable = 'student_car_assignments';
+          deleteId = carCheck.data.id;
+        }
+
+        const confirmReassign = confirm(
+          `Student is currently assigned to ${currentAssignment}. Do you want to reassign them to Bus ${managingStudents.bus_number}?`
+        );
+
+        if (!confirmReassign) return;
+
+        // Remove existing assignment
+        let deleteError;
+        if (deleteTable === 'student_bus_assignments') {
+          const { error } = await supabase
+            .from('student_bus_assignments')
+            .delete()
+            .eq('id', deleteId);
+          deleteError = error;
+        } else if (deleteTable === 'student_walker_assignments') {
+          const { error } = await supabase
+            .from('student_walker_assignments')
+            .delete()
+            .eq('id', deleteId);
+          deleteError = error;
+        } else if (deleteTable === 'student_car_assignments') {
+          const { error } = await supabase
+            .from('student_car_assignments')
+            .delete()
+            .eq('id', deleteId);
+          deleteError = error;
+        }
+
+        if (deleteError) {
+          console.error('Error removing existing assignment:', deleteError);
+          toast.error('Failed to remove existing assignment');
+          return;
+        }
+      }
+
+      // Assign to new bus
       const { error } = await supabase
         .from('student_bus_assignments')
         .insert({
@@ -1193,7 +1362,15 @@ const Transportation = () => {
 
       if (error) {
         console.error('Error assigning student:', error);
-        toast.error('Failed to assign student to bus');
+        
+        // Handle specific constraint violations
+        if (error.message?.includes('violates row-level security policy')) {
+          toast.error('Permission denied: Cannot assign student to bus');
+        } else if (error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+          toast.error('Student is already assigned to this bus');
+        } else {
+          toast.error(`Failed to assign student: ${error.message}`);
+        }
         return;
       }
 
