@@ -10,6 +10,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, firstName: string, lastName: string, schoolId: number, role: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<boolean>;
   loading: boolean;
 }
 
@@ -179,9 +180,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshSession = async () => {
+    try {
+      console.log("🔄 Refreshing session...");
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error("Session refresh failed:", error);
+        // Clear corrupted session
+        localStorage.removeItem('supabase.auth.token');
+        setUser(null);
+        setSession(null);
+        setUserRole(null);
+        toast({
+          title: "Session expired",
+          description: "Please sign in again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      console.log("✅ Session refreshed successfully");
+      return true;
+    } catch (error: any) {
+      console.error("Session refresh error:", error);
+      return false;
+    }
+  };
+
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      // Clear all auth state
+      localStorage.removeItem('supabase.auth.token');
       setUser(null);
       setSession(null);
       setUserRole(null);
@@ -207,6 +236,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signUp, 
         signIn, 
         signOut, 
+        refreshSession,
         loading 
       }}
     >

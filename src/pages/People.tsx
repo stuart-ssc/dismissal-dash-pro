@@ -28,7 +28,7 @@ interface PersonData {
 }
 
 const People = () => {
-  const { user, userRole, signOut, loading, session } = useAuth();
+  const { user, session, userRole, loading: authLoading, refreshSession } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [schoolName, setSchoolName] = useState<string>('');
@@ -37,6 +37,9 @@ const People = () => {
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [people, setPeople] = useState<PersonData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get user school ID for RLS queries
+  const userSchoolId = schoolId;
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<PersonData | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -51,10 +54,10 @@ const People = () => {
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       navigate('/auth');
     }
-  }, [user, loading, navigate, session]);
+  }, [user, authLoading, navigate, session]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -218,10 +221,22 @@ const People = () => {
         .limit(2000);
 
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
+        console.error('❌ Error fetching students:', studentsError);
+        
+        // Check if it's an authentication/RLS error
+        if (studentsError.message?.includes('RLS') || studentsError.message?.includes('policy') || studentsError.code === 'PGRST301') {
+          console.log("🔄 RLS/Auth error detected, attempting session refresh...");
+          const refreshSuccess = await refreshSession();
+          if (refreshSuccess) {
+            console.log("✅ Session refreshed, retrying fetch...");
+            setTimeout(() => fetchPeople(schoolId), 1000);
+            return;
+          }
+        }
+        
         toast({
           title: "Error",
-          description: "Failed to load students",
+          description: "Failed to load students. Please try signing out and back in.",
           variant: "destructive",
         });
         return;
@@ -540,7 +555,7 @@ const People = () => {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
-  if (loading || isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -568,7 +583,11 @@ const People = () => {
               </p>
             </div>
           </div>
-          <Button onClick={signOut} variant="outline">
+          <Button onClick={() => {
+            console.log("🔄 Signing out and clearing session...");
+            localStorage.removeItem('supabase.auth.token');
+            window.location.href = '/auth';
+          }} variant="outline">
             Sign Out
           </Button>
         </header>
@@ -892,7 +911,11 @@ const People = () => {
                 Welcome back, {firstName} {lastName}
               </p>
             </div>
-            <Button onClick={signOut} variant="outline">
+            <Button onClick={() => {
+              console.log("🔄 Signing out and clearing session...");
+              localStorage.removeItem('supabase.auth.token');
+              window.location.href = '/auth';
+            }} variant="outline">
               Sign Out
             </Button>
           </div>
