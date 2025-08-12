@@ -1018,6 +1018,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_school_data: {
+        Args: { target_school_id: number }
+        Returns: boolean
+      }
+      can_manage_student: {
+        Args: { student_uuid: string }
+        Returns: boolean
+      }
+      can_manage_student_safe: {
+        Args: { student_uuid: string }
+        Returns: boolean
+      }
+      can_view_school_data: {
+        Args: { target_school_id: number }
+        Returns: boolean
+      }
       get_current_user_school_id: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -1026,9 +1042,17 @@ export type Database = {
         Args: { teacher_uuid: string }
         Returns: string[]
       }
+      get_user_accessible_school_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: number[]
+      }
       get_user_school_id: {
         Args: { user_uuid: string }
         Returns: number
+      }
+      get_user_taught_class_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
       }
       has_role: {
         Args: {
