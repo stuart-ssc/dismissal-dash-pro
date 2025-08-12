@@ -26,6 +26,57 @@ interface RosterRow {
   Transportation_Method?: string; // Handle CSV column name variation
 }
 
+// Define accepted column mappings
+const COLUMN_MAPPINGS = {
+  // Required fields
+  'firstName': ['firstName', 'first_name', 'First_Name', 'FirstName'],
+  'lastName': ['lastName', 'last_name', 'Last_Name', 'LastName'],
+  'gradeLevel': ['gradeLevel', 'grade_level', 'Grade_Level', 'GradeLevel', 'grade'],
+  'className': ['className', 'class_name', 'Class_Name', 'ClassName', 'class'],
+  'teacherFirstName': ['teacherFirstName', 'teacher_first_name', 'Teacher_First_Name', 'TeacherFirstName'],
+  'teacherLastName': ['teacherLastName', 'teacher_last_name', 'Teacher_Last_Name', 'TeacherLastName'],
+  'teacherEmail': ['teacherEmail', 'teacher_email', 'Teacher_Email', 'TeacherEmail'],
+  
+  // Optional fields
+  'studentId': ['studentId', 'student_id', 'Student_Id', 'StudentId', 'id'],
+  'roomNumber': ['roomNumber', 'room_number', 'Room_Number', 'RoomNumber', 'room'],
+  'parentGuardianName': ['parentGuardianName', 'parent_guardian_name', 'Parent_Guardian_Name', 'ParentGuardianName', 'parent', 'guardian'],
+  'contactInfo': ['contactInfo', 'contact_info', 'Contact_Info', 'ContactInfo', 'contact', 'phone'],
+  'specialNotes': ['specialNotes', 'special_notes', 'Special_Notes', 'SpecialNotes', 'notes'],
+  'dismissalGroup': ['dismissalGroup', 'dismissal_group', 'Dismissal_Group', 'DismissalGroup', 'group'],
+  'transportation': ['transportation', 'Transportation', 'transport_type', 'Transport_Type'],
+  'transportationMethod': ['transportationMethod', 'transportation_method', 'Transportation_Method', 'TransportationMethod', 'transport_method', 'Transport_Method']
+};
+
+function validateAndMapColumns(sampleRow: any): { mappedColumns: string[], unmappedColumns: string[], requiredMissing: string[] } {
+  const inputColumns = Object.keys(sampleRow);
+  const mappedColumns: string[] = [];
+  const unmappedColumns: string[] = [];
+  const foundMappings: { [key: string]: string } = {};
+  
+  // Check each input column against our mappings
+  for (const inputCol of inputColumns) {
+    let mapped = false;
+    for (const [targetField, variations] of Object.entries(COLUMN_MAPPINGS)) {
+      if (variations.includes(inputCol)) {
+        mappedColumns.push(`${inputCol} → ${targetField}`);
+        foundMappings[targetField] = inputCol;
+        mapped = true;
+        break;
+      }
+    }
+    if (!mapped) {
+      unmappedColumns.push(inputCol);
+    }
+  }
+  
+  // Check for required fields
+  const requiredFields = ['firstName', 'lastName', 'gradeLevel', 'className', 'teacherFirstName', 'teacherLastName', 'teacherEmail'];
+  const requiredMissing = requiredFields.filter(field => !foundMappings[field]);
+  
+  return { mappedColumns, unmappedColumns, requiredMissing };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -80,12 +131,48 @@ serve(async (req) => {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const rosterData = JSON.parse(formData.get('rosterData') as string) as RosterRow[];
+    const validateOnly = formData.get('validateOnly') === 'true';
 
     if (!file || !rosterData || !Array.isArray(rosterData)) {
       return new Response(JSON.stringify({ error: 'Invalid file or roster data' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Validate column mappings using first row as sample
+    if (rosterData.length > 0) {
+      const validation = validateAndMapColumns(rosterData[0]);
+      
+      // If this is just a validation request, return validation results
+      if (validateOnly) {
+        return new Response(JSON.stringify({
+          validation: true,
+          mappedColumns: validation.mappedColumns,
+          unmappedColumns: validation.unmappedColumns,
+          requiredMissing: validation.requiredMissing,
+          canProceed: validation.requiredMissing.length === 0,
+          message: validation.requiredMissing.length > 0 
+            ? `Missing required fields: ${validation.requiredMissing.join(', ')}`
+            : validation.unmappedColumns.length > 0
+              ? `${validation.unmappedColumns.length} unmapped columns will be ignored`
+              : 'All columns mapped successfully'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // If required fields are missing, reject the import
+      if (validation.requiredMissing.length > 0) {
+        return new Response(JSON.stringify({ 
+          error: 'Missing required fields',
+          details: `Required fields missing: ${validation.requiredMissing.join(', ')}`,
+          validation: validation
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const results = {
