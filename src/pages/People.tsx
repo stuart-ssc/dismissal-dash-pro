@@ -203,7 +203,7 @@ const People = () => {
         }
       }
 
-      // Fetch students with their classes separately to avoid RLS issues
+      // Fetch students without nested queries to avoid RLS issues
       const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
         .select(`
@@ -211,10 +211,7 @@ const People = () => {
           student_id, 
           first_name, 
           last_name, 
-          grade_level,
-          class_rosters(
-            classes(class_name)
-          )
+          grade_level
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
@@ -248,8 +245,17 @@ const People = () => {
         return;
       }
 
-      // Extract student IDs to filter transportation assignments
+      // Extract student IDs to filter transportation and class assignments
       const studentIds = studentsData.map(student => student.id);
+
+      // Fetch class assignments separately to avoid RLS issues
+      const { data: classAssignments } = await supabase
+        .from('class_rosters')
+        .select(`
+          student_id,
+          classes(class_name)
+        `)
+        .in('student_id', studentIds);
 
       // Fetch transportation assignments separately with names, filtered by student IDs
       const { data: busAssignments } = await supabase
@@ -277,9 +283,20 @@ const People = () => {
         .in('student_id', studentIds);
 
       // Create maps for easy lookup
+      const classMap = new Map<string, string[]>();
       const busMap = new Map<string, string[]>();
       const walkerMap = new Map<string, string[]>();
       const carMap = new Map<string, string[]>();
+
+      // Process class assignments
+      classAssignments?.forEach(assignment => {
+        if (assignment.classes?.class_name) {
+          if (!classMap.has(assignment.student_id)) {
+            classMap.set(assignment.student_id, []);
+          }
+          classMap.get(assignment.student_id)!.push(assignment.classes.class_name);
+        }
+      });
 
       busAssignments?.forEach(assignment => {
         if (assignment.buses?.bus_number) {
@@ -314,7 +331,7 @@ const People = () => {
         console.log('Processing students:', studentsData.length);
         
         for (const student of studentsData) {
-          const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
+          const studentClasses = classMap.get(student.id) || [];
 
           // Get transportation names instead of generic types
           const busNames = busMap.get(student.id) || [];
