@@ -257,41 +257,52 @@ const People = () => {
         `)
         .in('student_id', studentIds);
 
-      // Fetch transportation assignments using proper JOIN syntax
-      console.log('Fetching transportation for student IDs:', studentIds.slice(0, 5)); // Log first 5 for debugging
+      // Fetch transportation assignments without nested queries to avoid RLS issues
+      console.log('Fetching transportation for student IDs:', studentIds.slice(0, 5));
       
       const [busAssignments, walkerAssignments, carAssignments] = await Promise.all([
         supabase
           .from('student_bus_assignments')
-          .select(`
-            student_id,
-            bus_id,
-            buses(bus_number)
-          `)
+          .select('student_id, bus_id')
           .in('student_id', studentIds),
           
         supabase
           .from('student_walker_assignments')
-          .select(`
-            student_id,
-            walker_location_id,
-            walker_locations(location_name)
-          `)
+          .select('student_id, walker_location_id')
           .in('student_id', studentIds),
           
         supabase
           .from('student_car_assignments')
-          .select(`
-            student_id,
-            car_line_id,
-            car_lines(line_name)
-          `)
+          .select('student_id, car_line_id')
           .in('student_id', studentIds)
       ]);
 
-      console.log('Bus assignments result:', busAssignments);
-      console.log('Walker assignments result:', walkerAssignments);
-      console.log('Car assignments result:', carAssignments);
+      console.log('Assignment results:', { busAssignments, walkerAssignments, carAssignments });
+
+      // Collect all unique IDs for bulk fetching
+      const busIds = new Set(busAssignments.data?.map(a => a.bus_id).filter(Boolean) || []);
+      const walkerLocationIds = new Set(walkerAssignments.data?.map(a => a.walker_location_id).filter(Boolean) || []);
+      const carLineIds = new Set(carAssignments.data?.map(a => a.car_line_id).filter(Boolean) || []);
+
+      // Fetch location names in bulk
+      const [busData, walkerLocationData, carLineData] = await Promise.all([
+        busIds.size > 0 ? supabase
+          .from('buses')
+          .select('id, bus_number')
+          .in('id', Array.from(busIds)) : { data: [] },
+          
+        walkerLocationIds.size > 0 ? supabase
+          .from('walker_locations')
+          .select('id, location_name')
+          .in('id', Array.from(walkerLocationIds)) : { data: [] },
+          
+        carLineIds.size > 0 ? supabase
+          .from('car_lines')
+          .select('id, line_name')
+          .in('id', Array.from(carLineIds)) : { data: [] }
+      ]);
+
+      console.log('Location data:', { busData, walkerLocationData, carLineData });
 
       // Create maps for easy lookup
       const classMap = new Map<string, string[]>();
@@ -309,30 +320,50 @@ const People = () => {
         }
       });
 
+      // Create lookup maps for location names
+      const busLookup = new Map<string, string>();
+      busData.data?.forEach(bus => {
+        busLookup.set(bus.id, bus.bus_number);
+      });
+
+      const walkerLocationLookup = new Map<string, string>();
+      walkerLocationData.data?.forEach(location => {
+        walkerLocationLookup.set(location.id, location.location_name);
+      });
+
+      const carLineLookup = new Map<string, string>();
+      carLineData.data?.forEach(carLine => {
+        carLineLookup.set(carLine.id, carLine.line_name);
+      });
+
+      // Process assignments and join with location names
       busAssignments.data?.forEach(assignment => {
-        if (assignment.buses?.bus_number) {
+        const busNumber = busLookup.get(assignment.bus_id);
+        if (busNumber) {
           if (!busMap.has(assignment.student_id)) {
             busMap.set(assignment.student_id, []);
           }
-          busMap.get(assignment.student_id)!.push(assignment.buses.bus_number);
+          busMap.get(assignment.student_id)!.push(busNumber);
         }
       });
 
       walkerAssignments.data?.forEach(assignment => {
-        if (assignment.walker_locations?.location_name) {
+        const locationName = walkerLocationLookup.get(assignment.walker_location_id);
+        if (locationName) {
           if (!walkerMap.has(assignment.student_id)) {
             walkerMap.set(assignment.student_id, []);
           }
-          walkerMap.get(assignment.student_id)!.push(assignment.walker_locations.location_name);
+          walkerMap.get(assignment.student_id)!.push(locationName);
         }
       });
 
       carAssignments.data?.forEach(assignment => {
-        if (assignment.car_lines?.line_name) {
+        const lineName = carLineLookup.get(assignment.car_line_id);
+        if (lineName) {
           if (!carMap.has(assignment.student_id)) {
             carMap.set(assignment.student_id, []);
           }
-          carMap.get(assignment.student_id)!.push(assignment.car_lines.line_name);
+          carMap.get(assignment.student_id)!.push(lineName);
         }
       });
 
