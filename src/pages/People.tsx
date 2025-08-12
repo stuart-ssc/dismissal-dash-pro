@@ -257,12 +257,13 @@ const People = () => {
         `)
         .in('student_id', studentIds);
 
-      // Fetch transportation assignments separately with names, filtered by student IDs
+      // Fetch transportation assignments using explicit JOINs for RLS compatibility
       const { data: busAssignments } = await supabase
         .from('student_bus_assignments')
         .select(`
           student_id,
-          buses(bus_number)
+          bus_id,
+          buses!inner(bus_number)
         `)
         .in('student_id', studentIds);
 
@@ -270,7 +271,8 @@ const People = () => {
         .from('student_walker_assignments')
         .select(`
           student_id,
-          walker_locations(location_name)
+          walker_location_id,
+          walker_locations!inner(location_name)
         `)
         .in('student_id', studentIds);
 
@@ -278,7 +280,8 @@ const People = () => {
         .from('student_car_assignments')
         .select(`
           student_id,
-          car_lines(line_name)
+          car_line_id,
+          car_lines!inner(line_name)
         `)
         .in('student_id', studentIds);
 
