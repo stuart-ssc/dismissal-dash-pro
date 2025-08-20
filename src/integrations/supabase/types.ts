@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          record_id: string | null
+          table_name: string
+          timestamp: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          record_id?: string | null
+          table_name: string
+          timestamp?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          record_id?: string | null
+          table_name?: string
+          timestamp?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       bus_run_events: {
         Row: {
           bus_id: string
@@ -1037,6 +1070,19 @@ export type Database = {
       get_current_user_school_id: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      get_student_safe_view: {
+        Args: { student_uuid: string }
+        Returns: {
+          contact_info: string
+          first_name: string
+          grade_level: string
+          id: string
+          last_name: string
+          parent_guardian_name: string
+          school_id: number
+          special_notes: string
+        }[]
       }
       get_teacher_class_ids: {
         Args: { teacher_uuid: string }
