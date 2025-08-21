@@ -130,6 +130,42 @@ export type Database = {
         }
         Relationships: []
       }
+      car_line_pickups: {
+        Row: {
+          car_line_session_id: string
+          created_at: string
+          id: string
+          managed_by: string
+          parent_arrived_at: string | null
+          picked_up_at: string | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          car_line_session_id: string
+          created_at?: string
+          id?: string
+          managed_by: string
+          parent_arrived_at?: string | null
+          picked_up_at?: string | null
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          car_line_session_id?: string
+          created_at?: string
+          id?: string
+          managed_by?: string
+          parent_arrived_at?: string | null
+          picked_up_at?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       car_line_sessions: {
         Row: {
           arrived_at: string
