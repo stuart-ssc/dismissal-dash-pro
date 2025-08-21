@@ -7,12 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Clock, UserCheck, Car } from "lucide-react";
+import { toast } from "sonner";
 
 type CarLine = { id: string; line_name: string };
 type Student = { id: string; first_name: string; last_name: string; grade_level: string };
 type ClassItem = { id: string; class_name: string };
 type Session = { id: string; finished_at: string | null };
+type PickupStatus = "waiting" | "parent_arrived" | "picked_up";
+type StudentPickup = {
+  student_id: string;
+  status: PickupStatus;
+  parent_arrived_at: string | null;
+  picked_up_at: string | null;
+};
 
 export default function CarLineMode() {
   const { run, schoolId, isLoading } = useTodayDismissalRun();
@@ -25,6 +34,8 @@ export default function CarLineMode() {
   const [classFilter, setClassFilter] = useState<string>("all");
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pickups, setPickups] = useState<Record<string, StudentPickup>>({});
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const runId = run?.id;
 
@@ -77,7 +88,116 @@ export default function CarLineMode() {
       .select("id,finished_at")
       .single();
 
-    if (!error) setSession(inserted as any);
+    if (!error) {
+      setSession(inserted as any);
+      loadPickups(inserted.id);
+    }
+  };
+
+  // Load existing pickup records for the session
+  const loadPickups = async (sessionId: string) => {
+    if (!sessionId) return;
+    
+    const { data } = await supabase
+      .from("car_line_pickups")
+      .select("student_id, status, parent_arrived_at, picked_up_at")
+      .eq("car_line_session_id", sessionId);
+
+    if (data) {
+      const pickupMap: Record<string, StudentPickup> = {};
+      data.forEach((pickup: any) => {
+        pickupMap[pickup.student_id] = pickup;
+      });
+      setPickups(pickupMap);
+    }
+  };
+
+  // Handle pickup status updates
+  const updatePickupStatus = async (studentId: string, currentStatus: PickupStatus) => {
+    if (!session?.id) {
+      toast.error("No active session");
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Not authenticated");
+      return;
+    }
+
+    let newStatus: PickupStatus;
+    let updateData: any = {};
+
+    switch (currentStatus) {
+      case "waiting":
+        newStatus = "parent_arrived";
+        updateData = {
+          status: newStatus,
+          parent_arrived_at: new Date().toISOString()
+        };
+        break;
+      case "parent_arrived":
+        newStatus = "picked_up";
+        updateData = {
+          status: newStatus,
+          picked_up_at: new Date().toISOString()
+        };
+        break;
+      case "picked_up":
+        // Reset to waiting
+        newStatus = "waiting";
+        updateData = {
+          status: newStatus,
+          parent_arrived_at: null,
+          picked_up_at: null
+        };
+        break;
+      default:
+        return;
+    }
+
+    // Upsert pickup record
+    const { error } = await supabase
+      .from("car_line_pickups")
+      .upsert({
+        car_line_session_id: session.id,
+        student_id: studentId,
+        managed_by: user.id,
+        ...updateData
+      });
+
+    if (error) {
+      console.error("Error updating pickup status:", error);
+      toast.error("Failed to update pickup status");
+      return;
+    }
+
+    // Update local state
+    setPickups(prev => ({
+      ...prev,
+      [studentId]: {
+        student_id: studentId,
+        status: newStatus,
+        parent_arrived_at: updateData.parent_arrived_at || prev[studentId]?.parent_arrived_at || null,
+        picked_up_at: updateData.picked_up_at || prev[studentId]?.picked_up_at || null
+      }
+    }));
+
+    // Show success message
+    const student = students.find(s => s.id === studentId);
+    const studentName = student ? `${student.first_name} ${student.last_name}` : 'Student';
+    
+    switch (newStatus) {
+      case "parent_arrived":
+        toast.success(`${studentName}'s parent has arrived`);
+        break;
+      case "picked_up":
+        toast.success(`${studentName} has been picked up`);
+        break;
+      case "waiting":
+        toast.info(`${studentName} reset to waiting`);
+        break;
+    }
   };
 
   // Load students assigned to car lines (optionally filter by selected line)
@@ -140,6 +260,55 @@ export default function CarLineMode() {
     loadStudents();
   }, [loadStudents]);
 
+  // Load pickups when session changes
+  useEffect(() => {
+    if (session?.id) {
+      loadPickups(session.id);
+    }
+  }, [session?.id]);
+
+  // Real-time subscription for pickup updates
+  useEffect(() => {
+    if (!session?.id) return;
+
+    const channel = supabase
+      .channel('car_line_pickups_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'car_line_pickups',
+          filter: `car_line_session_id=eq.${session.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const pickup = payload.new as any;
+            setPickups(prev => ({
+              ...prev,
+              [pickup.student_id]: {
+                student_id: pickup.student_id,
+                status: pickup.status,
+                parent_arrived_at: pickup.parent_arrived_at,
+                picked_up_at: pickup.picked_up_at
+              }
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            const pickup = payload.old as any;
+            setPickups(prev => {
+              const { [pickup.student_id]: deleted, ...rest } = prev;
+              return rest;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.id]);
+
   const filtered = useMemo(() => {
     let out = [...students];
     if (search) {
@@ -157,6 +326,13 @@ export default function CarLineMode() {
     if (classFilter !== "all") {
       out = out.filter((s: any) => s.class_name === classFilter);
     }
+    if (statusFilter !== "all") {
+      out = out.filter((s) => {
+        const pickup = pickups[s.id];
+        const status = pickup?.status || "waiting";
+        return status === statusFilter;
+      });
+    }
     // sort alpha by last, first
     out.sort((a: any, b: any) => {
       const aName = `${a.last_name} ${a.first_name}`;
@@ -164,7 +340,47 @@ export default function CarLineMode() {
       return aName.localeCompare(bName);
     });
     return out;
-  }, [students, search, gradeFilter, classFilter]);
+  }, [students, search, gradeFilter, classFilter, statusFilter, pickups]);
+
+  // Get status counts
+  const statusCounts = useMemo(() => {
+    const counts = { waiting: 0, parent_arrived: 0, picked_up: 0 };
+    students.forEach(student => {
+      const status = pickups[student.id]?.status || "waiting";
+      counts[status]++;
+    });
+    return counts;
+  }, [students, pickups]);
+
+  // Get status color and icon
+  const getStatusDisplay = (status: PickupStatus) => {
+    switch (status) {
+      case "waiting":
+        return {
+          color: "bg-muted text-muted-foreground",
+          label: "Waiting",
+          icon: Clock
+        };
+      case "parent_arrived":
+        return {
+          color: "bg-warning text-warning-foreground",
+          label: "Parent Here",
+          icon: Car
+        };
+      case "picked_up":
+        return {
+          color: "bg-success text-success-foreground",
+          label: "Picked Up",
+          icon: UserCheck
+        };
+      default:
+        return {
+          color: "bg-muted text-muted-foreground",
+          label: "Waiting",
+          icon: Clock
+        };
+    }
+  };
 
   const finishSession = async () => {
     if (!session?.id) return;
@@ -226,7 +442,25 @@ export default function CarLineMode() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Students</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Students</CardTitle>
+              {session && !session.finished_at && (
+                <div className="flex gap-2 text-sm">
+                  <Badge variant="secondary">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Waiting: {statusCounts.waiting}
+                  </Badge>
+                  <Badge variant="outline" className="bg-warning/10 text-warning">
+                    <Car className="h-3 w-3 mr-1" />
+                    Parent Here: {statusCounts.parent_arrived}
+                  </Badge>
+                  <Badge variant="outline" className="bg-success/10 text-success">
+                    <UserCheck className="h-3 w-3 mr-1" />
+                    Picked Up: {statusCounts.picked_up}
+                  </Badge>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 mb-4">
@@ -267,6 +501,17 @@ export default function CarLineMode() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="waiting">Waiting</SelectItem>
+                  <SelectItem value="parent_arrived">Parent Here</SelectItem>
+                  <SelectItem value="picked_up">Picked Up</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {isLoading || loading ? (
@@ -275,17 +520,61 @@ export default function CarLineMode() {
               </div>
             ) : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filtered.map((s: any) => (
-                  <li key={s.id} className="p-3 rounded-md border bg-card">
-                    <div className="font-semibold">
-                      {s.last_name}, {s.first_name}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Grade {s.grade_level}
-                      {s.class_name ? ` • ${s.class_name}` : ""}
-                    </div>
-                  </li>
-                ))}
+                {filtered.map((s: any) => {
+                  const pickup = pickups[s.id];
+                  const status = pickup?.status || "waiting";
+                  const statusDisplay = getStatusDisplay(status);
+                  const StatusIcon = statusDisplay.icon;
+                  const isSessionActive = session && !session.finished_at;
+
+                  return (
+                    <li
+                      key={s.id}
+                      className={`p-4 rounded-lg border transition-all duration-200 ${
+                        isSessionActive 
+                          ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98]' 
+                          : ''
+                      } ${
+                        status === "waiting" ? "bg-card hover:bg-muted/30" :
+                        status === "parent_arrived" ? "bg-warning/5 border-warning/30 hover:bg-warning/10" :
+                        "bg-success/5 border-success/30 hover:bg-success/10"
+                      }`}
+                      onClick={() => {
+                        if (isSessionActive) {
+                          updatePickupStatus(s.id, status);
+                        }
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold">
+                            {s.last_name}, {s.first_name}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Grade {s.grade_level}
+                            {s.class_name ? ` • ${s.class_name}` : ""}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="outline" 
+                            className={`${statusDisplay.color} flex items-center gap-1`}
+                          >
+                            <StatusIcon className="h-3 w-3" />
+                            {statusDisplay.label}
+                          </Badge>
+                        </div>
+                      </div>
+                      {isSessionActive && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {status === "waiting" && "Click to mark parent arrived"}
+                          {status === "parent_arrived" && "Click to mark picked up"}
+                          {status === "picked_up" && "Click to reset to waiting"}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>
