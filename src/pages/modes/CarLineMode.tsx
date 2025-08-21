@@ -176,9 +176,12 @@ export default function CarLineMode() {
   return (
     <div className="min-h-screen w-full bg-background text-foreground p-6">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Car Line</h1>
-          <p className="text-muted-foreground mt-2">Manage car riders for today&apos;s dismissal.</p>
+        <header className="flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Car Line</h1>
+            <p className="text-muted-foreground mt-2">Manage car riders for today&apos;s dismissal.</p>
+          </div>
+          <ExitModeButton label="Exit Car Line Mode" />
         </header>
 
         <Card>
@@ -288,8 +291,6 @@ export default function CarLineMode() {
           </CardContent>
         </Card>
       </div>
-
-      <ExitModeButton label="Exit Car Line Mode" />
     </div>
   );
 }
