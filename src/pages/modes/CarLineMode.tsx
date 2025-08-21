@@ -347,6 +347,13 @@ export default function CarLineMode() {
         const status = pickup?.status || "waiting";
         return status === statusFilter;
       });
+    } else {
+      // When filter is "all", exclude picked up students (show only waiting and parent_arrived)
+      out = out.filter((s) => {
+        const pickup = pickups[s.id];
+        const status = pickup?.status || "waiting";
+        return status !== "picked_up";
+      });
     }
     // sort alpha by last, first
     out.sort((a: any, b: any) => {
@@ -477,7 +484,7 @@ export default function CarLineMode() {
                         : "bg-background text-muted-foreground border-border hover:bg-muted"
                     }`}
                   >
-                    All: {statusCounts.waiting + statusCounts.parent_arrived + statusCounts.picked_up}
+                    All: {statusCounts.waiting + statusCounts.parent_arrived}
                   </button>
                   <button
                     onClick={() => setStatusFilter("waiting")}
