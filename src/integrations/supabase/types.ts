@@ -238,6 +238,13 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "class_rosters_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       class_teachers: {
@@ -454,6 +461,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissal_group_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
             referencedColumns: ["id"]
           },
         ]
@@ -781,6 +795,13 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_bus_assignments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_car_assignments: {
@@ -817,6 +838,13 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_student_car_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_walker_assignments: {
@@ -851,6 +879,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_student_walker_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
             referencedColumns: ["id"]
           },
         ]
@@ -1048,7 +1083,59 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      students_teacher_view: {
+        Row: {
+          contact_info: string | null
+          created_at: string | null
+          dismissal_group: string | null
+          first_name: string | null
+          grade_level: string | null
+          id: string | null
+          last_name: string | null
+          parent_guardian_name: string | null
+          school_id: number | null
+          special_notes: string | null
+          student_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          contact_info?: never
+          created_at?: string | null
+          dismissal_group?: string | null
+          first_name?: string | null
+          grade_level?: string | null
+          id?: string | null
+          last_name?: string | null
+          parent_guardian_name?: never
+          school_id?: number | null
+          special_notes?: never
+          student_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          contact_info?: never
+          created_at?: string | null
+          dismissal_group?: string | null
+          first_name?: string | null
+          grade_level?: string | null
+          id?: string | null
+          last_name?: string | null
+          parent_guardian_name?: never
+          school_id?: number | null
+          special_notes?: never
+          student_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_manage_school_data: {
@@ -1105,6 +1192,14 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      promote_user_to_admin: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      validate_school_impersonation: {
+        Args: { target_school_id: number }
         Returns: boolean
       }
     }

@@ -30,7 +30,7 @@ import ClassroomMode from "./pages/modes/ClassroomMode";
 import BusMode from "./pages/modes/BusMode";
 import CarLineMode from "./pages/modes/CarLineMode";
 import WalkerMode from "./pages/modes/WalkerMode";
-import AdminPromote from "./pages/AdminPromote";
+
 
 const queryClient = new QueryClient();
 
