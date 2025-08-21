@@ -352,30 +352,38 @@ export default function CarLineMode() {
     return counts;
   }, [students, pickups]);
 
-  // Get status color and icon
+  // Get status color and icon with enhanced visual feedback
   const getStatusDisplay = (status: PickupStatus) => {
     switch (status) {
       case "waiting":
         return {
-          color: "bg-muted text-muted-foreground",
+          color: "bg-muted text-muted-foreground border-muted",
+          cardBg: "bg-[hsl(var(--status-waiting-bg))] hover:bg-[hsl(var(--status-waiting-bg-hover))]",
+          border: "border-[hsl(var(--status-waiting-accent))] border-l-4 border-l-[hsl(var(--status-waiting-accent))]",
           label: "Waiting",
           icon: Clock
         };
       case "parent_arrived":
         return {
-          color: "bg-warning text-warning-foreground",
+          color: "bg-[hsl(var(--status-parent-arrived))] text-[hsl(var(--status-parent-arrived-foreground))] border-[hsl(var(--status-parent-arrived-accent))] shadow-md",
+          cardBg: "bg-[hsl(var(--status-parent-arrived-bg))] hover:bg-[hsl(var(--status-parent-arrived-bg-hover))] animate-pulse",
+          border: "border-[hsl(var(--status-parent-arrived-accent))] border-2 border-l-4 border-l-[hsl(var(--status-parent-arrived-accent))] shadow-lg shadow-[hsl(var(--status-parent-arrived))]/20",
           label: "Parent Here",
           icon: Car
         };
       case "picked_up":
         return {
-          color: "bg-success text-success-foreground",
+          color: "bg-[hsl(var(--status-picked-up))] text-[hsl(var(--status-picked-up-foreground))] border-[hsl(var(--status-picked-up-accent))] shadow-md",
+          cardBg: "bg-[hsl(var(--status-picked-up-bg))] hover:bg-[hsl(var(--status-picked-up-bg-hover))]",
+          border: "border-[hsl(var(--status-picked-up-accent))] border-2 border-l-4 border-l-[hsl(var(--status-picked-up-accent))] shadow-lg shadow-[hsl(var(--status-picked-up))]/20",
           label: "Picked Up",
           icon: UserCheck
         };
       default:
         return {
-          color: "bg-muted text-muted-foreground",
+          color: "bg-muted text-muted-foreground border-muted",
+          cardBg: "bg-[hsl(var(--status-waiting-bg))] hover:bg-[hsl(var(--status-waiting-bg-hover))]",
+          border: "border-[hsl(var(--status-waiting-accent))] border-l-4 border-l-[hsl(var(--status-waiting-accent))]",
           label: "Waiting",
           icon: Clock
         };
@@ -530,15 +538,11 @@ export default function CarLineMode() {
                   return (
                     <li
                       key={s.id}
-                      className={`p-4 rounded-lg border transition-all duration-200 ${
+                      className={`p-4 rounded-lg transition-all duration-300 ${
                         isSessionActive 
-                          ? 'cursor-pointer hover:shadow-md hover:scale-[1.02] active:scale-[0.98]' 
+                          ? 'cursor-pointer hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] hover:-translate-y-0.5' 
                           : ''
-                      } ${
-                        status === "waiting" ? "bg-card hover:bg-muted/30" :
-                        status === "parent_arrived" ? "bg-warning/5 border-warning/30 hover:bg-warning/10" :
-                        "bg-success/5 border-success/30 hover:bg-success/10"
-                      }`}
+                      } ${statusDisplay.cardBg} ${statusDisplay.border}`}
                       onClick={() => {
                         if (isSessionActive) {
                           updatePickupStatus(s.id, status);
@@ -558,9 +562,9 @@ export default function CarLineMode() {
                         <div className="flex items-center gap-2">
                           <Badge 
                             variant="outline" 
-                            className={`${statusDisplay.color} flex items-center gap-1`}
+                            className={`${statusDisplay.color} flex items-center gap-1.5 px-3 py-1 text-sm font-medium`}
                           >
-                            <StatusIcon className="h-3 w-3" />
+                            <StatusIcon className="h-4 w-4" />
                             {statusDisplay.label}
                           </Badge>
                         </div>

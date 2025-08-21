@@ -54,6 +54,25 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
+    /* Status colors for pickup system - Enhanced visibility */
+    --status-waiting: 220 13% 91%;
+    --status-waiting-foreground: 220 8.9% 46.1%;
+    --status-waiting-accent: 220 13% 69%;
+    --status-parent-arrived: 38 92% 50%;
+    --status-parent-arrived-foreground: 48 96% 89%;
+    --status-parent-arrived-accent: 45 93% 47%;
+    --status-picked-up: 142 76% 36%;
+    --status-picked-up-foreground: 138 76% 97%;
+    --status-picked-up-accent: 142 71% 45%;
+
+    /* Status background variants for enhanced feedback */
+    --status-waiting-bg: 220 13% 96%;
+    --status-waiting-bg-hover: 220 13% 91%;
+    --status-parent-arrived-bg: 48 100% 96%;
+    --status-parent-arrived-bg-hover: 48 100% 92%;
+    --status-picked-up-bg: 138 76% 97%;
+    --status-picked-up-bg-hover: 138 76% 94%;
+
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -72,8 +91,8 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
@@ -113,6 +132,25 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Status colors for pickup system - Enhanced visibility */
+    --status-waiting: 215 27.9% 16.9%;
+    --status-waiting-foreground: 215 20.2% 65.1%;
+    --status-waiting-accent: 215 25% 27%;
+    --status-parent-arrived: 38 92% 50%;
+    --status-parent-arrived-foreground: 48 96% 89%;
+    --status-parent-arrived-accent: 45 93% 47%;
+    --status-picked-up: 142 76% 36%;
+    --status-picked-up-foreground: 138 76% 97%;
+    --status-picked-up-accent: 142 71% 45%;
+
+    /* Status background variants for enhanced feedback */
+    --status-waiting-bg: 215 27.9% 8%;
+    --status-waiting-bg-hover: 215 27.9% 12%;
+    --status-parent-arrived-bg: 48 100% 6%;
+    --status-parent-arrived-bg-hover: 48 100% 10%;
+    --status-picked-up-bg: 138 76% 6%;
+    --status-picked-up-bg-hover: 138 76% 10%;
   }
 }
 
