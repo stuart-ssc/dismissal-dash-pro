@@ -114,8 +114,6 @@ export default function CarLineMode() {
 
   // Handle pickup status updates
   const updatePickupStatus = async (studentId: string, currentStatus: PickupStatus) => {
-    console.log('updatePickupStatus called with:', { studentId, currentStatus });
-    
     if (!session?.id) {
       toast.error("No active session");
       return;
@@ -155,29 +153,39 @@ export default function CarLineMode() {
         };
         break;
       default:
-        console.error('Unknown status:', currentStatus);
         return;
     }
 
-    console.log('About to update with:', { newStatus, updateData });
+    // Check if record exists and update accordingly
+    const existingPickup = pickups[studentId];
+    let result;
+    
+    if (existingPickup) {
+      // Update existing record
+      result = await supabase
+        .from("car_line_pickups")
+        .update(updateData)
+        .eq("car_line_session_id", session.id)
+        .eq("student_id", studentId);
+    } else {
+      // Insert new record
+      result = await supabase
+        .from("car_line_pickups")
+        .insert({
+          car_line_session_id: session.id,
+          student_id: studentId,
+          managed_by: user.id,
+          ...updateData
+        });
+    }
 
-    // Upsert pickup record
-    const { error } = await supabase
-      .from("car_line_pickups")
-      .upsert({
-        car_line_session_id: session.id,
-        student_id: studentId,
-        managed_by: user.id,
-        ...updateData
-      });
+    const { error } = result;
 
     if (error) {
       console.error("Error updating pickup status:", error);
       toast.error("Failed to update pickup status");
       return;
     }
-
-    console.log('Database update successful');
 
     // Update local state
     setPickups(prev => ({
@@ -189,8 +197,6 @@ export default function CarLineMode() {
         picked_up_at: updateData.picked_up_at || prev[studentId]?.picked_up_at || null
       }
     }));
-
-    console.log('Local state updated to:', newStatus);
 
     // Show success message
     const student = students.find(s => s.id === studentId);
@@ -584,7 +590,6 @@ export default function CarLineMode() {
                           : ''
                       } ${statusDisplay.cardBg} ${statusDisplay.border}`}
                       onClick={() => {
-                        console.log('Card clicked:', { studentId: s.id, currentStatus: status, hasActiveSession: !!isSessionActive });
                         if (isSessionActive) {
                           updatePickupStatus(s.id, status);
                         }
