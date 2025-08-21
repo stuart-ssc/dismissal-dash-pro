@@ -114,6 +114,8 @@ export default function CarLineMode() {
 
   // Handle pickup status updates
   const updatePickupStatus = async (studentId: string, currentStatus: PickupStatus) => {
+    console.log('updatePickupStatus called with:', { studentId, currentStatus });
+    
     if (!session?.id) {
       toast.error("No active session");
       return;
@@ -153,8 +155,11 @@ export default function CarLineMode() {
         };
         break;
       default:
+        console.error('Unknown status:', currentStatus);
         return;
     }
+
+    console.log('About to update with:', { newStatus, updateData });
 
     // Upsert pickup record
     const { error } = await supabase
@@ -172,6 +177,8 @@ export default function CarLineMode() {
       return;
     }
 
+    console.log('Database update successful');
+
     // Update local state
     setPickups(prev => ({
       ...prev,
@@ -182,6 +189,8 @@ export default function CarLineMode() {
         picked_up_at: updateData.picked_up_at || prev[studentId]?.picked_up_at || null
       }
     }));
+
+    console.log('Local state updated to:', newStatus);
 
     // Show success message
     const student = students.find(s => s.id === studentId);
@@ -575,6 +584,7 @@ export default function CarLineMode() {
                           : ''
                       } ${statusDisplay.cardBg} ${statusDisplay.border}`}
                       onClick={() => {
+                        console.log('Card clicked:', { studentId: s.id, currentStatus: status, hasActiveSession: !!isSessionActive });
                         if (isSessionActive) {
                           updatePickupStatus(s.id, status);
                         }
