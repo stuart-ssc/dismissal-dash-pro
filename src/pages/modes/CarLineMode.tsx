@@ -454,18 +454,49 @@ export default function CarLineMode() {
               <CardTitle>Students</CardTitle>
               {session && !session.finished_at && (
                 <div className="flex gap-2 text-sm">
-                  <Badge variant="secondary">
+                  <button
+                    onClick={() => setStatusFilter("all")}
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                      statusFilter === "all" 
+                        ? "bg-primary text-primary-foreground border-primary" 
+                        : "bg-background text-muted-foreground border-border hover:bg-muted"
+                    }`}
+                  >
+                    All: {statusCounts.waiting + statusCounts.parent_arrived + statusCounts.picked_up}
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("waiting")}
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                      statusFilter === "waiting" 
+                        ? "bg-primary text-primary-foreground border-primary" 
+                        : "bg-background text-muted-foreground border-border hover:bg-muted"
+                    }`}
+                  >
                     <Clock className="h-3 w-3 mr-1" />
                     Waiting: {statusCounts.waiting}
-                  </Badge>
-                  <Badge variant="outline" className="bg-warning/10 text-warning">
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("parent_arrived")}
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                      statusFilter === "parent_arrived" 
+                        ? "bg-warning text-warning-foreground border-warning" 
+                        : "bg-warning/10 text-warning border-warning/20 hover:bg-warning/20"
+                    }`}
+                  >
                     <Car className="h-3 w-3 mr-1" />
                     Parent Here: {statusCounts.parent_arrived}
-                  </Badge>
-                  <Badge variant="outline" className="bg-success/10 text-success">
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter("picked_up")}
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                      statusFilter === "picked_up" 
+                        ? "bg-success text-success-foreground border-success" 
+                        : "bg-success/10 text-success border-success/20 hover:bg-success/20"
+                    }`}
+                  >
                     <UserCheck className="h-3 w-3 mr-1" />
                     Picked Up: {statusCounts.picked_up}
-                  </Badge>
+                  </button>
                 </div>
               )}
             </div>
