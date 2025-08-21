@@ -366,7 +366,7 @@ export default function CarLineMode() {
       case "parent_arrived":
         return {
           color: "bg-[hsl(var(--status-parent-arrived))] text-[hsl(var(--status-parent-arrived-foreground))] border-[hsl(var(--status-parent-arrived-accent))] shadow-md",
-          cardBg: "bg-[hsl(var(--status-parent-arrived-bg))] hover:bg-[hsl(var(--status-parent-arrived-bg-hover))] animate-pulse",
+          cardBg: "bg-[hsl(var(--status-parent-arrived-bg))] hover:bg-[hsl(var(--status-parent-arrived-bg-hover))]",
           border: "border-[hsl(var(--status-parent-arrived-accent))] border-2 border-l-4 border-l-[hsl(var(--status-parent-arrived-accent))] shadow-lg shadow-[hsl(var(--status-parent-arrived))]/20",
           label: "Parent Here",
           icon: Car
