@@ -450,10 +450,10 @@ export default function CarLineMode() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle>Students</CardTitle>
               {session && !session.finished_at && (
-                <div className="flex gap-2 text-sm">
+                <div className="flex gap-2 text-sm flex-wrap">
                   <button
                     onClick={() => setStatusFilter("all")}
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
