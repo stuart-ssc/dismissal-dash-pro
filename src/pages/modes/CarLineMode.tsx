@@ -36,7 +36,14 @@ export default function CarLineMode() {
         .select("id,line_name")
         .eq("school_id", schoolId)
         .order("line_name", { ascending: true });
-      setCarLines((data || []) as any);
+      const lines = (data || []) as any;
+      setCarLines(lines);
+      
+      // Auto-select if there's only one car line and none is selected yet
+      if (lines.length === 1 && !selectedLine) {
+        setSelectedLine(lines[0].id);
+        startSession(lines[0].id);
+      }
     };
     loadLines();
   }, [schoolId]);
