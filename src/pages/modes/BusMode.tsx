@@ -209,17 +209,22 @@ export default function BusMode() {
 
   // Auto-completion detection
   useEffect(() => {
-    if (!runId || isCompleted || showCompletionDialog || completingDismissal) return;
+    if (!runId || isCompleted || showCompletionDialog || completingDismissal || buses.length === 0) return;
 
-    const checkedInBuses = Object.values(events).filter(event => event.check_in_time);
-    if (checkedInBuses.length === 0) return; // No buses checked in yet
+    // Get all buses that have events
+    const busesWithEvents = Object.values(events);
+    if (busesWithEvents.length === 0) return; // No buses have been processed yet
 
-    const allCheckedInBusesHaveDeparted = checkedInBuses.every(event => event.departed_at);
+    // Check if all buses have been checked in and departed
+    const allBusesProcessed = buses.every(bus => {
+      const event = events[bus.id];
+      return event && event.check_in_time && event.departed_at;
+    });
     
-    if (allCheckedInBusesHaveDeparted && checkedInBuses.length > 0) {
+    if (allBusesProcessed) {
       setShowCompletionDialog(true);
     }
-  }, [events, runId, isCompleted, completingDismissal]);
+  }, [events, runId, isCompleted, completingDismissal, buses]);
 
   // Force close dialog when dismissal is completed
   useEffect(() => {
