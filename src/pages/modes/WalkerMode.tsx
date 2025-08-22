@@ -31,6 +31,7 @@ export default function WalkerMode() {
   const [statusFilter, setStatusFilter] = useState<PickupStatus | "all">("all");
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [leftBuildingButtonFlash, setLeftBuildingButtonFlash] = useState(false);
 
   const runId = run?.id;
 
@@ -200,6 +201,12 @@ export default function WalkerMode() {
         title: "Status Updated",
         description: `${student?.first_name} ${student?.last_name} marked as ${statusText}`,
       });
+
+      // Trigger flash effect for Left Building button when student is marked as left_building
+      if (newStatus === "left_building") {
+        setLeftBuildingButtonFlash(true);
+        setTimeout(() => setLeftBuildingButtonFlash(false), 1000);
+      }
     } catch (error) {
       console.error("Error updating walker pickup:", error);
       toast({
@@ -442,8 +449,10 @@ export default function WalkerMode() {
               </button>
               <button
                 onClick={() => setStatusFilter("left_building")}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  statusFilter === "left_building"
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  leftBuildingButtonFlash
+                    ? "bg-green-500 text-white"
+                    : statusFilter === "left_building"
                     ? "bg-primary text-primary-foreground"
                     : "bg-background text-muted-foreground border-border hover:bg-muted"
                 }`}
