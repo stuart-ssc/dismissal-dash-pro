@@ -515,7 +515,7 @@ export type Database = {
           group_type: string
           id: string
           name: string
-          release_time: string | null
+          release_offset_minutes: number | null
           updated_at: string
           walker_location_id: string | null
         }
@@ -525,7 +525,7 @@ export type Database = {
           group_type: string
           id?: string
           name: string
-          release_time?: string | null
+          release_offset_minutes?: number | null
           updated_at?: string
           walker_location_id?: string | null
         }
@@ -535,7 +535,7 @@ export type Database = {
           group_type?: string
           id?: string
           name?: string
-          release_time?: string | null
+          release_offset_minutes?: number | null
           updated_at?: string
           walker_location_id?: string | null
         }

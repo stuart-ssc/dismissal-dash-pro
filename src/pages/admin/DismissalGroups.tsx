@@ -35,7 +35,7 @@ interface DismissalGroup {
   id: string;
   name: string;
   group_type: 'bus' | 'class' | 'walker' | 'car';
-  release_time?: string;
+  release_offset_minutes?: number;
   walker_location_id?: string;
   walker_locations?: { location_name: string };
   dismissal_group_buses?: { buses: { bus_number: string; student_bus_assignments?: { student_id: string }[] } }[];
@@ -47,7 +47,7 @@ interface DismissalGroup {
 const groupFormSchema = z.object({
   name: z.string().min(1, "Group name is required"),
   group_type: z.enum(['bus', 'class', 'walker', 'car']),
-  release_time: z.string().min(1, "Release time is required"),
+  release_offset_minutes: z.number().min(0, "Release offset must be 0 or greater").max(180, "Release offset cannot exceed 180 minutes"),
   walker_location_id: z.string().optional(),
   bus_ids: z.array(z.string()).optional(),
   car_line_ids: z.array(z.string()).optional(),
@@ -79,7 +79,7 @@ export default function DismissalGroups() {
     defaultValues: {
       name: "",
       group_type: 'bus',
-      release_time: "",
+      release_offset_minutes: 0,
       walker_location_id: "",
       bus_ids: [],
       car_line_ids: [],
@@ -295,7 +295,7 @@ export default function DismissalGroups() {
       const groupData = {
         name: data.name,
         group_type: data.group_type,
-        release_time: data.release_time,
+        release_offset_minutes: data.release_offset_minutes,
         dismissal_plan_id: planId,
         walker_location_id: data.group_type === 'walker' ? data.walker_location_id : null,
       };
@@ -457,7 +457,7 @@ export default function DismissalGroups() {
     form.reset({
       name: group.name,
       group_type: group.group_type,
-      release_time: group.release_time || "",
+      release_offset_minutes: group.release_offset_minutes || 0,
       walker_location_id: group.walker_location_id || "",
       bus_ids: existingBusIds,
       car_line_ids: existingCarLineIds,
@@ -489,6 +489,16 @@ export default function DismissalGroups() {
         variant: "destructive",
       });
     }
+  };
+
+  // Helper function to calculate actual release time from offset
+  const calculateReleaseTime = (group: DismissalGroup): Date | null => {
+    if (!plan?.dismissal_time || group.release_offset_minutes === undefined) return null;
+    
+    // Parse the dismissal time and add the offset
+    const baseTime = new Date(`2000-01-01T${plan.dismissal_time}`);
+    baseTime.setMinutes(baseTime.getMinutes() + group.release_offset_minutes);
+    return baseTime;
   };
 
   const getGroupIcon = (type: string) => {
@@ -679,7 +689,7 @@ export default function DismissalGroups() {
                           form.reset({
                             name: "",
                             group_type: 'bus',
-                            release_time: "",
+                            release_offset_minutes: 0,
                             walker_location_id: "",
                             bus_ids: [],
                             car_line_ids: [],
@@ -742,12 +752,22 @@ export default function DismissalGroups() {
 
                           <FormField
                             control={form.control}
-                            name="release_time"
+                            name="release_offset_minutes"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Release Time</FormLabel>
+                                <FormLabel>Release Time Offset</FormLabel>
                                 <FormControl>
-                                  <Input type="time" {...field} />
+                                  <div className="flex items-center gap-2">
+                                    <Input 
+                                      type="number" 
+                                      min="0" 
+                                      max="180"
+                                      placeholder="0"
+                                      {...field}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                    />
+                                    <span className="text-sm text-muted-foreground">minutes after dismissal</span>
+                                  </div>
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1092,11 +1112,10 @@ export default function DismissalGroups() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {groups
                       .sort((a, b) => {
-                        // Sort by release_time, earliest first
-                        if (!a.release_time && !b.release_time) return 0;
-                        if (!a.release_time) return 1; // Groups without time go to end
-                        if (!b.release_time) return -1; // Groups without time go to end
-                        return a.release_time.localeCompare(b.release_time);
+                        // Sort by release_offset_minutes, earliest first
+                        const offsetA = a.release_offset_minutes ?? 0;
+                        const offsetB = b.release_offset_minutes ?? 0;
+                        return offsetA - offsetB;
                       })
                       .map((group) => (
                       <Card key={group.id} className="border-border">
@@ -1112,11 +1131,15 @@ export default function DismissalGroups() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                          {group.release_time && (
+                          {group.release_offset_minutes !== undefined && (
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-muted-foreground">Release Time:</span>
                               <span className="text-sm font-medium">
-                                {format(new Date(`2000-01-01T${group.release_time}`), 'h:mm a')}
+                                {calculateReleaseTime(group) ? (
+                                  format(calculateReleaseTime(group)!, 'h:mm a')
+                                ) : (
+                                  group.release_offset_minutes === 0 ? 'Immediate' : `+${group.release_offset_minutes}min`
+                                )}
                               </span>
                             </div>
                           )}
