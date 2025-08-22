@@ -209,7 +209,7 @@ export default function BusMode() {
 
   // Auto-completion detection
   useEffect(() => {
-    if (!runId || isCompleted || showCompletionDialog) return;
+    if (!runId || isCompleted || showCompletionDialog || completingDismissal) return;
 
     const checkedInBuses = Object.values(events).filter(event => event.check_in_time);
     if (checkedInBuses.length === 0) return; // No buses checked in yet
@@ -219,7 +219,14 @@ export default function BusMode() {
     if (allCheckedInBusesHaveDeparted && checkedInBuses.length > 0) {
       setShowCompletionDialog(true);
     }
-  }, [events, runId, isCompleted, showCompletionDialog]);
+  }, [events, runId, isCompleted, completingDismissal]);
+
+  // Force close dialog when dismissal is completed
+  useEffect(() => {
+    if (isCompleted && showCompletionDialog) {
+      setShowCompletionDialog(false);
+    }
+  }, [isCompleted, showCompletionDialog]);
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground p-6">
