@@ -77,18 +77,22 @@ export const useTodayDismissalRun = () => {
         selectedPlanId = defaultPlan?.id ?? null;
       }
 
-      // 2) Find existing run
+      // 2) Find existing run (any status - only one run per day allowed)
       const { data: existing, error: findErr } = await supabase
         .from("dismissal_runs")
         .select("*")
         .eq("school_id", schoolId)
         .eq("date", today)
-        .in("status", ["active", "paused"]) // allow existing active-like runs
         .maybeSingle();
 
       if (findErr) throw findErr;
 
       if (existing) {
+        // If run is completed, return as-is (no modifications allowed)
+        if (existing.status === 'completed') {
+          return { run: existing as DismissalRun, schoolId };
+        }
+        
         // If run exists without a plan, attach the selected plan (idempotent)
         if (!existing.plan_id && selectedPlanId) {
           const { data: updated, error: updateErr } = await supabase
@@ -103,7 +107,7 @@ export const useTodayDismissalRun = () => {
         return { run: existing as DismissalRun, schoolId };
       }
 
-      // 3) Create new run with plan if available
+      // 3) Create new run with plan if available (only if no run exists for today)
       const { data: inserted, error: insertErr } = await supabase
         .from("dismissal_runs")
         .insert({

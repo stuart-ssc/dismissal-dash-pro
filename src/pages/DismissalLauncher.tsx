@@ -5,12 +5,16 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 
 export default function DismissalLauncher() {
   const { signOut, user } = useAuth();
+  const { run } = useTodayDismissalRun();
 
   const [schoolName, setSchoolName] = useState<string>('');
   const navigate = useNavigate();
+  
+  const isBusCompleted = run?.status === 'completed';
 
   useEffect(() => {
     document.title = "Launch Dismissal | Dashboard";
@@ -65,8 +69,9 @@ export default function DismissalLauncher() {
               variant="outline"
               className="h-32 text-lg justify-center"
               onClick={() => navigate("/dashboard/dismissal/bus")}
+              disabled={isBusCompleted}
             >
-              Bus Dismissal Mode
+              {isBusCompleted ? "Bus Dismissal - Completed" : "Bus Dismissal Mode"}
             </Button>
             <Button
               variant="outline"

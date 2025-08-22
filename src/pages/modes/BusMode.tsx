@@ -11,6 +11,7 @@ import ExitModeButton from "@/components/ExitModeButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 type Bus = { id: string; bus_number: string; driver_first_name: string; driver_last_name: string };
 type BusEvent = {
@@ -24,6 +25,7 @@ type BusEvent = {
 export default function BusMode() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
   const [buses, setBuses] = useState<Bus[]>([]);
   const [events, setEvents] = useState<Record<string, BusEvent>>({});
@@ -34,6 +36,18 @@ export default function BusMode() {
   const [completingDismissal, setCompletingDismissal] = useState(false);
   const runId = run?.id;
   const isCompleted = !!run?.ended_at;
+
+  // Redirect if dismissal run is already completed
+  useEffect(() => {
+    if (run && isCompleted) {
+      toast({
+        title: "Bus Dismissal Already Completed",
+        description: "Today's bus dismissal has already been completed.",
+        variant: "default",
+      });
+      navigate("/dashboard/dismissal");
+    }
+  }, [run, isCompleted, navigate, toast]);
 
   const fetchData = useMemo(
     () => async () => {
@@ -187,13 +201,15 @@ export default function BusMode() {
 
       if (error) throw error;
 
-      // Refetch the dismissal run to update local state
-      await refetch();
-      
       toast({
         title: "Bus Dismissal Completed",
         description: "All bus dismissal activities have been marked as complete.",
       });
+
+      // Navigate back to launcher
+      setTimeout(() => {
+        navigate("/dashboard/dismissal");
+      }, 1500);
     } catch (error) {
       console.error('Error completing dismissal:', error);
       toast({
