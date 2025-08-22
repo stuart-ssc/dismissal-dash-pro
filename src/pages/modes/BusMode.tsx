@@ -214,24 +214,11 @@ export default function BusMode() {
   return (
     <div className="min-h-screen w-full bg-background text-foreground p-6">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
-              Bus Dismissal {isCompleted && <span className="text-green-600">- Completed</span>}
-            </h1>
-            <p className="text-muted-foreground mt-2">Check in buses, view riders, and mark departures.</p>
-          </div>
-          {!isCompleted && !isLoading && (
-            <Button
-              onClick={() => setShowCompletionDialog(true)}
-              variant="destructive"
-              size="lg"
-              disabled={completingDismissal}
-              className="shadow-lg font-semibold px-6 py-3"
-            >
-              {completingDismissal ? "Completing..." : "Mark Dismissal as Completed"}
-            </Button>
-          )}
+        <header className="mb-6">
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
+            Bus Dismissal {isCompleted && <span className="text-green-600">- Completed</span>}
+          </h1>
+          <p className="text-muted-foreground mt-2">Check in buses, view riders, and mark departures.</p>
         </header>
 
         {isLoading || loadingData ? (
@@ -242,7 +229,20 @@ export default function BusMode() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>Today&apos;s Buses</CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <CardTitle>Today&apos;s Buses</CardTitle>
+                {!isCompleted && !isLoading && (
+                  <Button
+                    onClick={() => setShowCompletionDialog(true)}
+                    variant="destructive"
+                    size="lg"
+                    disabled={completingDismissal}
+                    className="shadow-lg font-semibold px-6 py-3"
+                  >
+                    {completingDismissal ? "Completing..." : "Mark Dismissal as Completed"}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
