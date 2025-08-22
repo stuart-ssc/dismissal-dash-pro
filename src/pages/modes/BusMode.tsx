@@ -207,8 +207,16 @@ export default function BusMode() {
     }
   };
 
+  // Force close dialog when dismissal becomes completed
+  useEffect(() => {
+    if (isCompleted && showCompletionDialog) {
+      setShowCompletionDialog(false);
+    }
+  }, [isCompleted, showCompletionDialog]);
+
   // Auto-completion detection
   useEffect(() => {
+    // Early exit if dismissal is completed or dialog is already shown
     if (!runId || isCompleted || showCompletionDialog) return;
 
     const checkedInBuses = Object.values(events).filter(event => event.check_in_time);
@@ -216,7 +224,8 @@ export default function BusMode() {
 
     const allCheckedInBusesHaveDeparted = checkedInBuses.every(event => event.departed_at);
     
-    if (allCheckedInBusesHaveDeparted && checkedInBuses.length > 0) {
+    // Only show dialog if not already completed and all conditions are met
+    if (allCheckedInBusesHaveDeparted && checkedInBuses.length > 0 && !isCompleted) {
       setShowCompletionDialog(true);
     }
   }, [events, runId, isCompleted, showCompletionDialog]);
