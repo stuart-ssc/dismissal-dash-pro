@@ -3,11 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import ExitModeButton from "@/components/ExitModeButton";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 type Bus = { id: string; bus_number: string; driver_first_name: string; driver_last_name: string };
@@ -21,13 +23,17 @@ type BusEvent = {
 
 export default function BusMode() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { run, schoolId, isLoading } = useTodayDismissalRun();
   const [buses, setBuses] = useState<Bus[]>([]);
   const [events, setEvents] = useState<Record<string, BusEvent>>({});
   const [loadingData, setLoadingData] = useState(false);
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
   const [busStudents, setBusStudents] = useState<{ id: string; first_name: string; last_name: string; grade_level: string }[]>([]);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [completingDismissal, setCompletingDismissal] = useState(false);
   const runId = run?.id;
+  const isCompleted = !!run?.ended_at;
 
   const fetchData = useMemo(
     () => async () => {
@@ -158,12 +164,74 @@ export default function BusMode() {
     return withOrder;
   }, [buses, events]);
 
+  // Complete dismissal function
+  const completeDismissal = async () => {
+    if (!runId || !user || completingDismissal || isCompleted) return;
+    
+    setCompletingDismissal(true);
+    try {
+      const { error } = await supabase
+        .from('dismissal_runs')
+        .update({ 
+          ended_at: new Date().toISOString(),
+          status: 'completed'
+        })
+        .eq('id', runId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Bus Dismissal Completed",
+        description: "All bus dismissal activities have been marked as complete.",
+      });
+    } catch (error) {
+      console.error('Error completing dismissal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete bus dismissal. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCompletingDismissal(false);
+      setShowCompletionDialog(false);
+    }
+  };
+
+  // Auto-completion detection
+  useEffect(() => {
+    if (!runId || isCompleted || showCompletionDialog) return;
+
+    const checkedInBuses = Object.values(events).filter(event => event.check_in_time);
+    if (checkedInBuses.length === 0) return; // No buses checked in yet
+
+    const allCheckedInBusesHaveDeparted = checkedInBuses.every(event => event.departed_at);
+    
+    if (allCheckedInBusesHaveDeparted && checkedInBuses.length > 0) {
+      setShowCompletionDialog(true);
+    }
+  }, [events, runId, isCompleted, showCompletionDialog]);
+
   return (
     <div className="min-h-screen w-full bg-background text-foreground p-6">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-6">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Bus Dismissal</h1>
-          <p className="text-muted-foreground mt-2">Check in buses, view riders, and mark departures.</p>
+        <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
+              Bus Dismissal {isCompleted && <span className="text-green-600">- Completed</span>}
+            </h1>
+            <p className="text-muted-foreground mt-2">Check in buses, view riders, and mark departures.</p>
+          </div>
+          {!isCompleted && !isLoading && (
+            <Button
+              onClick={() => setShowCompletionDialog(true)}
+              variant="destructive"
+              size="lg"
+              disabled={completingDismissal}
+              className="shadow-lg font-semibold px-6 py-3"
+            >
+              {completingDismissal ? "Completing..." : "Mark Dismissal as Completed"}
+            </Button>
+          )}
         </header>
 
         {isLoading || loadingData ? (
@@ -233,11 +301,13 @@ export default function BusMode() {
                                 </div>
                               </DialogContent>
                             </Dialog>
-                            {!ev?.check_in_time && (
-                              <Button onClick={() => checkInBus(bus)}>Check In</Button>
+                            {!ev?.check_in_time && !isCompleted && (
+                              <Button onClick={() => checkInBus(bus)} disabled={isCompleted}>
+                                Check In
+                              </Button>
                             )}
-                            {ev?.check_in_time && !ev?.departed_at && (
-                              <Button variant="secondary" onClick={() => markDeparted(bus)}>
+                            {ev?.check_in_time && !ev?.departed_at && !isCompleted && (
+                              <Button variant="secondary" onClick={() => markDeparted(bus)} disabled={isCompleted}>
                                 Mark Departed
                               </Button>
                             )}
@@ -254,6 +324,27 @@ export default function BusMode() {
       </div>
 
       <ExitModeButton label="Exit Bus Mode" />
+
+      {/* Auto-completion confirmation dialog */}
+      <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>All Buses Have Departed</AlertDialogTitle>
+            <AlertDialogDescription>
+              All checked-in buses have departed. Would you like to mark the Bus Dismissal as complete?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not Yet</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={completeDismissal}
+              disabled={completingDismissal}
+            >
+              {completingDismissal ? "Completing..." : "Mark Complete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
