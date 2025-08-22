@@ -238,6 +238,21 @@ export default function WalkerMode() {
   };
 
   // Calculate status counts
+  // Get available grades from students
+  const availableGrades = useMemo(() => {
+    const grades = Array.from(new Set(students.map(s => s.grade_level)))
+      .filter(grade => grade) // Remove any null/undefined grades
+      .sort((a, b) => {
+        // Custom sort to handle PK, K, and numbers
+        if (a === 'PK') return -1;
+        if (b === 'PK') return 1;
+        if (a === 'K') return -1;
+        if (b === 'K') return 1;
+        return Number(a) - Number(b);
+      });
+    return grades;
+  }, [students]);
+
   const statusCounts = useMemo(() => {
     const counts = { waiting: 0, left_building: 0 };
     students.forEach(student => {
@@ -400,16 +415,11 @@ export default function WalkerMode() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All grades</SelectItem>
-                  <SelectItem value="PK">PK</SelectItem>
-                  <SelectItem value="K">K</SelectItem>
-                  <SelectItem value="1">1</SelectItem>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="3">3</SelectItem>
-                  <SelectItem value="4">4</SelectItem>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="6">6</SelectItem>
-                  <SelectItem value="7">7</SelectItem>
-                  <SelectItem value="8">8</SelectItem>
+                  {availableGrades.map((grade) => (
+                    <SelectItem key={grade} value={grade}>
+                      {grade === 'K' ? 'K' : grade === 'PK' ? 'PK' : `Grade ${grade}`}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={classFilter} onValueChange={setClassFilter}>
