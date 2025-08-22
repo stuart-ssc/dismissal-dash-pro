@@ -413,7 +413,12 @@ export default function ClassroomMode() {
             <p className="text-xl text-muted-foreground">No groups are scheduled for release yet.</p>
             {dismissalTime && (
               <p className="text-sm text-muted-foreground mt-2">
-                Dismissal starts at {dismissalTime}
+                Dismissal starts at {(() => {
+                  const [hours, minutes] = dismissalTime.split(':').map(Number);
+                  const date = new Date();
+                  date.setHours(hours, minutes);
+                  return formatTime(date);
+                })()}
               </p>
             )}
           </div>
