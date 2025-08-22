@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { CheckCircle, Bus, Car, Users, MapPin } from "lucide-react";
+import { DismissalRunTimeline } from "@/components/DismissalRunTimeline";
 
 export default function DismissalLauncher() {
   const { signOut, user } = useAuth();
@@ -138,6 +139,11 @@ export default function DismissalLauncher() {
               Walker Mode
             </Button>
           </div>
+        </section>
+        
+        {/* Timeline Report */}
+        <section className="mt-8 max-w-5xl">
+          <DismissalRunTimeline />
         </section>
       </main>
     </>
