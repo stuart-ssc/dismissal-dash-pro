@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -26,6 +27,7 @@ export default function BusMode() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
   const [buses, setBuses] = useState<Bus[]>([]);
   const [events, setEvents] = useState<Record<string, BusEvent>>({});
@@ -45,7 +47,7 @@ export default function BusMode() {
         description: "Today's bus dismissal has already been completed.",
         variant: "default",
       });
-      navigate("/dashboard/dismissal");
+      navigate("/dashboard/dismissal", { replace: true });
     }
   }, [run, isCompleted, navigate, toast]);
 
@@ -201,6 +203,9 @@ export default function BusMode() {
 
       if (error) throw error;
 
+      // Invalidate today's dismissal run cache to refresh the launcher
+      queryClient.invalidateQueries({ queryKey: ["today-dismissal-run"] });
+
       toast({
         title: "Bus Dismissal Completed",
         description: "All bus dismissal activities have been marked as complete.",
@@ -208,7 +213,7 @@ export default function BusMode() {
 
       // Navigate back to launcher
       setTimeout(() => {
-        navigate("/dashboard/dismissal");
+        navigate("/dashboard/dismissal", { replace: true });
       }, 1500);
     } catch (error) {
       console.error('Error completing dismissal:', error);

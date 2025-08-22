@@ -13,7 +13,7 @@ import { DismissalRunTimeline } from "@/components/DismissalRunTimeline";
 
 export default function DismissalLauncher() {
   const { signOut, user } = useAuth();
-  const { run } = useTodayDismissalRun();
+  const { run, refetch } = useTodayDismissalRun();
 
   const [schoolName, setSchoolName] = useState<string>('');
   const navigate = useNavigate();
@@ -56,6 +56,32 @@ export default function DismissalLauncher() {
     };
     fetchSchoolName();
   }, [user]);
+
+  // Real-time updates for dismissal runs
+  useEffect(() => {
+    if (!run?.id) return;
+    
+    const channel = supabase
+      .channel('dismissal-runs-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'dismissal_runs',
+          filter: `id=eq.${run.id}`
+        },
+        () => {
+          // Refetch dismissal run data when status changes
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [run?.id, refetch]);
   return (
     <>
       <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">

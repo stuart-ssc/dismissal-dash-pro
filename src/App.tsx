@@ -30,6 +30,7 @@ import ClassroomMode from "./pages/modes/ClassroomMode";
 import BusMode from "./pages/modes/BusMode";
 import CarLineMode from "./pages/modes/CarLineMode";
 import WalkerMode from "./pages/modes/WalkerMode";
+import { RouteGuard } from "./components/RouteGuard";
 
 
 const queryClient = new QueryClient();
@@ -63,7 +64,11 @@ const App = () => (
 
             {/* Fullscreen dismissal modes (no left navigation) */}
             <Route path="/dashboard/dismissal/classroom" element={<ClassroomMode />} />
-            <Route path="/dashboard/dismissal/bus" element={<BusMode />} />
+            <Route path="/dashboard/dismissal/bus" element={
+              <RouteGuard mode="bus">
+                <BusMode />
+              </RouteGuard>
+            } />
             <Route path="/dashboard/dismissal/car-line" element={<CarLineMode />} />
             <Route path="/dashboard/dismissal/walker" element={<WalkerMode />} />
 
