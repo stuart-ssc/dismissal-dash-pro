@@ -510,6 +510,8 @@ export type Database = {
       }
       dismissal_groups: {
         Row: {
+          car_rider_capacity: number | null
+          car_rider_type: string | null
           created_at: string
           dismissal_plan_id: string
           group_type: string
@@ -520,6 +522,8 @@ export type Database = {
           walker_location_id: string | null
         }
         Insert: {
+          car_rider_capacity?: number | null
+          car_rider_type?: string | null
           created_at?: string
           dismissal_plan_id: string
           group_type: string
@@ -530,6 +534,8 @@ export type Database = {
           walker_location_id?: string | null
         }
         Update: {
+          car_rider_capacity?: number | null
+          car_rider_type?: string | null
           created_at?: string
           dismissal_plan_id?: string
           group_type?: string

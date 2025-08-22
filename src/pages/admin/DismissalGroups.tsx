@@ -37,6 +37,8 @@ interface DismissalGroup {
   group_type: 'bus' | 'class' | 'walker' | 'car';
   release_offset_minutes?: number;
   walker_location_id?: string;
+  car_rider_capacity?: number;
+  car_rider_type?: 'count' | 'all_remaining';
   walker_locations?: { location_name: string };
   dismissal_group_buses?: { buses: { bus_number: string; student_bus_assignments?: { student_id: string }[] } }[];
   dismissal_group_classes?: { classes: { class_name: string; class_rosters?: { student_id: string }[] } }[];
@@ -52,6 +54,16 @@ const groupFormSchema = z.object({
   bus_ids: z.array(z.string()).optional(),
   car_line_ids: z.array(z.string()).optional(),
   class_ids: z.array(z.string()).optional(),
+  car_rider_type: z.enum(['count', 'all_remaining']).optional(),
+  car_rider_capacity: z.number().int().min(1).max(999).optional(),
+}).refine((data) => {
+  if (data.group_type === 'car' && data.car_rider_type === 'count') {
+    return data.car_rider_capacity && data.car_rider_capacity > 0;
+  }
+  return true;
+}, {
+  message: "Car rider capacity is required when using count type",
+  path: ["car_rider_capacity"],
 });
 
 type GroupFormData = z.infer<typeof groupFormSchema>;
@@ -84,6 +96,8 @@ export default function DismissalGroups() {
       bus_ids: [],
       car_line_ids: [],
       class_ids: [],
+      car_rider_type: 'all_remaining',
+      car_rider_capacity: undefined,
     },
   });
 
@@ -148,7 +162,8 @@ export default function DismissalGroups() {
       if (groupsError) throw groupsError;
       setGroups((groupsData || []).map(group => ({ 
         ...group, 
-        group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car' 
+        group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car',
+        car_rider_type: group.car_rider_type as 'count' | 'all_remaining' | undefined
       })));
     } catch (error) {
       console.error('Error fetching plan and groups:', error);
@@ -292,13 +307,15 @@ export default function DismissalGroups() {
     if (!planId) return;
 
     try {
-      const groupData = {
-        name: data.name,
-        group_type: data.group_type,
-        release_offset_minutes: data.release_offset_minutes,
-        dismissal_plan_id: planId,
-        walker_location_id: data.group_type === 'walker' ? data.walker_location_id : null,
-      };
+        const groupData = {
+          name: data.name,
+          group_type: data.group_type,
+          release_offset_minutes: data.release_offset_minutes,
+          dismissal_plan_id: planId,
+          walker_location_id: data.group_type === 'walker' ? data.walker_location_id : null,
+          car_rider_type: data.group_type === 'car' ? data.car_rider_type : null,
+          car_rider_capacity: data.group_type === 'car' && data.car_rider_type === 'count' ? data.car_rider_capacity : null,
+        };
 
       let groupId: string;
 
@@ -459,6 +476,8 @@ export default function DismissalGroups() {
       group_type: group.group_type,
       release_offset_minutes: group.release_offset_minutes || 0,
       walker_location_id: group.walker_location_id || "",
+      car_rider_type: group.car_rider_type || 'all_remaining',
+      car_rider_capacity: group.car_rider_capacity || undefined,
       bus_ids: existingBusIds,
       car_line_ids: existingCarLineIds,
       class_ids: existingClassIds,
@@ -532,6 +551,16 @@ export default function DismissalGroups() {
   };
 
   const getStudentCount = (group: DismissalGroup): number => {
+    // For car rider groups with count type, show capacity
+    if (group.group_type === 'car' && group.car_rider_type === 'count' && group.car_rider_capacity) {
+      return group.car_rider_capacity;
+    }
+    
+    // For car rider groups with all_remaining type, we can't show exact count
+    if (group.group_type === 'car' && group.car_rider_type === 'all_remaining') {
+      return 0; // Will be handled in display logic
+    }
+
     let count = 0;
 
     // Count students directly assigned to the group
@@ -694,6 +723,8 @@ export default function DismissalGroups() {
                             bus_ids: [],
                             car_line_ids: [],
                             class_ids: [],
+                            car_rider_type: 'all_remaining',
+                            car_rider_capacity: undefined,
                           });
                         }}
                       >
@@ -891,92 +922,67 @@ export default function DismissalGroups() {
                           )}
 
                           {form.watch('group_type') === 'car' && (
-                            <FormField
-                              control={form.control}
-                              name="car_line_ids"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                  <FormLabel>Select Car Lines</FormLabel>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
+                            <>
+                              <FormField
+                                control={form.control}
+                                name="car_rider_type"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Car Rider Configuration</FormLabel>
+                                    <FormControl>
+                                      <div className="space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                          <input 
+                                            type="radio" 
+                                            id="count" 
+                                            name="car_rider_type"
+                                            value="count"
+                                            checked={field.value === 'count'}
+                                            onChange={() => field.onChange('count')}
+                                          />
+                                          <label htmlFor="count" className="text-sm">Specific count (dismiss first X ready students)</label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <input 
+                                            type="radio" 
+                                            id="all_remaining" 
+                                            name="car_rider_type"
+                                            value="all_remaining"
+                                            checked={field.value === 'all_remaining'}
+                                            onChange={() => field.onChange('all_remaining')}
+                                          />
+                                          <label htmlFor="all_remaining" className="text-sm">All remaining ready students</label>
+                                        </div>
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              {form.watch('car_rider_type') === 'count' && (
+                                <FormField
+                                  control={form.control}
+                                  name="car_rider_capacity"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Number of Students</FormLabel>
                                       <FormControl>
-                                        <Button
-                                          variant="outline"
-                                          role="combobox"
-                                          className={cn(
-                                            "justify-between",
-                                            !field.value?.length && "text-muted-foreground"
-                                          )}
-                                        >
-                                          {field.value?.length
-                                            ? `${field.value.length} car line${field.value.length !== 1 ? 's' : ''} selected`
-                                            : "Select car lines"}
-                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
+                                        <Input
+                                          type="number"
+                                          min="1"
+                                          max="999"
+                                          placeholder="Enter number of students (e.g., 30)"
+                                          {...field}
+                                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                        />
                                       </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                      <Command>
-                                        <CommandInput placeholder="Search car lines..." />
-                                        <CommandList>
-                                          <CommandEmpty>No car lines found.</CommandEmpty>
-                                          <CommandGroup>
-                                            {carLines.map((carLine) => (
-                                              <CommandItem
-                                                key={carLine.id}
-                                                onSelect={() => {
-                                                  const currentValues = field.value || [];
-                                                  const isSelected = currentValues.includes(carLine.id);
-                                                  
-                                                  if (isSelected) {
-                                                    field.onChange(currentValues.filter(id => id !== carLine.id));
-                                                  } else {
-                                                    field.onChange([...currentValues, carLine.id]);
-                                                  }
-                                                }}
-                                              >
-                                                <Check
-                                                  className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    field.value?.includes(carLine.id) ? "opacity-100" : "opacity-0"
-                                                  )}
-                                                />
-                                                {carLine.line_name}
-                                              </CommandItem>
-                                            ))}
-                                          </CommandGroup>
-                                        </CommandList>
-                                      </Command>
-                                    </PopoverContent>
-                                  </Popover>
-                                  {field.value?.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                      {field.value.map((carLineId) => {
-                                        const carLine = carLines.find(c => c.id === carLineId);
-                                        if (!carLine) return null;
-                                        return (
-                                          <Badge key={carLineId} variant="secondary" className="text-xs">
-                                            {carLine.line_name}
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="ml-1 h-3 w-3 p-0 hover:bg-transparent"
-                                              onClick={(e) => {
-                                                e.preventDefault();
-                                                field.onChange(field.value?.filter(id => id !== carLineId));
-                                              }}
-                                            >
-                                              <X className="h-2 w-2" />
-                                            </Button>
-                                          </Badge>
-                                        );
-                                      })}
-                                    </div>
+                                      <FormMessage />
+                                    </FormItem>
                                   )}
-                                  <FormMessage />
-                                </FormItem>
+                                />
                               )}
-                            />
+                            </>
                           )}
 
                           {form.watch('group_type') === 'class' && (
@@ -1147,7 +1153,11 @@ export default function DismissalGroups() {
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">Students:</span>
                             <span className="text-sm font-medium">
-                              {getStudentCount(group)}
+                              {group.group_type === 'car' && group.car_rider_type === 'count' 
+                                ? `Up to ${group.car_rider_capacity}`
+                                : group.group_type === 'car' && group.car_rider_type === 'all_remaining'
+                                ? 'All remaining ready'
+                                : getStudentCount(group)}
                             </span>
                           </div>
 
