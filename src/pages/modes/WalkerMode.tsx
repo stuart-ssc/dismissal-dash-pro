@@ -345,33 +345,35 @@ export default function WalkerMode() {
         </header>
 
         <Card>
-          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="mt-6 w-full sm:w-80">
-              <label className="text-sm text-muted-foreground">Walker location</label>
-              <Select
-                value={selectedLoc}
-                onValueChange={(v) => {
-                  setSelectedLoc(v);
-                  startSession(v);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select walker location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.location_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {session && (
-              <div className="text-sm text-muted-foreground">
-                Session started • {session.finished_at ? "Finished" : "Active"}
+          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="mt-6 w-full sm:w-80">
+                <label className="text-sm text-muted-foreground">Walker location</label>
+                <Select
+                  value={selectedLoc}
+                  onValueChange={(v) => {
+                    setSelectedLoc(v);
+                    startSession(v);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select walker location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.location_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+              {session && (
+                <div className="text-sm text-muted-foreground">
+                  Session started • {session.finished_at ? "Finished" : "Active"}
+                </div>
+              )}
+            </div>
             {session && !session.finished_at && (
               <Button variant="secondary" onClick={finishSession}>
                 Mark Dismissal As Finished
