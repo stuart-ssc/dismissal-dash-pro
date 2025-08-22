@@ -1076,6 +1076,39 @@ export type Database = {
         }
         Relationships: []
       }
+      walker_pickups: {
+        Row: {
+          created_at: string
+          id: string
+          left_at: string | null
+          managed_by: string
+          status: string
+          student_id: string
+          updated_at: string
+          walker_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          left_at?: string | null
+          managed_by: string
+          status?: string
+          student_id: string
+          updated_at?: string
+          walker_session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          left_at?: string | null
+          managed_by?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+          walker_session_id?: string
+        }
+        Relationships: []
+      }
       walker_sessions: {
         Row: {
           arrived_at: string
