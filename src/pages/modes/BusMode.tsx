@@ -11,7 +11,6 @@ import ExitModeButton from "@/components/ExitModeButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 
 type Bus = { id: string; bus_number: string; driver_first_name: string; driver_last_name: string };
 type BusEvent = {
@@ -25,8 +24,7 @@ type BusEvent = {
 export default function BusMode() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { run, schoolId, isLoading } = useTodayDismissalRun();
+  const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
   const [buses, setBuses] = useState<Bus[]>([]);
   const [events, setEvents] = useState<Record<string, BusEvent>>({});
   const [loadingData, setLoadingData] = useState(false);
@@ -88,7 +86,7 @@ export default function BusMode() {
 
   // Realtime updates for bus events
   useEffect(() => {
-    if (!runId || isCompleted) return;
+    if (!runId) return;
     const channel = supabase
       .channel("bus-run-events")
       .on(
@@ -100,7 +98,7 @@ export default function BusMode() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [runId, fetchData, isCompleted]);
+  }, [runId, fetchData]);
 
   const nextOrderIndex = () => {
     const current = Object.values(events)
@@ -179,29 +177,18 @@ export default function BusMode() {
     
     setCompletingDismissal(true);
     try {
-      const now = new Date().toISOString();
       const { error } = await supabase
         .from('dismissal_runs')
         .update({ 
-          ended_at: now,
+          ended_at: new Date().toISOString(),
           status: 'completed'
         })
         .eq('id', runId);
 
       if (error) throw error;
 
-      // Manually update the query cache to avoid refetch
-      if (run && schoolId) {
-        const updatedRun = {
-          ...run,
-          ended_at: now,
-          status: 'completed'
-        };
-        queryClient.setQueryData(['today-dismissal-run', user.id], {
-          run: updatedRun,
-          schoolId
-        });
-      }
+      // Refetch the dismissal run to update local state
+      await refetch();
       
       toast({
         title: "Bus Dismissal Completed",
