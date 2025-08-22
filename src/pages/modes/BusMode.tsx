@@ -24,7 +24,7 @@ type BusEvent = {
 export default function BusMode() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { run, schoolId, isLoading } = useTodayDismissalRun();
+  const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
   const [buses, setBuses] = useState<Bus[]>([]);
   const [events, setEvents] = useState<Record<string, BusEvent>>({});
   const [loadingData, setLoadingData] = useState(false);
@@ -38,6 +38,13 @@ export default function BusMode() {
   const fetchData = useMemo(
     () => async () => {
       if (!schoolId || !runId) return;
+      
+      // Don't fetch bus data if dismissal is already completed
+      if (isCompleted) {
+        setLoadingData(false);
+        return;
+      }
+      
       setLoadingData(true);
       const { data: busList, error: busErr } = await supabase
         .from("buses")
@@ -70,7 +77,7 @@ export default function BusMode() {
       setEvents(map);
       setLoadingData(false);
     },
-    [schoolId, runId]
+    [schoolId, runId, isCompleted]
   );
 
   useEffect(() => {
@@ -180,6 +187,9 @@ export default function BusMode() {
 
       if (error) throw error;
 
+      // Refetch the dismissal run to update local state
+      await refetch();
+      
       toast({
         title: "Bus Dismissal Completed",
         description: "All bus dismissal activities have been marked as complete.",
