@@ -38,15 +38,15 @@ const getEventColor = (type: string) => {
     case 'run_start':
       return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800';
     case 'run_end':
+    case 'bus_departure':
+    case 'car_session_end':
+    case 'walker_session_end':
       return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800';
     case 'bus_checkin':
-    case 'bus_departure':
       return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800';
     case 'car_session_start':
-    case 'car_session_end':
       return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800';
     case 'walker_session_start':
-    case 'walker_session_end':
       return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200 dark:border-green-800';
     default:
       return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-950 dark:text-gray-200 dark:border-gray-800';
@@ -123,7 +123,11 @@ export const DismissalRunTimeline: React.FC = () => {
                   <div className="absolute left-4 top-8 w-px h-12 bg-border" />
                 )}
                 
-                <div className="flex items-start gap-3">
+                <div className={`flex items-start gap-3 ${
+                  ['run_end', 'bus_departure', 'car_session_end', 'walker_session_end'].includes(event.type)
+                    ? 'bg-emerald-50 border-emerald-200 rounded-lg p-3 dark:bg-emerald-950/50 dark:border-emerald-800'
+                    : ''
+                }`}>
                   {/* Event icon */}
                   <div className={`flex items-center justify-center w-8 h-8 rounded-full border ${getEventColor(event.type)}`}>
                     {getEventIcon(event.icon)}

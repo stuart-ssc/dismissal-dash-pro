@@ -18,20 +18,9 @@ export default function DismissalLauncher() {
   const [schoolName, setSchoolName] = useState<string>('');
   const [isCarLineCompleted, setIsCarLineCompleted] = useState(false);
   const [isWalkerCompleted, setIsWalkerCompleted] = useState(false);
-  const [carLineCompletedAt, setCarLineCompletedAt] = useState<string | null>(null);
-  const [walkerCompletedAt, setWalkerCompletedAt] = useState<string | null>(null);
   const navigate = useNavigate();
   
   const isBusCompleted = run?.status === 'completed';
-  
-  // Format completion time for display
-  const formatCompletionTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
 
   useEffect(() => {
     document.title = "Launch Dismissal | Dashboard";
@@ -112,14 +101,6 @@ export default function DismissalLauncher() {
 
       const allCarLinesCompleted = carLineIds.every(id => finishedCarLineIds.includes(id));
       setIsCarLineCompleted(allCarLinesCompleted);
-
-      if (allCarLinesCompleted && sessions.length > 0) {
-        // Find the latest completion time
-        const latestCompletion = sessions
-          .filter(session => session.finished_at)
-          .sort((a, b) => new Date(b.finished_at!).getTime() - new Date(a.finished_at!).getTime())[0];
-        setCarLineCompletedAt(latestCompletion?.finished_at || null);
-      }
     } catch (error) {
       console.error('Error checking car line completion:', error);
     }
@@ -172,14 +153,6 @@ export default function DismissalLauncher() {
 
       const allWalkersCompleted = walkerLocationIds.every(id => finishedWalkerLocationIds.includes(id));
       setIsWalkerCompleted(allWalkersCompleted);
-
-      if (allWalkersCompleted && sessions.length > 0) {
-        // Find the latest completion time
-        const latestCompletion = sessions
-          .filter(session => session.finished_at)
-          .sort((a, b) => new Date(b.finished_at!).getTime() - new Date(a.finished_at!).getTime())[0];
-        setWalkerCompletedAt(latestCompletion?.finished_at || null);
-      }
     } catch (error) {
       console.error('Error checking walker completion:', error);
     }
@@ -280,83 +253,6 @@ export default function DismissalLauncher() {
 
       <main className="flex-1 p-6">
         <h2 className="text-3xl font-bold mb-6">Launch Dismissal</h2>
-        
-        {/* Status Banners */}
-        {isBusCompleted && (
-          <Card className="mb-6 border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-emerald-800 dark:text-emerald-200">
-                      Bus Dismissal Completed
-                    </span>
-                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                      ✓ Done
-                    </Badge>
-                  </div>
-                  {run?.ended_at && (
-                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                      Completed at {formatCompletionTime(run.ended_at)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isCarLineCompleted && (
-          <Card className="mb-6 border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-emerald-800 dark:text-emerald-200">
-                      Car Line Dismissal Completed
-                    </span>
-                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                      ✓ Done
-                    </Badge>
-                  </div>
-                  {carLineCompletedAt && (
-                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                      Completed at {formatCompletionTime(carLineCompletedAt)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isWalkerCompleted && (
-          <Card className="mb-6 border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-emerald-800 dark:text-emerald-200">
-                      Walker Dismissal Completed
-                    </span>
-                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                      ✓ Done
-                    </Badge>
-                  </div>
-                  {walkerCompletedAt && (
-                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                      Completed at {formatCompletionTime(walkerCompletedAt)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
         <section aria-labelledby="dismissal-modes" className="max-w-5xl">
           <h2 id="dismissal-modes" className="sr-only">Dismissal Modes</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
