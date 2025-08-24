@@ -16,11 +16,10 @@ export default function DismissalLauncher() {
   const { run, refetch } = useTodayDismissalRun();
 
   const [schoolName, setSchoolName] = useState<string>('');
+  const [isBusCompleted, setIsBusCompleted] = useState(false);
   const [isCarLineCompleted, setIsCarLineCompleted] = useState(false);
   const [isWalkerCompleted, setIsWalkerCompleted] = useState(false);
   const navigate = useNavigate();
-  
-  const isBusCompleted = run?.status === 'completed';
 
   useEffect(() => {
     document.title = "Launch Dismissal | Dashboard";
@@ -49,6 +48,62 @@ export default function DismissalLauncher() {
     };
     fetchSchoolName();
   }, [user]);
+
+  // Check bus completion status
+  const checkBusCompletion = async () => {
+    if (!run?.id || !run?.plan_id) return;
+    
+    try {
+      // Get all bus groups from the active dismissal plan
+      const { data: busGroups } = await supabase
+        .from('dismissal_groups')
+        .select(`
+          id,
+          dismissal_group_buses (
+            bus_id
+          )
+        `)
+        .eq('dismissal_plan_id', run.plan_id)
+        .eq('group_type', 'bus');
+
+      if (!busGroups || busGroups.length === 0) {
+        setIsBusCompleted(true); // No buses to complete
+        return;
+      }
+
+      // Get all unique bus IDs
+      const busIds = busGroups
+        .flatMap(group => group.dismissal_group_buses)
+        .map(dgb => dgb.bus_id);
+
+      if (busIds.length === 0) {
+        setIsBusCompleted(true); // No buses to complete
+        return;
+      }
+
+      // Check if all buses have departed for today's dismissal run
+      const { data: events } = await supabase
+        .from('bus_run_events')
+        .select('bus_id, departed_at')
+        .eq('dismissal_run_id', run.id)
+        .in('bus_id', busIds);
+
+      if (!events || events.length === 0) {
+        setIsBusCompleted(false);
+        return;
+      }
+
+      // Check if all buses have departed
+      const departedBusIds = events
+        .filter(event => event.departed_at)
+        .map(event => event.bus_id);
+
+      const allBusesCompleted = busIds.every(id => departedBusIds.includes(id));
+      setIsBusCompleted(allBusesCompleted);
+    } catch (error) {
+      console.error('Error checking bus completion:', error);
+    }
+  };
 
   // Check car line completion status
   const checkCarLineCompletion = async () => {
@@ -161,6 +216,7 @@ export default function DismissalLauncher() {
   // Check completion status when run changes
   useEffect(() => {
     if (run?.id && run?.plan_id) {
+      checkBusCompletion();
       checkCarLineCompletion();
       checkWalkerCompletion();
     }
@@ -191,6 +247,31 @@ export default function DismissalLauncher() {
       supabase.removeChannel(channel);
     };
   }, [run?.id, refetch]);
+
+  // Real-time updates for bus events
+  useEffect(() => {
+    if (!run?.id) return;
+    
+    const channel = supabase
+      .channel('bus-run-events-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'bus_run_events',
+          filter: `dismissal_run_id=eq.${run.id}`
+        },
+        () => {
+          checkBusCompletion();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [run?.id]);
 
   // Real-time updates for car line sessions
   useEffect(() => {
@@ -314,6 +395,50 @@ export default function DismissalLauncher() {
             </Button>
           </div>
         </section>
+
+        {/* End Dismissal Button */}
+        {run && run.status !== 'completed' && (isBusCompleted && isCarLineCompleted && isWalkerCompleted) && (
+          <section className="mt-6 max-w-5xl">
+            <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-emerald-800 dark:text-emerald-200">
+                      All Modes Completed
+                    </h3>
+                    <p className="text-emerald-600 dark:text-emerald-300 text-sm">
+                      All dismissal modes have been completed. You can now end the dismissal run.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      if (!run?.id || !user) return;
+                      
+                      try {
+                        const { error } = await supabase
+                          .from('dismissal_runs')
+                          .update({ 
+                            ended_at: new Date().toISOString(),
+                            status: 'completed'
+                          })
+                          .eq('id', run.id);
+
+                        if (error) throw error;
+
+                        refetch(); // Refresh the run data
+                      } catch (error) {
+                        console.error('Error ending dismissal:', error);
+                      }
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    End Dismissal Run
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
         
         {/* Timeline Report */}
         <section className="mt-8 max-w-5xl">

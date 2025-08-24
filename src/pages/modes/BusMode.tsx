@@ -187,28 +187,15 @@ export default function BusMode() {
     return withOrder;
   }, [buses, events]);
 
-  // Complete dismissal function
-  const completeDismissal = async () => {
+  // Complete bus mode function
+  const completeBusMode = async () => {
     if (!runId || !user || completingDismissal || isCompleted) return;
     
     setCompletingDismissal(true);
     try {
-      const { error } = await supabase
-        .from('dismissal_runs')
-        .update({ 
-          ended_at: new Date().toISOString(),
-          status: 'completed'
-        })
-        .eq('id', runId);
-
-      if (error) throw error;
-
-      // Invalidate today's dismissal run cache to refresh the launcher
-      queryClient.invalidateQueries({ queryKey: ["today-dismissal-run"] });
-
       toast({
-        title: "Bus Dismissal Completed",
-        description: "All bus dismissal activities have been marked as complete.",
+        title: "Bus Mode Completed",
+        description: "All bus dismissal activities have been completed. Return to the launcher to manage other modes.",
       });
 
       // Navigate back to launcher
@@ -216,10 +203,10 @@ export default function BusMode() {
         navigate("/dashboard/dismissal", { replace: true });
       }, 1500);
     } catch (error) {
-      console.error('Error completing dismissal:', error);
+      console.error('Error completing bus mode:', error);
       toast({
         title: "Error",
-        description: "Failed to complete bus dismissal. Please try again.",
+        description: "Failed to complete bus mode. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -277,12 +264,12 @@ export default function BusMode() {
                 {!isCompleted && !isLoading && (
                   <Button
                     onClick={() => setShowCompletionDialog(true)}
-                    variant="destructive"
+                    variant="secondary"
                     size="lg"
                     disabled={completingDismissal}
                     className="shadow-lg font-semibold px-6 py-3"
                   >
-                    {completingDismissal ? "Completing..." : "Mark Dismissal as Completed"}
+                    {completingDismissal ? "Completing..." : "Finish Bus Mode"}
                   </Button>
                 )}
               </div>
@@ -368,22 +355,22 @@ export default function BusMode() {
 
       <ExitModeButton label="Exit Bus Mode" />
 
-      {/* Auto-completion confirmation dialog */}
+      {/* Bus mode completion confirmation dialog */}
       <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>All Buses Have Departed</AlertDialogTitle>
+            <AlertDialogTitle>Finish Bus Mode</AlertDialogTitle>
             <AlertDialogDescription>
-              All checked-in buses have departed. Would you like to mark the Bus Dismissal as complete?
+              Are you ready to finish Bus Mode? This will return you to the dismissal launcher where you can manage other dismissal modes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Not Yet</AlertDialogCancel>
+            <AlertDialogCancel>Continue Working</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={completeDismissal}
+              onClick={completeBusMode}
               disabled={completingDismissal}
             >
-              {completingDismissal ? "Completing..." : "Mark Complete"}
+              {completingDismissal ? "Finishing..." : "Finish Bus Mode"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
