@@ -16,6 +16,10 @@ export default function DismissalLauncher() {
   const { run, refetch } = useTodayDismissalRun();
 
   const [schoolName, setSchoolName] = useState<string>('');
+  const [isCarLineCompleted, setIsCarLineCompleted] = useState(false);
+  const [isWalkerCompleted, setIsWalkerCompleted] = useState(false);
+  const [carLineCompletedAt, setCarLineCompletedAt] = useState<string | null>(null);
+  const [walkerCompletedAt, setWalkerCompletedAt] = useState<string | null>(null);
   const navigate = useNavigate();
   
   const isBusCompleted = run?.status === 'completed';
@@ -57,6 +61,138 @@ export default function DismissalLauncher() {
     fetchSchoolName();
   }, [user]);
 
+  // Check car line completion status
+  const checkCarLineCompletion = async () => {
+    if (!run?.id || !run?.plan_id) return;
+    
+    try {
+      // Get all car line groups from the active dismissal plan
+      const { data: carLineGroups } = await supabase
+        .from('dismissal_groups')
+        .select(`
+          id,
+          dismissal_group_car_lines (
+            car_line_id
+          )
+        `)
+        .eq('dismissal_plan_id', run.plan_id)
+        .eq('group_type', 'car');
+
+      if (!carLineGroups || carLineGroups.length === 0) {
+        setIsCarLineCompleted(false);
+        return;
+      }
+
+      // Get all unique car line IDs
+      const carLineIds = carLineGroups
+        .flatMap(group => group.dismissal_group_car_lines)
+        .map(dcl => dcl.car_line_id);
+
+      if (carLineIds.length === 0) {
+        setIsCarLineCompleted(false);
+        return;
+      }
+
+      // Check if all car lines have finished sessions for today's dismissal run
+      const { data: sessions } = await supabase
+        .from('car_line_sessions')
+        .select('car_line_id, finished_at')
+        .eq('dismissal_run_id', run.id)
+        .in('car_line_id', carLineIds);
+
+      if (!sessions || sessions.length === 0) {
+        setIsCarLineCompleted(false);
+        return;
+      }
+
+      // Check if all car lines have finished sessions
+      const finishedCarLineIds = sessions
+        .filter(session => session.finished_at)
+        .map(session => session.car_line_id);
+
+      const allCarLinesCompleted = carLineIds.every(id => finishedCarLineIds.includes(id));
+      setIsCarLineCompleted(allCarLinesCompleted);
+
+      if (allCarLinesCompleted && sessions.length > 0) {
+        // Find the latest completion time
+        const latestCompletion = sessions
+          .filter(session => session.finished_at)
+          .sort((a, b) => new Date(b.finished_at!).getTime() - new Date(a.finished_at!).getTime())[0];
+        setCarLineCompletedAt(latestCompletion?.finished_at || null);
+      }
+    } catch (error) {
+      console.error('Error checking car line completion:', error);
+    }
+  };
+
+  // Check walker completion status
+  const checkWalkerCompletion = async () => {
+    if (!run?.id || !run?.plan_id) return;
+    
+    try {
+      // Get all walker groups from the active dismissal plan
+      const { data: walkerGroups } = await supabase
+        .from('dismissal_groups')
+        .select('id, walker_location_id')
+        .eq('dismissal_plan_id', run.plan_id)
+        .eq('group_type', 'walker')
+        .not('walker_location_id', 'is', null);
+
+      if (!walkerGroups || walkerGroups.length === 0) {
+        setIsWalkerCompleted(false);
+        return;
+      }
+
+      // Get all unique walker location IDs
+      const walkerLocationIds = walkerGroups
+        .map(group => group.walker_location_id)
+        .filter(id => id !== null);
+
+      if (walkerLocationIds.length === 0) {
+        setIsWalkerCompleted(false);
+        return;
+      }
+
+      // Check if all walker locations have finished sessions for today's dismissal run
+      const { data: sessions } = await supabase
+        .from('walker_sessions')
+        .select('walker_location_id, finished_at')
+        .eq('dismissal_run_id', run.id)
+        .in('walker_location_id', walkerLocationIds);
+
+      if (!sessions || sessions.length === 0) {
+        setIsWalkerCompleted(false);
+        return;
+      }
+
+      // Check if all walker locations have finished sessions
+      const finishedWalkerLocationIds = sessions
+        .filter(session => session.finished_at)
+        .map(session => session.walker_location_id);
+
+      const allWalkersCompleted = walkerLocationIds.every(id => finishedWalkerLocationIds.includes(id));
+      setIsWalkerCompleted(allWalkersCompleted);
+
+      if (allWalkersCompleted && sessions.length > 0) {
+        // Find the latest completion time
+        const latestCompletion = sessions
+          .filter(session => session.finished_at)
+          .sort((a, b) => new Date(b.finished_at!).getTime() - new Date(a.finished_at!).getTime())[0];
+        setWalkerCompletedAt(latestCompletion?.finished_at || null);
+      }
+    } catch (error) {
+      console.error('Error checking walker completion:', error);
+    }
+  };
+
+  // Check completion status when run changes
+  useEffect(() => {
+    if (run?.id && run?.plan_id) {
+      checkCarLineCompletion();
+      checkWalkerCompletion();
+    }
+  }, [run?.id, run?.plan_id]);
+
   // Real-time updates for dismissal runs
   useEffect(() => {
     if (!run?.id) return;
@@ -82,6 +218,56 @@ export default function DismissalLauncher() {
       supabase.removeChannel(channel);
     };
   }, [run?.id, refetch]);
+
+  // Real-time updates for car line sessions
+  useEffect(() => {
+    if (!run?.id) return;
+    
+    const channel = supabase
+      .channel('car-line-sessions-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'car_line_sessions',
+          filter: `dismissal_run_id=eq.${run.id}`
+        },
+        () => {
+          checkCarLineCompletion();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [run?.id]);
+
+  // Real-time updates for walker sessions
+  useEffect(() => {
+    if (!run?.id) return;
+    
+    const channel = supabase
+      .channel('walker-sessions-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'walker_sessions',
+          filter: `dismissal_run_id=eq.${run.id}`
+        },
+        () => {
+          checkWalkerCompletion();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [run?.id]);
   return (
     <>
       <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
@@ -95,7 +281,7 @@ export default function DismissalLauncher() {
       <main className="flex-1 p-6">
         <h2 className="text-3xl font-bold mb-6">Launch Dismissal</h2>
         
-        {/* Status Banner */}
+        {/* Status Banners */}
         {isBusCompleted && (
           <Card className="mb-6 border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50">
             <CardContent className="pt-6">
@@ -113,6 +299,56 @@ export default function DismissalLauncher() {
                   {run?.ended_at && (
                     <p className="text-sm text-emerald-700 dark:text-emerald-300">
                       Completed at {formatCompletionTime(run.ended_at)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {isCarLineCompleted && (
+          <Card className="mb-6 border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-emerald-800 dark:text-emerald-200">
+                      Car Line Dismissal Completed
+                    </span>
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                      ✓ Done
+                    </Badge>
+                  </div>
+                  {carLineCompletedAt && (
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                      Completed at {formatCompletionTime(carLineCompletedAt)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {isWalkerCompleted && (
+          <Card className="mb-6 border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-emerald-800 dark:text-emerald-200">
+                      Walker Dismissal Completed
+                    </span>
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                      ✓ Done
+                    </Badge>
+                  </div>
+                  {walkerCompletedAt && (
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                      Completed at {formatCompletionTime(walkerCompletedAt)}
                     </p>
                   )}
                 </div>
@@ -149,20 +385,36 @@ export default function DismissalLauncher() {
               {isBusCompleted ? "Bus Dismissal - Completed" : "Bus Dismissal Mode"}
             </Button>
             <Button
-              variant="outline"
-              className="h-32 text-lg justify-center flex-col gap-2"
-              onClick={() => navigate("/dashboard/dismissal/car-line")}
+              variant={isCarLineCompleted ? "secondary" : "outline"}
+              className={`h-32 text-lg justify-center flex-col gap-2 ${
+                isCarLineCompleted 
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-200 cursor-not-allowed" 
+                  : ""
+              }`}
+              onClick={() => !isCarLineCompleted && navigate("/dashboard/dismissal/car-line")}
+              disabled={isCarLineCompleted}
             >
-              <Car className="h-8 w-8" />
-              Car Line Mode
+              <div className="flex items-center gap-2">
+                <Car className="h-8 w-8" />
+                {isCarLineCompleted && <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+              </div>
+              {isCarLineCompleted ? "Car Line Mode - Completed" : "Car Line Mode"}
             </Button>
             <Button
-              variant="outline"
-              className="h-32 text-lg justify-center flex-col gap-2"
-              onClick={() => navigate("/dashboard/dismissal/walker")}
+              variant={isWalkerCompleted ? "secondary" : "outline"}
+              className={`h-32 text-lg justify-center flex-col gap-2 ${
+                isWalkerCompleted 
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-200 cursor-not-allowed" 
+                  : ""
+              }`}
+              onClick={() => !isWalkerCompleted && navigate("/dashboard/dismissal/walker")}
+              disabled={isWalkerCompleted}
             >
-              <MapPin className="h-8 w-8" />
-              Walker Mode
+              <div className="flex items-center gap-2">
+                <MapPin className="h-8 w-8" />
+                {isWalkerCompleted && <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+              </div>
+              {isWalkerCompleted ? "Walker Mode - Completed" : "Walker Mode"}
             </Button>
           </div>
         </section>
