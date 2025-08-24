@@ -193,6 +193,51 @@ export default function BusMode() {
     
     setCompletingDismissal(true);
     try {
+      // Create bus_run_events for all buses that don't have departed_at set
+      const busesToComplete = buses.filter(bus => {
+        const event = events[bus.id];
+        return !event?.departed_at;
+      });
+
+      if (busesToComplete.length > 0) {
+        const completionEvents = busesToComplete.map(bus => {
+          const existing = events[bus.id];
+          const now = new Date().toISOString();
+          
+          if (existing) {
+            // Update existing event to mark as departed
+            return supabase
+              .from("bus_run_events")
+              .update({ 
+                departed_at: now, 
+                departed_by: user.id,
+                check_in_time: existing.check_in_time || now
+              })
+              .eq("id", existing.id);
+          } else {
+            // Create new event for buses that haven't been processed
+            return supabase
+              .from("bus_run_events")
+              .insert({
+                school_id: schoolId,
+                dismissal_run_id: runId,
+                bus_id: bus.id,
+                check_in_time: now,
+                checked_in_by: user.id,
+                departed_at: now,
+                departed_by: user.id,
+                order_index: nextOrderIndex()
+              });
+          }
+        });
+
+        // Execute all database operations
+        await Promise.all(completionEvents);
+        
+        // Refresh data to reflect changes
+        await fetchData();
+      }
+
       toast({
         title: "Bus Mode Completed",
         description: "All bus dismissal activities have been completed. Return to the launcher to manage other modes.",
