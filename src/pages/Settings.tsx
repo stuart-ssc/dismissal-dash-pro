@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Settings as SettingsIcon, School, Bell, Shield, Clock, Upload, X } from "lucide-react";
@@ -39,7 +40,7 @@ const schoolFormSchema = z.object({
 });
 
 const dismissalFormSchema = z.object({
-  dismissal_time: z.string().optional(),
+  timezone: z.string().min(1, "Timezone is required"),
   preparation_time_minutes: z.number().min(1).max(60),
   auto_dismissal_enabled: z.boolean(),
   walkers_enabled: z.boolean(),
@@ -67,7 +68,7 @@ interface SchoolData {
   primary_color: string;
   secondary_color: string;
   school_logo?: string;
-  dismissal_time?: string;
+  timezone?: string;
   preparation_time_minutes?: number;
   auto_dismissal_enabled?: boolean;
   walkers_enabled?: boolean;
@@ -80,6 +81,26 @@ interface SchoolData {
   session_timeout_enabled?: boolean;
   audit_logs_enabled?: boolean;
 }
+
+// Common US timezones
+const TIMEZONE_OPTIONS = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Phoenix', label: 'Arizona Time (MST)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKST)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HST)' },
+];
+
+// Get browser timezone as default
+const getBrowserTimezone = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return 'America/New_York'; // fallback
+  }
+};
 
 const Settings = () => {
   const { user, userRole, loading } = useAuth();
@@ -105,7 +126,7 @@ const Settings = () => {
   const dismissalForm = useForm<z.infer<typeof dismissalFormSchema>>({
     resolver: zodResolver(dismissalFormSchema),
     defaultValues: {
-      dismissal_time: "",
+      timezone: getBrowserTimezone(),
       preparation_time_minutes: 5,
       auto_dismissal_enabled: false,
       walkers_enabled: true,
@@ -188,7 +209,7 @@ const Settings = () => {
           });
 
           dismissalForm.reset({
-            dismissal_time: school.dismissal_time || "",
+            timezone: school.timezone || getBrowserTimezone(),
             preparation_time_minutes: school.preparation_time_minutes || 5,
             auto_dismissal_enabled: school.auto_dismissal_enabled || false,
             walkers_enabled: school.walkers_enabled !== false,
@@ -368,7 +389,7 @@ const Settings = () => {
       const { error } = await supabase
         .from('schools')
         .update({
-          dismissal_time: values.dismissal_time || null,
+          timezone: values.timezone,
           preparation_time_minutes: values.preparation_time_minutes,
           auto_dismissal_enabled: values.auto_dismissal_enabled,
           walkers_enabled: values.walkers_enabled,
@@ -639,20 +660,31 @@ const Settings = () => {
                     <Clock className="h-5 w-5 text-secondary" />
                     Dismissal Settings
                   </CardTitle>
-                  <CardDescription>Configure dismissal times and procedures</CardDescription>
+                  <CardDescription>Configure school timezone and dismissal procedures. Dismissal times are managed through dismissal plans.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Form {...dismissalForm}>
                     <form onSubmit={dismissalForm.handleSubmit(onDismissalSubmit)} className="space-y-4">
                       <FormField
                         control={dismissalForm.control}
-                        name="dismissal_time"
+                        name="timezone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Default Dismissal Time</FormLabel>
-                            <FormControl>
-                              <Input type="time" {...field} />
-                            </FormControl>
+                            <FormLabel>School Timezone</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-background">
+                                  <SelectValue placeholder="Select timezone" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-background z-[60]">
+                                {TIMEZONE_OPTIONS.map((timezone) => (
+                                  <SelectItem key={timezone.value} value={timezone.value}>
+                                    {timezone.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}

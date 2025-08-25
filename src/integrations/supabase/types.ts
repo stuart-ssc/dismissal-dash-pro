@@ -761,6 +761,7 @@ export type Database = {
           sms_notifications_enabled: boolean | null
           state: string | null
           street_address: string | null
+          timezone: string | null
           two_factor_required: boolean | null
           updated_at: string
           walkers_enabled: boolean | null
@@ -788,6 +789,7 @@ export type Database = {
           sms_notifications_enabled?: boolean | null
           state?: string | null
           street_address?: string | null
+          timezone?: string | null
           two_factor_required?: boolean | null
           updated_at?: string
           walkers_enabled?: boolean | null
@@ -815,6 +817,7 @@ export type Database = {
           sms_notifications_enabled?: boolean | null
           state?: string | null
           street_address?: string | null
+          timezone?: string | null
           two_factor_required?: boolean | null
           updated_at?: string
           walkers_enabled?: boolean | null
