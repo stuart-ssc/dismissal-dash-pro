@@ -645,7 +645,7 @@ export type Database = {
           scheduled_start_time: string | null
           school_id: number
           started_at: string
-          started_by: string
+          started_by: string | null
           status: string
           updated_at: string
           walker_completed: boolean | null
@@ -668,7 +668,7 @@ export type Database = {
           scheduled_start_time?: string | null
           school_id: number
           started_at?: string
-          started_by: string
+          started_by?: string | null
           status?: string
           updated_at?: string
           walker_completed?: boolean | null
@@ -691,7 +691,7 @@ export type Database = {
           scheduled_start_time?: string | null
           school_id?: number
           started_at?: string
-          started_by?: string
+          started_by?: string | null
           status?: string
           updated_at?: string
           walker_completed?: boolean | null
