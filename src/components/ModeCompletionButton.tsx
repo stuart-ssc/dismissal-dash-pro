@@ -33,6 +33,7 @@ export function ModeCompletionButton({
   const handleComplete = async () => {
     if (!user?.id || isCompleted || disabled) return;
 
+    console.log(`Attempting to complete ${mode} mode for run ${runId} by user ${user.id}`);
     setIsLoading(true);
     try {
       const updateData = {
@@ -42,12 +43,20 @@ export function ModeCompletionButton({
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
+      console.log('Update data:', updateData);
+
+      const { data, error } = await supabase
         .from('dismissal_runs')
         .update(updateData)
-        .eq('id', runId);
+        .eq('id', runId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Update successful:', data);
 
       toast({
         title: "Mode Completed",
@@ -59,7 +68,7 @@ export function ModeCompletionButton({
       console.error(`Error completing ${mode} mode:`, error);
       toast({
         title: "Error",
-        description: `Failed to mark ${modeLabels[mode]} as complete.`,
+        description: `Failed to mark ${modeLabels[mode]} as complete. Please try again.`,
         variant: "destructive",
       });
     } finally {
