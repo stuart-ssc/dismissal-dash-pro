@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useImpersonation } from "@/hooks/useImpersonation";
 
 type DismissalRun = {
   id: string;
@@ -27,23 +28,31 @@ type DismissalRun = {
 
 export const useTodayDismissalRun = () => {
   const { user } = useAuth();
+  const { impersonatedSchoolId } = useImpersonation();
 
   const query = useQuery({
-    queryKey: ["today-dismissal-run", user?.id],
+    queryKey: ["today-dismissal-run", user?.id, impersonatedSchoolId],
     enabled: !!user?.id,
     queryFn: async (): Promise<{ run: DismissalRun; schoolId: number } | null> => {
       if (!user?.id) throw new Error("Not authenticated");
 
-      // Get user's school
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", user.id)
-        .single();
+      let schoolId: number;
 
-      if (profileError) throw profileError;
-      const schoolId = profile?.school_id;
-      if (!schoolId) throw new Error("User has no school assigned");
+      // Use impersonated school ID if available (for system admins)
+      if (impersonatedSchoolId) {
+        schoolId = impersonatedSchoolId;
+      } else {
+        // Get user's school
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("school_id")
+          .eq("id", user.id)
+          .single();
+
+        if (profileError) throw profileError;
+        schoolId = profile?.school_id;
+        if (!schoolId) throw new Error("User has no school assigned");
+      }
 
       const today = new Date().toISOString().slice(0, 10);
 
