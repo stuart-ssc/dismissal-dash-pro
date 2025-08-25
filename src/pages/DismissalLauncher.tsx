@@ -8,8 +8,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
-import { CheckCircle, Bus, Car, Users, MapPin } from "lucide-react";
+import { CheckCircle, Bus, Car, Users, MapPin, Clock } from "lucide-react";
 import { DismissalRunTimeline } from "@/components/DismissalRunTimeline";
+import { ModeCompletionButton } from "@/components/ModeCompletionButton";
 
 export default function DismissalLauncher() {
   const { signOut, user } = useAuth();
@@ -49,178 +50,17 @@ export default function DismissalLauncher() {
     fetchSchoolName();
   }, [user]);
 
-  // Check bus completion status
-  const checkBusCompletion = async () => {
-    if (!run?.id || !run?.plan_id) return;
-    
-    try {
-      // Get all bus groups from the active dismissal plan
-      const { data: busGroups } = await supabase
-        .from('dismissal_groups')
-        .select(`
-          id,
-          dismissal_group_buses (
-            bus_id
-          )
-        `)
-        .eq('dismissal_plan_id', run.plan_id)
-        .eq('group_type', 'bus');
+  // Remove the old completion checking functions
+  // ... keep existing code (real-time update subscriptions)
 
-      if (!busGroups || busGroups.length === 0) {
-        setIsBusCompleted(true); // No buses to complete
-        return;
-      }
-
-      // Get all unique bus IDs
-      const busIds = busGroups
-        .flatMap(group => group.dismissal_group_buses)
-        .map(dgb => dgb.bus_id);
-
-      if (busIds.length === 0) {
-        setIsBusCompleted(true); // No buses to complete
-        return;
-      }
-
-      // Check if all buses have departed for today's dismissal run
-      const { data: events } = await supabase
-        .from('bus_run_events')
-        .select('bus_id, departed_at')
-        .eq('dismissal_run_id', run.id)
-        .in('bus_id', busIds);
-
-      if (!events || events.length === 0) {
-        setIsBusCompleted(false);
-        return;
-      }
-
-      // Check if all buses have departed
-      const departedBusIds = events
-        .filter(event => event.departed_at)
-        .map(event => event.bus_id);
-
-      const allBusesCompleted = busIds.every(id => departedBusIds.includes(id));
-      setIsBusCompleted(allBusesCompleted);
-    } catch (error) {
-      console.error('Error checking bus completion:', error);
-    }
-  };
-
-  // Check car line completion status
-  const checkCarLineCompletion = async () => {
-    if (!run?.id || !run?.plan_id) return;
-    
-    try {
-      // Get all car line groups from the active dismissal plan
-      const { data: carLineGroups } = await supabase
-        .from('dismissal_groups')
-        .select(`
-          id,
-          dismissal_group_car_lines (
-            car_line_id
-          )
-        `)
-        .eq('dismissal_plan_id', run.plan_id)
-        .eq('group_type', 'car');
-
-      if (!carLineGroups || carLineGroups.length === 0) {
-        setIsCarLineCompleted(false);
-        return;
-      }
-
-      // Get all unique car line IDs
-      const carLineIds = carLineGroups
-        .flatMap(group => group.dismissal_group_car_lines)
-        .map(dcl => dcl.car_line_id);
-
-      if (carLineIds.length === 0) {
-        setIsCarLineCompleted(false);
-        return;
-      }
-
-      // Check if all car lines have finished sessions for today's dismissal run
-      const { data: sessions } = await supabase
-        .from('car_line_sessions')
-        .select('car_line_id, finished_at')
-        .eq('dismissal_run_id', run.id)
-        .in('car_line_id', carLineIds);
-
-      if (!sessions || sessions.length === 0) {
-        setIsCarLineCompleted(false);
-        return;
-      }
-
-      // Check if all car lines have finished sessions
-      const finishedCarLineIds = sessions
-        .filter(session => session.finished_at)
-        .map(session => session.car_line_id);
-
-      const allCarLinesCompleted = carLineIds.every(id => finishedCarLineIds.includes(id));
-      setIsCarLineCompleted(allCarLinesCompleted);
-    } catch (error) {
-      console.error('Error checking car line completion:', error);
-    }
-  };
-
-  // Check walker completion status
-  const checkWalkerCompletion = async () => {
-    if (!run?.id || !run?.plan_id) return;
-    
-    try {
-      // Get all walker groups from the active dismissal plan
-      const { data: walkerGroups } = await supabase
-        .from('dismissal_groups')
-        .select('id, walker_location_id')
-        .eq('dismissal_plan_id', run.plan_id)
-        .eq('group_type', 'walker')
-        .not('walker_location_id', 'is', null);
-
-      if (!walkerGroups || walkerGroups.length === 0) {
-        setIsWalkerCompleted(false);
-        return;
-      }
-
-      // Get all unique walker location IDs
-      const walkerLocationIds = walkerGroups
-        .map(group => group.walker_location_id)
-        .filter(id => id !== null);
-
-      if (walkerLocationIds.length === 0) {
-        setIsWalkerCompleted(false);
-        return;
-      }
-
-      // Check if all walker locations have finished sessions for today's dismissal run
-      const { data: sessions } = await supabase
-        .from('walker_sessions')
-        .select('walker_location_id, finished_at')
-        .eq('dismissal_run_id', run.id)
-        .in('walker_location_id', walkerLocationIds);
-
-      if (!sessions || sessions.length === 0) {
-        setIsWalkerCompleted(false);
-        return;
-      }
-
-      // Check if all walker locations have finished sessions
-      const finishedWalkerLocationIds = sessions
-        .filter(session => session.finished_at)
-        .map(session => session.walker_location_id);
-
-      const allWalkersCompleted = walkerLocationIds.every(id => finishedWalkerLocationIds.includes(id));
-      setIsWalkerCompleted(allWalkersCompleted);
-    } catch (error) {
-      console.error('Error checking walker completion:', error);
-    }
-  };
-
-  // Check completion status when run changes
+  // Use new completion status from run
   useEffect(() => {
-    if (run?.id && run?.plan_id) {
-      checkBusCompletion();
-      checkCarLineCompletion();
-      checkWalkerCompletion();
+    if (run) {
+      setIsBusCompleted(run.bus_completed || false);
+      setIsCarLineCompleted(run.car_line_completed || false);
+      setIsWalkerCompleted(run.walker_completed || false);
     }
-  }, [run?.id, run?.plan_id]);
+  }, [run]);
 
   // Real-time updates for dismissal runs
   useEffect(() => {
@@ -247,81 +87,6 @@ export default function DismissalLauncher() {
       supabase.removeChannel(channel);
     };
   }, [run?.id, refetch]);
-
-  // Real-time updates for bus events
-  useEffect(() => {
-    if (!run?.id) return;
-    
-    const channel = supabase
-      .channel('bus-run-events-realtime')
-      .on(
-        'postgres_changes',
-        { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'bus_run_events',
-          filter: `dismissal_run_id=eq.${run.id}`
-        },
-        () => {
-          checkBusCompletion();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [run?.id]);
-
-  // Real-time updates for car line sessions
-  useEffect(() => {
-    if (!run?.id) return;
-    
-    const channel = supabase
-      .channel('car-line-sessions-realtime')
-      .on(
-        'postgres_changes',
-        { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'car_line_sessions',
-          filter: `dismissal_run_id=eq.${run.id}`
-        },
-        () => {
-          checkCarLineCompletion();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [run?.id]);
-
-  // Real-time updates for walker sessions
-  useEffect(() => {
-    if (!run?.id) return;
-    
-    const channel = supabase
-      .channel('walker-sessions-realtime')
-      .on(
-        'postgres_changes',
-        { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'walker_sessions',
-          filter: `dismissal_run_id=eq.${run.id}`
-        },
-        () => {
-          checkWalkerCompletion();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [run?.id]);
   return (
     <>
       <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
@@ -333,6 +98,37 @@ export default function DismissalLauncher() {
       </header>
 
       <main className="flex-1 p-6">
+        {/* Dismissal Status Info */}
+        {run && (
+          <div className="mb-6 max-w-5xl">
+            <div className="flex items-center gap-4 p-4 bg-card/50 rounded-lg border">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium">Dismissal Status</h3>
+                  <Badge variant={
+                    run.status === 'scheduled' ? 'outline' :
+                    run.status === 'preparation' ? 'secondary' :
+                    run.status === 'active' ? 'default' : 'outline'
+                  }>
+                    {run.status === 'scheduled' && 'Scheduled'}
+                    {run.status === 'preparation' && 'Preparation Phase'}
+                    {run.status === 'active' && 'Active'}
+                    {run.status === 'completed' && 'Completed'}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {run.status === 'scheduled' && run.scheduled_start_time && 
+                    `Dismissal scheduled for ${new Date(run.scheduled_start_time).toLocaleTimeString()}`}
+                  {run.status === 'preparation' && 'Pre-staging allowed for all modes'}
+                  {run.status === 'active' && 'Dismissal is currently in progress'}
+                  {run.status === 'completed' && 'All dismissal activities have been completed'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <h2 className="text-3xl font-bold mb-6">Launch Dismissal</h2>
         <section aria-labelledby="dismissal-modes" className="max-w-5xl">
           <h2 id="dismissal-modes" className="sr-only">Dismissal Modes</h2>
@@ -346,14 +142,13 @@ export default function DismissalLauncher() {
               Classroom Mode
             </Button>
             <Button
-              variant={isBusCompleted ? "secondary" : "outline"}
+              variant="outline"
               className={`h-32 text-lg justify-center flex-col gap-2 ${
-                isBusCompleted 
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-200 cursor-not-allowed" 
-                  : ""
+                !run || (run.status !== 'preparation' && run.status !== 'active') 
+                  ? 'opacity-50' : ''
               }`}
-              onClick={() => !isBusCompleted && navigate("/dashboard/dismissal/bus")}
-              disabled={isBusCompleted}
+              onClick={() => navigate("/dashboard/dismissal/bus")}
+              disabled={!run || (run.status !== 'preparation' && run.status !== 'active')}
             >
               <div className="flex items-center gap-2">
                 <Bus className="h-8 w-8" />
@@ -362,14 +157,13 @@ export default function DismissalLauncher() {
               {isBusCompleted ? "Bus Dismissal - Completed" : "Bus Dismissal Mode"}
             </Button>
             <Button
-              variant={isCarLineCompleted ? "secondary" : "outline"}
+              variant="outline"
               className={`h-32 text-lg justify-center flex-col gap-2 ${
-                isCarLineCompleted 
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-200 cursor-not-allowed" 
-                  : ""
+                !run || (run.status !== 'preparation' && run.status !== 'active') 
+                  ? 'opacity-50' : ''
               }`}
-              onClick={() => !isCarLineCompleted && navigate("/dashboard/dismissal/car-line")}
-              disabled={isCarLineCompleted}
+              onClick={() => navigate("/dashboard/dismissal/car-line")}
+              disabled={!run || (run.status !== 'preparation' && run.status !== 'active')}
             >
               <div className="flex items-center gap-2">
                 <Car className="h-8 w-8" />
@@ -378,14 +172,13 @@ export default function DismissalLauncher() {
               {isCarLineCompleted ? "Car Line Mode - Completed" : "Car Line Mode"}
             </Button>
             <Button
-              variant={isWalkerCompleted ? "secondary" : "outline"}
+              variant="outline"
               className={`h-32 text-lg justify-center flex-col gap-2 ${
-                isWalkerCompleted 
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-200 cursor-not-allowed" 
-                  : ""
+                !run || (run.status !== 'preparation' && run.status !== 'active') 
+                  ? 'opacity-50' : ''
               }`}
-              onClick={() => !isWalkerCompleted && navigate("/dashboard/dismissal/walker")}
-              disabled={isWalkerCompleted}
+              onClick={() => navigate("/dashboard/dismissal/walker")}
+              disabled={!run || (run.status !== 'preparation' && run.status !== 'active')}
             >
               <div className="flex items-center gap-2">
                 <MapPin className="h-8 w-8" />

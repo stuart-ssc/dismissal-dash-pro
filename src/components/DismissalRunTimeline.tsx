@@ -19,6 +19,8 @@ import { formatDistanceToNow } from "date-fns";
 
 const getEventIcon = (iconType: string) => {
   switch (iconType) {
+    case 'clock':
+      return <Clock className="h-4 w-4" />;
     case 'play':
       return <Play className="h-4 w-4" />;
     case 'check':
@@ -38,6 +40,10 @@ const getEventIcon = (iconType: string) => {
 
 const getEventColor = (type: string) => {
   switch (type) {
+    case 'run_scheduled':
+      return 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-950 dark:text-slate-200 dark:border-slate-800';
+    case 'run_preparation':
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-200 dark:border-yellow-800';
     case 'run_start':
       return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800';
     case 'run_end':
@@ -49,10 +55,14 @@ const getEventColor = (type: string) => {
       return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800';
     case 'bus_manual_completion':
       return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-200 dark:border-orange-800';
+    case 'bus_completed':
+    case 'car_completed':
+    case 'walker_completed':
+      return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200 dark:border-green-800';
     case 'car_session_start':
       return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800';
     case 'walker_session_start':
-      return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200 dark:border-green-800';
+      return 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-200 dark:border-indigo-800';
     default:
       return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-950 dark:text-gray-200 dark:border-gray-800';
   }

@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 export interface TimelineEvent {
   id: string;
   timestamp: string;
-  type: 'run_start' | 'run_end' | 'bus_checkin' | 'bus_departure' | 'bus_manual_completion' | 'car_session_start' | 'car_session_end' | 'walker_session_start' | 'walker_session_end';
+  type: 'run_scheduled' | 'run_preparation' | 'run_start' | 'run_end' | 'bus_checkin' | 'bus_departure' | 'bus_manual_completion' | 'bus_completed' | 'car_session_start' | 'car_session_end' | 'car_completed' | 'walker_session_start' | 'walker_session_end' | 'walker_completed';
   title: string;
   description: string;
   user_name?: string;
@@ -42,27 +42,105 @@ export const useTimelineData = () => {
 
       if (!dismissalRun) return [];
 
+      // Fetch all profile data we might need
+      const userIds = new Set<string>();
+      if (dismissalRun.started_by) userIds.add(dismissalRun.started_by);
+      if (dismissalRun.bus_completed_by) userIds.add(dismissalRun.bus_completed_by);
+      if (dismissalRun.car_line_completed_by) userIds.add(dismissalRun.car_line_completed_by);
+      if (dismissalRun.walker_completed_by) userIds.add(dismissalRun.walker_completed_by);
+
+      const { data: profiles = [] } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .in("id", Array.from(userIds));
+
       const events: TimelineEvent[] = [];
 
-      // Fetch starter user profile
-      const { data: starterProfile } = await supabase
-        .from("profiles")
-        .select("first_name, last_name")
-        .eq("id", dismissalRun.started_by)
-        .single();
+      // Dismissal run events - scheduled time
+      if (dismissalRun.scheduled_start_time) {
+        events.push({
+          id: `run_scheduled_${dismissalRun.id}`,
+          timestamp: dismissalRun.scheduled_start_time,
+          type: 'run_scheduled',
+          title: 'Dismissal Scheduled',
+          description: `Dismissal planned for ${new Date(dismissalRun.scheduled_start_time).toLocaleTimeString()}`,
+          icon: 'clock'
+        });
+      }
 
-      // Add dismissal run start event
-      events.push({
-        id: `run_start_${dismissalRun.id}`,
-        timestamp: dismissalRun.started_at,
-        type: 'run_start',
-        title: 'Dismissal Run Started',
-        description: 'Daily dismissal process initiated',
-        user_name: starterProfile 
-          ? `${starterProfile.first_name} ${starterProfile.last_name}`
-          : 'Unknown User',
-        icon: 'play'
-      });
+      // Preparation phase start
+      if (dismissalRun.preparation_start_time) {
+        events.push({
+          id: `run_preparation_${dismissalRun.id}`,
+          timestamp: dismissalRun.preparation_start_time,
+          type: 'run_preparation',
+          title: 'Preparation Phase Started',
+          description: 'Pre-staging allowed for all modes',
+          icon: 'play'
+        });
+      }
+
+      // Dismissal active start
+      if (dismissalRun.started_at && dismissalRun.status !== 'scheduled') {
+        const startProfile = profiles.find(p => p.id === dismissalRun.started_by);
+        events.push({
+          id: `run_start_${dismissalRun.id}`,
+          timestamp: dismissalRun.started_at,
+          type: 'run_start',
+          title: 'Dismissal Active',
+          description: `Dismissal officially started for ${dismissalRun.date}`,
+          user_name: startProfile 
+            ? `${startProfile.first_name} ${startProfile.last_name}`
+            : 'System',
+          icon: 'play'
+        });
+      }
+
+      // Mode completions
+      if (dismissalRun.bus_completed_at) {
+        const busProfile = profiles.find(p => p.id === dismissalRun.bus_completed_by);
+        events.push({
+          id: `bus_completed_${dismissalRun.id}`,
+          timestamp: dismissalRun.bus_completed_at,
+          type: 'bus_completed',
+          title: 'Bus Mode Completed',
+          description: 'All bus dismissals finished',
+          user_name: busProfile 
+            ? `${busProfile.first_name} ${busProfile.last_name}`
+            : 'Unknown User',
+          icon: 'check-circle'
+        });
+      }
+
+      if (dismissalRun.car_line_completed_at) {
+        const carProfile = profiles.find(p => p.id === dismissalRun.car_line_completed_by);
+        events.push({
+          id: `car_completed_${dismissalRun.id}`,
+          timestamp: dismissalRun.car_line_completed_at,
+          type: 'car_completed',
+          title: 'Car Line Mode Completed',
+          description: 'All car line pickups finished',
+          user_name: carProfile 
+            ? `${carProfile.first_name} ${carProfile.last_name}`
+            : 'Unknown User',
+          icon: 'check-circle'
+        });
+      }
+
+      if (dismissalRun.walker_completed_at) {
+        const walkerProfile = profiles.find(p => p.id === dismissalRun.walker_completed_by);
+        events.push({
+          id: `walker_completed_${dismissalRun.id}`,
+          timestamp: dismissalRun.walker_completed_at,
+          type: 'walker_completed',
+          title: 'Walker Mode Completed',
+          description: 'All walker dismissals finished',
+          user_name: walkerProfile 
+            ? `${walkerProfile.first_name} ${walkerProfile.last_name}`
+            : 'Unknown User',
+          icon: 'check-circle'
+        });
+      }
 
       // Add dismissal run end event if completed
       if (dismissalRun.ended_at) {
