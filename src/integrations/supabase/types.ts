@@ -1163,7 +1163,13 @@ export type Database = {
     }
     Functions: {
       calculate_dismissal_times: {
-        Args: { plan_dismissal_time: string; preparation_minutes?: number }
+        Args:
+          | { plan_dismissal_time: string; preparation_minutes?: number }
+          | {
+              plan_dismissal_time: string
+              preparation_minutes?: number
+              school_timezone?: string
+            }
         Returns: {
           dismissal_start_time: string
           preparation_start_time: string
