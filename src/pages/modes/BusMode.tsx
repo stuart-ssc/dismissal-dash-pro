@@ -205,28 +205,26 @@ export default function BusMode() {
           const now = new Date().toISOString();
           
           if (existing) {
-            // Update existing event to mark as departed
+            // Update existing event to mark as departed (keep original check_in_time if it exists)
             return supabase
               .from("bus_run_events")
               .update({ 
                 departed_at: now, 
-                departed_by: user.id,
-                check_in_time: existing.check_in_time || now
+                departed_by: user.id
               })
               .eq("id", existing.id);
           } else {
             // Create new event for buses that haven't been processed
+            // Only set departed_at without check_in_time to indicate manual completion
             return supabase
               .from("bus_run_events")
               .insert({
                 school_id: schoolId,
                 dismissal_run_id: runId,
                 bus_id: bus.id,
-                check_in_time: now,
-                checked_in_by: user.id,
                 departed_at: now,
                 departed_by: user.id,
-                order_index: nextOrderIndex()
+                order_index: null // No order for manual completions
               });
           }
         });

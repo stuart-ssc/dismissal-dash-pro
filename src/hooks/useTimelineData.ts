@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 export interface TimelineEvent {
   id: string;
   timestamp: string;
-  type: 'run_start' | 'run_end' | 'bus_checkin' | 'bus_departure' | 'car_session_start' | 'car_session_end' | 'walker_session_start' | 'walker_session_end';
+  type: 'run_start' | 'run_end' | 'bus_checkin' | 'bus_departure' | 'bus_manual_completion' | 'car_session_start' | 'car_session_end' | 'walker_session_start' | 'walker_session_end';
   title: string;
   description: string;
   user_name?: string;
@@ -122,16 +122,23 @@ export const useTimelineData = () => {
               .eq("id", event.departed_by)
               .single();
 
+            // Determine if this was a manual completion (has departed_at but no check_in_time)
+            const isManualCompletion = !event.check_in_time;
+
             events.push({
               id: `bus_departure_${event.id}`,
               timestamp: event.departed_at,
-              type: 'bus_departure',
-              title: `Bus ${bus?.bus_number || 'Unknown'} Departed`,
-              description: 'Bus left with students',
+              type: isManualCompletion ? 'bus_manual_completion' : 'bus_departure',
+              title: isManualCompletion 
+                ? `Bus ${bus?.bus_number || 'Unknown'} Marked Complete`
+                : `Bus ${bus?.bus_number || 'Unknown'} Departed`,
+              description: isManualCompletion 
+                ? 'Bus marked as complete administratively'
+                : 'Bus left with students',
               user_name: departProfile 
                 ? `${departProfile.first_name} ${departProfile.last_name}`
                 : 'Unknown User',
-              icon: 'bus',
+              icon: isManualCompletion ? 'check-circle' : 'bus',
               details: { bus_number: bus?.bus_number || 'Unknown' }
             });
           }

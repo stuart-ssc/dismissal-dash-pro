@@ -8,6 +8,7 @@ import {
   ChevronUp, 
   Play, 
   Check, 
+  CheckCircle,
   Bus, 
   Car, 
   MapPin,
@@ -22,6 +23,8 @@ const getEventIcon = (iconType: string) => {
       return <Play className="h-4 w-4" />;
     case 'check':
       return <Check className="h-4 w-4" />;
+    case 'check-circle':
+      return <CheckCircle className="h-4 w-4" />;
     case 'bus':
       return <Bus className="h-4 w-4" />;
     case 'car':
@@ -44,6 +47,8 @@ const getEventColor = (type: string) => {
       return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800';
     case 'bus_checkin':
       return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800';
+    case 'bus_manual_completion':
+      return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-200 dark:border-orange-800';
     case 'car_session_start':
       return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800';
     case 'walker_session_start':
