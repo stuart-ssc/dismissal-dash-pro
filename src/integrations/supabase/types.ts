@@ -630,40 +630,73 @@ export type Database = {
       }
       dismissal_runs: {
         Row: {
+          bus_completed: boolean | null
+          bus_completed_at: string | null
+          bus_completed_by: string | null
+          car_line_completed: boolean | null
+          car_line_completed_at: string | null
+          car_line_completed_by: string | null
           created_at: string
           date: string
           ended_at: string | null
           id: string
           plan_id: string | null
+          preparation_start_time: string | null
+          scheduled_start_time: string | null
           school_id: number
           started_at: string
           started_by: string
           status: string
           updated_at: string
+          walker_completed: boolean | null
+          walker_completed_at: string | null
+          walker_completed_by: string | null
         }
         Insert: {
+          bus_completed?: boolean | null
+          bus_completed_at?: string | null
+          bus_completed_by?: string | null
+          car_line_completed?: boolean | null
+          car_line_completed_at?: string | null
+          car_line_completed_by?: string | null
           created_at?: string
           date?: string
           ended_at?: string | null
           id?: string
           plan_id?: string | null
+          preparation_start_time?: string | null
+          scheduled_start_time?: string | null
           school_id: number
           started_at?: string
           started_by: string
           status?: string
           updated_at?: string
+          walker_completed?: boolean | null
+          walker_completed_at?: string | null
+          walker_completed_by?: string | null
         }
         Update: {
+          bus_completed?: boolean | null
+          bus_completed_at?: string | null
+          bus_completed_by?: string | null
+          car_line_completed?: boolean | null
+          car_line_completed_at?: string | null
+          car_line_completed_by?: string | null
           created_at?: string
           date?: string
           ended_at?: string | null
           id?: string
           plan_id?: string | null
+          preparation_start_time?: string | null
+          scheduled_start_time?: string | null
           school_id?: number
           started_at?: string
           started_by?: string
           status?: string
           updated_at?: string
+          walker_completed?: boolean | null
+          walker_completed_at?: string | null
+          walker_completed_by?: string | null
         }
         Relationships: []
       }
@@ -1126,6 +1159,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_dismissal_times: {
+        Args: { plan_dismissal_time: string; preparation_minutes?: number }
+        Returns: {
+          dismissal_start_time: string
+          preparation_start_time: string
+        }[]
+      }
       can_manage_school_data: {
         Args: { target_school_id: number }
         Returns: boolean
@@ -1141,6 +1181,10 @@ export type Database = {
       can_view_school_data: {
         Args: { target_school_id: number }
         Returns: boolean
+      }
+      create_scheduled_dismissal_run: {
+        Args: { target_date?: string; target_school_id: number }
+        Returns: string
       }
       get_current_user_school_id: {
         Args: Record<PropertyKey, never>
