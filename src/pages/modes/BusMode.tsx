@@ -236,6 +236,26 @@ export default function BusMode() {
         await fetchData();
       }
 
+      // CRITICAL: Update the dismissal_runs table to mark bus mode as completed
+      const now = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from('dismissal_runs')
+        .update({
+          bus_completed: true,
+          bus_completed_at: now,
+          bus_completed_by: user.id,
+          updated_at: now
+        })
+        .eq('id', runId);
+
+      if (updateError) {
+        console.error('Error updating dismissal_runs:', updateError);
+        throw updateError;
+      }
+
+      // Refresh the dismissal run data to reflect completion
+      await refetch();
+
       toast({
         title: "Bus Mode Completed",
         description: "All bus dismissal activities have been completed. Return to the launcher to manage other modes.",

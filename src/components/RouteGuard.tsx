@@ -17,8 +17,8 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
   useEffect(() => {
     if (isLoading || !run) return;
 
-    // Check if the dismissal is completed for bus mode
-    if (mode === "bus" && run.status === "completed") {
+    // Check if the specific mode is completed
+    if (mode === "bus" && run.bus_completed) {
       toast({
         title: "Access Denied",
         description: "Bus dismissal has already been completed for today.",
@@ -28,7 +28,35 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
       return;
     }
 
-    // Add additional checks for other modes if needed in the future
+    if (mode === "car-line" && run.car_line_completed) {
+      toast({
+        title: "Access Denied",
+        description: "Car line dismissal has already been completed for today.",
+        variant: "destructive",
+      });
+      navigate("/dashboard/dismissal", { replace: true });
+      return;
+    }
+
+    if (mode === "walker" && run.walker_completed) {
+      toast({
+        title: "Access Denied",
+        description: "Walker dismissal has already been completed for today.",
+        variant: "destructive",
+      });
+      navigate("/dashboard/dismissal", { replace: true });
+      return;
+    }
+
+    if (mode === "classroom" && run.status === "completed") {
+      toast({
+        title: "Access Denied",
+        description: "Today's dismissal has already been completed.",
+        variant: "destructive",
+      });
+      navigate("/dashboard/dismissal", { replace: true });
+      return;
+    }
   }, [run, isLoading, mode, navigate, toast]);
 
   if (isLoading) {
@@ -42,8 +70,20 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
     );
   }
 
-  // If bus mode is completed, don't render children
-  if (mode === "bus" && run?.status === "completed") {
+  // If specific mode is completed, don't render children
+  if (mode === "bus" && run?.bus_completed) {
+    return null;
+  }
+  
+  if (mode === "car-line" && run?.car_line_completed) {
+    return null;
+  }
+  
+  if (mode === "walker" && run?.walker_completed) {
+    return null;
+  }
+  
+  if (mode === "classroom" && run?.status === "completed") {
     return null;
   }
 
