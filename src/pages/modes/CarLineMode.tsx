@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import ExitModeButton from "@/components/ExitModeButton";
@@ -24,7 +25,8 @@ type StudentPickup = {
 };
 
 export default function CarLineMode() {
-  const { run, schoolId, isLoading } = useTodayDismissalRun();
+  const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
+  const navigate = useNavigate();
   const [carLines, setCarLines] = useState<CarLine[]>([]);
   const [selectedLine, setSelectedLine] = useState<string>("");
   const [session, setSession] = useState<Session | null>(null);
@@ -413,10 +415,61 @@ export default function CarLineMode() {
   };
 
   const finishSession = async () => {
-    if (!session?.id) return;
-    await supabase.from("car_line_sessions").update({ finished_at: new Date().toISOString() }).eq("id", session.id);
-    // refresh to show finished state
-    setSession((s) => (s ? { ...s, finished_at: new Date().toISOString() } : s));
+    if (!session?.id || !runId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      // First, update the car_line_sessions table
+      const { error: sessionError } = await supabase
+        .from("car_line_sessions")
+        .update({ finished_at: now })
+        .eq("id", session.id);
+
+      if (sessionError) {
+        console.error('Error updating car_line_sessions:', sessionError);
+        toast.error("Failed to finish session");
+        return;
+      }
+
+      // CRITICAL: Update the dismissal_runs table to mark car line mode as completed
+      const { error: updateError } = await supabase
+        .from('dismissal_runs')
+        .update({
+          car_line_completed: true,
+          car_line_completed_at: now,
+          car_line_completed_by: user.id,
+          updated_at: now
+        })
+        .eq('id', runId);
+
+      if (updateError) {
+        console.error('Error updating dismissal_runs:', updateError);
+        toast.error("Failed to complete car line dismissal");
+        return;
+      }
+
+      // Update local session state to show finished
+      setSession((s) => (s ? { ...s, finished_at: now } : s));
+
+      // Refresh the dismissal run data to reflect completion
+      await refetch();
+
+      toast.success("Car line dismissal completed successfully");
+      
+      // Navigate back to dismissal launcher
+      navigate("/dashboard/dismissal");
+
+    } catch (error) {
+      console.error('Error finishing session:', error);
+      toast.error("Failed to complete car line dismissal");
+    }
   };
 
   return (
@@ -463,7 +516,7 @@ export default function CarLineMode() {
               </div>
               {session && !session.finished_at && (
                 <Button variant="secondary" onClick={finishSession}>
-                  Mark Dismissal As Finished
+                  Mark Car Line Location Dismissal as Finished
                 </Button>
               )}
             </div>
