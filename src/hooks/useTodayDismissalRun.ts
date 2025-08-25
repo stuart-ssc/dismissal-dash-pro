@@ -67,6 +67,39 @@ export const useTodayDismissalRun = () => {
       if (findErr) throw findErr;
 
       if (existing) {
+        // Check if status needs updating based on current time
+        const now = new Date();
+        let needsUpdate = false;
+        
+        if (existing.status === 'scheduled' && existing.preparation_start_time) {
+          const prepTime = new Date(existing.preparation_start_time);
+          if (now >= prepTime) needsUpdate = true;
+        }
+        
+        if (existing.status === 'preparation' && existing.scheduled_start_time) {
+          const startTime = new Date(existing.scheduled_start_time);
+          if (now >= startTime) needsUpdate = true;
+        }
+        
+        // Trigger status update if needed
+        if (needsUpdate) {
+          await supabase
+            .from("dismissal_runs")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", existing.id);
+          
+          // Fetch updated run
+          const { data: updatedRun, error: updateErr } = await supabase
+            .from("dismissal_runs")
+            .select("*")
+            .eq("id", existing.id)
+            .single();
+            
+          if (!updateErr && updatedRun) {
+            return { run: updatedRun as DismissalRun, schoolId };
+          }
+        }
+        
         return { run: existing as DismissalRun, schoolId };
       }
 
