@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ExitModeButton from "@/components/ExitModeButton";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
@@ -18,8 +19,9 @@ type WalkerPickup = { id: string; student_id: string; status: string; left_at?: 
 type PickupStatus = "waiting" | "left_building";
 
 export default function WalkerMode() {
-  const { run, schoolId, isLoading } = useTodayDismissalRun();
+  const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [locations, setLocations] = useState<WalkerLocation[]>([]);
   const [selectedLoc, setSelectedLoc] = useState<string>("");
   const [session, setSession] = useState<Session | null>(null);
@@ -346,9 +348,80 @@ export default function WalkerMode() {
   }, [students, search, gradeFilter, classFilter, statusFilter, pickups]);
 
   const finishSession = async () => {
-    if (!session?.id) return;
-    await supabase.from("walker_sessions").update({ finished_at: new Date().toISOString() }).eq("id", session.id);
-    setSession((s) => (s ? { ...s, finished_at: new Date().toISOString() } : s));
+    if (!session?.id || !runId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "Not authenticated",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      // First, update the walker_sessions table
+      const { error: sessionError } = await supabase
+        .from("walker_sessions")
+        .update({ finished_at: now })
+        .eq("id", session.id);
+
+      if (sessionError) {
+        console.error('Error updating walker_sessions:', sessionError);
+        toast({
+          title: "Error",
+          description: "Failed to finish session",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // CRITICAL: Update the dismissal_runs table to mark walker mode as completed
+      const { error: updateError } = await supabase
+        .from('dismissal_runs')
+        .update({
+          walker_completed: true,
+          walker_completed_at: now,
+          walker_completed_by: user.id,
+          updated_at: now
+        })
+        .eq('id', runId);
+
+      if (updateError) {
+        console.error('Error updating dismissal_runs:', updateError);
+        toast({
+          title: "Error",
+          description: "Failed to complete walker dismissal",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update local session state to show finished
+      setSession((s) => (s ? { ...s, finished_at: now } : s));
+
+      // Refresh the dismissal run data to reflect completion
+      await refetch();
+
+      toast({
+        title: "Success",
+        description: "Walker dismissal completed successfully",
+      });
+      
+      // Navigate back to dismissal launcher
+      navigate("/dashboard/dismissal");
+
+    } catch (error) {
+      console.error('Error finishing session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete walker dismissal",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -391,7 +464,7 @@ export default function WalkerMode() {
             </div>
             {session && !session.finished_at && (
               <Button variant="secondary" onClick={finishSession}>
-                Mark Dismissal As Finished
+                Mark Walker Location Dismissal as Finished
               </Button>
             )}
           </CardContent>
