@@ -34,6 +34,10 @@ export default function WalkerMode() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [leftBuildingButtonFlash, setLeftBuildingButtonFlash] = useState(false);
+  
+  // Check if location is completed
+  const [locationCompleted, setLocationCompleted] = useState(false);
+  const [activeTeachers, setActiveTeachers] = useState<string[]>([]);
 
   const runId = run?.id;
 
@@ -50,23 +54,30 @@ export default function WalkerMode() {
     loadLocations();
   }, [schoolId]);
 
-  // Start or reuse session when a location is selected
+  // Start or reuse session when a location is selected - allows multiple sessions per location
   const startSession = async (locId: string) => {
     if (!runId || !schoolId) return;
 
-    const { data: existing } = await supabase
-      .from("walker_sessions")
-      .select("id,finished_at")
+    // Check if this location is already completed
+    const { data: completedCheck } = await supabase
+      .from("walker_location_completions")
+      .select("id")
       .eq("dismissal_run_id", runId)
       .eq("walker_location_id", locId)
-      .is("finished_at", null)
       .limit(1);
 
-    if (existing && existing.length > 0) {
-      setSession(existing[0] as any);
+    if (completedCheck && completedCheck.length > 0) {
+      setLocationCompleted(true);
+      toast({
+        title: "Location Complete",
+        description: "This walker location has already been completed.",
+        variant: "destructive",
+      });
+      navigate("/dashboard/dismissal", { replace: true });
       return;
     }
 
+    // Always create a new session to allow multiple teachers at same location
     const { data: inserted, error } = await supabase
       .from("walker_sessions")
       .insert({
@@ -78,7 +89,10 @@ export default function WalkerMode() {
       .select("id,finished_at")
       .single();
 
-    if (!error) setSession(inserted as any);
+    if (!error) {
+      setSession(inserted as any);
+      setLocationCompleted(false);
+    }
   };
 
   // Load students assigned as walkers (optionally by selected location)
@@ -134,13 +148,24 @@ export default function WalkerMode() {
     [schoolId, selectedLoc]
   );
 
-  // Load walker pickups for current session
+  // Load walker pickups for current location (all sessions)
   const loadPickups = async () => {
-    if (!session?.id) return;
+    if (!selectedLoc || !runId) return;
+    
+    // Get all sessions for this location and dismissal run
+    const { data: sessions } = await supabase
+      .from("walker_sessions")
+      .select("id")
+      .eq("dismissal_run_id", runId)
+      .eq("walker_location_id", selectedLoc);
+
+    if (!sessions || sessions.length === 0) return;
+
+    const sessionIds = sessions.map(s => s.id);
     const { data } = await supabase
       .from("walker_pickups")
       .select("id,student_id,status,left_at")
-      .eq("walker_session_id", session.id);
+      .in("walker_session_id", sessionIds);
     
     const pickupMap: Record<string, WalkerPickup> = {};
     (data || []).forEach((pickup: any) => {
@@ -267,24 +292,59 @@ export default function WalkerMode() {
 
   useEffect(() => {
     loadPickups();
-  }, [session?.id]);
+    loadActiveTeachers();
+  }, [selectedLoc, runId]);
 
-  // Real-time subscription for walker pickups
+  // Real-time subscription for walker pickups and location completion
   useEffect(() => {
-    if (!session?.id) return;
+    if (!selectedLoc || !runId) return;
 
     const channel = supabase
-      .channel('walker-pickups')
+      .channel('walker-collaboration')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'walker_pickups',
-          filter: `walker_session_id=eq.${session.id}`
+          table: 'walker_pickups'
         },
         () => {
           loadPickups();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'walker_location_completions',
+          filter: `dismissal_run_id=eq.${runId}`
+        },
+        (payload) => {
+          const completion = payload.new as any;
+          if (completion.walker_location_id === selectedLoc) {
+            setLocationCompleted(true);
+            toast({
+              title: "Location Complete",
+              description: "This walker location has been completed by another teacher. Redirecting...",
+            });
+            setTimeout(() => {
+              navigate("/dashboard/dismissal", { replace: true });
+            }, 2000);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'walker_sessions',
+          filter: `walker_location_id=eq.${selectedLoc}`
+        },
+        () => {
+          // Update active teachers count
+          loadActiveTeachers();
         }
       )
       .subscribe();
@@ -292,7 +352,22 @@ export default function WalkerMode() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session?.id]);
+  }, [selectedLoc, runId]);
+
+  // Load active teachers for current location
+  const loadActiveTeachers = async () => {
+    if (!selectedLoc || !runId) return;
+    
+    const { data: sessions } = await supabase
+      .from("walker_sessions")
+      .select("managed_by")
+      .eq("dismissal_run_id", runId)
+      .eq("walker_location_id", selectedLoc)
+      .is("finished_at", null);
+
+    const teacherIds = Array.from(new Set((sessions || []).map(s => s.managed_by)));
+    setActiveTeachers(teacherIds);
+  };
 
   useEffect(() => {
     loadStudents();
@@ -347,8 +422,8 @@ export default function WalkerMode() {
     return out;
   }, [students, search, gradeFilter, classFilter, statusFilter, pickups]);
 
-  const finishSession = async () => {
-    if (!session?.id || !runId) return;
+  const finishLocation = async () => {
+    if (!selectedLoc || !runId) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -363,42 +438,55 @@ export default function WalkerMode() {
 
       const now = new Date().toISOString();
 
-      // First, update the walker_sessions table to mark this location as finished
+      // Mark this specific location as completed
+      const { error: completionError } = await supabase
+        .from("walker_location_completions")
+        .insert({
+          dismissal_run_id: runId,
+          walker_location_id: selectedLoc,
+          completed_by: user.id,
+          completed_at: now
+        });
+
+      if (completionError) {
+        console.error('Error marking location complete:', completionError);
+        toast({
+          title: "Error",
+          description: "Failed to complete location",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Finish all active sessions for this location
       const { error: sessionError } = await supabase
         .from("walker_sessions")
         .update({ finished_at: now })
-        .eq("id", session.id);
-
-      if (sessionError) {
-        console.error('Error updating walker_sessions:', sessionError);
-        toast({
-          title: "Error",
-          description: "Failed to finish session",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Check if ALL walker sessions for this dismissal run are now finished
-      const { data: activeSessions, error: checkError } = await supabase
-        .from("walker_sessions")
-        .select("id")
         .eq("dismissal_run_id", runId)
+        .eq("walker_location_id", selectedLoc)
         .is("finished_at", null);
 
-      if (checkError) {
-        console.error('Error checking active sessions:', checkError);
-        toast({
-          title: "Error",
-          description: "Failed to check session status",
-          variant: "destructive",
-        });
-        return;
+      if (sessionError) {
+        console.error('Error finishing sessions:', sessionError);
       }
 
-      const allLocationsDone = !activeSessions || activeSessions.length === 0;
-      let successMessage = "Walker location dismissal finished";
-      let shouldNavigate = false;
+      // Check if ALL walker locations are now completed
+      const { data: allLocations } = await supabase
+        .from("walker_locations")
+        .select("id")
+        .eq("school_id", schoolId);
+
+      const { data: completedLocations } = await supabase
+        .from("walker_location_completions")
+        .select("walker_location_id")
+        .eq("dismissal_run_id", runId);
+
+      const totalLocations = allLocations?.length || 0;
+      const completedCount = completedLocations?.length || 0;
+      const allLocationsDone = completedCount >= totalLocations;
+
+      let successMessage = "Walker location completed!";
+      let shouldNavigate = true;
 
       // Only mark walker mode as completed if ALL locations are done
       if (allLocationsDone) {
@@ -414,23 +502,16 @@ export default function WalkerMode() {
 
         if (updateError) {
           console.error('Error updating dismissal_runs:', updateError);
-          toast({
-            title: "Error",
-            description: "Failed to complete walker dismissal",
-            variant: "destructive",
-          });
-          return;
+        } else {
+          successMessage = "All walker locations finished - Walker dismissal completed!";
         }
-
-        successMessage = "All walker locations finished - Walker dismissal completed!";
-        shouldNavigate = true;
       } else {
-        const remainingCount = activeSessions.length;
-        successMessage = `Location finished. ${remainingCount} other location${remainingCount > 1 ? 's' : ''} still active.`;
+        const remainingCount = totalLocations - completedCount;
+        successMessage = `Location completed! ${remainingCount} location${remainingCount > 1 ? 's' : ''} remaining.`;
       }
 
-      // Update local session state to show finished
-      setSession((s) => (s ? { ...s, finished_at: now } : s));
+      // Set location as completed
+      setLocationCompleted(true);
 
       // Refresh the dismissal run data to reflect any changes
       await refetch();
@@ -440,16 +521,16 @@ export default function WalkerMode() {
         description: successMessage,
       });
       
-      // Only navigate away if all locations are done
-      if (shouldNavigate) {
+      // Navigate back to dismissal dashboard
+      setTimeout(() => {
         navigate("/dashboard/dismissal");
-      }
+      }, 1500);
 
     } catch (error) {
-      console.error('Error finishing session:', error);
+      console.error('Error completing location:', error);
       toast({
         title: "Error",
-        description: "Failed to complete walker dismissal",
+        description: "Failed to complete walker location",
         variant: "destructive",
       });
     }
@@ -489,13 +570,18 @@ export default function WalkerMode() {
               </div>
               {session && (
                 <div className="text-sm text-muted-foreground">
-                  Session started • {session.finished_at ? "Finished" : "Active"}
+                  Session started • {locationCompleted ? "Location Complete" : "Active"}
+                  {activeTeachers.length > 1 && (
+                    <div className="text-xs text-blue-600 mt-1">
+                      {activeTeachers.length} teachers managing this location
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-            {session && !session.finished_at && (
-              <Button variant="secondary" onClick={finishSession}>
-                Mark Walker Location Dismissal as Finished
+            {session && !locationCompleted && (
+              <Button variant="secondary" onClick={finishLocation}>
+                Complete Walker Location
               </Button>
             )}
           </CardContent>

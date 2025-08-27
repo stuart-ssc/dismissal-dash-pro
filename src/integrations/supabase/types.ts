@@ -130,6 +130,33 @@ export type Database = {
         }
         Relationships: []
       }
+      car_line_completions: {
+        Row: {
+          car_line_id: string
+          completed_at: string
+          completed_by: string
+          created_at: string
+          dismissal_run_id: string
+          id: string
+        }
+        Insert: {
+          car_line_id: string
+          completed_at?: string
+          completed_by: string
+          created_at?: string
+          dismissal_run_id: string
+          id?: string
+        }
+        Update: {
+          car_line_id?: string
+          completed_at?: string
+          completed_by?: string
+          created_at?: string
+          dismissal_run_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       car_line_pickups: {
         Row: {
           car_line_session_id: string
@@ -1052,6 +1079,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      walker_location_completions: {
+        Row: {
+          completed_at: string
+          completed_by: string
+          created_at: string
+          dismissal_run_id: string
+          id: string
+          walker_location_id: string
+        }
+        Insert: {
+          completed_at?: string
+          completed_by: string
+          created_at?: string
+          dismissal_run_id: string
+          id?: string
+          walker_location_id: string
+        }
+        Update: {
+          completed_at?: string
+          completed_by?: string
+          created_at?: string
+          dismissal_run_id?: string
+          id?: string
+          walker_location_id?: string
+        }
+        Relationships: []
       }
       walker_locations: {
         Row: {

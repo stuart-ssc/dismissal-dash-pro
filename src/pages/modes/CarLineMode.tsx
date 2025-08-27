@@ -38,6 +38,10 @@ export default function CarLineMode() {
   const [loading, setLoading] = useState(false);
   const [pickups, setPickups] = useState<Record<string, StudentPickup>>({});
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  
+  // Check if location is completed
+  const [locationCompleted, setLocationCompleted] = useState(false);
+  const [activeTeachers, setActiveTeachers] = useState<string[]>([]);
 
   const runId = run?.id;
 
@@ -61,24 +65,26 @@ export default function CarLineMode() {
     loadLines();
   }, [schoolId]);
 
-  // Start or reuse session when a line is selected
+  // Start or reuse session when a line is selected - allows multiple sessions per location
   const startSession = async (lineId: string) => {
     if (!runId || !schoolId) return;
 
-    // see if an active session exists for this user/line/run
-    const { data: existing } = await supabase
-      .from("car_line_sessions")
-      .select("id,finished_at")
+    // Check if this car line is already completed
+    const { data: completedCheck } = await supabase
+      .from("car_line_completions")
+      .select("id")
       .eq("dismissal_run_id", runId)
       .eq("car_line_id", lineId)
-      .is("finished_at", null)
       .limit(1);
 
-    if (existing && existing.length > 0) {
-      setSession(existing[0] as any);
+    if (completedCheck && completedCheck.length > 0) {
+      setLocationCompleted(true);
+      toast.error("This car line has already been completed.");
+      navigate("/dashboard/dismissal", { replace: true });
       return;
     }
 
+    // Always create a new session to allow multiple teachers at same location
     const { data: inserted, error } = await supabase
       .from("car_line_sessions")
       .insert({
@@ -92,18 +98,29 @@ export default function CarLineMode() {
 
     if (!error) {
       setSession(inserted as any);
+      setLocationCompleted(false);
       loadPickups(inserted.id);
     }
   };
 
-  // Load existing pickup records for the session
-  const loadPickups = async (sessionId: string) => {
-    if (!sessionId) return;
+  // Load existing pickup records for current location (all sessions)
+  const loadPickups = async (sessionId?: string) => {
+    if (!selectedLine || !runId) return;
     
+    // Get all sessions for this car line and dismissal run
+    const { data: sessions } = await supabase
+      .from("car_line_sessions")
+      .select("id")
+      .eq("dismissal_run_id", runId)
+      .eq("car_line_id", selectedLine);
+
+    if (!sessions || sessions.length === 0) return;
+
+    const sessionIds = sessions.map(s => s.id);
     const { data } = await supabase
       .from("car_line_pickups")
       .select("student_id, status, parent_arrived_at, picked_up_at")
-      .eq("car_line_session_id", sessionId);
+      .in("car_line_session_id", sessionIds);
 
     if (data) {
       const pickupMap: Record<string, StudentPickup> = {};
@@ -277,46 +294,59 @@ export default function CarLineMode() {
     loadStudents();
   }, [loadStudents]);
 
-  // Load pickups when session changes
+  // Load pickups when location changes
   useEffect(() => {
-    if (session?.id) {
-      loadPickups(session.id);
-    }
-  }, [session?.id]);
+    loadPickups();
+    loadActiveTeachers();
+  }, [selectedLine, runId]);
 
-  // Real-time subscription for pickup updates
+  // Real-time subscription for pickup updates and location completion
   useEffect(() => {
-    if (!session?.id) return;
+    if (!selectedLine || !runId) return;
 
     const channel = supabase
-      .channel('car_line_pickups_changes')
+      .channel('car_line_collaboration')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'car_line_pickups',
-          filter: `car_line_session_id=eq.${session.id}`
+          table: 'car_line_pickups'
+        },
+        () => {
+          loadPickups();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'car_line_completions',
+          filter: `dismissal_run_id=eq.${runId}`
         },
         (payload) => {
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const pickup = payload.new as any;
-            setPickups(prev => ({
-              ...prev,
-              [pickup.student_id]: {
-                student_id: pickup.student_id,
-                status: pickup.status,
-                parent_arrived_at: pickup.parent_arrived_at,
-                picked_up_at: pickup.picked_up_at
-              }
-            }));
-          } else if (payload.eventType === 'DELETE') {
-            const pickup = payload.old as any;
-            setPickups(prev => {
-              const { [pickup.student_id]: deleted, ...rest } = prev;
-              return rest;
-            });
+          const completion = payload.new as any;
+          if (completion.car_line_id === selectedLine) {
+            setLocationCompleted(true);
+            toast.info("This car line has been completed by another teacher. Redirecting...");
+            setTimeout(() => {
+              navigate("/dashboard/dismissal", { replace: true });
+            }, 2000);
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'car_line_sessions',
+          filter: `car_line_id=eq.${selectedLine}`
+        },
+        () => {
+          // Update active teachers count
+          loadActiveTeachers();
         }
       )
       .subscribe();
@@ -324,7 +354,22 @@ export default function CarLineMode() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session?.id]);
+  }, [selectedLine, runId]);
+
+  // Load active teachers for current location
+  const loadActiveTeachers = async () => {
+    if (!selectedLine || !runId) return;
+    
+    const { data: sessions } = await supabase
+      .from("car_line_sessions")
+      .select("managed_by")
+      .eq("dismissal_run_id", runId)
+      .eq("car_line_id", selectedLine)
+      .is("finished_at", null);
+
+    const teacherIds = Array.from(new Set((sessions || []).map(s => s.managed_by)));
+    setActiveTeachers(teacherIds);
+  };
 
   const filtered = useMemo(() => {
     let out = [...students];
@@ -414,8 +459,8 @@ export default function CarLineMode() {
     }
   };
 
-  const finishSession = async () => {
-    if (!session?.id || !runId) return;
+  const finishLocation = async () => {
+    if (!selectedLine || !runId) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -426,34 +471,51 @@ export default function CarLineMode() {
 
       const now = new Date().toISOString();
 
-      // First, update the car_line_sessions table to mark this line as finished
+      // Mark this specific car line as completed
+      const { error: completionError } = await supabase
+        .from("car_line_completions")
+        .insert({
+          dismissal_run_id: runId,
+          car_line_id: selectedLine,
+          completed_by: user.id,
+          completed_at: now
+        });
+
+      if (completionError) {
+        console.error('Error marking location complete:', completionError);
+        toast.error("Failed to complete location");
+        return;
+      }
+
+      // Finish all active sessions for this car line
       const { error: sessionError } = await supabase
         .from("car_line_sessions")
         .update({ finished_at: now })
-        .eq("id", session.id);
-
-      if (sessionError) {
-        console.error('Error updating car_line_sessions:', sessionError);
-        toast.error("Failed to finish session");
-        return;
-      }
-
-      // Check if ALL car line sessions for this dismissal run are now finished
-      const { data: activeSessions, error: checkError } = await supabase
-        .from("car_line_sessions")
-        .select("id")
         .eq("dismissal_run_id", runId)
+        .eq("car_line_id", selectedLine)
         .is("finished_at", null);
 
-      if (checkError) {
-        console.error('Error checking active sessions:', checkError);
-        toast.error("Failed to check session status");
-        return;
+      if (sessionError) {
+        console.error('Error finishing sessions:', sessionError);
       }
 
-      const allLinesDone = !activeSessions || activeSessions.length === 0;
-      let successMessage = "Car line location dismissal finished";
-      let shouldNavigate = false;
+      // Check if ALL car lines are now completed
+      const { data: allLines } = await supabase
+        .from("car_lines")
+        .select("id")
+        .eq("school_id", schoolId);
+
+      const { data: completedLines } = await supabase
+        .from("car_line_completions")
+        .select("car_line_id")
+        .eq("dismissal_run_id", runId);
+
+      const totalLines = allLines?.length || 0;
+      const completedCount = completedLines?.length || 0;
+      const allLinesDone = completedCount >= totalLines;
+
+      let successMessage = "Car line completed!";
+      let shouldNavigate = true;
 
       // Only mark car line mode as completed if ALL lines are done
       if (allLinesDone) {
@@ -469,33 +531,30 @@ export default function CarLineMode() {
 
         if (updateError) {
           console.error('Error updating dismissal_runs:', updateError);
-          toast.error("Failed to complete car line dismissal");
-          return;
+        } else {
+          successMessage = "All car lines finished - Car line dismissal completed!";
         }
-
-        successMessage = "All car lines finished - Car line dismissal completed!";
-        shouldNavigate = true;
       } else {
-        const remainingCount = activeSessions.length;
-        successMessage = `Line finished. ${remainingCount} other line${remainingCount > 1 ? 's' : ''} still active.`;
+        const remainingCount = totalLines - completedCount;
+        successMessage = `Line completed! ${remainingCount} line${remainingCount > 1 ? 's' : ''} remaining.`;
       }
 
-      // Update local session state to show finished
-      setSession((s) => (s ? { ...s, finished_at: now } : s));
+      // Set location as completed
+      setLocationCompleted(true);
 
       // Refresh the dismissal run data to reflect any changes
       await refetch();
 
       toast.success(successMessage);
       
-      // Only navigate away if all lines are done
-      if (shouldNavigate) {
+      // Navigate back to dismissal dashboard
+      setTimeout(() => {
         navigate("/dashboard/dismissal");
-      }
+      }, 1500);
 
     } catch (error) {
-      console.error('Error finishing session:', error);
-      toast.error("Failed to complete car line dismissal");
+      console.error('Error completing location:', error);
+      toast.error("Failed to complete car line location");
     }
   };
 
@@ -537,13 +596,18 @@ export default function CarLineMode() {
                 </div>
                 {session && (
                   <div className="text-sm text-muted-foreground">
-                    Session started • {session.finished_at ? "Finished" : "Active"}
+                    Session started • {locationCompleted ? "Location Complete" : "Active"}
+                    {activeTeachers.length > 1 && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        {activeTeachers.length} teachers managing this location
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-              {session && !session.finished_at && (
-                <Button variant="secondary" onClick={finishSession}>
-                  Mark Car Line Location Dismissal as Finished
+              {session && !locationCompleted && (
+                <Button variant="secondary" onClick={finishLocation}>
+                  Complete Car Line Location
                 </Button>
               )}
             </div>
