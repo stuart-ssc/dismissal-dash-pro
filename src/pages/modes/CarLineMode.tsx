@@ -426,7 +426,7 @@ export default function CarLineMode() {
 
       const now = new Date().toISOString();
 
-      // First, update the car_line_sessions table
+      // First, update the car_line_sessions table to mark this line as finished
       const { error: sessionError } = await supabase
         .from("car_line_sessions")
         .update({ finished_at: now })
@@ -438,33 +438,60 @@ export default function CarLineMode() {
         return;
       }
 
-      // CRITICAL: Update the dismissal_runs table to mark car line mode as completed
-      const { error: updateError } = await supabase
-        .from('dismissal_runs')
-        .update({
-          car_line_completed: true,
-          car_line_completed_at: now,
-          car_line_completed_by: user.id,
-          updated_at: now
-        })
-        .eq('id', runId);
+      // Check if ALL car line sessions for this dismissal run are now finished
+      const { data: activeSessions, error: checkError } = await supabase
+        .from("car_line_sessions")
+        .select("id")
+        .eq("dismissal_run_id", runId)
+        .is("finished_at", null);
 
-      if (updateError) {
-        console.error('Error updating dismissal_runs:', updateError);
-        toast.error("Failed to complete car line dismissal");
+      if (checkError) {
+        console.error('Error checking active sessions:', checkError);
+        toast.error("Failed to check session status");
         return;
+      }
+
+      const allLinesDone = !activeSessions || activeSessions.length === 0;
+      let successMessage = "Car line location dismissal finished";
+      let shouldNavigate = false;
+
+      // Only mark car line mode as completed if ALL lines are done
+      if (allLinesDone) {
+        const { error: updateError } = await supabase
+          .from('dismissal_runs')
+          .update({
+            car_line_completed: true,
+            car_line_completed_at: now,
+            car_line_completed_by: user.id,
+            updated_at: now
+          })
+          .eq('id', runId);
+
+        if (updateError) {
+          console.error('Error updating dismissal_runs:', updateError);
+          toast.error("Failed to complete car line dismissal");
+          return;
+        }
+
+        successMessage = "All car lines finished - Car line dismissal completed!";
+        shouldNavigate = true;
+      } else {
+        const remainingCount = activeSessions.length;
+        successMessage = `Line finished. ${remainingCount} other line${remainingCount > 1 ? 's' : ''} still active.`;
       }
 
       // Update local session state to show finished
       setSession((s) => (s ? { ...s, finished_at: now } : s));
 
-      // Refresh the dismissal run data to reflect completion
+      // Refresh the dismissal run data to reflect any changes
       await refetch();
 
-      toast.success("Car line dismissal completed successfully");
+      toast.success(successMessage);
       
-      // Navigate back to dismissal launcher
-      navigate("/dashboard/dismissal");
+      // Only navigate away if all lines are done
+      if (shouldNavigate) {
+        navigate("/dashboard/dismissal");
+      }
 
     } catch (error) {
       console.error('Error finishing session:', error);

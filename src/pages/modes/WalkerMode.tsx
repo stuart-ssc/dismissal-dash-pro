@@ -363,7 +363,7 @@ export default function WalkerMode() {
 
       const now = new Date().toISOString();
 
-      // First, update the walker_sessions table
+      // First, update the walker_sessions table to mark this location as finished
       const { error: sessionError } = await supabase
         .from("walker_sessions")
         .update({ finished_at: now })
@@ -379,40 +379,71 @@ export default function WalkerMode() {
         return;
       }
 
-      // CRITICAL: Update the dismissal_runs table to mark walker mode as completed
-      const { error: updateError } = await supabase
-        .from('dismissal_runs')
-        .update({
-          walker_completed: true,
-          walker_completed_at: now,
-          walker_completed_by: user.id,
-          updated_at: now
-        })
-        .eq('id', runId);
+      // Check if ALL walker sessions for this dismissal run are now finished
+      const { data: activeSessions, error: checkError } = await supabase
+        .from("walker_sessions")
+        .select("id")
+        .eq("dismissal_run_id", runId)
+        .is("finished_at", null);
 
-      if (updateError) {
-        console.error('Error updating dismissal_runs:', updateError);
+      if (checkError) {
+        console.error('Error checking active sessions:', checkError);
         toast({
           title: "Error",
-          description: "Failed to complete walker dismissal",
+          description: "Failed to check session status",
           variant: "destructive",
         });
         return;
       }
 
+      const allLocationsDone = !activeSessions || activeSessions.length === 0;
+      let successMessage = "Walker location dismissal finished";
+      let shouldNavigate = false;
+
+      // Only mark walker mode as completed if ALL locations are done
+      if (allLocationsDone) {
+        const { error: updateError } = await supabase
+          .from('dismissal_runs')
+          .update({
+            walker_completed: true,
+            walker_completed_at: now,
+            walker_completed_by: user.id,
+            updated_at: now
+          })
+          .eq('id', runId);
+
+        if (updateError) {
+          console.error('Error updating dismissal_runs:', updateError);
+          toast({
+            title: "Error",
+            description: "Failed to complete walker dismissal",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        successMessage = "All walker locations finished - Walker dismissal completed!";
+        shouldNavigate = true;
+      } else {
+        const remainingCount = activeSessions.length;
+        successMessage = `Location finished. ${remainingCount} other location${remainingCount > 1 ? 's' : ''} still active.`;
+      }
+
       // Update local session state to show finished
       setSession((s) => (s ? { ...s, finished_at: now } : s));
 
-      // Refresh the dismissal run data to reflect completion
+      // Refresh the dismissal run data to reflect any changes
       await refetch();
 
       toast({
         title: "Success",
-        description: "Walker dismissal completed successfully",
+        description: successMessage,
       });
       
-      // Navigate back to dismissal launcher
-      navigate("/dashboard/dismissal");
+      // Only navigate away if all locations are done
+      if (shouldNavigate) {
+        navigate("/dashboard/dismissal");
+      }
 
     } catch (error) {
       console.error('Error finishing session:', error);
