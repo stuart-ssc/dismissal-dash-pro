@@ -19,6 +19,58 @@ const Dashboard = () => {
   const [schoolName, setSchoolName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
+
+  // Set SEO meta information
+  useEffect(() => {
+    document.title = "Dismissal Pro | Dashboard";
+    
+    // Set meta description
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Manage your school dismissals efficiently with Dismissal Pro dashboard. View real-time dismissal data, students count, and performance analytics.');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'description';
+      meta.content = 'Manage your school dismissals efficiently with Dismissal Pro dashboard. View real-time dismissal data, students count, and performance analytics.';
+      document.head.appendChild(meta);
+    }
+
+    // Set canonical URL
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      canonical.setAttribute('href', `${window.location.origin}/dashboard`);
+    } else {
+      const link = document.createElement('link');
+      link.rel = 'canonical';
+      link.href = `${window.location.origin}/dashboard`;
+      document.head.appendChild(link);
+    }
+
+    // Set viewport meta tag if not exists
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=1.0';
+      document.head.appendChild(meta);
+    }
+
+    // Add robots meta for dashboard pages (typically should not be indexed)
+    const robots = document.querySelector('meta[name="robots"]');
+    if (robots) {
+      robots.setAttribute('content', 'noindex, nofollow');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'robots';
+      meta.content = 'noindex, nofollow';
+      document.head.appendChild(meta);
+    }
+
+    // Cleanup function to restore default title when component unmounts
+    return () => {
+      document.title = "Dismissal Pro";
+    };
+  }, []);
   const { run, schoolId, isLoading: runLoading } = useTodayDismissalRun();
   const [prepMinutes, setPrepMinutes] = useState<number | null>(null);
   const [planDismissalTime, setPlanDismissalTime] = useState<string | null>(null);
