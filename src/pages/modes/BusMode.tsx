@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useModeLogger } from "@/hooks/useModeLogger";
 
 type Bus = { id: string; bus_number: string; driver_first_name: string; driver_last_name: string };
 type BusEvent = {
@@ -29,6 +30,13 @@ export default function BusMode() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
+  
+  // Track mode usage for reporting
+  useModeLogger({
+    mode: 'bus',
+    schoolId,
+    dismissalRunId: run?.id,
+  });
   const [buses, setBuses] = useState<Bus[]>([]);
   const [events, setEvents] = useState<Record<string, BusEvent>>({});
   const [loadingData, setLoadingData] = useState(false);

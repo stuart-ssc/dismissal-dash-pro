@@ -727,6 +727,51 @@ export type Database = {
         }
         Relationships: []
       }
+      mode_sessions: {
+        Row: {
+          created_at: string
+          dismissal_run_id: string | null
+          ended_at: string | null
+          id: string
+          location_id: string | null
+          location_name: string | null
+          mode_type: string
+          school_id: number
+          session_duration_seconds: number | null
+          started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissal_run_id?: string | null
+          ended_at?: string | null
+          id?: string
+          location_id?: string | null
+          location_name?: string | null
+          mode_type: string
+          school_id: number
+          session_duration_seconds?: number | null
+          started_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissal_run_id?: string | null
+          ended_at?: string | null
+          id?: string
+          location_id?: string | null
+          location_name?: string | null
+          mode_type?: string
+          school_id?: number
+          session_duration_seconds?: number | null
+          started_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

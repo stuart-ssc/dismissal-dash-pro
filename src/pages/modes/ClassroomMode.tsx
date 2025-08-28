@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { useAuth } from "@/hooks/useAuth";
 import ExitModeButton from "@/components/ExitModeButton";
+import { useModeLogger } from "@/hooks/useModeLogger";
 import { Loader2, Clock, AlertCircle, CheckCircle } from "lucide-react";
 
 type ActiveGroup = {
@@ -36,6 +37,13 @@ export default function ClassroomMode() {
 
   const runId = run?.id;
   const planId = run?.plan_id ?? null;
+
+  // Track mode usage for reporting
+  useModeLogger({
+    mode: 'classroom',
+    schoolId,
+    dismissalRunId: run?.id,
+  });
 
   // Update current time every 30 seconds
   useEffect(() => {

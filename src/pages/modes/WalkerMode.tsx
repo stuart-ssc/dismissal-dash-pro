@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ExitModeButton from "@/components/ExitModeButton";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
+import { useModeLogger } from "@/hooks/useModeLogger";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,6 +42,16 @@ export default function WalkerMode() {
   const [activeTeachers, setActiveTeachers] = useState<string[]>([]);
 
   const runId = run?.id;
+
+  // Track mode usage for reporting
+  const selectedLocationName = locations.find(loc => loc.id === selectedLoc)?.location_name;
+  useModeLogger({
+    mode: 'walker',
+    schoolId,
+    dismissalRunId: run?.id,
+    locationId: selectedLoc || null,
+    locationName: selectedLocationName || null,
+  });
 
   useEffect(() => {
     const loadLocations = async () => {

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import ExitModeButton from "@/components/ExitModeButton";
+import { useModeLogger } from "@/hooks/useModeLogger";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,6 +46,16 @@ export default function CarLineMode() {
   const [activeTeachers, setActiveTeachers] = useState<string[]>([]);
 
   const runId = run?.id;
+
+  // Track mode usage for reporting
+  const selectedLineName = carLines.find(line => line.id === selectedLine)?.line_name;
+  useModeLogger({
+    mode: 'car_line',
+    schoolId,
+    dismissalRunId: run?.id,
+    locationId: selectedLine || null,
+    locationName: selectedLineName || null,
+  });
 
   useEffect(() => {
     const loadLines = async () => {

@@ -6,14 +6,16 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Download, Filter } from "lucide-react";
+import { Calendar, Download, Filter, Users, ArrowRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
 import { useReportsData } from "@/hooks/useReportsData";
+import { useNavigate } from "react-router-dom";
 
 const Reports = () => {
   const SEO = useSEO();
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<number>(14); // Default to 14 days
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -74,6 +76,24 @@ const Reports = () => {
       </header>
 
       <main className="flex-1 p-6 space-y-6">
+        {/* Mode Usage Reports Card */}
+        <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur cursor-pointer transition-all hover:shadow-lg" onClick={() => navigate('/dashboard/reports/mode-usage')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Mode Usage Reports
+              <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
+            </CardTitle>
+            <CardDescription>
+              Track teacher usage of dismissal mode interfaces (classroom, bus, car line, walker)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              View detailed analytics on which teachers are using the system, session durations, and mode adoption rates.
+            </p>
+          </CardContent>
+        </Card>
         {/* Recent Dismissals Chart */}
         <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">

@@ -25,6 +25,7 @@ import Settings from "./pages/Settings";
 import CarLines from "./pages/CarLines";
 import WalkerLocations from "./pages/WalkerLocations";
 import Reports from "./pages/Reports";
+import ModeUsageReports from "./pages/ModeUsageReports";
 import { AuthProvider } from "./hooks/useAuth";
 import DismissalLauncher from "./pages/DismissalLauncher";
 import AdminLayout from "./layouts/AdminLayout";
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/dashboard/car-lines" element={<CarLines />} />
               <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
               <Route path="/dashboard/reports" element={<Reports />} />
+              <Route path="/dashboard/reports/mode-usage" element={<ModeUsageReports />} />
               <Route path="/dashboard/import" element={<Import />} />
             </Route>
 
