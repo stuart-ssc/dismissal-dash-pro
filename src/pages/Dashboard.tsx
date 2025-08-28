@@ -132,7 +132,7 @@ const Dashboard = () => {
 
   const now = new Date(nowTs);
   const prep = prepMinutes ?? null;
-  const showDismissalControls = !!planStartDate && prep !== null && now >= new Date(planStartDate.getTime() - (prep as number) * 60000);
+  const showDismissalControls = !!planStartDate && prep !== null && now >= new Date(planStartDate.getTime() - (prep as number) * 60000) && run?.status !== 'completed';
   const afterStart = !!planStartDate && now >= planStartDate;
 
   // For school admins, show the sidebar layout
