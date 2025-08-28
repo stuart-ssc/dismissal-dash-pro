@@ -25,6 +25,7 @@ const Dashboard = () => {
   const [nowTs, setNowTs] = useState<number>(Date.now());
   const { loading: setupLoading, isReady, statuses } = useSchoolSetupStatus();
   const [recentDismissals, setRecentDismissals] = useState<any[]>([]);
+  const [avgDismissals, setAvgDismissals] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -105,13 +106,26 @@ const Dashboard = () => {
     })();
   }, [run?.plan_id]);
 
-  // Fetch recent dismissals for chart
+  // Fetch recent dismissals for chart and average calculation
   useEffect(() => {
     const fetchRecentDismissals = async () => {
       if (!schoolId) return;
       
       try {
-        const { data, error } = await supabase
+        // Fetch up to 10 for average calculation
+        const { data: avgData, error: avgError } = await supabase
+          .from('dismissal_runs')
+          .select('id, date, status, started_at, ended_at')
+          .eq('school_id', schoolId)
+          .not('ended_at', 'is', null)
+          .eq('status', 'completed')
+          .order('date', { ascending: false })
+          .limit(10);
+
+        if (avgError) throw avgError;
+
+        // Fetch last 5 for chart display
+        const { data: chartData, error: chartError } = await supabase
           .from('dismissal_runs')
           .select('id, date, status, started_at, ended_at')
           .eq('school_id', schoolId)
@@ -120,9 +134,10 @@ const Dashboard = () => {
           .order('date', { ascending: true })
           .limit(5);
 
-        if (error) throw error;
+        if (chartError) throw chartError;
 
-        const chartData = data?.map((dismissal, index) => {
+        // Process chart data (last 5 for display)
+        const processedChartData = chartData?.map((dismissal, index) => {
           const startTime = new Date(dismissal.started_at);
           const endTime = new Date(dismissal.ended_at);
           const elapsedMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
@@ -134,7 +149,22 @@ const Dashboard = () => {
           };
         }) || [];
 
-        setRecentDismissals(chartData);
+        // Process average data (up to 10 for calculation)
+        const processedAvgData = avgData?.map((dismissal) => {
+          const startTime = new Date(dismissal.started_at);
+          const endTime = new Date(dismissal.ended_at);
+          const elapsedMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+          
+          return {
+            name: format(new Date(dismissal.date), 'M-dd'),
+            elapsed: elapsedMinutes,
+            status: dismissal.status
+          };
+        }) || [];
+
+        // Set chart data for display and store avg data separately
+        setRecentDismissals(processedChartData);
+        setAvgDismissals(processedAvgData);
       } catch (error) {
         console.error('Error fetching recent dismissals:', error);
       }
@@ -254,13 +284,16 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {recentDismissals.length > 0 
-                      ? Math.round(recentDismissals.reduce((sum, d) => sum + d.elapsed, 0) / recentDismissals.length)
+                    {avgDismissals.length > 0 
+                      ? Math.round(avgDismissals.reduce((sum, d) => sum + d.elapsed, 0) / avgDismissals.length)
                       : 0
                     } min
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Last {recentDismissals.length} dismissals
+                    {avgDismissals.length >= 10 
+                      ? "Rolling average (10 dismissals)"
+                      : `Last ${avgDismissals.length} dismissals`
+                    }
                   </p>
                 </CardContent>
               </Card>
@@ -452,13 +485,16 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {recentDismissals.length > 0 
-                    ? Math.round(recentDismissals.reduce((sum, d) => sum + d.elapsed, 0) / recentDismissals.length)
+                  {avgDismissals.length > 0 
+                    ? Math.round(avgDismissals.reduce((sum, d) => sum + d.elapsed, 0) / avgDismissals.length)
                     : 0
                   } min
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Last {recentDismissals.length} dismissals
+                  {avgDismissals.length >= 10 
+                    ? "Rolling average (10 dismissals)"
+                    : `Last ${avgDismissals.length} dismissals`
+                  }
                 </p>
               </CardContent>
             </Card>
