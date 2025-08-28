@@ -37,9 +37,9 @@ import { RouteGuard } from "./components/RouteGuard";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <HelmetProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
         <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -85,9 +85,9 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-      </HelmetProvider>
     </AuthProvider>
   </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;
