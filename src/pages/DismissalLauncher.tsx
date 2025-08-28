@@ -101,7 +101,11 @@ export default function DismissalLauncher() {
         {/* Dismissal Status Info */}
         {run && (
           <div className="mb-6 max-w-5xl">
-            <div className="flex items-center gap-4 p-4 bg-card/50 rounded-lg border">
+            <div className={`flex items-center gap-4 p-4 rounded-lg border ${
+              run.status === 'completed' 
+                ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/50 dark:border-emerald-800' 
+                : 'bg-card/50'
+            }`}>
               <Clock className="h-5 w-5 text-muted-foreground" />
               <div>
                 <div className="flex items-center gap-2">
@@ -109,7 +113,8 @@ export default function DismissalLauncher() {
                   <Badge variant={
                     run.status === 'scheduled' ? 'outline' :
                     run.status === 'preparation' ? 'secondary' :
-                    run.status === 'active' ? 'default' : 'outline'
+                    run.status === 'active' ? 'default' :
+                    run.status === 'completed' ? 'success' : 'outline'
                   }>
                     {run.status === 'scheduled' && 'Scheduled'}
                     {run.status === 'preparation' && 'Preparation Phase'}
