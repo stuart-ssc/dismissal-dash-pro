@@ -1224,6 +1224,12 @@ export type Database = {
               preparation_minutes?: number
               school_timezone?: string
             }
+          | {
+              plan_dismissal_time: string
+              preparation_minutes?: number
+              school_timezone?: string
+              target_date?: string
+            }
         Returns: {
           dismissal_start_time: string
           preparation_start_time: string
