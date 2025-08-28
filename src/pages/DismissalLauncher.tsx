@@ -99,41 +99,38 @@ export default function DismissalLauncher() {
       </header>
 
       <main className="flex-1 p-6">
-        {/* Dismissal Status Info and Teacher Usage */}
+        {/* Dismissal Status Info */}
         {run && (
           <div className="mb-6 max-w-5xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className={`flex items-center gap-4 p-4 rounded-lg border ${
-                run.status === 'completed' 
-                  ? 'bg-emerald-100 border-emerald-300 dark:bg-emerald-900 dark:border-emerald-600 shadow-lg' 
-                  : 'bg-card/50'
-              }`}>
-                <Clock className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">Dismissal Status</h3>
-                    <Badge variant={
-                      run.status === 'scheduled' ? 'outline' :
-                      run.status === 'preparation' ? 'secondary' :
-                      run.status === 'active' ? 'default' :
-                      run.status === 'completed' ? 'success' : 'outline'
-                    }>
-                      {run.status === 'scheduled' && 'Scheduled'}
-                      {run.status === 'preparation' && 'Preparation Phase'}
-                      {run.status === 'active' && 'Active'}
-                      {run.status === 'completed' && 'Completed'}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {run.status === 'scheduled' && run.scheduled_start_time && 
-                      `Dismissal scheduled for ${new Date(run.scheduled_start_time).toLocaleTimeString()}`}
-                    {run.status === 'preparation' && 'Pre-staging allowed for all modes'}
-                    {run.status === 'active' && 'Dismissal is currently in progress'}
-                    {run.status === 'completed' && 'All dismissal activities have been completed'}
-                  </p>
+            <div className={`flex items-center gap-4 p-4 rounded-lg border ${
+              run.status === 'completed' 
+                ? 'bg-emerald-100 border-emerald-300 dark:bg-emerald-900 dark:border-emerald-600 shadow-lg' 
+                : 'bg-card/50'
+            }`}>
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium">Dismissal Status</h3>
+                  <Badge variant={
+                    run.status === 'scheduled' ? 'outline' :
+                    run.status === 'preparation' ? 'secondary' :
+                    run.status === 'active' ? 'default' :
+                    run.status === 'completed' ? 'success' : 'outline'
+                  }>
+                    {run.status === 'scheduled' && 'Scheduled'}
+                    {run.status === 'preparation' && 'Preparation Phase'}
+                    {run.status === 'active' && 'Active'}
+                    {run.status === 'completed' && 'Completed'}
+                  </Badge>
                 </div>
+                <p className="text-sm text-muted-foreground">
+                  {run.status === 'scheduled' && run.scheduled_start_time && 
+                    `Dismissal scheduled for ${new Date(run.scheduled_start_time).toLocaleTimeString()}`}
+                  {run.status === 'preparation' && 'Pre-staging allowed for all modes'}
+                  {run.status === 'active' && 'Dismissal is currently in progress'}
+                  {run.status === 'completed' && 'All dismissal activities have been completed'}
+                </p>
               </div>
-              <TeacherUsageCard schoolId={schoolId} />
             </div>
           </div>
         )}
@@ -195,6 +192,13 @@ export default function DismissalLauncher() {
               </div>
               {isWalkerCompleted ? "Walker Mode - Completed" : "Walker Mode"}
             </Button>
+          </div>
+        </section>
+
+        {/* Teacher Usage */}
+        <section className="mt-6 max-w-5xl">
+          <div className="w-full">
+            <TeacherUsageCard schoolId={schoolId} />
           </div>
         </section>
 
