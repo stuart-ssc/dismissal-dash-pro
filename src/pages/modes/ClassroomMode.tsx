@@ -379,6 +379,12 @@ export default function ClassroomMode() {
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">
             Classroom Dismissal
           </h1>
+          
+          {/* Mobile/Tablet Exit Button - Below Title */}
+          <div className="mt-4 flex justify-center md:hidden">
+            <ExitModeButton label="Exit Classroom Mode" inHeader />
+          </div>
+          
           <p className="text-muted-foreground mt-2 text-center">
             Groups are automatically displayed based on dismissal timing.
           </p>
@@ -492,6 +498,7 @@ export default function ClassroomMode() {
         )}
       </div>
 
+      {/* Desktop Exit Button - Fixed Position */}
       <ExitModeButton label="Exit Classroom Mode" />
     </div>
   );
