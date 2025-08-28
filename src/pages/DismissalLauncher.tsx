@@ -103,7 +103,7 @@ export default function DismissalLauncher() {
           <div className="mb-6 max-w-5xl">
             <div className={`flex items-center gap-4 p-4 rounded-lg border ${
               run.status === 'completed' 
-                ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/50 dark:border-emerald-800' 
+                ? 'bg-emerald-100 border-emerald-300 dark:bg-emerald-900 dark:border-emerald-600 shadow-lg' 
                 : 'bg-card/50'
             }`}>
               <Clock className="h-5 w-5 text-muted-foreground" />
