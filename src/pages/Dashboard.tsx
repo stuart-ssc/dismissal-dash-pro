@@ -253,14 +253,35 @@ const Dashboard = () => {
             <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Today's Dismissal Time</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">245</div>
-                  <p className="text-xs text-muted-foreground">
-                    +12% from last month
-                  </p>
+                  {planDismissalTime ? (
+                    <>
+                      <div className="text-2xl font-bold">
+                        {new Date(`2000-01-01T${planDismissalTime}`).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Scheduled for today
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/dashboard/dismissal-plans">
+                          Manage Dismissal Plans
+                        </Link>
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        No plan set for today
+                      </p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -454,14 +475,35 @@ const Dashboard = () => {
           <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Today's Dismissal Time</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">245</div>
-                <p className="text-xs text-muted-foreground">
-                  +12% from last month
-                </p>
+                {planDismissalTime ? (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {new Date(`2000-01-01T${planDismissalTime}`).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Scheduled for today
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/dashboard/dismissal-plans">
+                        Manage Dismissal Plans
+                      </Link>
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      No plan set for today
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
