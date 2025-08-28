@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -661,6 +662,19 @@ const Classes = () => {
 
   return (
     <>
+      <Helmet>
+        <title>Dismissal Pro | Class Management</title>
+        <meta name="description" content="Efficiently manage school classes, teachers, and student assignments with Dismissal Pro's comprehensive class management system. Create classes, assign teachers, and organize students." />
+        <meta name="keywords" content="class management, school administration, teacher assignment, student enrollment, grade management, classroom organization" />
+        <link rel="canonical" href={`${window.location.origin}/dashboard/classes`} />
+        <meta property="og:title" content="Dismissal Pro | Class Management" />
+        <meta property="og:description" content="Efficiently manage school classes, teachers, and student assignments with Dismissal Pro's comprehensive class management system." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${window.location.origin}/dashboard/classes`} />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="Dismissal Pro | Class Management" />
+        <meta name="twitter:description" content="Efficiently manage school classes, teachers, and student assignments with Dismissal Pro's comprehensive class management system." />
+      </Helmet>
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
         
         <div className="flex-1 flex flex-col">
