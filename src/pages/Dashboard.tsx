@@ -12,6 +12,7 @@ import Navbar from "@/components/Navbar";
 import SetupChecklistCard from "@/components/SetupChecklistCard";
 import { useSchoolSetupStatus } from "@/hooks/useSchoolSetupStatus";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { format } from "date-fns";
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -125,7 +126,7 @@ const Dashboard = () => {
           const elapsedMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
           
           return {
-            name: `${dismissal.date}`,
+            name: format(new Date(dismissal.date), 'M-dd'),
             elapsed: elapsedMinutes,
             status: dismissal.status
           };
@@ -331,6 +332,12 @@ const Dashboard = () => {
                           <YAxis 
                             fontSize={12}
                             tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            label={{ 
+                              value: 'Minutes', 
+                              angle: -90, 
+                              position: 'insideLeft',
+                              style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
+                            }}
                           />
                           <Tooltip 
                             contentStyle={{
@@ -516,6 +523,12 @@ const Dashboard = () => {
                         <YAxis 
                           fontSize={12}
                           tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          label={{ 
+                            value: 'Minutes', 
+                            angle: -90, 
+                            position: 'insideLeft',
+                            style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
+                          }}
                         />
                         <Tooltip 
                           contentStyle={{
