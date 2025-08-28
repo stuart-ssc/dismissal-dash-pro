@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Users, Calendar, BarChart3, Upload, Pause, Clock } from "lucide-react";
+import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -317,15 +317,11 @@ const Dashboard = () => {
             <SetupChecklistCard statuses={statuses} />
           )}
           {showDismissalControls && (
-            <section aria-label="Dismissal controls" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section aria-label="Dismissal controls">
               <Button asChild size="lg" variant={afterStart ? "default" : "success"} className="w-full h-14 text-base">
                 <Link to="/dashboard/dismissal">
                   {afterStart ? "Dismissal Has Already Begun Today" : "Launch Dismissal"}
                 </Link>
-              </Button>
-              <Button size="lg" variant="softDestructive" className="w-full h-14 text-base">
-                <Pause className="mr-2" />
-                PAUSE DISMISSAL
               </Button>
             </section>
           )}
@@ -552,14 +548,11 @@ const Dashboard = () => {
         </div>
 
         {showDismissalControls && (
-          <section aria-label="Dismissal controls" className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <section aria-label="Dismissal controls" className="mb-8">
             <Button asChild size="lg" variant={afterStart ? "default" : "success"} className="w-full h-14 text-base">
               <Link to="/dashboard/dismissal">
                 {afterStart ? "Dismissal Has Already Begun Today" : "Launch Dismissal"}
               </Link>
-            </Button>
-            <Button size="lg" variant="softDestructive" className="w-full h-14 text-base">
-              Pause
             </Button>
           </section>
         )}
