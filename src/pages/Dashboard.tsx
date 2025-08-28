@@ -14,6 +14,7 @@ import SetupChecklistCard from "@/components/SetupChecklistCard";
 import { useSchoolSetupStatus } from "@/hooks/useSchoolSetupStatus";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
+import { TeacherUsageCard } from "@/components/TeacherUsageCard";
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -329,6 +330,12 @@ const Dashboard = () => {
               </Button>
             </section>
           )}
+          
+          {/* Teacher Usage Card - positioned on the right */}
+          <section aria-label="Teacher Activity" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div></div> {/* Empty left column */}
+            <TeacherUsageCard schoolId={schoolId} />
+          </section>
           <div className="relative">
             {!setupLoading && !isReady && (
               <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
