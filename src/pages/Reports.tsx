@@ -101,7 +101,7 @@ const Reports = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            <div className="h-[300px] w-full relative overflow-hidden">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -115,7 +115,7 @@ const Reports = () => {
                   No dismissal data available for the selected period
                 </div>
               ) : (
-                <ChartContainer config={chartConfig}>
+                <ChartContainer config={chartConfig} className="h-full w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
