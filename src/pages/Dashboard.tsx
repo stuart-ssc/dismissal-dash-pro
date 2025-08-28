@@ -115,6 +115,8 @@ const Dashboard = () => {
           .from('dismissal_runs')
           .select('id, date, status, started_at, ended_at')
           .eq('school_id', schoolId)
+          .not('ended_at', 'is', null)
+          .eq('status', 'completed')
           .order('date', { ascending: false })
           .limit(5);
 
@@ -122,7 +124,7 @@ const Dashboard = () => {
 
         const chartData = data?.map((dismissal, index) => {
           const startTime = new Date(dismissal.started_at);
-          const endTime = dismissal.ended_at ? new Date(dismissal.ended_at) : new Date();
+          const endTime = new Date(dismissal.ended_at);
           const elapsedMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
           
           return {
