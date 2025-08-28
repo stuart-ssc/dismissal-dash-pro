@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -478,6 +479,19 @@ const People = () => {
   if (userRole === 'school_admin') {
     return (
       <>
+        <Helmet>
+          <title>Dismissal Pro | People Management</title>
+          <meta name="description" content="Manage students, teachers, and staff with Dismissal Pro's comprehensive people management system. Add, edit, and organize all school personnel and students efficiently." />
+          <meta name="keywords" content="people management, student management, teacher management, staff administration, school personnel, user management" />
+          <link rel="canonical" href={`${window.location.origin}/dashboard/people`} />
+          <meta property="og:title" content="Dismissal Pro | People Management" />
+          <meta property="og:description" content="Manage students, teachers, and staff with Dismissal Pro's comprehensive people management system." />
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={`${window.location.origin}/dashboard/people`} />
+          <meta name="twitter:card" content="summary" />
+          <meta name="twitter:title" content="Dismissal Pro | People Management" />
+          <meta name="twitter:description" content="Manage students, teachers, and staff with Dismissal Pro's comprehensive people management system." />
+        </Helmet>
         <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
           <div className="flex items-center gap-4">
             <SidebarTrigger />
@@ -800,7 +814,21 @@ const People = () => {
 
   // For non-admin users, show the original layout
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
+    <>
+      <Helmet>
+        <title>Dismissal Pro | People Management</title>
+        <meta name="description" content="Manage students, teachers, and staff with Dismissal Pro's comprehensive people management system. Add, edit, and organize all school personnel and students efficiently." />
+        <meta name="keywords" content="people management, student management, teacher management, staff administration, school personnel, user management" />
+        <link rel="canonical" href={`${window.location.origin}/dashboard/people`} />
+        <meta property="og:title" content="Dismissal Pro | People Management" />
+        <meta property="og:description" content="Manage students, teachers, and staff with Dismissal Pro's comprehensive people management system." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${window.location.origin}/dashboard/people`} />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="Dismissal Pro | People Management" />
+        <meta name="twitter:description" content="Manage students, teachers, and staff with Dismissal Pro's comprehensive people management system." />
+      </Helmet>
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
       <Navbar />
       
       <div className="container mx-auto px-4 py-16">
@@ -1092,7 +1120,8 @@ const People = () => {
           />
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
