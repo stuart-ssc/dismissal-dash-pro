@@ -1316,6 +1316,15 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      update_dismissal_run_times: {
+        Args: {
+          new_dismissal_time: string
+          preparation_minutes?: number
+          run_id: string
+          school_timezone?: string
+        }
+        Returns: boolean
+      }
       validate_school_impersonation: {
         Args: { target_school_id: number }
         Returns: boolean

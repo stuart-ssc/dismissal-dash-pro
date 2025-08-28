@@ -258,6 +258,10 @@ export default function DismissalPlans() {
         school_id: schoolIdToUse,
       };
 
+      // Check if dismissal time changed for existing plan
+      const dismissalTimeChanged = editingPlan && 
+        editingPlan.dismissal_time !== planData.dismissal_time;
+
       if (editingPlan) {
         const { error } = await supabase
           .from('dismissal_plans')
@@ -265,6 +269,48 @@ export default function DismissalPlans() {
           .eq('id', editingPlan.id);
 
         if (error) throw error;
+
+        // If dismissal time changed, update today's run if it exists and uses this plan
+        if (dismissalTimeChanged && planData.dismissal_time) {
+          const today = new Date().toISOString().slice(0, 10);
+          
+          // Get today's run for this school
+          const { data: todayRun } = await supabase
+            .from('dismissal_runs')
+            .select('id, plan_id, status, started_by')
+            .eq('school_id', schoolIdToUse)
+            .eq('date', today)
+            .maybeSingle();
+
+          // Update run times if it exists and uses this plan (or if this is the default plan)
+          if (todayRun && (todayRun.plan_id === editingPlan.id || 
+              (data.is_default && !todayRun.plan_id))) {
+            
+            // Get school timezone for calculation
+            const { data: school } = await supabase
+              .from('schools')
+              .select('timezone, preparation_time_minutes')
+              .eq('id', schoolIdToUse)
+              .single();
+
+            const { data: updateResult, error: updateError } = await supabase
+              .rpc('update_dismissal_run_times', {
+                run_id: todayRun.id,
+                new_dismissal_time: planData.dismissal_time,
+                school_timezone: school?.timezone || 'America/New_York',
+                preparation_minutes: school?.preparation_time_minutes || 5
+              });
+
+            if (updateError) {
+              console.warn('Failed to update run times:', updateError);
+            } else if (updateResult) {
+              toast({
+                title: "Run Updated",
+                description: "Today's dismissal run times have been updated to match the new plan schedule",
+              });
+            }
+          }
+        }
 
         toast({
           title: "Success",
