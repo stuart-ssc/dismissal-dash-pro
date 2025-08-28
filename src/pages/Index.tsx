@@ -4,8 +4,11 @@ import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle, Clock, Shield, Users, BarChart3 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import heroImage from "@/assets/hero-dismissal.jpg";
+import { useSEO } from "@/hooks/useSEO";
 
 const Index = () => {
+  const SEO = useSEO();
+  
   const features = [
     {
       icon: <Clock className="h-6 w-6" />,
@@ -39,7 +42,9 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
+    <>
+      <SEO />
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
       <Navbar />
       
       {/* Hero Section */}
@@ -170,7 +175,8 @@ const Index = () => {
           </Card>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 };
 

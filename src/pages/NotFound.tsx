@@ -1,8 +1,14 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useSEO } from "@/hooks/useSEO";
 
 const NotFound = () => {
   const location = useLocation();
+  const SEO = useSEO({
+    title: '404 - Page Not Found',
+    description: 'The page you are looking for could not be found. Return to Dismissal Pro to continue managing your school dismissals.',
+    keywords: '404, page not found, error page'
+  });
 
   useEffect(() => {
     console.error(
@@ -12,7 +18,9 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <>
+      <SEO />
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">404</h1>
         <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
@@ -20,7 +28,8 @@ const NotFound = () => {
           Return to Home
         </a>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

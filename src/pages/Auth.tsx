@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ interface SignUpForm {
 const Auth = () => {
   const { signIn, signUp, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const SEO = useSEO();
   const [isLoading, setIsLoading] = useState(false);
   const [schools, setSchools] = useState<{ id: number; school_name: string }[]>([]);
 
@@ -78,7 +80,9 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
+    <>
+      <SEO />
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
       <Navbar />
       
       <div className="container mx-auto px-4 py-16 flex items-center justify-center">
@@ -262,7 +266,8 @@ const Auth = () => {
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSEO } from "@/hooks/useSEO";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,6 +106,7 @@ const getBrowserTimezone = (): string => {
 const Settings = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const SEO = useSEO();
   const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -483,6 +485,7 @@ const Settings = () => {
 
   return (
     <>
+      <SEO />
       <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <SidebarTrigger />

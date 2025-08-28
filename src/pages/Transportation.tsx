@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSEO } from "@/hooks/useSEO";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,6 +99,7 @@ interface CarLineRecord {
 const Transportation = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
+  const SEO = useSEO();
   const [transportation, setTransportation] = useState<TransportationRecord[]>([]);
   const [filteredTransportation, setFilteredTransportation] = useState<TransportationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1769,6 +1771,7 @@ const Transportation = () => {
 
   return (
     <>
+      <SEO />
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
         
         <div className="flex-1 flex flex-col">

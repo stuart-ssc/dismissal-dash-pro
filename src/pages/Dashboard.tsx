@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSEO } from "@/hooks/useSEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Button } from "@/components/ui/button";
@@ -19,58 +20,8 @@ const Dashboard = () => {
   const [schoolName, setSchoolName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
-
-  // Set SEO meta information
-  useEffect(() => {
-    document.title = "Dismissal Pro | Dashboard";
-    
-    // Set meta description
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute('content', 'Manage your school dismissals efficiently with Dismissal Pro dashboard. View real-time dismissal data, students count, and performance analytics.');
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = 'description';
-      meta.content = 'Manage your school dismissals efficiently with Dismissal Pro dashboard. View real-time dismissal data, students count, and performance analytics.';
-      document.head.appendChild(meta);
-    }
-
-    // Set canonical URL
-    const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) {
-      canonical.setAttribute('href', `${window.location.origin}/dashboard`);
-    } else {
-      const link = document.createElement('link');
-      link.rel = 'canonical';
-      link.href = `${window.location.origin}/dashboard`;
-      document.head.appendChild(link);
-    }
-
-    // Set viewport meta tag if not exists
-    const viewport = document.querySelector('meta[name="viewport"]');
-    if (!viewport) {
-      const meta = document.createElement('meta');
-      meta.name = 'viewport';
-      meta.content = 'width=device-width, initial-scale=1.0';
-      document.head.appendChild(meta);
-    }
-
-    // Add robots meta for dashboard pages (typically should not be indexed)
-    const robots = document.querySelector('meta[name="robots"]');
-    if (robots) {
-      robots.setAttribute('content', 'noindex, nofollow');
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = 'robots';
-      meta.content = 'noindex, nofollow';
-      document.head.appendChild(meta);
-    }
-
-    // Cleanup function to restore default title when component unmounts
-    return () => {
-      document.title = "Dismissal Pro";
-    };
-  }, []);
+  
+  const SEO = useSEO();
   const { run, schoolId, isLoading: runLoading } = useTodayDismissalRun();
   const [prepMinutes, setPrepMinutes] = useState<number | null>(null);
   const [planDismissalTime, setPlanDismissalTime] = useState<string | null>(null);
@@ -343,6 +294,7 @@ const Dashboard = () => {
   if (userRole === 'school_admin') {
     return (
       <>
+        <SEO />
         <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
           <div className="flex items-center gap-4">
             <SidebarTrigger />
@@ -577,7 +529,9 @@ const Dashboard = () => {
 
   // For non-admin users, show the original layout
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
+    <>
+      <SEO />
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
       <Navbar />
       
       <div className="container mx-auto px-4 py-16">
@@ -802,7 +756,8 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
