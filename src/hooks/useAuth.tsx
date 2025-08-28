@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isRateLimited, isValidEmail } from '@/lib/security';
 
 interface AuthContextType {
   user: User | null;
@@ -84,6 +85,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string, schoolId: number, role: string) => {
     try {
+      // Rate limiting check
+      const clientId = `${email}-signup`;
+      if (isRateLimited(clientId, 3, 300000)) { // 3 attempts per 5 minutes
+        const error = { message: 'Too many sign-up attempts. Please try again later.' };
+        toast({
+          title: "Rate limit exceeded",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      // Input validation
+      if (!isValidEmail(email)) {
+        const error = { message: 'Please enter a valid email address.' };
+        toast({
+          title: "Invalid email",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
       const redirectUrl = `${window.location.origin}/`;
       
       const { data, error } = await supabase.auth.signUp({
@@ -149,6 +173,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Rate limiting check
+      const clientId = `${email}-signin`;
+      if (isRateLimited(clientId, 5, 300000)) { // 5 attempts per 5 minutes
+        const error = { message: 'Too many sign-in attempts. Please try again later.' };
+        toast({
+          title: "Rate limit exceeded",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      // Input validation
+      if (!isValidEmail(email)) {
+        const error = { message: 'Please enter a valid email address.' };
+        toast({
+          title: "Invalid email",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
