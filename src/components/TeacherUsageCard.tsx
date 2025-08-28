@@ -38,13 +38,17 @@ export function TeacherUsageCard({ schoolId }: TeacherUsageCardProps) {
   if (loading) {
     return (
       <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Teacher Usage</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground animate-pulse" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold animate-pulse">--</div>
-          <p className="text-xs text-muted-foreground">Loading...</p>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground animate-pulse" />
+                <span className="text-sm font-medium">Teacher Usage</span>
+              </div>
+              <div className="text-xl font-bold animate-pulse">--</div>
+              <div className="text-sm text-muted-foreground">Loading...</div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -56,20 +60,26 @@ export function TeacherUsageCard({ schoolId }: TeacherUsageCardProps) {
         className="shadow-elevated border-0 bg-card/80 backdrop-blur cursor-pointer transition-colors hover:bg-card/90"
         onClick={() => setShowMonitor(true)}
       >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Teacher Usage</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {activeCount} active
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Teacher Usage</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-xl font-bold">
+                  {activeCount} active
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {activeCount > 0 ? getActiveModesSummary() : 'No active teachers'}
+                </div>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" className="h-8 px-3 text-xs">
+              View Details →
+            </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {activeCount > 0 ? getActiveModesSummary() : 'No active teachers'}
-          </p>
-          <Button variant="ghost" size="sm" className="mt-2 h-8 px-2 text-xs">
-            View Details →
-          </Button>
         </CardContent>
       </Card>
 
