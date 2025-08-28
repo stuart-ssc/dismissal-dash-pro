@@ -117,7 +117,7 @@ const Dashboard = () => {
           .eq('school_id', schoolId)
           .not('ended_at', 'is', null)
           .eq('status', 'completed')
-          .order('date', { ascending: false })
+          .order('date', { ascending: true })
           .limit(5);
 
         if (error) throw error;
