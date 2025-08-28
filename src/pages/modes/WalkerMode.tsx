@@ -37,6 +37,7 @@ export default function WalkerMode() {
   
   // Check if location is completed
   const [locationCompleted, setLocationCompleted] = useState(false);
+  const [completedLocations, setCompletedLocations] = useState<Set<string>>(new Set());
   const [activeTeachers, setActiveTeachers] = useState<string[]>([]);
 
   const runId = run?.id;
@@ -50,30 +51,40 @@ export default function WalkerMode() {
         .eq("school_id", schoolId)
         .order("location_name", { ascending: true });
       setLocations((data || []) as any);
+      
+      // Load completed locations
+      if (runId) {
+        loadCompletedLocations();
+      }
     };
     loadLocations();
-  }, [schoolId]);
+  }, [schoolId, runId]);
+
+  // Load completed locations for today's dismissal run
+  const loadCompletedLocations = async () => {
+    if (!runId) return;
+    
+    const { data } = await supabase
+      .from("walker_location_completions")
+      .select("walker_location_id")
+      .eq("dismissal_run_id", runId);
+    
+    const completed = new Set((data || []).map(item => item.walker_location_id));
+    setCompletedLocations(completed);
+  };
 
   // Start or reuse session when a location is selected - allows multiple sessions per location
   const startSession = async (locId: string) => {
     if (!runId || !schoolId) return;
 
     // Check if this location is already completed
-    const { data: completedCheck } = await supabase
-      .from("walker_location_completions")
-      .select("id")
-      .eq("dismissal_run_id", runId)
-      .eq("walker_location_id", locId)
-      .limit(1);
-
-    if (completedCheck && completedCheck.length > 0) {
-      setLocationCompleted(true);
+    if (completedLocations.has(locId)) {
       toast({
         title: "Location Complete",
-        description: "This walker location has already been completed.",
+        description: "This walker location has already been completed. Please select a different location.",
         variant: "destructive",
       });
-      navigate("/dashboard/dismissal", { replace: true });
+      setSelectedLoc("");
       return;
     }
 
@@ -322,6 +333,9 @@ export default function WalkerMode() {
         },
         (payload) => {
           const completion = payload.new as any;
+          // Update completed locations state
+          setCompletedLocations(prev => new Set([...prev, completion.walker_location_id]));
+          
           if (completion.walker_location_id === selectedLoc) {
             setLocationCompleted(true);
             toast({
@@ -331,6 +345,11 @@ export default function WalkerMode() {
             setTimeout(() => {
               navigate("/dashboard/dismissal", { replace: true });
             }, 2000);
+          } else {
+            toast({
+              title: "Location Complete",
+              description: `${locations.find(loc => loc.id === completion.walker_location_id)?.location_name || 'A walker location'} has been completed by another teacher.`,
+            });
           }
         }
       )
@@ -552,19 +571,30 @@ export default function WalkerMode() {
                 <Select
                   value={selectedLoc}
                   onValueChange={(v) => {
-                    setSelectedLoc(v);
-                    startSession(v);
+                    if (!completedLocations.has(v)) {
+                      setSelectedLoc(v);
+                      startSession(v);
+                    }
                   }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select walker location" />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.location_name}
-                      </SelectItem>
-                    ))}
+                    {locations.map((loc) => {
+                      const isCompleted = completedLocations.has(loc.id);
+                      return (
+                        <SelectItem 
+                          key={loc.id} 
+                          value={loc.id}
+                          disabled={isCompleted}
+                          className={isCompleted ? "text-muted-foreground" : ""}
+                        >
+                          {loc.location_name}
+                          {isCompleted && " - Already Completed Today"}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

@@ -41,6 +41,7 @@ export default function CarLineMode() {
   
   // Check if location is completed
   const [locationCompleted, setLocationCompleted] = useState(false);
+  const [completedLocations, setCompletedLocations] = useState<Set<string>>(new Set());
   const [activeTeachers, setActiveTeachers] = useState<string[]>([]);
 
   const runId = run?.id;
@@ -56,31 +57,56 @@ export default function CarLineMode() {
       const lines = (data || []) as any;
       setCarLines(lines);
       
+      // Load completed locations
+      if (runId) {
+        loadCompletedLocations();
+      }
+      
       // Auto-select if there's only one car line and none is selected yet
-      if (lines.length === 1 && !selectedLine) {
-        setSelectedLine(lines[0].id);
-        startSession(lines[0].id);
+      if (lines.length === 1 && !selectedLine && runId) {
+        const completions = await checkCompletedLocations();
+        if (!completions.has(lines[0].id)) {
+          setSelectedLine(lines[0].id);
+          startSession(lines[0].id);
+        }
       }
     };
     loadLines();
-  }, [schoolId]);
+  }, [schoolId, runId]);
+
+  // Load completed locations for today's dismissal run
+  const loadCompletedLocations = async () => {
+    if (!runId) return;
+    
+    const { data } = await supabase
+      .from("car_line_completions")
+      .select("car_line_id")
+      .eq("dismissal_run_id", runId);
+    
+    const completed = new Set((data || []).map(item => item.car_line_id));
+    setCompletedLocations(completed);
+  };
+
+  // Helper function to check completed locations
+  const checkCompletedLocations = async () => {
+    if (!runId) return new Set();
+    
+    const { data } = await supabase
+      .from("car_line_completions")
+      .select("car_line_id")
+      .eq("dismissal_run_id", runId);
+    
+    return new Set((data || []).map(item => item.car_line_id));
+  };
 
   // Start or reuse session when a line is selected - allows multiple sessions per location
   const startSession = async (lineId: string) => {
     if (!runId || !schoolId) return;
 
     // Check if this car line is already completed
-    const { data: completedCheck } = await supabase
-      .from("car_line_completions")
-      .select("id")
-      .eq("dismissal_run_id", runId)
-      .eq("car_line_id", lineId)
-      .limit(1);
-
-    if (completedCheck && completedCheck.length > 0) {
-      setLocationCompleted(true);
-      toast.error("This car line has already been completed.");
-      navigate("/dashboard/dismissal", { replace: true });
+    if (completedLocations.has(lineId)) {
+      toast.error("This car line has already been completed. Please select a different location.");
+      setSelectedLine("");
       return;
     }
 
@@ -327,12 +353,17 @@ export default function CarLineMode() {
         },
         (payload) => {
           const completion = payload.new as any;
+          // Update completed locations state
+          setCompletedLocations(prev => new Set([...prev, completion.car_line_id]));
+          
           if (completion.car_line_id === selectedLine) {
             setLocationCompleted(true);
             toast.info("This car line has been completed by another teacher. Redirecting...");
             setTimeout(() => {
               navigate("/dashboard/dismissal", { replace: true });
             }, 2000);
+          } else {
+            toast.info(`${carLines.find(line => line.id === completion.car_line_id)?.line_name || 'A car line'} has been completed by another teacher.`);
           }
         }
       )
@@ -575,24 +606,35 @@ export default function CarLineMode() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                 <div className="w-full sm:w-80">
                   <label className="text-sm text-muted-foreground">Car line location</label>
-                  <Select
-                    value={selectedLine}
-                    onValueChange={(v) => {
-                      setSelectedLine(v);
-                      startSession(v);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select car line" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {carLines.map((cl) => (
-                        <SelectItem key={cl.id} value={cl.id}>
-                          {cl.line_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                   <Select
+                     value={selectedLine}
+                     onValueChange={(v) => {
+                       if (!completedLocations.has(v)) {
+                         setSelectedLine(v);
+                         startSession(v);
+                       }
+                     }}
+                   >
+                     <SelectTrigger>
+                       <SelectValue placeholder="Select car line" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       {carLines.map((cl) => {
+                         const isCompleted = completedLocations.has(cl.id);
+                         return (
+                           <SelectItem 
+                             key={cl.id} 
+                             value={cl.id}
+                             disabled={isCompleted}
+                             className={isCompleted ? "text-muted-foreground" : ""}
+                           >
+                             {cl.line_name}
+                             {isCompleted && " - Already Completed Today"}
+                           </SelectItem>
+                         );
+                       })}
+                     </SelectContent>
+                   </Select>
                 </div>
                 {session && (
                   <div className="text-sm text-muted-foreground">
