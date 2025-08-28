@@ -27,6 +27,7 @@ const Dashboard = () => {
   const [recentDismissals, setRecentDismissals] = useState<any[]>([]);
   const [avgDismissals, setAvgDismissals] = useState<any[]>([]);
   const [studentCount, setStudentCount] = useState<number>(0);
+  const [fastestDismissal, setFastestDismissal] = useState<{date: string, duration: number} | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -196,6 +197,63 @@ const Dashboard = () => {
     fetchStudentCount();
   }, [schoolId]);
 
+  // Fetch fastest dismissal from current quarter
+  useEffect(() => {
+    const fetchFastestDismissal = async () => {
+      if (!schoolId) return;
+      
+      try {
+        // Calculate current quarter start date
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+        const quarterStartMonth = Math.floor(currentMonth / 3) * 3;
+        const quarterStartDate = new Date(currentYear, quarterStartMonth, 1);
+        const quarterStartDateStr = quarterStartDate.toISOString().split('T')[0];
+
+        const { data, error } = await supabase
+          .from('dismissal_runs')
+          .select('date, started_at, ended_at')
+          .eq('school_id', schoolId)
+          .eq('status', 'completed')
+          .not('ended_at', 'is', null)
+          .gte('date', quarterStartDateStr)
+          .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          // Find the fastest dismissal (shortest duration)
+          let fastest = null;
+          let shortestDuration = Infinity;
+
+          data.forEach((dismissal) => {
+            const startTime = new Date(dismissal.started_at);
+            const endTime = new Date(dismissal.ended_at);
+            const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+            
+            if (duration < shortestDuration) {
+              shortestDuration = duration;
+              fastest = {
+                date: dismissal.date,
+                duration: duration
+              };
+            }
+          });
+
+          setFastestDismissal(fastest);
+        } else {
+          setFastestDismissal(null);
+        }
+      } catch (error) {
+        console.error('Error fetching fastest dismissal:', error);
+        setFastestDismissal(null);
+      }
+    };
+
+    fetchFastestDismissal();
+  }, [schoolId]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -344,14 +402,25 @@ const Dashboard = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Efficiency Rate</CardTitle>
+                  <CardTitle className="text-sm font-medium">Fastest Dismissal This Qtr</CardTitle>
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">98.2%</div>
-                  <p className="text-xs text-muted-foreground">
-                    +2.1% from last week
-                  </p>
+                  {fastestDismissal ? (
+                    <>
+                      <div className="text-2xl font-bold">{fastestDismissal.duration} min</div>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(fastestDismissal.date), 'MMM d, yyyy')}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold">--</div>
+                      <p className="text-xs text-muted-foreground">
+                        No data this quarter
+                      </p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -566,14 +635,25 @@ const Dashboard = () => {
 
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Efficiency Rate</CardTitle>
+                <CardTitle className="text-sm font-medium">Fastest Dismissal This Qtr</CardTitle>
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">98.2%</div>
-                <p className="text-xs text-muted-foreground">
-                  +2.1% from last week
-                </p>
+                {fastestDismissal ? (
+                  <>
+                    <div className="text-2xl font-bold">{fastestDismissal.duration} min</div>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(fastestDismissal.date), 'MMM d, yyyy')}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">--</div>
+                    <p className="text-xs text-muted-foreground">
+                      No data this quarter
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
