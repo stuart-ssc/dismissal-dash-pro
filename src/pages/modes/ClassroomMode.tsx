@@ -381,7 +381,7 @@ export default function ClassroomMode() {
           </h1>
           
           {/* Mobile/Tablet Exit Button - Below Title */}
-          <div className="mt-4 flex justify-center md:hidden">
+          <div className="mt-4 flex justify-center xl:hidden">
             <ExitModeButton label="Exit Classroom Mode" inHeader />
           </div>
           

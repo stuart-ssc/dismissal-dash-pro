@@ -17,7 +17,7 @@ const ExitModeButton = ({ to = "/dashboard/dismissal", label, inHeader = false }
         variant="destructive" 
         size="lg"
         onClick={() => navigate(to)}
-        className="shadow-lg font-semibold px-6 py-3 w-full md:w-auto"
+        className="shadow-lg font-semibold px-6 py-3 w-full xl:w-auto"
       >
         {label}
       </Button>
@@ -25,7 +25,7 @@ const ExitModeButton = ({ to = "/dashboard/dismissal", label, inHeader = false }
   }
   
   return (
-    <div className="fixed top-4 right-4 z-50 hidden md:block">
+    <div className="fixed top-4 right-4 z-50 hidden xl:block">
       <Button 
         variant="destructive" 
         size="lg"
