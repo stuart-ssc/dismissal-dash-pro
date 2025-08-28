@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import SetupChecklistCard from "@/components/SetupChecklistCard";
 import { useSchoolSetupStatus } from "@/hooks/useSchoolSetupStatus";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const Dashboard = () => {
   const [planDismissalTime, setPlanDismissalTime] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
   const { loading: setupLoading, isReady, statuses } = useSchoolSetupStatus();
+  const [recentDismissals, setRecentDismissals] = useState<any[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -101,6 +103,42 @@ const Dashboard = () => {
       setPlanDismissalTime((data as any)?.dismissal_time ?? null);
     })();
   }, [run?.plan_id]);
+
+  // Fetch recent dismissals for chart
+  useEffect(() => {
+    const fetchRecentDismissals = async () => {
+      if (!schoolId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('dismissal_runs')
+          .select('id, date, status, started_at, ended_at')
+          .eq('school_id', schoolId)
+          .order('date', { ascending: false })
+          .limit(5);
+
+        if (error) throw error;
+
+        const chartData = data?.map((dismissal, index) => {
+          const startTime = new Date(dismissal.started_at);
+          const endTime = dismissal.ended_at ? new Date(dismissal.ended_at) : new Date();
+          const elapsedMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+          
+          return {
+            name: `${dismissal.date}`,
+            elapsed: elapsedMinutes,
+            status: dismissal.status
+          };
+        }) || [];
+
+        setRecentDismissals(chartData);
+      } catch (error) {
+        console.error('Error fetching recent dismissals:', error);
+      }
+    };
+
+    fetchRecentDismissals();
+  }, [schoolId]);
 
   if (loading) {
     return (
@@ -274,35 +312,48 @@ const Dashboard = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
+                  <CardTitle>Recent Dismissals</CardTitle>
                   <CardDescription>
-                    Latest updates and notifications
+                    Elapsed time for the 5 most recent dismissals (minutes)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Dismissal plan updated</p>
-                        <p className="text-xs text-muted-foreground">2 minutes ago</p>
-                      </div>
+                  {recentDismissals.length > 0 ? (
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={recentDismissals}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="name" 
+                            fontSize={12}
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          />
+                          <YAxis 
+                            fontSize={12}
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          />
+                          <Tooltip 
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '6px'
+                            }}
+                            formatter={(value: number) => [`${value} min`, 'Elapsed Time']}
+                            labelFormatter={(label) => `Date: ${label}`}
+                          />
+                          <Bar 
+                            dataKey="elapsed" 
+                            fill="hsl(var(--primary))"
+                            radius={[2, 2, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">New parent registered</p>
-                        <p className="text-xs text-muted-foreground">1 hour ago</p>
-                      </div>
+                  ) : (
+                    <div className="h-48 flex items-center justify-center text-muted-foreground">
+                      <p className="text-sm">No recent dismissals found</p>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="w-2 h-2 bg-muted rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Weekly report generated</p>
-                        <p className="text-xs text-muted-foreground">3 hours ago</p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -446,35 +497,48 @@ const Dashboard = () => {
 
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle>Recent Dismissals</CardTitle>
                 <CardDescription>
-                  Latest updates and notifications
+                  Elapsed time for the 5 most recent dismissals (minutes)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-2 h-2 bg-primary rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Dismissal plan updated</p>
-                      <p className="text-xs text-muted-foreground">2 minutes ago</p>
-                    </div>
+                {recentDismissals.length > 0 ? (
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={recentDismissals}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="name" 
+                          fontSize={12}
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <YAxis 
+                          fontSize={12}
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '6px'
+                          }}
+                          formatter={(value: number) => [`${value} min`, 'Elapsed Time']}
+                          labelFormatter={(label) => `Date: ${label}`}
+                        />
+                        <Bar 
+                          dataKey="elapsed" 
+                          fill="hsl(var(--primary))"
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">New parent registered</p>
-                      <p className="text-xs text-muted-foreground">1 hour ago</p>
-                    </div>
+                ) : (
+                  <div className="h-48 flex items-center justify-center text-muted-foreground">
+                    <p className="text-sm">No recent dismissals found</p>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-2 h-2 bg-muted rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Weekly report generated</p>
-                      <p className="text-xs text-muted-foreground">3 hours ago</p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
