@@ -26,6 +26,7 @@ const Dashboard = () => {
   const { loading: setupLoading, isReady, statuses } = useSchoolSetupStatus();
   const [recentDismissals, setRecentDismissals] = useState<any[]>([]);
   const [avgDismissals, setAvgDismissals] = useState<any[]>([]);
+  const [studentCount, setStudentCount] = useState<number>(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -173,6 +174,28 @@ const Dashboard = () => {
     fetchRecentDismissals();
   }, [schoolId]);
 
+  // Fetch student count for the school
+  useEffect(() => {
+    const fetchStudentCount = async () => {
+      if (!schoolId) return;
+      
+      try {
+        const { count, error } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId);
+
+        if (error) throw error;
+        setStudentCount(count || 0);
+      } catch (error) {
+        console.error('Error fetching student count:', error);
+        setStudentCount(0);
+      }
+    };
+
+    fetchStudentCount();
+  }, [schoolId]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -287,13 +310,13 @@ const Dashboard = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Today's Dismissals</CardTitle>
-                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Students</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">89</div>
+                  <div className="text-2xl font-bold">{studentCount}</div>
                   <p className="text-xs text-muted-foreground">
-                    Active dismissals
+                    Total students in school
                   </p>
                 </CardContent>
               </Card>
@@ -509,13 +532,13 @@ const Dashboard = () => {
 
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Today's Dismissals</CardTitle>
-                <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Students</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">89</div>
+                <div className="text-2xl font-bold">{studentCount}</div>
                 <p className="text-xs text-muted-foreground">
-                  Active dismissals
+                  Total students in school
                 </p>
               </CardContent>
             </Card>
