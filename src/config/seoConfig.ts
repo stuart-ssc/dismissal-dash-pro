@@ -61,6 +61,12 @@ export const seoConfig: Record<string, SEOConfig> = {
     keywords: 'walker locations, walking dismissal, student walkers, safe routes, walker management',
     robots: 'noindex, nofollow'
   },
+  '/dashboard/reports': {
+    title: 'Reports',
+    description: 'Analyze dismissal performance with comprehensive reports and analytics. View dismissal trends, timing data, and operational insights.',
+    keywords: 'dismissal reports, analytics, performance metrics, dismissal trends, operational insights, data analysis',
+    robots: 'noindex, nofollow'
+  },
   '/dashboard/import': {
     title: 'Import Data',
     description: 'Import student and staff data into Dismissal Pro. Bulk upload rosters, transportation assignments, and school information.',
