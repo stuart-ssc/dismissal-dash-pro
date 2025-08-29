@@ -637,11 +637,12 @@ const People = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Classes</TableHead>
-                  <TableHead>Actions</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Grade</TableHead>
+                        <TableHead>Transportation</TableHead>
+                        <TableHead>Classes</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -656,8 +657,9 @@ const People = () => {
                               {person.role}
                             </Badge>
                           </TableCell>
-                           <TableCell>{person.grade || '-'}</TableCell>
-                           <TableCell>
+                          <TableCell>{person.grade || '-'}</TableCell>
+                          <TableCell>{person.transportation || '-'}</TableCell>
+                          <TableCell>
                             {person.classes.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
                                 {person.classes.map((className, index) => (
@@ -952,10 +954,11 @@ const People = () => {
               <Table>
                   <TableHeader>
                     <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Classes</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Transportation</TableHead>
+                      <TableHead>Classes</TableHead>
                       {userRole === 'school_admin' && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -971,8 +974,9 @@ const People = () => {
                           {person.role}
                         </Badge>
                       </TableCell>
-                       <TableCell>{person.grade || '-'}</TableCell>
-                       <TableCell>
+                      <TableCell>{person.grade || '-'}</TableCell>
+                      <TableCell>{person.transportation || '-'}</TableCell>
+                      <TableCell>
                         {person.classes.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {person.classes.map((className, index) => (
