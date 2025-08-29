@@ -402,7 +402,11 @@ const People = () => {
       if (filterRole !== 'all' && person.role !== filterRole) return false;
       if (filterGrade !== 'all' && person.grade !== filterGrade) return false;
       if (filterClass !== 'all' && !person.classes.includes(filterClass)) return false;
-      if (filterTransportation !== 'all' && person.transportation !== filterTransportation) return false;
+      if (filterTransportation !== 'all') {
+        // For specific transportation filters, only include if transportation matches exactly
+        // Students without transportation (undefined) should only appear when filterTransportation is 'all'
+        if (person.transportation !== filterTransportation) return false;
+      }
       return true;
     })
     .sort((a, b) => {
