@@ -44,8 +44,6 @@ const dismissalFormSchema = z.object({
   timezone: z.string().min(1, "Timezone is required"),
   preparation_time_minutes: z.number().min(1).max(60),
   auto_dismissal_enabled: z.boolean(),
-  walkers_enabled: z.boolean(),
-  car_lines_enabled: z.boolean(),
 });
 
 const notificationFormSchema = z.object({
@@ -72,8 +70,6 @@ interface SchoolData {
   timezone?: string;
   preparation_time_minutes?: number;
   auto_dismissal_enabled?: boolean;
-  walkers_enabled?: boolean;
-  car_lines_enabled?: boolean;
   email_notifications_enabled?: boolean;
   sms_notifications_enabled?: boolean;
   parent_notifications_enabled?: boolean;
@@ -131,8 +127,6 @@ const Settings = () => {
       timezone: getBrowserTimezone(),
       preparation_time_minutes: 5,
       auto_dismissal_enabled: false,
-      walkers_enabled: true,
-      car_lines_enabled: true,
     },
   });
 
@@ -214,8 +208,6 @@ const Settings = () => {
             timezone: school.timezone || getBrowserTimezone(),
             preparation_time_minutes: school.preparation_time_minutes || 5,
             auto_dismissal_enabled: school.auto_dismissal_enabled || false,
-            walkers_enabled: school.walkers_enabled !== false,
-            car_lines_enabled: school.car_lines_enabled !== false,
           });
 
           notificationForm.reset({
@@ -394,8 +386,6 @@ const Settings = () => {
           timezone: values.timezone,
           preparation_time_minutes: values.preparation_time_minutes,
           auto_dismissal_enabled: values.auto_dismissal_enabled,
-          walkers_enabled: values.walkers_enabled,
-          car_lines_enabled: values.car_lines_enabled,
           updated_at: new Date().toISOString(),
         })
         .eq('id', schoolData.id);
@@ -729,64 +719,6 @@ const Settings = () => {
                           </FormItem>
                         )}
                       />
-
-                      <div className="flex items-center justify-between">
-                        <FormField
-                          control={dismissalForm.control}
-                          name="walkers_enabled"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl>
-                                <Switch 
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormLabel>Enable Walkers</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                        {dismissalForm.watch('walkers_enabled') && (
-                          <Button 
-                            type="button"
-                            variant="link" 
-                            size="sm"
-                            onClick={() => navigate('/dashboard/walker-locations')}
-                            className="h-auto p-0 text-primary hover:text-primary/80"
-                          >
-                            Manage Walker Locations
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <FormField
-                          control={dismissalForm.control}
-                          name="car_lines_enabled"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl>
-                                <Switch 
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormLabel>Enable Car Lines</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                        {dismissalForm.watch('car_lines_enabled') && (
-                          <Button 
-                            type="button"
-                            variant="link" 
-                            size="sm"
-                            onClick={() => navigate('/dashboard/car-lines')}
-                            className="h-auto p-0 text-primary hover:text-primary/80"
-                          >
-                            Manage Car Lines
-                          </Button>
-                        )}
-                      </div>
 
                       <Button type="submit" className="w-full">
                         Save Settings

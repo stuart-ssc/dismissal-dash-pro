@@ -42,8 +42,6 @@ interface SchoolData {
   primary_color: string;
   secondary_color: string;
   school_logo?: string;
-  walkers_enabled?: boolean;
-  car_lines_enabled?: boolean;
 }
 
 const Settings = () => {
@@ -299,38 +297,6 @@ const Settings = () => {
             
             <div className="border-t pt-4 space-y-4">
               <h4 className="font-medium">Transportation Options</h4>
-              
-              {schoolData?.walkers_enabled && (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Walker Locations</Label>
-                    <p className="text-sm text-muted-foreground">Manage walker pickup locations</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/dashboard/walker-locations')}
-                  >
-                    Manage
-                  </Button>
-                </div>
-              )}
-              
-              {schoolData?.car_lines_enabled && (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Car Lines</Label>
-                    <p className="text-sm text-muted-foreground">Manage car pickup lines</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/dashboard/car-lines')}
-                  >
-                    Manage
-                  </Button>
-                </div>
-              )}
             </div>
             
             <Button>Save Settings</Button>
