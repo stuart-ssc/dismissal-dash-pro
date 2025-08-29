@@ -32,6 +32,7 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
   const [availableBuses, setAvailableBuses] = useState<Array<{ id: string; bus_number: string }>>([]);
   const [availableCarLines, setAvailableCarLines] = useState<Array<{ id: string; line_name: string }>>([]);
   const [availableWalkerLocations, setAvailableWalkerLocations] = useState<Array<{ id: string; location_name: string }>>([]);
+  const [schoolSettings, setSchoolSettings] = useState<{ after_school_activities_enabled?: boolean }>({});
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -92,14 +93,16 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
   useEffect(() => {
     const fetchTransportationOptions = async () => {
       if (!open || person?.role !== 'Student') return;
-      const [{ data: buses }, { data: carLines }, { data: walkerLocs }] = await Promise.all([
+      const [{ data: buses }, { data: carLines }, { data: walkerLocs }, { data: schoolData }] = await Promise.all([
         supabase.from('buses').select('id, bus_number').eq('school_id', schoolId).order('bus_number', { ascending: true }),
         supabase.from('car_lines').select('id, line_name').eq('school_id', schoolId).order('line_name', { ascending: true }),
-        supabase.from('walker_locations').select('id, location_name').eq('school_id', schoolId).order('location_name', { ascending: true })
+        supabase.from('walker_locations').select('id, location_name').eq('school_id', schoolId).order('location_name', { ascending: true }),
+        supabase.from('schools').select('after_school_activities_enabled').eq('id', schoolId).single()
       ]);
       setAvailableBuses(buses || []);
       setAvailableCarLines(carLines || []);
       setAvailableWalkerLocations(walkerLocs || []);
+      setSchoolSettings(schoolData || {});
     };
     fetchTransportationOptions();
   }, [open, person, schoolId]);
@@ -109,15 +112,17 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
     const loadTransportation = async () => {
       if (!open || !person || person.role !== 'Student') return;
       const studentUuid = person.id;
-      const [busRes, walkerRes, carRes] = await Promise.all([
+      const [busRes, walkerRes, carRes, afterSchoolRes] = await Promise.all([
         supabase.from('student_bus_assignments').select('bus_id').eq('student_id', studentUuid).maybeSingle(),
         supabase.from('student_walker_assignments').select('walker_location_id').eq('student_id', studentUuid).maybeSingle(),
         supabase.from('student_car_assignments').select('car_line_id').eq('student_id', studentUuid).maybeSingle(),
+        supabase.from('student_after_school_assignments').select('id').eq('student_id', studentUuid).maybeSingle(),
       ]);
 
       const busAssign = busRes.data;
       const walkerAssign = walkerRes.data;
       const carAssign = carRes.data;
+      const afterSchoolAssign = afterSchoolRes.data;
 
       if (busAssign) {
         setFormData((prev) => ({ ...prev, transportMethod: 'bus', transportTargetId: busAssign.bus_id }));
@@ -125,6 +130,8 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
         setFormData((prev) => ({ ...prev, transportMethod: 'walker', transportTargetId: walkerAssign.walker_location_id }));
       } else if (carAssign) {
         setFormData((prev) => ({ ...prev, transportMethod: 'car', transportTargetId: carAssign.car_line_id }));
+      } else if (afterSchoolAssign) {
+        setFormData((prev) => ({ ...prev, transportMethod: 'after_school', transportTargetId: '' }));
       } else {
         setFormData((prev) => ({ ...prev, transportMethod: '', transportTargetId: '' }));
       }
@@ -177,22 +184,28 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
         await supabase.from('student_bus_assignments').delete().eq('student_id', person.id);
         await supabase.from('student_walker_assignments').delete().eq('student_id', person.id);
         await supabase.from('student_car_assignments').delete().eq('student_id', person.id);
+        await supabase.from('student_after_school_assignments').delete().eq('student_id', person.id);
 
-        if (formData.transportMethod && formData.transportTargetId) {
-          if (formData.transportMethod === 'bus') {
+        if (formData.transportMethod) {
+          if (formData.transportMethod === 'bus' && formData.transportTargetId) {
             const { error: insErr } = await supabase
               .from('student_bus_assignments')
               .insert({ student_id: person.id, bus_id: formData.transportTargetId });
             if (insErr) throw insErr;
-          } else if (formData.transportMethod === 'walker') {
+          } else if (formData.transportMethod === 'walker' && formData.transportTargetId) {
             const { error: insErr } = await supabase
               .from('student_walker_assignments')
               .insert({ student_id: person.id, walker_location_id: formData.transportTargetId });
             if (insErr) throw insErr;
-          } else if (formData.transportMethod === 'car') {
+          } else if (formData.transportMethod === 'car' && formData.transportTargetId) {
             const { error: insErr } = await supabase
               .from('student_car_assignments')
               .insert({ student_id: person.id, car_line_id: formData.transportTargetId });
+            if (insErr) throw insErr;
+          } else if (formData.transportMethod === 'after_school') {
+            const { error: insErr } = await supabase
+              .from('student_after_school_assignments')
+              .insert({ student_id: person.id });
             if (insErr) throw insErr;
           }
         }
@@ -343,6 +356,9 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
                     <SelectItem value="bus">Bus</SelectItem>
                     <SelectItem value="walker">Walker</SelectItem>
                     <SelectItem value="car">Car Rider</SelectItem>
+                    {schoolSettings.after_school_activities_enabled && (
+                      <SelectItem value="after_school">After School Activities</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

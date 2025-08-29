@@ -900,6 +900,24 @@ export type Database = {
         }
         Relationships: []
       }
+      student_after_school_assignments: {
+        Row: {
+          assigned_at: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          assigned_at?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       student_bus_assignments: {
         Row: {
           assigned_at: string
