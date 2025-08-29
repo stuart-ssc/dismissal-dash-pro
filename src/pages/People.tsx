@@ -25,7 +25,7 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
-  transportation?: 'Bus' | 'Walker' | 'Car Rider' | 'After School Activities';
+  transportation?: 'Bus' | 'Walker' | 'Car Rider';
 }
 
 const People = () => {
@@ -50,7 +50,6 @@ const People = () => {
   const [filterRole, setFilterRole] = useState<'all' | 'School Admin' | 'Teacher' | 'Student'>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [filterClass, setFilterClass] = useState<string>('all');
-  const [filterTransportation, setFilterTransportation] = useState<string>('all');
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   useEffect(() => {
@@ -64,6 +63,10 @@ const People = () => {
       if (!user) return;
       
       try {
+        // Debug authentication
+        const { data: authTest } = await supabase.auth.getUser();
+        console.log('Auth debug - User ID:', user.id);
+        console.log('Auth debug - Session valid:', !!authTest.user);
         
         // Get user's profile to get school_id, first_name, and last_name
         const { data: profile, error: profileError } = await supabase
@@ -72,7 +75,7 @@ const People = () => {
           .eq('id', user.id)
           .single();
 
-        
+        console.log('Profile fetch result:', { profile, profileError });
 
         if (profile) {
           setFirstName(profile.first_name || '');
@@ -123,42 +126,8 @@ const People = () => {
 
   const fetchPeople = async (schoolId: number) => {
     setIsLoading(true);
-    
     try {
-      // Ensure we have a valid session before making database queries
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        console.warn('No valid session found, redirecting to auth');
-        navigate('/auth');
-        return;
-      }
-      
-      // Test if auth.uid() is working by making a simple query
-      const { error: authTestError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('user_id', session.user.id)
-        .limit(1);
-      
-      // If we get a policy violation, refresh the session
-      if (authTestError?.message?.includes('row-level security') || authTestError?.message?.includes('policy')) {
-        console.log('Detected auth.uid() null in database context, refreshing session...');
-        const { error: refreshError } = await supabase.auth.refreshSession();
-        
-        if (refreshError) {
-          console.error('Session refresh failed:', refreshError);
-          toast({
-            title: "Authentication Error",
-            description: "Please log out and log back in to continue.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        // Wait a moment for the session to be established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+      console.log('Fetching people for school_id:', schoolId);
       const allPeople: PersonData[] = [];
 
       // Fetch profiles with roles in one query
@@ -173,7 +142,7 @@ const People = () => {
         `)
         .eq('school_id', schoolId);
 
-      
+      console.log('Profiles query result:', { profilesData, profilesError });
 
       // Process profiles with roles
       if (profilesData) {
@@ -206,7 +175,7 @@ const People = () => {
         `)
         .eq('school_id', schoolId);
 
-      
+      console.log('Teachers query result:', { teachersData, teachersError });
 
       if (teachersData) {
         for (const teacher of teachersData) {
@@ -247,23 +216,35 @@ const People = () => {
           ),
           student_bus_assignments(bus_id),
           student_walker_assignments(walker_location_id),
-          student_car_assignments(car_line_id),
-          student_after_school_assignments(id)
+          student_car_assignments(car_line_id)
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
         .limit(2000); // Increase limit to ensure we get all students
 
+      console.log('Students query result:', { studentsData, studentsError, schoolId, count });
+      
+      // Specifically check for Terri Tester
+      const terriInData = studentsData?.find(s => s.first_name === 'Terri' && s.last_name === 'Tester');
+      console.log('Terri Tester in students data:', terriInData);
 
       if (studentsData) {
+        console.log('Processing students:', studentsData.length);
+        
         for (const student of studentsData) {
           const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
 
           const hasBus = (student.student_bus_assignments?.length || 0) > 0;
           const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
           const hasCar = (student.student_car_assignments?.length || 0) > 0;
-          const hasAfterSchool = (student.student_after_school_assignments?.length || 0) > 0;
-          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : hasAfterSchool ? 'After School Activities' : undefined;
+          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : undefined;
+          
+          console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
+            id: student.id,
+            grade: student.grade_level,
+            classes: studentClasses,
+            transportation,
+          });
           
           allPeople.push({
             id: student.id,
@@ -278,6 +259,7 @@ const People = () => {
         }
       }
 
+      console.log('Fetched people data:', allPeople);
       setPeople(allPeople);
     } catch (error) {
       console.error('Error fetching people:', error);
@@ -399,12 +381,6 @@ const People = () => {
       .filter(Boolean)
   )].sort();
 
-  // Get unique transportation options for filter dropdown - show all possible types
-  const allTransportationTypes = ['Bus', 'Walker', 'Car Rider', 'After School Activities'];
-  const actualTransportationTypes = [...new Set(people.filter(p => p.transportation).map(p => p.transportation!))].sort();
-  const uniqueTransportation = [...new Set([...allTransportationTypes, ...actualTransportationTypes])].sort();
-
-
   // Apply filters and sorting
   const filteredAndSortedPeople = people
     .filter(person => {
@@ -420,11 +396,6 @@ const People = () => {
       if (filterRole !== 'all' && person.role !== filterRole) return false;
       if (filterGrade !== 'all' && person.grade !== filterGrade) return false;
       if (filterClass !== 'all' && !person.classes.includes(filterClass)) return false;
-      
-      // Transportation filter logic
-      if (filterTransportation !== 'all') {
-        if (person.transportation !== filterTransportation) return false;
-      }
       return true;
     })
     .sort((a, b) => {
@@ -456,7 +427,7 @@ const People = () => {
     });
 
   // Reset page when filters change
-  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string, newFilterTransportation?: string) => {
+  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string) => {
     setCurrentPage(1);
     if (newFilterRole !== undefined) setFilterRole(newFilterRole);
     if (newFilterGrade !== undefined) {
@@ -467,7 +438,6 @@ const People = () => {
       }
     }
     if (newFilterClass !== undefined) setFilterClass(newFilterClass);
-    if (newFilterTransportation !== undefined) setFilterTransportation(newFilterTransportation);
   };
 
   const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
@@ -621,26 +591,6 @@ const People = () => {
                         {uniqueClasses.map((className) => (
                           <DropdownMenuItem key={className} onClick={() => handleFilterChange(undefined, undefined, className)}>
                             {className}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Transportation Filter */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
-                          Transportation: {filterTransportation === 'all' ? 'All' : filterTransportation}
-                          <ChevronDown className="h-3 w-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'all')}>
-                          All Transportation
-                        </DropdownMenuItem>
-                        {uniqueTransportation.map((transportation) => (
-                          <DropdownMenuItem key={transportation} onClick={() => handleFilterChange(undefined, undefined, undefined, transportation)}>
-                            {transportation}
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>

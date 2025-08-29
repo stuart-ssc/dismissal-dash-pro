@@ -51,33 +51,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
           setLoading(true);
-          
-          // If session exists but auth.uid() might be null, force a refresh
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            try {
-              // Test if auth.uid() works by making a simple query  
-              const { error: testError } = await supabase
-                .from('user_roles')
-                .select('user_id')
-                .eq('user_id', session.user.id)
-                .limit(1);
-              
-              // If we get a policy violation, it means auth.uid() is null
-              if (testError?.message?.includes('row-level security') || testError?.message?.includes('policy')) {
-                console.log('Detected auth.uid() null, forcing session refresh...');
-                await supabase.auth.refreshSession();
-              }
-            } catch (refreshError) {
-              console.warn('Session refresh failed:', refreshError);
-            }
-          }
-          
           // Defer role fetching to avoid deadlocks
           setTimeout(() => {
             fetchAndSetUserRole(session.user!.id);
@@ -90,29 +69,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
       if (session?.user) {
         setLoading(true);
-        
-        // Test auth.uid() on initial session check
-        try {
-          const { error: testError } = await supabase
-            .from('user_roles')
-            .select('user_id')
-            .eq('user_id', session.user.id)
-            .limit(1);
-          
-          if (testError?.message?.includes('row-level security') || testError?.message?.includes('policy')) {
-            console.log('Initial session has null auth.uid(), refreshing...');
-            await supabase.auth.refreshSession();
-          }
-        } catch (error) {
-          console.warn('Initial auth test failed:', error);
-        }
-        
         fetchAndSetUserRole(session.user.id);
       } else {
         setLoading(false);
