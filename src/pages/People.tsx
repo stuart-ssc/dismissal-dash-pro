@@ -33,6 +33,9 @@ const People = () => {
   const navigate = useNavigate();
   const SEO = useSEO();
   const { toast } = useToast();
+  
+  // Debug logging
+  console.log('People component render:', { user: !!user, userRole, loading });
   const [schoolName, setSchoolName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
@@ -60,8 +63,13 @@ const People = () => {
   }, [user, loading, navigate, session]);
 
   useEffect(() => {
+    console.log('useEffect running:', { user: !!user, userRole });
     const fetchUserData = async () => {
-      if (!user) return;
+      if (!user) {
+        console.log('No user in fetchUserData, returning early');
+        return;
+      }
+      console.log('Starting fetchUserData with user ID:', user.id);
       
       try {
         // Debug authentication
@@ -96,7 +104,9 @@ const People = () => {
             }
 
             // Fetch all people associated with the school
+            console.log('About to call fetchPeople with school_id:', profile.school_id);
             await fetchPeople(profile.school_id);
+            console.log('fetchPeople completed');
           }
         }
       } catch (error) {
