@@ -243,6 +243,138 @@ export function AfterSchoolActivitiesTab() {
     }
   };
 
+  const handleManageActivityStudents = async (activity: AfterSchoolActivityRecord) => {
+    setManagingStudents(activity);
+    setIsLoadingStudents(true);
+    await fetchActivityStudents(activity.id);
+    setIsLoadingStudents(false);
+  };
+
+  const fetchActivityStudents = async (activityId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('student_after_school_assignments')
+        .select(`
+          id,
+          assigned_at,
+          student_id
+        `)
+        .eq('after_school_activity_id', activityId);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        setActivityStudents([]);
+        return;
+      }
+
+      // Fetch student details separately
+      const studentIds = data.map(assignment => assignment.student_id);
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('id, first_name, last_name, grade_level, student_id')
+        .in('id', studentIds);
+
+      if (studentsError) throw studentsError;
+
+      // Combine assignment and student data
+      const studentsWithAssignments = data.map(assignment => {
+        const student = studentsData?.find(s => s.id === assignment.student_id);
+        return {
+          id: student?.id || assignment.student_id,
+          first_name: student?.first_name || '',
+          last_name: student?.last_name || '',
+          grade_level: student?.grade_level || '',
+          student_id: student?.student_id || '',
+          assigned_at: assignment.assigned_at
+        };
+      }).filter(student => student.first_name) as StudentAfterSchoolRecord[];
+
+      setActivityStudents(studentsWithAssignments);
+    } catch (error) {
+      console.error('Error fetching activity students:', error);
+      toast.error('Failed to load students');
+    }
+  };
+
+  const searchAvailableStudents = async (searchTerm: string) => {
+    if (!searchTerm.trim() || !managingStudents) return;
+
+    setIsSearchingStudents(true);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user!.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      // Get currently assigned student IDs
+      const assignedStudentIds = activityStudents.map(s => s.id);
+
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, first_name, last_name, grade_level, student_id')
+        .eq('school_id', profile.school_id)
+        .not('id', 'in', `(${assignedStudentIds.join(',') || 'null'})`)
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,student_id.ilike.%${searchTerm}%`)
+        .limit(20);
+
+      if (error) throw error;
+      setStudentSearchResults(data || []);
+    } catch (error) {
+      console.error('Error searching students:', error);
+    } finally {
+      setIsSearchingStudents(false);
+    }
+  };
+
+  const addStudentToActivity = async (student: StudentSearchResult) => {
+    if (!managingStudents) return;
+
+    try {
+      const { error } = await supabase
+        .from('student_after_school_assignments')
+        .insert({
+          student_id: student.id,
+          after_school_activity_id: managingStudents.id
+        });
+
+      if (error) throw error;
+
+      toast.success(`${student.first_name} ${student.last_name} added to activity`);
+      await fetchActivityStudents(managingStudents.id);
+      await fetchAfterSchoolActivities(); // Refresh activity counts
+      setStudentSearchTerm('');
+      setStudentSearchResults([]);
+    } catch (error) {
+      console.error('Error adding student to activity:', error);
+      toast.error('Failed to add student');
+    }
+  };
+
+  const removeStudentFromActivity = async (student: StudentAfterSchoolRecord) => {
+    if (!managingStudents) return;
+
+    try {
+      const { error } = await supabase
+        .from('student_after_school_assignments')
+        .delete()
+        .eq('student_id', student.id)
+        .eq('after_school_activity_id', managingStudents.id);
+
+      if (error) throw error;
+
+      toast.success(`${student.first_name} ${student.last_name} removed from activity`);
+      await fetchActivityStudents(managingStudents.id);
+      await fetchAfterSchoolActivities(); // Refresh activity counts
+    } catch (error) {
+      console.error('Error removing student from activity:', error);
+      toast.error('Failed to remove student');
+    }
+  };
+
   const totalPages = Math.ceil(filteredActivities.length / itemsPerPage);
   const paginatedActivities = filteredActivities.slice(
     (currentPage - 1) * itemsPerPage,
@@ -433,7 +565,11 @@ export function AfterSchoolActivitiesTab() {
                   <TableCell>{activity.supervisor_name || '-'}</TableCell>
                   <TableCell>{activity.capacity ? `${activity.students_count}/${activity.capacity}` : activity.students_count}</TableCell>
                   <TableCell>
-                    <Button variant="link" className="p-0 h-auto text-primary">
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-primary"
+                      onClick={() => handleManageActivityStudents(activity)}
+                    >
                       {activity.students_count} students
                     </Button>
                   </TableCell>
@@ -451,12 +587,18 @@ export function AfterSchoolActivitiesTab() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
+                          onClick={() => handleManageActivityStudents(activity)}
+                        >
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Manage Students
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => {
                             setEditingRecord(activity);
                         form.reset({
-                          ...activity,
-                          status: activity.status as "active" | "inactive"
-                        });
+                           ...activity,
+                           status: activity.status as "active" | "inactive"
+                         });
                             setShowAddDialog(true);
                           }}
                         >
@@ -501,6 +643,141 @@ export function AfterSchoolActivitiesTab() {
           </div>
         </div>
       )}
+
+      {/* Student Management Dialog */}
+      <Dialog open={!!managingStudents} onOpenChange={() => setManagingStudents(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              Manage Students - {managingStudents?.activity_name}
+            </DialogTitle>
+            <DialogDescription>
+              Add or remove students from this after school activity
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto space-y-6">
+            {/* Add Student Section */}
+            <div className="space-y-4">
+              <h4 className="font-medium">Add Students</h4>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Search students by name or ID..."
+                    value={studentSearchTerm}
+                    onChange={(e) => {
+                      setStudentSearchTerm(e.target.value);
+                      if (e.target.value.length >= 2) {
+                        searchAvailableStudents(e.target.value);
+                      } else {
+                        setStudentSearchResults([]);
+                      }
+                    }}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              
+              {isSearchingStudents && (
+                <div className="text-sm text-muted-foreground">Searching...</div>
+              )}
+              
+              {studentSearchResults.length > 0 && (
+                <div className="border rounded-lg max-h-48 overflow-auto">
+                  {studentSearchResults.map((student) => (
+                    <div
+                      key={student.id}
+                      className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-muted/50"
+                    >
+                      <span className="font-medium">
+                        {student.first_name} {student.last_name}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">{student.grade_level}</Badge>
+                        {student.student_id && (
+                          <span className="text-sm text-muted-foreground">
+                            ID: {student.student_id}
+                          </span>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={() => addStudentToActivity(student)}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Current Students Section */}
+            <div className="space-y-4">
+              <h4 className="font-medium">
+                Current Students ({activityStudents.length})
+              </h4>
+              
+              {isLoadingStudents ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  Loading students...
+                </div>
+              ) : activityStudents.length > 0 ? (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Grade</TableHead>
+                        <TableHead>Student ID</TableHead>
+                        <TableHead>Assigned</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activityStudents.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell className="font-medium">
+                            {student.first_name} {student.last_name}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{student.grade_level}</Badge>
+                          </TableCell>
+                          <TableCell>{student.student_id || '-'}</TableCell>
+                          <TableCell>
+                            {new Date(student.assigned_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeStudentFromActivity(student)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No students assigned to this activity
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setManagingStudents(null)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
