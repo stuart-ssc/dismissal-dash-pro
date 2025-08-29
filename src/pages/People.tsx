@@ -50,7 +50,6 @@ const People = () => {
   const [filterRole, setFilterRole] = useState<'all' | 'School Admin' | 'Teacher' | 'Student'>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [filterClass, setFilterClass] = useState<string>('all');
-  const [selectedTransportation, setSelectedTransportation] = useState<'all' | 'Bus' | 'Car Line' | 'Walker' | 'After School'>('all');
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   useEffect(() => {
@@ -96,7 +95,7 @@ const People = () => {
             }
 
             // Fetch all people associated with the school
-            await fetchPeople(profile.school_id, selectedTransportation);
+            await fetchPeople(profile.school_id);
           }
         }
       } catch (error) {
@@ -125,7 +124,7 @@ const People = () => {
     })();
   }, [userRole, user?.id]);
 
-  const fetchPeople = async (schoolId: number, transportationFilter: typeof selectedTransportation = 'all') => {
+  const fetchPeople = async (schoolId: number) => {
     setIsLoading(true);
     try {
       console.log('Fetching people for school_id:', schoolId);
@@ -204,8 +203,8 @@ const People = () => {
       }
 
       // Fetch students with their classes in one query using joins, ordered by newest first
-      // Apply transportation filter if specified
-      let studentsQuery = supabase
+      // Simplified query without complex nested joins that require foreign keys
+      const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
         .select(`
           id, 
@@ -214,67 +213,7 @@ const People = () => {
           last_name, 
           grade_level
         `, { count: 'exact' })
-        .eq('school_id', schoolId);
-
-      // Add transportation filter JOINs if needed
-      if (transportationFilter !== 'all') {
-        switch (transportationFilter) {
-          case 'Bus':
-            studentsQuery = supabase
-              .from('students')
-              .select(`
-                id, 
-                student_id, 
-                first_name, 
-                last_name, 
-                grade_level,
-                student_bus_assignments!inner(bus_id)
-              `, { count: 'exact' })
-              .eq('school_id', schoolId);
-            break;
-          case 'Car Line':
-            studentsQuery = supabase
-              .from('students')
-              .select(`
-                id, 
-                student_id, 
-                first_name, 
-                last_name, 
-                grade_level,
-                student_car_assignments!inner(car_line_id)
-              `, { count: 'exact' })
-              .eq('school_id', schoolId);
-            break;
-          case 'Walker':
-            studentsQuery = supabase
-              .from('students')
-              .select(`
-                id, 
-                student_id, 
-                first_name, 
-                last_name, 
-                grade_level,
-                student_walker_assignments!inner(walker_location_id)
-              `, { count: 'exact' })
-              .eq('school_id', schoolId);
-            break;
-          case 'After School':
-            studentsQuery = supabase
-              .from('students')
-              .select(`
-                id, 
-                student_id, 
-                first_name, 
-                last_name, 
-                grade_level,
-                student_after_school_assignments!inner(after_school_activity_id)
-              `, { count: 'exact' })
-              .eq('school_id', schoolId);
-            break;
-        }
-      }
-
-      const { data: studentsData, error: studentsError, count } = await studentsQuery
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
         .limit(2000);
 
@@ -482,7 +421,7 @@ const People = () => {
     });
 
   // Reset page when filters change
-  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string, newTransportation?: typeof selectedTransportation) => {
+  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string) => {
     setCurrentPage(1);
     if (newFilterRole !== undefined) setFilterRole(newFilterRole);
     if (newFilterGrade !== undefined) {
@@ -493,13 +432,6 @@ const People = () => {
       }
     }
     if (newFilterClass !== undefined) setFilterClass(newFilterClass);
-    if (newTransportation !== undefined) {
-      setSelectedTransportation(newTransportation);
-      // Fetch people with new transportation filter
-      if (schoolId) {
-        fetchPeople(schoolId, newTransportation);
-      }
-    }
   };
 
   const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
@@ -579,7 +511,7 @@ const People = () => {
                         onPersonAdded={() => {
                           console.log('Person added, refreshing data...');
                           if (schoolId) {
-                            fetchPeople(schoolId, selectedTransportation);
+                            fetchPeople(schoolId);
                           }
                         }} 
                       />
@@ -638,7 +570,7 @@ const People = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                     {/* Class Filter */}
+                    {/* Class Filter */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8">
@@ -655,33 +587,6 @@ const People = () => {
                             {className}
                           </DropdownMenuItem>
                         ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Transportation Filter */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
-                          Transport: {selectedTransportation === 'all' ? 'All' : selectedTransportation}
-                          <ChevronDown className="h-3 w-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'all')}>
-                          All Transportation
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'Bus')}>
-                          Bus
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'Car Line')}>
-                          Car Line
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'Walker')}>
-                          Walker
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'After School')}>
-                          After School
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
