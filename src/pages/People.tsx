@@ -25,7 +25,7 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
-  transportation?: 'Bus' | 'Walker' | 'Car Rider';
+  transportation?: 'Bus' | 'Walker' | 'Car Rider' | 'After School Activities';
 }
 
 const People = () => {
@@ -50,6 +50,7 @@ const People = () => {
   const [filterRole, setFilterRole] = useState<'all' | 'School Admin' | 'Teacher' | 'Student'>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [filterClass, setFilterClass] = useState<string>('all');
+  const [filterTransportation, setFilterTransportation] = useState<string>('all');
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   useEffect(() => {
@@ -216,7 +217,8 @@ const People = () => {
           ),
           student_bus_assignments(bus_id),
           student_walker_assignments(walker_location_id),
-          student_car_assignments(car_line_id)
+          student_car_assignments(car_line_id),
+          student_after_school_assignments(id)
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
@@ -237,7 +239,8 @@ const People = () => {
           const hasBus = (student.student_bus_assignments?.length || 0) > 0;
           const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
           const hasCar = (student.student_car_assignments?.length || 0) > 0;
-          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : undefined;
+          const hasAfterSchool = (student.student_after_school_assignments?.length || 0) > 0;
+          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : hasAfterSchool ? 'After School Activities' : undefined;
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
@@ -381,6 +384,9 @@ const People = () => {
       .filter(Boolean)
   )].sort();
 
+  // Get unique transportation options for filter dropdown
+  const uniqueTransportation = [...new Set(people.filter(p => p.transportation).map(p => p.transportation!))].sort();
+
   // Apply filters and sorting
   const filteredAndSortedPeople = people
     .filter(person => {
@@ -396,6 +402,7 @@ const People = () => {
       if (filterRole !== 'all' && person.role !== filterRole) return false;
       if (filterGrade !== 'all' && person.grade !== filterGrade) return false;
       if (filterClass !== 'all' && !person.classes.includes(filterClass)) return false;
+      if (filterTransportation !== 'all' && person.transportation !== filterTransportation) return false;
       return true;
     })
     .sort((a, b) => {
@@ -427,7 +434,7 @@ const People = () => {
     });
 
   // Reset page when filters change
-  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string) => {
+  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string, newFilterTransportation?: string) => {
     setCurrentPage(1);
     if (newFilterRole !== undefined) setFilterRole(newFilterRole);
     if (newFilterGrade !== undefined) {
@@ -438,6 +445,7 @@ const People = () => {
       }
     }
     if (newFilterClass !== undefined) setFilterClass(newFilterClass);
+    if (newFilterTransportation !== undefined) setFilterTransportation(newFilterTransportation);
   };
 
   const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
@@ -591,6 +599,26 @@ const People = () => {
                         {uniqueClasses.map((className) => (
                           <DropdownMenuItem key={className} onClick={() => handleFilterChange(undefined, undefined, className)}>
                             {className}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Transportation Filter */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          Transportation: {filterTransportation === 'all' ? 'All' : filterTransportation}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
+                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'all')}>
+                          All Transportation
+                        </DropdownMenuItem>
+                        {uniqueTransportation.map((transportation) => (
+                          <DropdownMenuItem key={transportation} onClick={() => handleFilterChange(undefined, undefined, undefined, transportation)}>
+                            {transportation}
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>
