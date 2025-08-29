@@ -313,11 +313,17 @@ export function AfterSchoolActivitiesTab() {
       // Get currently assigned student IDs
       const assignedStudentIds = activityStudents.map(s => s.id);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('students')
         .select('id, first_name, last_name, grade_level, student_id')
-        .eq('school_id', profile.school_id)
-        .not('id', 'in', `(${assignedStudentIds.join(',') || 'null'})`)
+        .eq('school_id', profile.school_id);
+
+      // Only exclude assigned students if there are any
+      if (assignedStudentIds.length > 0) {
+        query = query.not('id', 'in', `(${assignedStudentIds.join(',')})`);
+      }
+
+      const { data, error } = await query
         .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,student_id.ilike.%${searchTerm}%`)
         .limit(20);
 
