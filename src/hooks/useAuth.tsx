@@ -52,6 +52,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('🔐 Auth state change:', { event, session });
+        console.log('🔑 Session details:', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          accessToken: session?.access_token ? 'present' : 'missing',
+          refreshToken: session?.refresh_token ? 'present' : 'missing',
+          expiresAt: session?.expires_at ? new Date(session.expires_at * 1000) : 'no expiry',
+          tokenType: session?.token_type
+        });
+        
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -70,6 +80,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔍 Initial session check:', { session });
+      console.log('🔑 Initial session details:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        accessToken: session?.access_token ? 'present' : 'missing',
+        refreshToken: session?.refresh_token ? 'present' : 'missing',
+        expiresAt: session?.expires_at ? new Date(session.expires_at * 1000) : 'no expiry'
+      });
+      
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {

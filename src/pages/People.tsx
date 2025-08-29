@@ -127,6 +127,23 @@ const People = () => {
 
   const fetchPeople = async (schoolId: number) => {
     setIsLoading(true);
+    
+    console.log('🔍 Starting fetchPeople for school_id:', schoolId);
+    
+    // Debug: Check session state before making requests
+    const currentSession = await supabase.auth.getSession();
+    console.log('🔐 Current session before DB calls:', {
+      hasSession: !!currentSession.data.session,
+      userId: currentSession.data.session?.user?.id,
+      accessToken: currentSession.data.session?.access_token ? 'present' : 'missing',
+      expiresAt: currentSession.data.session?.expires_at ? new Date(currentSession.data.session.expires_at * 1000) : 'no expiry',
+      isExpired: currentSession.data.session?.expires_at ? Date.now() / 1000 > currentSession.data.session.expires_at : 'unknown'
+    });
+    
+    // Test if we can get the current user ID from the session
+    const { data: currentUser, error: userError } = await supabase.auth.getUser();
+    console.log('🧪 Current user test:', { currentUser: currentUser.user?.id, userError });
+    
     try {
       console.log('Fetching people for school_id:', schoolId);
       const allPeople: PersonData[] = [];
