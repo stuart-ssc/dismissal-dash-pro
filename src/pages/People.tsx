@@ -384,8 +384,24 @@ const People = () => {
       .filter(Boolean)
   )].sort();
 
-  // Get unique transportation options for filter dropdown
-  const uniqueTransportation = [...new Set(people.filter(p => p.transportation).map(p => p.transportation!))].sort();
+  // Get unique transportation options for filter dropdown - show all possible types
+  const allTransportationTypes = ['Bus', 'Walker', 'Car Rider', 'After School Activities'];
+  const actualTransportationTypes = [...new Set(people.filter(p => p.transportation).map(p => p.transportation!))].sort();
+  const uniqueTransportation = [...new Set([...allTransportationTypes, ...actualTransportationTypes])].sort();
+
+  // Debug logging
+  console.log('Transportation filter debug:', {
+    filterTransportation,
+    uniqueTransportation,
+    totalPeople: people.length,
+    peopleWithTransportation: people.filter(p => p.transportation).length,
+    peopleWithoutTransportation: people.filter(p => !p.transportation).length,
+    transportationCounts: people.reduce((acc, p) => {
+      const key = p.transportation || 'undefined';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  });
 
   // Apply filters and sorting
   const filteredAndSortedPeople = people
@@ -402,9 +418,14 @@ const People = () => {
       if (filterRole !== 'all' && person.role !== filterRole) return false;
       if (filterGrade !== 'all' && person.grade !== filterGrade) return false;
       if (filterClass !== 'all' && !person.classes.includes(filterClass)) return false;
+      
+      // Transportation filter logic
       if (filterTransportation !== 'all') {
-        // For specific transportation filters, only include if transportation matches exactly
-        // Students without transportation (undefined) should only appear when filterTransportation is 'all'
+        console.log(`Checking transportation filter for ${person.firstName} ${person.lastName}:`, {
+          personTransportation: person.transportation,
+          filterTransportation,
+          matches: person.transportation === filterTransportation
+        });
         if (person.transportation !== filterTransportation) return false;
       }
       return true;
