@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Bus, PersonStanding, Car, Users, Plus, Search, MoreHorizontal, Edit, UserPlus, Trash2 } from "lucide-react";
+import { AfterSchoolActivitiesTab } from "@/components/AfterSchoolActivitiesTab";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -1856,7 +1857,7 @@ const Transportation = () => {
               <div className="bg-card border border-border rounded-lg shadow-elevated overflow-hidden">
                 {/* Tab List positioned at top of container */}
                 <div className="bg-muted/30 border-b border-border px-6 py-4">
-                  <TabsList className="grid w-full max-w-[500px] grid-cols-3 h-12 p-1 bg-background/80 border border-border/50 rounded-md shadow-sm">
+                  <TabsList className="grid w-full max-w-[700px] grid-cols-4 h-12 p-1 bg-background/80 border border-border/50 rounded-md shadow-sm">
                     <TabsTrigger 
                       value="buses" 
                       className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
@@ -1877,6 +1878,13 @@ const Transportation = () => {
                     >
                       <Car className="h-4 w-4" />
                       Car Lines
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="after-school" 
+                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                    >
+                      <Users className="h-4 w-4" />
+                      After School
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -2197,6 +2205,11 @@ const Transportation = () => {
                     </div>
                   </div>
                 </TabsContent>
+                {/* After School Activities Tab */}
+                <TabsContent value="after-school" className="m-0 border-0 p-0">
+                  <AfterSchoolActivitiesTab />
+                </TabsContent>
+
               </div>
             </Tabs>
           </main>

@@ -216,7 +216,11 @@ const People = () => {
           ),
           student_bus_assignments(bus_id),
           student_walker_assignments(walker_location_id),
-          student_car_assignments(car_line_id)
+          student_car_assignments(car_line_id),
+          student_after_school_assignments(
+            after_school_activity_id,
+            after_school_activities(activity_name)
+          )
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
@@ -237,7 +241,23 @@ const People = () => {
           const hasBus = (student.student_bus_assignments?.length || 0) > 0;
           const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
           const hasCar = (student.student_car_assignments?.length || 0) > 0;
-          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : undefined;
+          const hasAfterSchool = (student.student_after_school_assignments?.length || 0) > 0;
+          
+          let transportation = undefined;
+          if (hasBus) {
+            transportation = 'Bus';
+          } else if (hasWalker) {
+            transportation = 'Walker';
+          } else if (hasCar) {
+            transportation = 'Car Rider';
+          } else if (hasAfterSchool) {
+            const afterSchoolAssignment = student.student_after_school_assignments?.[0] as any;
+            if (afterSchoolAssignment?.after_school_activities?.activity_name) {
+              transportation = `After School: ${afterSchoolAssignment.after_school_activities.activity_name}`;
+            } else {
+              transportation = 'After School';
+            }
+          }
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
