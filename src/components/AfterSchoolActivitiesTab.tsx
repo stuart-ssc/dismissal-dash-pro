@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, MoreHorizontal, Edit, UserPlus, Trash2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Edit, UserPlus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -644,95 +644,51 @@ export function AfterSchoolActivitiesTab() {
         </div>
       )}
 
-      {/* Student Management Dialog */}
-      <Dialog open={!!managingStudents} onOpenChange={() => setManagingStudents(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+      {/* Manage Students Dialog */}
+      <Dialog open={!!managingStudents} onOpenChange={() => {
+        setManagingStudents(null);
+        setActivityStudents([]);
+        setStudentSearchTerm('');
+        setStudentSearchResults([]);
+        setShowAddStudentDialog(false);
+      }}>
+        <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              Manage Students - {managingStudents?.activity_name}
-            </DialogTitle>
+            <DialogTitle>Manage Students - {managingStudents?.activity_name}</DialogTitle>
             <DialogDescription>
-              Add or remove students from this after school activity
+              Add or remove students assigned to this after school activity.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 overflow-auto space-y-6">
-            {/* Add Student Section */}
-            <div className="space-y-4">
-              <h4 className="font-medium">Add Students</h4>
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Search students by name or ID..."
-                    value={studentSearchTerm}
-                    onChange={(e) => {
-                      setStudentSearchTerm(e.target.value);
-                      if (e.target.value.length >= 2) {
-                        searchAvailableStudents(e.target.value);
-                      } else {
-                        setStudentSearchResults([]);
-                      }
-                    }}
-                    className="pl-10"
-                  />
-                </div>
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-sm font-medium">Current Students ({activityStudents.length})</h4>
+                <Button 
+                  onClick={() => setShowAddStudentDialog(true)}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Student
+                </Button>
               </div>
               
-              {isSearchingStudents && (
-                <div className="text-sm text-muted-foreground">Searching...</div>
-              )}
-              
-              {studentSearchResults.length > 0 && (
-                <div className="border rounded-lg max-h-48 overflow-auto">
-                  {studentSearchResults.map((student) => (
-                    <div
-                      key={student.id}
-                      className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-muted/50"
-                    >
-                      <span className="font-medium">
-                        {student.first_name} {student.last_name}
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{student.grade_level}</Badge>
-                        {student.student_id && (
-                          <span className="text-sm text-muted-foreground">
-                            ID: {student.student_id}
-                          </span>
-                        )}
-                        <Button
-                          size="sm"
-                          onClick={() => addStudentToActivity(student)}
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Current Students Section */}
-            <div className="space-y-4">
-              <h4 className="font-medium">
-                Current Students ({activityStudents.length})
-              </h4>
-              
               {isLoadingStudents ? (
+                <div className="text-center py-4">Loading students...</div>
+              ) : activityStudents.length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground">
-                  Loading students...
+                  No students assigned to this after school activity yet.
                 </div>
-              ) : activityStudents.length > 0 ? (
-                <div className="border rounded-lg">
+              ) : (
+                <div className="border rounded-md">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
+                        <TableHead>Student Name</TableHead>
                         <TableHead>Grade</TableHead>
                         <TableHead>Student ID</TableHead>
-                        <TableHead>Assigned</TableHead>
+                        <TableHead>Assigned Date</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -742,20 +698,19 @@ export function AfterSchoolActivitiesTab() {
                           <TableCell className="font-medium">
                             {student.first_name} {student.last_name}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{student.grade_level}</Badge>
-                          </TableCell>
+                          <TableCell>{student.grade_level}</TableCell>
                           <TableCell>{student.student_id || '-'}</TableCell>
                           <TableCell>
                             {new Date(student.assigned_at).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => removeStudentFromActivity(student)}
+                              className="text-destructive hover:text-destructive"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -763,18 +718,84 @@ export function AfterSchoolActivitiesTab() {
                     </TableBody>
                   </Table>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No students assigned to this activity
-                </div>
               )}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Student Dialog */}
+      <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add Student to After School Activity</DialogTitle>
+            <DialogDescription>
+              Search for students to assign to {managingStudents?.activity_name}.
+            </DialogDescription>
+          </DialogHeader>
           
-          <div className="flex justify-end pt-4 border-t">
-            <Button variant="outline" onClick={() => setManagingStudents(null)}>
-              Close
-            </Button>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="activity-student-search">Search Students</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  id="activity-student-search"
+                  placeholder="Search by name..."
+                  value={studentSearchTerm}
+                  onChange={(e) => {
+                    setStudentSearchTerm(e.target.value);
+                    if (e.target.value.length >= 2) {
+                      searchAvailableStudents(e.target.value);
+                    } else {
+                      setStudentSearchResults([]);
+                    }
+                  }}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {isSearchingStudents ? (
+              <div className="text-center py-4">Searching...</div>
+            ) : studentSearchResults.length > 0 ? (
+              <div className="border rounded-md max-h-60 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student Name</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Student ID</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {studentSearchResults.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">
+                          {student.first_name} {student.last_name}
+                        </TableCell>
+                        <TableCell>{student.grade_level}</TableCell>
+                        <TableCell>{student.student_id || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            onClick={() => addStudentToActivity(student)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : studentSearchTerm.length >= 2 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No students found matching "{studentSearchTerm}"
+              </div>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
