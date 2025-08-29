@@ -813,6 +813,7 @@ export type Database = {
       schools: {
         Row: {
           address: string | null
+          after_school_activities_enabled: boolean | null
           audit_logs_enabled: boolean | null
           auto_dismissal_enabled: boolean | null
           car_lines_enabled: boolean | null
@@ -841,6 +842,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          after_school_activities_enabled?: boolean | null
           audit_logs_enabled?: boolean | null
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
@@ -869,6 +871,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          after_school_activities_enabled?: boolean | null
           audit_logs_enabled?: boolean | null
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null

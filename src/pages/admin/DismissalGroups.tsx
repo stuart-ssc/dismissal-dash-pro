@@ -34,7 +34,7 @@ interface DismissalPlan {
 interface DismissalGroup {
   id: string;
   name: string;
-  group_type: 'bus' | 'class' | 'walker' | 'car';
+  group_type: 'bus' | 'class' | 'walker' | 'car' | 'after_school_activities';
   release_offset_minutes?: number;
   walker_location_id?: string;
   car_rider_capacity?: number;
@@ -48,7 +48,7 @@ interface DismissalGroup {
 
 const groupFormSchema = z.object({
   name: z.string().min(1, "Group name is required"),
-  group_type: z.enum(['bus', 'class', 'walker', 'car']),
+  group_type: z.enum(['bus', 'class', 'walker', 'car', 'after_school_activities']),
   release_offset_minutes: z.number().min(0, "Release offset must be 0 or greater").max(180, "Release offset cannot exceed 180 minutes"),
   walker_location_id: z.string().optional(),
   bus_ids: z.array(z.string()).optional(),
@@ -85,6 +85,7 @@ export default function DismissalGroups() {
   const [editingGroup, setEditingGroup] = useState<DismissalGroup | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<string>("ALL_GRADES");
   const [schoolName, setSchoolName] = useState<string>("");
+  const [schoolSettings, setSchoolSettings] = useState<{ after_school_activities_enabled?: boolean }>({});
 
   const form = useForm<GroupFormData>({
     resolver: zodResolver(groupFormSchema),
@@ -119,6 +120,7 @@ export default function DismissalGroups() {
       fetchCarLines();
       fetchClasses();
       fetchSchoolName();
+      fetchSchoolSettings();
     }
   }, [user, userRole, planId, navigate]);
 
@@ -162,7 +164,7 @@ export default function DismissalGroups() {
       if (groupsError) throw groupsError;
       setGroups((groupsData || []).map(group => ({ 
         ...group, 
-        group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car',
+        group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car' | 'after_school_activities',
         car_rider_type: group.car_rider_type as 'count' | 'all_remaining' | undefined
       })));
     } catch (error) {
@@ -300,6 +302,30 @@ export default function DismissalGroups() {
       setSchoolName(school?.school_name || '');
     } catch (error) {
       console.error('Error fetching school name:', error);
+    }
+  };
+
+  const fetchSchoolSettings = async () => {
+    if (!user) return;
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data: school, error } = await supabase
+        .from('schools')
+        .select('after_school_activities_enabled')
+        .eq('id', profile.school_id)
+        .single();
+
+      if (error) throw error;
+      setSchoolSettings({ after_school_activities_enabled: school?.after_school_activities_enabled !== false });
+    } catch (error) {
+      console.error('Error fetching school settings:', error);
     }
   };
 
@@ -774,6 +800,9 @@ export default function DismissalGroups() {
                                     <SelectItem value="class">Class</SelectItem>
                                     <SelectItem value="walker">Walker</SelectItem>
                                     <SelectItem value="car">Car Rider</SelectItem>
+                                    {schoolSettings.after_school_activities_enabled && (
+                                      <SelectItem value="after_school_activities">After School Activities</SelectItem>
+                                    )}
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
