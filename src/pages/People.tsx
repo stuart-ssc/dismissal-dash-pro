@@ -233,8 +233,25 @@ const People = () => {
       if (studentsData) {
         console.log('Processing students:', studentsData.length);
         
+        // Debug: Log raw transportation assignment data
+        const transportationStats = {
+          busAssignments: 0,
+          walkerAssignments: 0,
+          carAssignments: 0,
+          afterSchoolAssignments: 0,
+          noAssignments: 0
+        };
+        
         for (const student of studentsData) {
           const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
+
+          // Debug: Log raw assignment arrays
+          console.log(`Raw transportation data for ${student.first_name} ${student.last_name}:`, {
+            student_bus_assignments: student.student_bus_assignments,
+            student_walker_assignments: student.student_walker_assignments, 
+            student_car_assignments: student.student_car_assignments,
+            student_after_school_assignments: student.student_after_school_assignments
+          });
 
           const hasBus = (student.student_bus_assignments?.length || 0) > 0;
           const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
@@ -242,11 +259,19 @@ const People = () => {
           const hasAfterSchool = (student.student_after_school_assignments?.length || 0) > 0;
           const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : hasAfterSchool ? 'After School Activities' : undefined;
           
-          console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
-            id: student.id,
-            grade: student.grade_level,
-            classes: studentClasses,
-            transportation,
+          // Update stats
+          if (hasBus) transportationStats.busAssignments++;
+          else if (hasWalker) transportationStats.walkerAssignments++;
+          else if (hasCar) transportationStats.carAssignments++;
+          else if (hasAfterSchool) transportationStats.afterSchoolAssignments++;
+          else transportationStats.noAssignments++;
+          
+          console.log(`Final transportation for ${student.first_name} ${student.last_name}:`, {
+            hasBus,
+            hasWalker, 
+            hasCar,
+            hasAfterSchool,
+            finalTransportation: transportation
           });
           
           allPeople.push({
@@ -260,6 +285,8 @@ const People = () => {
             transportation,
           });
         }
+        
+        console.log('Transportation processing complete:', transportationStats);
       }
 
       console.log('Fetched people data:', allPeople);
