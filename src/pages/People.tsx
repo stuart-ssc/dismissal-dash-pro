@@ -25,7 +25,7 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
-  transportation?: 'Bus' | 'Walker' | 'Car Rider';
+  transportation?: 'Bus' | 'Walker' | 'Car Rider' | 'After School Activities';
 }
 
 const People = () => {
@@ -216,7 +216,8 @@ const People = () => {
           ),
           student_bus_assignments(bus_id),
           student_walker_assignments(walker_location_id),
-          student_car_assignments(car_line_id)
+          student_car_assignments(car_line_id),
+          student_after_school_assignments(id)
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
@@ -237,7 +238,8 @@ const People = () => {
           const hasBus = (student.student_bus_assignments?.length || 0) > 0;
           const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
           const hasCar = (student.student_car_assignments?.length || 0) > 0;
-          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : undefined;
+          const hasAfterSchool = (student.student_after_school_assignments?.length || 0) > 0;
+          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : hasAfterSchool ? 'After School Activities' : undefined;
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
