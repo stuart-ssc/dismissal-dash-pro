@@ -51,22 +51,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('🔐 Auth state change:', { event, session });
-        console.log('🔑 Session details:', {
-          hasSession: !!session,
-          userId: session?.user?.id,
-          accessToken: session?.access_token ? 'present' : 'missing',
-          refreshToken: session?.refresh_token ? 'present' : 'missing',
-          expiresAt: session?.expires_at ? new Date(session.expires_at * 1000) : 'no expiry',
-          tokenType: session?.token_type
-        });
-        
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
           setLoading(true);
+          
+          // If session exists but auth.uid() might be null, force a refresh
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            try {
+              // Test if auth.uid() works by making a simple query  
+              const { error: testError } = await supabase
+                .from('user_roles')
+                .select('user_id')
+                .eq('user_id', session.user.id)
+                .limit(1);
+              
+              // If we get a policy violation, it means auth.uid() is null
+              if (testError?.message?.includes('row-level security') || testError?.message?.includes('policy')) {
+                console.log('Detected auth.uid() null, forcing session refresh...');
+                await supabase.auth.refreshSession();
+              }
+            } catch (refreshError) {
+              console.warn('Session refresh failed:', refreshError);
+            }
+          }
+          
           // Defer role fetching to avoid deadlocks
           setTimeout(() => {
             fetchAndSetUserRole(session.user!.id);
@@ -79,20 +90,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔍 Initial session check:', { session });
-      console.log('🔑 Initial session details:', {
-        hasSession: !!session,
-        userId: session?.user?.id,
-        accessToken: session?.access_token ? 'present' : 'missing',
-        refreshToken: session?.refresh_token ? 'present' : 'missing',
-        expiresAt: session?.expires_at ? new Date(session.expires_at * 1000) : 'no expiry'
-      });
-      
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
         setLoading(true);
+        
+        // Test auth.uid() on initial session check
+        try {
+          const { error: testError } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .eq('user_id', session.user.id)
+            .limit(1);
+          
+          if (testError?.message?.includes('row-level security') || testError?.message?.includes('policy')) {
+            console.log('Initial session has null auth.uid(), refreshing...');
+            await supabase.auth.refreshSession();
+          }
+        } catch (error) {
+          console.warn('Initial auth test failed:', error);
+        }
+        
         fetchAndSetUserRole(session.user.id);
       } else {
         setLoading(false);

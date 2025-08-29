@@ -64,10 +64,6 @@ const People = () => {
       if (!user) return;
       
       try {
-        // Debug authentication
-        const { data: authTest } = await supabase.auth.getUser();
-        console.log('Auth debug - User ID:', user.id);
-        console.log('Auth debug - Session valid:', !!authTest.user);
         
         // Get user's profile to get school_id, first_name, and last_name
         const { data: profile, error: profileError } = await supabase
@@ -76,7 +72,7 @@ const People = () => {
           .eq('id', user.id)
           .single();
 
-        console.log('Profile fetch result:', { profile, profileError });
+        
 
         if (profile) {
           setFirstName(profile.first_name || '');
@@ -128,24 +124,41 @@ const People = () => {
   const fetchPeople = async (schoolId: number) => {
     setIsLoading(true);
     
-    console.log('🔍 Starting fetchPeople for school_id:', schoolId);
-    
-    // Debug: Check session state before making requests
-    const currentSession = await supabase.auth.getSession();
-    console.log('🔐 Current session before DB calls:', {
-      hasSession: !!currentSession.data.session,
-      userId: currentSession.data.session?.user?.id,
-      accessToken: currentSession.data.session?.access_token ? 'present' : 'missing',
-      expiresAt: currentSession.data.session?.expires_at ? new Date(currentSession.data.session.expires_at * 1000) : 'no expiry',
-      isExpired: currentSession.data.session?.expires_at ? Date.now() / 1000 > currentSession.data.session.expires_at : 'unknown'
-    });
-    
-    // Test if we can get the current user ID from the session
-    const { data: currentUser, error: userError } = await supabase.auth.getUser();
-    console.log('🧪 Current user test:', { currentUser: currentUser.user?.id, userError });
-    
     try {
-      console.log('Fetching people for school_id:', schoolId);
+      // Ensure we have a valid session before making database queries
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.warn('No valid session found, redirecting to auth');
+        navigate('/auth');
+        return;
+      }
+      
+      // Test if auth.uid() is working by making a simple query
+      const { error: authTestError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('user_id', session.user.id)
+        .limit(1);
+      
+      // If we get a policy violation, refresh the session
+      if (authTestError?.message?.includes('row-level security') || authTestError?.message?.includes('policy')) {
+        console.log('Detected auth.uid() null in database context, refreshing session...');
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError) {
+          console.error('Session refresh failed:', refreshError);
+          toast({
+            title: "Authentication Error",
+            description: "Please log out and log back in to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Wait a moment for the session to be established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
       const allPeople: PersonData[] = [];
 
       // Fetch profiles with roles in one query
@@ -160,7 +173,7 @@ const People = () => {
         `)
         .eq('school_id', schoolId);
 
-      console.log('Profiles query result:', { profilesData, profilesError });
+      
 
       // Process profiles with roles
       if (profilesData) {
@@ -193,7 +206,7 @@ const People = () => {
         `)
         .eq('school_id', schoolId);
 
-      console.log('Teachers query result:', { teachersData, teachersError });
+      
 
       if (teachersData) {
         for (const teacher of teachersData) {
@@ -241,55 +254,16 @@ const People = () => {
         .order('created_at', { ascending: false })
         .limit(2000); // Increase limit to ensure we get all students
 
-      console.log('Students query result:', { studentsData, studentsError, schoolId, count });
-      
-      // Specifically check for Terri Tester
-      const terriInData = studentsData?.find(s => s.first_name === 'Terri' && s.last_name === 'Tester');
-      console.log('Terri Tester in students data:', terriInData);
 
       if (studentsData) {
-        console.log('Processing students:', studentsData.length);
-        
-        // Debug: Log raw transportation assignment data
-        const transportationStats = {
-          busAssignments: 0,
-          walkerAssignments: 0,
-          carAssignments: 0,
-          afterSchoolAssignments: 0,
-          noAssignments: 0
-        };
-        
         for (const student of studentsData) {
           const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
-
-          // Debug: Log raw assignment arrays
-          console.log(`Raw transportation data for ${student.first_name} ${student.last_name}:`, {
-            student_bus_assignments: student.student_bus_assignments,
-            student_walker_assignments: student.student_walker_assignments, 
-            student_car_assignments: student.student_car_assignments,
-            student_after_school_assignments: student.student_after_school_assignments
-          });
 
           const hasBus = (student.student_bus_assignments?.length || 0) > 0;
           const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
           const hasCar = (student.student_car_assignments?.length || 0) > 0;
           const hasAfterSchool = (student.student_after_school_assignments?.length || 0) > 0;
           const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : hasAfterSchool ? 'After School Activities' : undefined;
-          
-          // Update stats
-          if (hasBus) transportationStats.busAssignments++;
-          else if (hasWalker) transportationStats.walkerAssignments++;
-          else if (hasCar) transportationStats.carAssignments++;
-          else if (hasAfterSchool) transportationStats.afterSchoolAssignments++;
-          else transportationStats.noAssignments++;
-          
-          console.log(`Final transportation for ${student.first_name} ${student.last_name}:`, {
-            hasBus,
-            hasWalker, 
-            hasCar,
-            hasAfterSchool,
-            finalTransportation: transportation
-          });
           
           allPeople.push({
             id: student.id,
@@ -302,11 +276,8 @@ const People = () => {
             transportation,
           });
         }
-        
-        console.log('Transportation processing complete:', transportationStats);
       }
 
-      console.log('Fetched people data:', allPeople);
       setPeople(allPeople);
     } catch (error) {
       console.error('Error fetching people:', error);
@@ -433,19 +404,6 @@ const People = () => {
   const actualTransportationTypes = [...new Set(people.filter(p => p.transportation).map(p => p.transportation!))].sort();
   const uniqueTransportation = [...new Set([...allTransportationTypes, ...actualTransportationTypes])].sort();
 
-  // Debug logging
-  console.log('Transportation filter debug:', {
-    filterTransportation,
-    uniqueTransportation,
-    totalPeople: people.length,
-    peopleWithTransportation: people.filter(p => p.transportation).length,
-    peopleWithoutTransportation: people.filter(p => !p.transportation).length,
-    transportationCounts: people.reduce((acc, p) => {
-      const key = p.transportation || 'undefined';
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>)
-  });
 
   // Apply filters and sorting
   const filteredAndSortedPeople = people
@@ -465,11 +423,6 @@ const People = () => {
       
       // Transportation filter logic
       if (filterTransportation !== 'all') {
-        console.log(`Checking transportation filter for ${person.firstName} ${person.lastName}:`, {
-          personTransportation: person.transportation,
-          filterTransportation,
-          matches: person.transportation === filterTransportation
-        });
         if (person.transportation !== filterTransportation) return false;
       }
       return true;
