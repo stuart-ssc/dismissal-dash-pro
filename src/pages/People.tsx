@@ -25,7 +25,7 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
-  transportation?: 'Bus' | 'Walker' | 'Car Rider';
+  transportation?: 'Bus' | 'Walker' | 'Car Rider' | 'Not Assigned' | 'After School';
 }
 
 const People = () => {
@@ -203,6 +203,7 @@ const People = () => {
       }
 
       // Fetch students with their classes in one query using joins, ordered by newest first
+      // Simplified query without complex nested joins that require foreign keys
       const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
         .select(`
@@ -210,18 +211,11 @@ const People = () => {
           student_id, 
           first_name, 
           last_name, 
-          grade_level,
-          class_rosters(
-            classes(class_name)
-          ),
-          student_bus_assignments(bus_id),
-          student_walker_assignments(walker_location_id),
-          student_car_assignments(car_line_id),
-          student_after_school_assignments(after_school_activity_id)
+          grade_level
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
-        .limit(2000); // Increase limit to ensure we get all students
+        .limit(2000);
 
       console.log('Students query result:', { studentsData, studentsError, schoolId, count });
       
@@ -233,23 +227,11 @@ const People = () => {
         console.log('Processing students:', studentsData.length);
         
         for (const student of studentsData) {
-          const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
-
-          const hasBus = (student.student_bus_assignments?.length || 0) > 0;
-          const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
-          const hasCar = (student.student_car_assignments?.length || 0) > 0;
-          const hasAfterSchool = (student.student_after_school_assignments?.length || 0) > 0;
+          // For now, set default transportation - we can add assignment queries later if needed
+          let transportation: 'Bus' | 'Walker' | 'Car Rider' | 'Not Assigned' | 'After School' = 'Not Assigned';
           
-          let transportation = undefined;
-          if (hasBus) {
-            transportation = 'Bus';
-          } else if (hasWalker) {
-            transportation = 'Walker';
-          } else if (hasCar) {
-            transportation = 'Car Rider';
-          } else if (hasAfterSchool) {
-            transportation = 'After School';
-          }
+          // Set empty classes for now - simplified query
+          const studentClasses: string[] = [];
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
