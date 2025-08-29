@@ -431,7 +431,14 @@ const People = () => {
       } else {
         return bValue.localeCompare(aValue);
       }
-    });
+     });
+
+  // Debug logs
+  console.log('Debug - All people:', people.length);
+  console.log('Debug - Students:', people.filter(p => p.role === 'Student').length);
+  console.log('Debug - People with transportation:', people.filter(p => p.transportation).length);
+  console.log('Debug - uniqueTransportation:', uniqueTransportation);
+  console.log('Debug - filteredAndSortedPeople:', filteredAndSortedPeople.length);
 
   // Reset page when filters change
   const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string, newFilterTransportation?: typeof filterTransportation) => {
