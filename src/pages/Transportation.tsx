@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Bus, PersonStanding, Car, Users, Plus, Search, MoreHorizontal, Edit, UserPlus, Trash2 } from "lucide-react";
+import { Bus, PersonStanding, Car, Users, Plus, Search, MoreHorizontal, Edit, UserPlus, Trash2, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -39,6 +39,15 @@ const carLineSchema = z.object({
   line_name: z.string().min(1, "Line name is required"),
   color: z.string().min(1, "Color is required"),
   pickup_location: z.string().min(1, "Pickup location is required"),
+  status: z.enum(["active", "inactive"]),
+});
+
+const afterSchoolActivitySchema = z.object({
+  activity_name: z.string().min(1, "Activity name is required"),
+  description: z.string().optional(),
+  location: z.string().optional(),
+  supervisor_name: z.string().optional(),
+  capacity: z.number().min(1).optional(),
   status: z.enum(["active", "inactive"]),
 });
 
@@ -90,6 +99,20 @@ interface CarLineRecord {
   line_name: string;
   color: string;
   pickup_location: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+  students_count: number;
+}
+
+interface AfterSchoolActivityRecord {
+  id: string;
+  school_id: number;
+  activity_name: string;
+  description: string | null;
+  location: string | null;
+  supervisor_name: string | null;
+  capacity: number | null;
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
@@ -168,6 +191,26 @@ const Transportation = () => {
   const [carStudentSearchResults, setCarStudentSearchResults] = useState<StudentSearchResult[]>([]);
   const [isSearchingCarStudents, setIsSearchingCarStudents] = useState(false);
   
+  // After school activities state
+  const [afterSchoolActivities, setAfterSchoolActivities] = useState<AfterSchoolActivityRecord[]>([]);
+  const [filteredAfterSchoolActivities, setFilteredAfterSchoolActivities] = useState<AfterSchoolActivityRecord[]>([]);
+  const [activitySearchTerm, setActivitySearchTerm] = useState('');
+  const [activityCurrentPage, setActivityCurrentPage] = useState(1);
+  const [activitySortBy, setActivitySortBy] = useState<keyof AfterSchoolActivityRecord>('activity_name');
+  const [activitySortOrder, setActivitySortOrder] = useState<'asc' | 'desc'>('asc');
+  const [activityFilterStatus, setActivityFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [showAddActivityDialog, setShowAddActivityDialog] = useState(false);
+  const [editingActivityRecord, setEditingActivityRecord] = useState<AfterSchoolActivityRecord | null>(null);
+  
+  // After school activity student management state
+  const [managingActivityStudents, setManagingActivityStudents] = useState<AfterSchoolActivityRecord | null>(null);
+  const [activityStudents, setActivityStudents] = useState<StudentBusRecord[]>([]);
+  const [isLoadingActivityStudents, setIsLoadingActivityStudents] = useState(false);
+  const [showAddActivityStudentDialog, setShowAddActivityStudentDialog] = useState(false);
+  const [activityStudentSearchTerm, setActivityStudentSearchTerm] = useState('');
+  const [activityStudentSearchResults, setActivityStudentSearchResults] = useState<StudentSearchResult[]>([]);
+  const [isSearchingActivityStudents, setIsSearchingActivityStudents] = useState(false);
+  
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -186,6 +229,7 @@ const Transportation = () => {
     fetchTransportation();
     fetchWalkerLocations();
     fetchCarLines();
+    fetchAfterSchoolActivities();
     fetchSchoolName();
   }, [user]);
 
@@ -360,6 +404,58 @@ const Transportation = () => {
     }
   };
 
+  const fetchAfterSchoolActivities = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) {
+        setAfterSchoolActivities([]);
+        setFilteredAfterSchoolActivities([]);
+        return;
+      }
+
+      // Fetch after school activities without nested aggregation to avoid RLS issues
+      const { data: activitiesData, error: activitiesError } = await supabase
+        .from('after_school_activities')
+        .select('*')
+        .eq('school_id', profile.school_id)
+        .order('activity_name');
+
+      if (activitiesError) {
+        console.error('Error fetching after school activities:', activitiesError);
+        return;
+      }
+
+      // Fetch activity assignment counts separately
+      const activityAssignmentCounts = new Map<string, number>();
+      if (activitiesData && activitiesData.length > 0) {
+        for (const activity of activitiesData) {
+          const { count } = await supabase
+            .from('student_after_school_assignments')
+            .select('*', { count: 'exact', head: true })
+            .eq('after_school_activity_id', activity.id);
+          activityAssignmentCounts.set(activity.id, count || 0);
+        }
+      }
+
+      const activitiesWithCounts = (activitiesData || []).map(activity => ({
+        ...activity,
+        students_count: activityAssignmentCounts.get(activity.id) || 0
+      })) as AfterSchoolActivityRecord[];
+
+      setAfterSchoolActivities(activitiesWithCounts);
+      setFilteredAfterSchoolActivities(activitiesWithCounts);
+    } catch (error) {
+      console.error('Error fetching after school activities data:', error);
+    }
+  };
+
   const fetchSchoolName = async () => {
     if (!user) return;
 
@@ -470,6 +566,34 @@ const Transportation = () => {
     setCarCurrentPage(1);
   }, [carLines, carSearchTerm, carFilterStatus, carSortBy, carSortOrder]);
 
+  // After school activities search and filter logic
+  useEffect(() => {
+    let filtered = afterSchoolActivities.filter(record => {
+      const matchesSearch = 
+        record.activity_name.toLowerCase().includes(activitySearchTerm.toLowerCase()) ||
+        (record.description && record.description.toLowerCase().includes(activitySearchTerm.toLowerCase())) ||
+        (record.location && record.location.toLowerCase().includes(activitySearchTerm.toLowerCase())) ||
+        (record.supervisor_name && record.supervisor_name.toLowerCase().includes(activitySearchTerm.toLowerCase()));
+      
+      const matchesStatus = activityFilterStatus === 'all' || record.status === activityFilterStatus;
+      
+      return matchesSearch && matchesStatus;
+    });
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aVal: any = a[activitySortBy];
+      let bVal: any = b[activitySortBy];
+      
+      if (aVal < bVal) return activitySortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return activitySortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    setFilteredAfterSchoolActivities(filtered);
+    setActivityCurrentPage(1);
+  }, [afterSchoolActivities, activitySearchTerm, activityFilterStatus, activitySortBy, activitySortOrder]);
+
   // Pagination logic
   const totalPages = Math.ceil(filteredTransportation.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -548,6 +672,18 @@ const Transportation = () => {
       line_name: "",
       color: "#EF4444",
       pickup_location: "",
+      status: "active",
+    },
+  });
+
+  const activityForm = useForm<z.infer<typeof afterSchoolActivitySchema>>({
+    resolver: zodResolver(afterSchoolActivitySchema),
+    defaultValues: {
+      activity_name: "",
+      description: "",
+      location: "",
+      supervisor_name: "",
+      capacity: undefined,
       status: "active",
     },
   });
@@ -888,6 +1024,86 @@ const Transportation = () => {
     } catch (error) {
       console.error('Error deleting car line:', error);
       toast.error('Failed to delete car line');
+    }
+  };
+
+  const handleActivityFormSubmit = async (values: z.infer<typeof afterSchoolActivitySchema>) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user!.id)
+        .single();
+
+      if (!profile?.school_id) {
+        toast.error('No school found for user');
+        return;
+      }
+
+      if (editingActivityRecord) {
+        const { error } = await supabase
+          .from('after_school_activities')
+          .update({
+            activity_name: values.activity_name,
+            description: values.description || null,
+            location: values.location || null,
+            supervisor_name: values.supervisor_name || null,
+            capacity: values.capacity || null,
+            status: values.status,
+          })
+          .eq('id', editingActivityRecord.id);
+
+        if (error) throw error;
+        toast.success('Activity updated successfully');
+        setEditingActivityRecord(null);
+      } else {
+        const { error } = await supabase
+          .from('after_school_activities')
+          .insert({
+            school_id: profile.school_id,
+            activity_name: values.activity_name,
+            description: values.description || null,
+            location: values.location || null,
+            supervisor_name: values.supervisor_name || null,
+            capacity: values.capacity || null,
+            status: values.status,
+          });
+
+        if (error) throw error;
+        toast.success('Activity added successfully');
+      }
+
+      setShowAddActivityDialog(false);
+      await fetchAfterSchoolActivities();
+      activityForm.reset();
+    } catch (error) {
+      console.error('Error saving activity:', error);
+      toast.error('Failed to save activity');
+    }
+  };
+
+  const handleDeleteActivity = async (activity: AfterSchoolActivityRecord) => {
+    if (!confirm(`Are you sure you want to delete ${activity.activity_name}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('after_school_activities')
+        .delete()
+        .eq('id', activity.id);
+
+      if (error) {
+        console.error('Error deleting activity:', error);
+        toast.error('Failed to delete activity');
+        return;
+      }
+
+      toast.success('Activity deleted successfully');
+      await fetchAfterSchoolActivities();
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      toast.error('Failed to delete activity');
     }
   };
 
@@ -1856,7 +2072,7 @@ const Transportation = () => {
               <div className="bg-card border border-border rounded-lg shadow-elevated overflow-hidden">
                 {/* Tab List positioned at top of container */}
                 <div className="bg-muted/30 border-b border-border px-6 py-4">
-                  <TabsList className="grid w-full max-w-[500px] grid-cols-3 h-12 p-1 bg-background/80 border border-border/50 rounded-md shadow-sm">
+                  <TabsList className="grid w-full max-w-[660px] grid-cols-4 h-12 p-1 bg-background/80 border border-border/50 rounded-md shadow-sm">
                     <TabsTrigger 
                       value="buses" 
                       className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
@@ -1877,6 +2093,13 @@ const Transportation = () => {
                     >
                       <Car className="h-4 w-4" />
                       Car Lines
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="activities" 
+                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                    >
+                      <GraduationCap className="h-4 w-4" />
+                      Activities
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -2182,6 +2405,97 @@ const Transportation = () => {
                                       <DropdownMenuItem 
                                         onClick={() => handleDeleteCarLine(carLine)}
                                         className="text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Activities Tab */}
+                <TabsContent value="activities" className="m-0 border-0 p-0">
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="text-lg font-semibold">After School Activities</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Manage after school activities and student assignments
+                        </p>
+                      </div>
+                      <Button onClick={() => setShowAddActivityDialog(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Activity
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Activity Name</TableHead>
+                              <TableHead>Location</TableHead>
+                              <TableHead>Supervisor</TableHead>
+                              <TableHead>Students</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredAfterSchoolActivities.map((activity) => (
+                              <TableRow key={activity.id}>
+                                <TableCell className="font-medium">{activity.activity_name}</TableCell>
+                                <TableCell>{activity.location || '-'}</TableCell>
+                                <TableCell>{activity.supervisor_name || '-'}</TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary">{activity.students_count}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={activity.status === 'active' ? 'default' : 'secondary'}>
+                                    {activity.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => {
+                                        setManagingActivityStudents(activity);
+                                        // Fetch activity students would go here
+                                      }}>
+                                        <Users className="mr-2 h-4 w-4" />
+                                        Manage Students
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => {
+                                        setEditingActivityRecord(activity);
+                                        activityForm.reset({
+                                          activity_name: activity.activity_name,
+                                          description: activity.description || '',
+                                          location: activity.location || '',
+                                          supervisor_name: activity.supervisor_name || '',
+                                          capacity: activity.capacity || undefined,
+                                          status: activity.status,
+                                        });
+                                        setShowAddActivityDialog(true);
+                                      }}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        className="text-destructive"
+                                        onClick={() => handleDeleteActivity(activity)}
                                       >
                                         <Trash2 className="mr-2 h-4 w-4" />
                                         Delete
@@ -3007,6 +3321,127 @@ const Transportation = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Add/Edit Activity Dialog */}
+      <Dialog open={showAddActivityDialog || !!editingActivityRecord} onOpenChange={() => {
+        setShowAddActivityDialog(false);
+        setEditingActivityRecord(null);
+        activityForm.reset();
+      }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingActivityRecord ? 'Edit Activity' : 'Add New Activity'}</DialogTitle>
+            <DialogDescription>
+              {editingActivityRecord ? 'Update the activity information below.' : 'Enter the details for the new after school activity.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...activityForm}>
+            <form onSubmit={activityForm.handleSubmit(handleActivityFormSubmit)} className="space-y-4">
+              <FormField
+                control={activityForm.control}
+                name="activity_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Activity Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Soccer Club" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={activityForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Weekly soccer practice and games" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={activityForm.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Gymnasium" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={activityForm.control}
+                  name="supervisor_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Supervisor</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ms. Johnson" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={activityForm.control}
+                  name="capacity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Capacity</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="25" {...field} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={activityForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowAddActivityDialog(false);
+                  setEditingActivityRecord(null);
+                  activityForm.reset();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingActivityRecord ? 'Update Activity' : 'Add Activity'}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </>

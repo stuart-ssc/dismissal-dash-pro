@@ -939,6 +939,27 @@ export type Database = {
         }
         Relationships: []
       }
+      student_after_school_assignments: {
+        Row: {
+          after_school_activity_id: string
+          assigned_at: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          after_school_activity_id: string
+          assigned_at?: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          after_school_activity_id?: string
+          assigned_at?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       student_bus_assignments: {
         Row: {
           assigned_at: string
