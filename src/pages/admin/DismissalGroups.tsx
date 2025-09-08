@@ -143,36 +143,105 @@ export default function DismissalGroups() {
       if (planError) throw planError;
       setPlan({ ...planData, status: planData.status as 'active' | 'inactive' });
 
-      // Fetch groups for this plan with extended student data
+      // Fetch basic groups first
       const { data: groupsData, error: groupsError } = await supabase
         .from('dismissal_groups')
         .select(`
           *,
-          walker_locations(location_name),
-          dismissal_group_buses(
-            buses(bus_number, student_bus_assignments(student_id))
-          ),
-          dismissal_group_classes(
-            classes(class_name, class_rosters(student_id))
-          ),
-          dismissal_group_students(
-            students(first_name, last_name)
-          ),
-          dismissal_group_car_lines(
-            car_lines(line_name)
-          ),
-          dismissal_group_activities(
-            after_school_activities(activity_name, student_after_school_assignments(student_id))
-          )
+          walker_locations(location_name)
         `)
         .eq('dismissal_plan_id', planId);
 
       if (groupsError) throw groupsError;
-      setGroups((groupsData || []).map(group => ({ 
-        ...group, 
-        group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car' | 'activity',
-        car_rider_type: group.car_rider_type as 'count' | 'all_remaining' | undefined
-      })));
+
+      if (!groupsData || groupsData.length === 0) {
+        setGroups([]);
+        return;
+      }
+
+      // Enrich groups with related data
+      const enrichedGroups = await Promise.all(
+        groupsData.map(async (group) => {
+          const enrichedGroup = {
+            ...group,
+            group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car' | 'activity',
+            car_rider_type: group.car_rider_type as 'count' | 'all_remaining' | undefined,
+            dismissal_group_buses: [],
+            dismissal_group_classes: [],
+            dismissal_group_students: [],
+            dismissal_group_car_lines: [],
+            dismissal_group_activities: []
+          };
+
+          try {
+            // Fetch bus assignments
+            if (group.group_type === 'bus') {
+              const { data: busData } = await supabase
+                .from('dismissal_group_buses')
+                .select(`
+                  buses(bus_number, student_bus_assignments(student_id))
+                `)
+                .eq('dismissal_group_id', group.id);
+              
+              enrichedGroup.dismissal_group_buses = busData || [];
+            }
+
+            // Fetch class assignments
+            if (group.group_type === 'class') {
+              const { data: classData } = await supabase
+                .from('dismissal_group_classes')
+                .select(`
+                  classes(class_name, class_rosters(student_id))
+                `)
+                .eq('dismissal_group_id', group.id);
+              
+              enrichedGroup.dismissal_group_classes = classData || [];
+            }
+
+            // Fetch car line assignments
+            if (group.group_type === 'car') {
+              const { data: carLineData } = await supabase
+                .from('dismissal_group_car_lines')
+                .select(`
+                  car_lines(line_name)
+                `)
+                .eq('dismissal_group_id', group.id);
+              
+              enrichedGroup.dismissal_group_car_lines = carLineData || [];
+            }
+
+            // Fetch activity assignments
+            if (group.group_type === 'activity') {
+              const { data: activityData } = await supabase
+                .from('dismissal_group_activities')
+                .select(`
+                  after_school_activities(activity_name, student_after_school_assignments(student_id))
+                `)
+                .eq('dismissal_group_id', group.id);
+              
+              enrichedGroup.dismissal_group_activities = activityData || [];
+            }
+
+            // Fetch direct student assignments
+            const { data: studentData } = await supabase
+              .from('dismissal_group_students')
+              .select(`
+                students(first_name, last_name)
+              `)
+              .eq('dismissal_group_id', group.id);
+            
+            enrichedGroup.dismissal_group_students = studentData || [];
+
+          } catch (enrichError) {
+            console.error(`Error enriching group ${group.id}:`, enrichError);
+            // Continue with basic group data if enrichment fails
+          }
+
+          return enrichedGroup;
+        })
+      );
+
+      setGroups(enrichedGroups);
     } catch (error) {
       console.error('Error fetching plan and groups:', error);
       toast({
