@@ -416,6 +416,27 @@ export type Database = {
           },
         ]
       }
+      dismissal_group_activities: {
+        Row: {
+          after_school_activity_id: string
+          created_at: string
+          dismissal_group_id: string
+          id: string
+        }
+        Insert: {
+          after_school_activity_id: string
+          created_at?: string
+          dismissal_group_id: string
+          id?: string
+        }
+        Update: {
+          after_school_activity_id?: string
+          created_at?: string
+          dismissal_group_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       dismissal_group_buses: {
         Row: {
           bus_id: string

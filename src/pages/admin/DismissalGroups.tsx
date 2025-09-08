@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, ArrowLeft, Bus, Users, MapPin, Car, Clock, Edit, Trash2, Check, ChevronsUpDown, X } from "lucide-react";
+import { Plus, ArrowLeft, Bus, Users, MapPin, Car, Clock, Edit, Trash2, Check, ChevronsUpDown, X, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +34,7 @@ interface DismissalPlan {
 interface DismissalGroup {
   id: string;
   name: string;
-  group_type: 'bus' | 'class' | 'walker' | 'car';
+  group_type: 'bus' | 'class' | 'walker' | 'car' | 'activity';
   release_offset_minutes?: number;
   walker_location_id?: string;
   car_rider_capacity?: number;
@@ -44,16 +44,18 @@ interface DismissalGroup {
   dismissal_group_classes?: { classes: { class_name: string; class_rosters?: { student_id: string }[] } }[];
   dismissal_group_students?: { students: { first_name: string; last_name: string } }[];
   dismissal_group_car_lines?: any; // Make flexible to handle potential errors
+  dismissal_group_activities?: { after_school_activities: { activity_name: string; student_after_school_assignments?: { student_id: string }[] } }[] | any;
 }
 
 const groupFormSchema = z.object({
   name: z.string().min(1, "Group name is required"),
-  group_type: z.enum(['bus', 'class', 'walker', 'car']),
+  group_type: z.enum(['bus', 'class', 'walker', 'car', 'activity']),
   release_offset_minutes: z.number().min(0, "Release offset must be 0 or greater").max(180, "Release offset cannot exceed 180 minutes"),
   walker_location_id: z.string().optional(),
   bus_ids: z.array(z.string()).optional(),
   car_line_ids: z.array(z.string()).optional(),
   class_ids: z.array(z.string()).optional(),
+  activity_ids: z.array(z.string()).optional(),
   car_rider_type: z.enum(['count', 'all_remaining']).optional(),
   car_rider_capacity: z.number().int().min(1).max(999).optional(),
 }).refine((data) => {
@@ -80,6 +82,7 @@ export default function DismissalGroups() {
   const [carLines, setCarLines] = useState<{ id: string; line_name: string }[]>([]);
   const [classes, setClasses] = useState<{ id: string; class_name: string; grade_level?: string }[]>([]);
   const [walkerLocations, setWalkerLocations] = useState<{ id: string; location_name: string }[]>([]);
+  const [availableActivities, setAvailableActivities] = useState<{ id: string; activity_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingGroup, setEditingGroup] = useState<DismissalGroup | null>(null);
@@ -96,6 +99,7 @@ export default function DismissalGroups() {
       bus_ids: [],
       car_line_ids: [],
       class_ids: [],
+      activity_ids: [],
       car_rider_type: 'all_remaining',
       car_rider_capacity: undefined,
     },
@@ -118,6 +122,7 @@ export default function DismissalGroups() {
       fetchBuses();
       fetchCarLines();
       fetchClasses();
+      fetchActivities();
       fetchSchoolName();
     }
   }, [user, userRole, planId, navigate]);
@@ -155,6 +160,9 @@ export default function DismissalGroups() {
           ),
           dismissal_group_car_lines(
             car_lines(line_name)
+          ),
+          dismissal_group_activities(
+            after_school_activities(activity_name, student_after_school_assignments(student_id))
           )
         `)
         .eq('dismissal_plan_id', planId);
@@ -162,7 +170,7 @@ export default function DismissalGroups() {
       if (groupsError) throw groupsError;
       setGroups((groupsData || []).map(group => ({ 
         ...group, 
-        group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car',
+        group_type: group.group_type as 'bus' | 'class' | 'walker' | 'car' | 'activity',
         car_rider_type: group.car_rider_type as 'count' | 'all_remaining' | undefined
       })));
     } catch (error) {
@@ -303,6 +311,32 @@ export default function DismissalGroups() {
     }
   };
 
+  const fetchActivities = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from('after_school_activities')
+        .select('id, activity_name')
+        .eq('school_id', profile.school_id)
+        .eq('status', 'active')
+        .order('activity_name');
+
+      if (error) throw error;
+      setAvailableActivities(data || []);
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+    }
+  };
+
   const onSubmit = async (data: GroupFormData) => {
     if (!planId) return;
 
@@ -344,6 +378,12 @@ export default function DismissalGroups() {
         if (data.group_type === 'class') {
           await supabase
             .from('dismissal_group_classes')
+            .delete()
+            .eq('dismissal_group_id', editingGroup.id);
+        }
+        if (data.group_type === 'activity') {
+          await supabase
+            .from('dismissal_group_activities')
             .delete()
             .eq('dismissal_group_id', editingGroup.id);
         }
@@ -410,6 +450,20 @@ export default function DismissalGroups() {
         if (classError) throw classError;
       }
 
+      // Handle activity assignments for activity groups
+      if (data.group_type === 'activity' && data.activity_ids && data.activity_ids.length > 0) {
+        const activityAssignments = data.activity_ids.map(activityId => ({
+          dismissal_group_id: groupId,
+          after_school_activity_id: activityId,
+        }));
+
+        const { error: activityError } = await supabase
+          .from('dismissal_group_activities')
+          .insert(activityAssignments);
+
+        if (activityError) throw activityError;
+      }
+
       setShowAddDialog(false);
       setEditingGroup(null);
       form.reset();
@@ -431,6 +485,7 @@ export default function DismissalGroups() {
     let existingBusIds: string[] = [];
     let existingCarLineIds: string[] = [];
     let existingClassIds: string[] = [];
+    let existingActivityIds: string[] = [];
 
     if (group.group_type === 'bus') {
       try {
@@ -471,6 +526,19 @@ export default function DismissalGroups() {
       }
     }
 
+    if (group.group_type === 'activity') {
+      try {
+        const { data } = await supabase
+          .from('dismissal_group_activities')
+          .select('after_school_activity_id')
+          .eq('dismissal_group_id', group.id);
+        
+        existingActivityIds = data?.map(assignment => assignment.after_school_activity_id) || [];
+      } catch (error) {
+        console.error('Error fetching activity assignments:', error);
+      }
+    }
+
     form.reset({
       name: group.name,
       group_type: group.group_type,
@@ -481,6 +549,7 @@ export default function DismissalGroups() {
       bus_ids: existingBusIds,
       car_line_ids: existingCarLineIds,
       class_ids: existingClassIds,
+      activity_ids: existingActivityIds,
     });
     setShowAddDialog(true);
   };
@@ -530,6 +599,8 @@ export default function DismissalGroups() {
         return <MapPin className="h-5 w-5 text-orange-500" />;
       case 'car':
         return <Car className="h-5 w-5 text-purple-500" />;
+      case 'activity':
+        return <GraduationCap className="h-5 w-5 text-emerald-500" />;
       default:
         return <Users className="h-5 w-5" />;
     }
@@ -545,6 +616,8 @@ export default function DismissalGroups() {
         return 'Walker';
       case 'car':
         return 'Car Rider';
+      case 'activity':
+        return 'After School Activity';
       default:
         return type;
     }
@@ -580,6 +653,15 @@ export default function DismissalGroups() {
       group.dismissal_group_classes.forEach(assignment => {
         if (assignment.classes?.class_rosters) {
           count += assignment.classes.class_rosters.length;
+        }
+      });
+    }
+
+    // Count students from assigned activities
+    if (group.group_type === 'activity' && group.dismissal_group_activities && Array.isArray(group.dismissal_group_activities)) {
+      group.dismissal_group_activities.forEach(assignment => {
+        if (assignment.after_school_activities?.student_after_school_assignments) {
+          count += assignment.after_school_activities.student_after_school_assignments.length;
         }
       });
     }
@@ -723,6 +805,7 @@ export default function DismissalGroups() {
                             bus_ids: [],
                             car_line_ids: [],
                             class_ids: [],
+                            activity_ids: [],
                             car_rider_type: 'all_remaining',
                             car_rider_capacity: undefined,
                           });
@@ -771,9 +854,10 @@ export default function DismissalGroups() {
                                   </FormControl>
                                   <SelectContent>
                                     <SelectItem value="bus">Bus</SelectItem>
-                                    <SelectItem value="class">Class</SelectItem>
-                                    <SelectItem value="walker">Walker</SelectItem>
-                                    <SelectItem value="car">Car Rider</SelectItem>
+                                     <SelectItem value="class">Class</SelectItem>
+                                     <SelectItem value="walker">Walker</SelectItem>
+                                     <SelectItem value="car">Car Rider</SelectItem>
+                                     <SelectItem value="activity">After School Activity</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -1087,10 +1171,99 @@ export default function DismissalGroups() {
                                   <FormMessage />
                                 </FormItem>
                               )}
-                            />
-                          )}
+                             />
+                           )}
 
-                          <div className="flex gap-2 justify-end">
+                           {form.watch('group_type') === 'activity' && (
+                             <FormField
+                               control={form.control}
+                               name="activity_ids"
+                               render={({ field }) => (
+                                 <FormItem className="flex flex-col">
+                                   <FormLabel>Select Activities</FormLabel>
+                                   <Popover>
+                                     <PopoverTrigger asChild>
+                                       <FormControl>
+                                         <Button
+                                           variant="outline"
+                                           role="combobox"
+                                           className={cn(
+                                             "justify-between",
+                                             !field.value?.length && "text-muted-foreground"
+                                           )}
+                                         >
+                                           {field.value?.length
+                                             ? `${field.value.length} activit${field.value.length !== 1 ? 'ies' : 'y'} selected`
+                                             : "Select activities"}
+                                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                         </Button>
+                                       </FormControl>
+                                     </PopoverTrigger>
+                                     <PopoverContent className="w-full p-0 bg-background z-50">
+                                       <Command>
+                                         <CommandInput placeholder="Search activities..." />
+                                         <CommandList>
+                                           <CommandEmpty>No activities found.</CommandEmpty>
+                                           <CommandGroup>
+                                             {availableActivities.map((activity) => (
+                                               <CommandItem
+                                                 key={activity.id}
+                                                 onSelect={() => {
+                                                   const currentValues = field.value || [];
+                                                   const isSelected = currentValues.includes(activity.id);
+                                                   
+                                                   if (isSelected) {
+                                                     field.onChange(currentValues.filter(id => id !== activity.id));
+                                                   } else {
+                                                     field.onChange([...currentValues, activity.id]);
+                                                   }
+                                                 }}
+                                               >
+                                                 <Check
+                                                   className={cn(
+                                                     "mr-2 h-4 w-4",
+                                                     field.value?.includes(activity.id) ? "opacity-100" : "opacity-0"
+                                                   )}
+                                                 />
+                                                 {activity.activity_name}
+                                               </CommandItem>
+                                             ))}
+                                           </CommandGroup>
+                                         </CommandList>
+                                       </Command>
+                                     </PopoverContent>
+                                   </Popover>
+                                   {field.value?.length > 0 && (
+                                     <div className="flex flex-wrap gap-1 mt-2">
+                                       {field.value.map((activityId) => {
+                                         const activity = availableActivities.find(a => a.id === activityId);
+                                         if (!activity) return null;
+                                         return (
+                                           <Badge key={activityId} variant="secondary" className="text-xs">
+                                             {activity.activity_name}
+                                             <Button
+                                               variant="ghost"
+                                               size="sm"
+                                               className="ml-1 h-3 w-3 p-0 hover:bg-transparent"
+                                               onClick={(e) => {
+                                                 e.preventDefault();
+                                                 field.onChange(field.value?.filter(id => id !== activityId));
+                                               }}
+                                             >
+                                               <X className="h-2 w-2" />
+                                             </Button>
+                                           </Badge>
+                                         );
+                                       })}
+                                     </div>
+                                   )}
+                                   <FormMessage />
+                                 </FormItem>
+                               )}
+                             />
+                           )}
+
+                           <div className="flex gap-2 justify-end">
                             <Button
                               type="button"
                               variant="outline"
