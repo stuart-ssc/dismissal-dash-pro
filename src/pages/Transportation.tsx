@@ -21,6 +21,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { ManageActivityStudentsDialog } from "@/components/ManageActivityStudentsDialog";
 
 const editBusSchema = z.object({
   bus_number: z.string().min(1, "Bus number is required"),
@@ -150,6 +151,7 @@ const Transportation = () => {
   });
   const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; class_name: string }>>([]);
   const [schoolName, setSchoolName] = useState<string>('');
+  const [schoolId, setSchoolId] = useState<number | null>(null);
   
   // Walker locations state
   const [walkerLocations, setWalkerLocations] = useState<WalkerLocationRecord[]>([]);
@@ -204,6 +206,7 @@ const Transportation = () => {
   
   // After school activity student management state
   const [managingActivityStudents, setManagingActivityStudents] = useState<AfterSchoolActivityRecord | null>(null);
+  const [managingActivity, setManagingActivity] = useState<AfterSchoolActivityRecord | null>(null);
   const [activityStudents, setActivityStudents] = useState<StudentBusRecord[]>([]);
   const [isLoadingActivityStudents, setIsLoadingActivityStudents] = useState(false);
   const [showAddActivityStudentDialog, setShowAddActivityStudentDialog] = useState(false);
@@ -251,6 +254,8 @@ const Transportation = () => {
         setFilteredTransportation([]);
         return;
       }
+
+      setSchoolId(profile.school_id);
       
       // Fetch buses without nested aggregation to avoid RLS issues
       const { data: buses, error: busesError } = await supabase
@@ -2471,10 +2476,9 @@ const Transportation = () => {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => {
-                                        setManagingActivityStudents(activity);
-                                        // Fetch activity students would go here
-                                      }}>
+                                       <DropdownMenuItem onClick={() => {
+                                         setManagingActivity(activity);
+                                       }}>
                                         <Users className="mr-2 h-4 w-4" />
                                         Manage Students
                                       </DropdownMenuItem>
@@ -3444,6 +3448,17 @@ const Transportation = () => {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {managingActivity && schoolId && (
+        <ManageActivityStudentsDialog
+          open={!!managingActivity}
+          onOpenChange={(o) => !o && setManagingActivity(null)}
+          activityId={managingActivity.id}
+          activityName={managingActivity.activity_name}
+          schoolId={schoolId}
+          onUpdated={fetchAfterSchoolActivities}
+        />
+      )}
     </>
   );
 };
