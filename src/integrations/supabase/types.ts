@@ -14,45 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      after_school_activities: {
-        Row: {
-          activity_name: string
-          capacity: number | null
-          created_at: string
-          description: string | null
-          id: string
-          location: string | null
-          school_id: number
-          status: string
-          supervisor_name: string | null
-          updated_at: string
-        }
-        Insert: {
-          activity_name: string
-          capacity?: number | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          location?: string | null
-          school_id: number
-          status?: string
-          supervisor_name?: string | null
-          updated_at?: string
-        }
-        Update: {
-          activity_name?: string
-          capacity?: number | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          location?: string | null
-          school_id?: number
-          status?: string
-          supervisor_name?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       audit_logs: {
         Row: {
           action: string
@@ -852,7 +813,6 @@ export type Database = {
       schools: {
         Row: {
           address: string | null
-          after_school_activities_enabled: boolean | null
           audit_logs_enabled: boolean | null
           auto_dismissal_enabled: boolean | null
           car_lines_enabled: boolean | null
@@ -881,7 +841,6 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          after_school_activities_enabled?: boolean | null
           audit_logs_enabled?: boolean | null
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
@@ -910,7 +869,6 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          after_school_activities_enabled?: boolean | null
           audit_logs_enabled?: boolean | null
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
@@ -938,35 +896,6 @@ export type Database = {
           zipcode?: string | null
         }
         Relationships: []
-      }
-      student_after_school_assignments: {
-        Row: {
-          after_school_activity_id: string | null
-          assigned_at: string
-          id: string
-          student_id: string
-        }
-        Insert: {
-          after_school_activity_id?: string | null
-          assigned_at?: string
-          id?: string
-          student_id: string
-        }
-        Update: {
-          after_school_activity_id?: string | null
-          assigned_at?: string
-          id?: string
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_after_school_assignments_after_school_activity_id_fkey"
-            columns: ["after_school_activity_id"]
-            isOneToOne: false
-            referencedRelation: "after_school_activities"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       student_bus_assignments: {
         Row: {

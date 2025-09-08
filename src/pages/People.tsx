@@ -25,7 +25,7 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
-  transportation?: 'Bus' | 'Walker' | 'Car Rider' | 'Not Assigned' | 'After School';
+  transportation?: 'Bus' | 'Walker' | 'Car Rider';
 }
 
 const People = () => {
@@ -50,7 +50,6 @@ const People = () => {
   const [filterRole, setFilterRole] = useState<'all' | 'School Admin' | 'Teacher' | 'Student'>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [filterClass, setFilterClass] = useState<string>('all');
-  const [selectedTransportation, setSelectedTransportation] = useState<'all' | 'Bus' | 'Car Line' | 'Walker' | 'After School'>('all');
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
 
   useEffect(() => {
@@ -96,7 +95,7 @@ const People = () => {
             }
 
             // Fetch all people associated with the school
-            await fetchPeople(profile.school_id, selectedTransportation);
+            await fetchPeople(profile.school_id);
           }
         }
       } catch (error) {
@@ -125,7 +124,7 @@ const People = () => {
     })();
   }, [userRole, user?.id]);
 
-  const fetchPeople = async (schoolId: number, transportationFilter: typeof selectedTransportation = 'all') => {
+  const fetchPeople = async (schoolId: number) => {
     setIsLoading(true);
     try {
       console.log('Fetching people for school_id:', schoolId);
@@ -204,79 +203,24 @@ const People = () => {
       }
 
       // Fetch students with their classes in one query using joins, ordered by newest first
-      // Apply transportation filter if specified
-      let studentsQuery = supabase
+      const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
         .select(`
           id, 
           student_id, 
           first_name, 
           last_name, 
-          grade_level
+          grade_level,
+          class_rosters(
+            classes(class_name)
+          ),
+          student_bus_assignments(bus_id),
+          student_walker_assignments(walker_location_id),
+          student_car_assignments(car_line_id)
         `, { count: 'exact' })
-        .eq('school_id', schoolId);
-
-      // Add transportation filter JOINs if needed
-      if (transportationFilter !== 'all') {
-        switch (transportationFilter) {
-          case 'Bus':
-            studentsQuery = supabase
-              .from('students')
-              .select(`
-                id, 
-                student_id, 
-                first_name, 
-                last_name, 
-                grade_level,
-                student_bus_assignments!inner(bus_id)
-              `, { count: 'exact' })
-              .eq('school_id', schoolId);
-            break;
-          case 'Car Line':
-            studentsQuery = supabase
-              .from('students')
-              .select(`
-                id, 
-                student_id, 
-                first_name, 
-                last_name, 
-                grade_level,
-                student_car_assignments!inner(car_line_id)
-              `, { count: 'exact' })
-              .eq('school_id', schoolId);
-            break;
-          case 'Walker':
-            studentsQuery = supabase
-              .from('students')
-              .select(`
-                id, 
-                student_id, 
-                first_name, 
-                last_name, 
-                grade_level,
-                student_walker_assignments!inner(walker_location_id)
-              `, { count: 'exact' })
-              .eq('school_id', schoolId);
-            break;
-          case 'After School':
-            studentsQuery = supabase
-              .from('students')
-              .select(`
-                id, 
-                student_id, 
-                first_name, 
-                last_name, 
-                grade_level,
-                student_after_school_assignments!inner(after_school_activity_id)
-              `, { count: 'exact' })
-              .eq('school_id', schoolId);
-            break;
-        }
-      }
-
-      const { data: studentsData, error: studentsError, count } = await studentsQuery
+        .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
-        .limit(2000);
+        .limit(2000); // Increase limit to ensure we get all students
 
       console.log('Students query result:', { studentsData, studentsError, schoolId, count });
       
@@ -288,11 +232,12 @@ const People = () => {
         console.log('Processing students:', studentsData.length);
         
         for (const student of studentsData) {
-          // For now, set default transportation - we can add assignment queries later if needed
-          let transportation: 'Bus' | 'Walker' | 'Car Rider' | 'Not Assigned' | 'After School' = 'Not Assigned';
-          
-          // Set empty classes for now - simplified query
-          const studentClasses: string[] = [];
+          const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
+
+          const hasBus = (student.student_bus_assignments?.length || 0) > 0;
+          const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
+          const hasCar = (student.student_car_assignments?.length || 0) > 0;
+          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : undefined;
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
             id: student.id,
@@ -482,7 +427,7 @@ const People = () => {
     });
 
   // Reset page when filters change
-  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string, newTransportation?: typeof selectedTransportation) => {
+  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string) => {
     setCurrentPage(1);
     if (newFilterRole !== undefined) setFilterRole(newFilterRole);
     if (newFilterGrade !== undefined) {
@@ -493,13 +438,6 @@ const People = () => {
       }
     }
     if (newFilterClass !== undefined) setFilterClass(newFilterClass);
-    if (newTransportation !== undefined) {
-      setSelectedTransportation(newTransportation);
-      // Fetch people with new transportation filter
-      if (schoolId) {
-        fetchPeople(schoolId, newTransportation);
-      }
-    }
   };
 
   const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
@@ -579,7 +517,7 @@ const People = () => {
                         onPersonAdded={() => {
                           console.log('Person added, refreshing data...');
                           if (schoolId) {
-                            fetchPeople(schoolId, selectedTransportation);
+                            fetchPeople(schoolId);
                           }
                         }} 
                       />
@@ -638,7 +576,7 @@ const People = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                     {/* Class Filter */}
+                    {/* Class Filter */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8">
@@ -655,33 +593,6 @@ const People = () => {
                             {className}
                           </DropdownMenuItem>
                         ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Transportation Filter */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
-                          Transport: {selectedTransportation === 'all' ? 'All' : selectedTransportation}
-                          <ChevronDown className="h-3 w-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'all')}>
-                          All Transportation
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'Bus')}>
-                          Bus
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'Car Line')}>
-                          Car Line
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'Walker')}>
-                          Walker
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, undefined, 'After School')}>
-                          After School
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -732,11 +643,12 @@ const People = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Classes</TableHead>
-                  <TableHead>Actions</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Grade</TableHead>
+                        <TableHead>Transportation</TableHead>
+                        <TableHead>Classes</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -751,8 +663,9 @@ const People = () => {
                               {person.role}
                             </Badge>
                           </TableCell>
-                           <TableCell>{person.grade || '-'}</TableCell>
-                           <TableCell>
+                          <TableCell>{person.grade || '-'}</TableCell>
+                          <TableCell>{person.transportation || '-'}</TableCell>
+                          <TableCell>
                             {person.classes.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
                                 {person.classes.map((className, index) => (
@@ -1047,10 +960,11 @@ const People = () => {
               <Table>
                   <TableHeader>
                     <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Classes</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Transportation</TableHead>
+                      <TableHead>Classes</TableHead>
                       {userRole === 'school_admin' && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -1066,8 +980,9 @@ const People = () => {
                           {person.role}
                         </Badge>
                       </TableCell>
-                       <TableCell>{person.grade || '-'}</TableCell>
-                       <TableCell>
+                      <TableCell>{person.grade || '-'}</TableCell>
+                      <TableCell>{person.transportation || '-'}</TableCell>
+                      <TableCell>
                         {person.classes.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {person.classes.map((className, index) => (
