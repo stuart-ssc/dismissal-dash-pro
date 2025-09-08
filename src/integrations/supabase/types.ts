@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      after_school_activities: {
+        Row: {
+          activity_name: string
+          capacity: number | null
+          created_at: string
+          description: string | null
+          id: string
+          location: string | null
+          school_id: number
+          status: string
+          supervisor_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          activity_name: string
+          capacity?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          school_id: number
+          status?: string
+          supervisor_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activity_name?: string
+          capacity?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          school_id?: number
+          status?: string
+          supervisor_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -301,6 +340,13 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "class_rosters_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       class_teachers: {
@@ -517,6 +563,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissal_group_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
             referencedColumns: ["id"]
           },
         ]
@@ -813,6 +866,7 @@ export type Database = {
       schools: {
         Row: {
           address: string | null
+          after_school_activities_enabled: boolean | null
           audit_logs_enabled: boolean | null
           auto_dismissal_enabled: boolean | null
           car_lines_enabled: boolean | null
@@ -841,6 +895,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          after_school_activities_enabled?: boolean | null
           audit_logs_enabled?: boolean | null
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
@@ -869,6 +924,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          after_school_activities_enabled?: boolean | null
           audit_logs_enabled?: boolean | null
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
@@ -931,6 +987,13 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_bus_assignments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_car_assignments: {
@@ -967,6 +1030,13 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_student_car_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_walker_assignments: {
@@ -1001,6 +1071,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_student_walker_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students_teacher_view"
             referencedColumns: ["id"]
           },
         ]
@@ -1258,7 +1335,59 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      students_teacher_view: {
+        Row: {
+          contact_info: string | null
+          created_at: string | null
+          dismissal_group: string | null
+          first_name: string | null
+          grade_level: string | null
+          id: string | null
+          last_name: string | null
+          parent_guardian_name: string | null
+          school_id: number | null
+          special_notes: string | null
+          student_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          contact_info?: never
+          created_at?: string | null
+          dismissal_group?: string | null
+          first_name?: string | null
+          grade_level?: string | null
+          id?: string | null
+          last_name?: string | null
+          parent_guardian_name?: never
+          school_id?: number | null
+          special_notes?: never
+          student_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          contact_info?: never
+          created_at?: string | null
+          dismissal_group?: string | null
+          first_name?: string | null
+          grade_level?: string | null
+          id?: string | null
+          last_name?: string | null
+          parent_guardian_name?: never
+          school_id?: number | null
+          special_notes?: never
+          student_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_dismissal_times: {
@@ -1318,6 +1447,23 @@ export type Database = {
         }[]
       }
       get_students_for_teacher: {
+        Args: { teacher_uuid?: string }
+        Returns: {
+          contact_info: string
+          created_at: string
+          dismissal_group: string
+          first_name: string
+          grade_level: string
+          id: string
+          last_name: string
+          parent_guardian_name: string
+          school_id: number
+          special_notes: string
+          student_id: string
+          updated_at: string
+        }[]
+      }
+      get_students_for_teacher_safe: {
         Args: { teacher_uuid?: string }
         Returns: {
           contact_info: string
