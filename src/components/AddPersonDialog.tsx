@@ -22,6 +22,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
   const [availableBuses, setAvailableBuses] = useState<Array<{ id: string; bus_number: string }>>([]);
   const [availableCarLines, setAvailableCarLines] = useState<Array<{ id: string; line_name: string }>>([]);
   const [availableWalkerLocations, setAvailableWalkerLocations] = useState<Array<{ id: string; location_name: string }>>([]);
+  const [availableActivities, setAvailableActivities] = useState<Array<{ id: string; activity_name: string }>>([]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -29,7 +30,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
     gradeLevel: '',
     classId: '',
     studentId: '',
-    transportMethod: '', // 'bus' | 'walker' | 'car'
+    transportMethod: '', // 'bus' | 'walker' | 'car' | 'activity'
     transportTargetId: '',
   });
   const { toast } = useToast();
@@ -59,14 +60,16 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
   useEffect(() => {
     const fetchTransportationOptions = async () => {
       if (!open || personType !== 'student') return;
-      const [{ data: buses }, { data: carLines }, { data: walkerLocs }] = await Promise.all([
+      const [{ data: buses }, { data: carLines }, { data: walkerLocs }, { data: activities }] = await Promise.all([
         supabase.from('buses').select('id, bus_number').eq('school_id', schoolId).order('bus_number', { ascending: true }),
         supabase.from('car_lines').select('id, line_name').eq('school_id', schoolId).order('line_name', { ascending: true }),
-        supabase.from('walker_locations').select('id, location_name').eq('school_id', schoolId).order('location_name', { ascending: true })
+        supabase.from('walker_locations').select('id, location_name').eq('school_id', schoolId).order('location_name', { ascending: true }),
+        supabase.from('after_school_activities').select('id, activity_name').eq('school_id', schoolId).order('activity_name', { ascending: true })
       ]);
       setAvailableBuses(buses || []);
       setAvailableCarLines(carLines || []);
       setAvailableWalkerLocations(walkerLocs || []);
+      setAvailableActivities(activities || []);
     };
     fetchTransportationOptions();
   }, [open, personType, schoolId]);
@@ -124,6 +127,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
           await supabase.from('student_bus_assignments').delete().eq('student_id', studentData.id);
           await supabase.from('student_walker_assignments').delete().eq('student_id', studentData.id);
           await supabase.from('student_car_assignments').delete().eq('student_id', studentData.id);
+          await supabase.from('student_after_school_assignments').delete().eq('student_id', studentData.id);
           if (formData.transportMethod && formData.transportTargetId) {
             if (formData.transportMethod === 'bus') {
               const { error: insErr } = await supabase.from('student_bus_assignments').insert({ student_id: studentData.id, bus_id: formData.transportTargetId });
@@ -133,6 +137,9 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
               if (insErr) throw insErr;
             } else if (formData.transportMethod === 'car') {
               const { error: insErr } = await supabase.from('student_car_assignments').insert({ student_id: studentData.id, car_line_id: formData.transportTargetId });
+              if (insErr) throw insErr;
+            } else if (formData.transportMethod === 'activity') {
+              const { error: insErr } = await supabase.from('student_after_school_assignments').insert({ student_id: studentData.id, after_school_activity_id: formData.transportTargetId });
               if (insErr) throw insErr;
             }
           }
@@ -301,6 +308,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
                     <SelectItem value="bus">Bus</SelectItem>
                     <SelectItem value="walker">Walker</SelectItem>
                     <SelectItem value="car">Car Rider</SelectItem>
+                    <SelectItem value="activity">After School Activity</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -356,6 +364,25 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
                     <SelectContent className="bg-background border border-border shadow-lg z-50">
                       {availableCarLines.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.line_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {formData.transportMethod === 'activity' && (
+                <div className="space-y-2">
+                  <Label htmlFor="transportTargetId">After School Activity</Label>
+                  <Select
+                    value={formData.transportTargetId}
+                    onValueChange={(value) => setFormData({ ...formData, transportTargetId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select activity" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border shadow-lg z-50">
+                      {availableActivities.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.activity_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
