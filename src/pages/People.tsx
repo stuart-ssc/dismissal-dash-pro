@@ -202,7 +202,7 @@ const People = () => {
         }
       }
 
-      // Fetch students with their classes in one query using joins, ordered by newest first
+      // First fetch students without the after school assignments to test
       const { data: studentsData, error: studentsError, count } = await supabase
         .from('students')
         .select(`
@@ -216,14 +216,26 @@ const People = () => {
           ),
           student_bus_assignments(bus_id),
           student_walker_assignments(walker_location_id),
-          student_car_assignments(car_line_id),
-          student_after_school_assignments(after_school_activity_id)
+          student_car_assignments(car_line_id)
         `, { count: 'exact' })
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
         .limit(2000); // Increase limit to ensure we get all students
 
       console.log('Students query result:', { studentsData, studentsError, schoolId, count });
+
+      // Fetch after school assignments separately to avoid JOIN issues
+      let afterSchoolAssignments: any[] = [];
+      if (studentsData && studentsData.length > 0) {
+        const studentIds = studentsData.map(s => s.id);
+        const { data: afterSchoolData, error: afterSchoolError } = await supabase
+          .from('student_after_school_assignments')
+          .select('student_id, after_school_activity_id')
+          .in('student_id', studentIds);
+        
+        console.log('After school assignments query result:', { afterSchoolData, afterSchoolError });
+        afterSchoolAssignments = afterSchoolData || [];
+      }
       
       // Specifically check for Terri Tester
       const terriInData = studentsData?.find(s => s.first_name === 'Terri' && s.last_name === 'Tester');
@@ -238,7 +250,7 @@ const People = () => {
           const hasBus = (student.student_bus_assignments?.length || 0) > 0;
           const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
           const hasCar = (student.student_car_assignments?.length || 0) > 0;
-          const hasActivity = (student.student_after_school_assignments?.length || 0) > 0;
+          const hasActivity = afterSchoolAssignments.some(asa => asa.student_id === student.id);
           const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : hasActivity ? 'After School' : undefined;
           
           console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
