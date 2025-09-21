@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useSEO } from "@/hooks/useSEO";
@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { GraduationCap, Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown } from "lucide-react";
+import { GraduationCap, Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,20 +38,46 @@ const Auth = () => {
   const [schools, setSchools] = useState<{ id: number; school_name: string; city: string; state: string }[]>([]);
   const [schoolSearchOpen, setSchoolSearchOpen] = useState(false);
   const [schoolSearchValue, setSchoolSearchValue] = useState("");
+  const [selectedSchool, setSelectedSchool] = useState<{ id: number; school_name: string; city: string; state: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   const signInForm = useForm<SignInForm>();
   const signUpForm = useForm<SignUpForm>();
 
-  useEffect(() => {
-    const fetchSchools = async () => {
+  const searchSchools = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setSchools([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
       const { data } = await supabase
         .from('schools')
         .select('id, school_name, city, state')
-        .order('school_name');
-      if (data) setSchools(data);
-    };
-    fetchSchools();
+        .ilike('school_name', `%${query}%`)
+        .order('school_name')
+        .limit(50);
+      
+      if (data) {
+        setSchools(data);
+      }
+    } catch (error) {
+      console.error('Error searching schools:', error);
+      setSchools([]);
+    } finally {
+      setIsSearching(false);
+    }
   }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchSchools(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchSchools]);
 
   useEffect(() => {
     if (!loading && user && userRole) {
@@ -202,48 +228,64 @@ const Auth = () => {
                             aria-expanded={schoolSearchOpen}
                             className="w-full justify-between"
                           >
-                            {schoolSearchValue
-                              ? (() => {
-                                  const school = schools.find((s) => s.id.toString() === schoolSearchValue);
-                                  return school ? `${school.school_name} (${school.city}, ${school.state})` : "Search for your school...";
-                                })()
+                            {selectedSchool
+                              ? `${selectedSchool.school_name} (${selectedSchool.city}, ${selectedSchool.state})`
                               : "Search for your school..."}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-full p-0">
-                          <Command>
-                            <CommandInput placeholder="Search schools..." />
+                          <Command shouldFilter={false}>
+                            <CommandInput 
+                              placeholder="Type to search schools..." 
+                              value={searchQuery}
+                              onValueChange={setSearchQuery}
+                            />
                             <CommandList>
-                              <CommandEmpty>No schools found.</CommandEmpty>
-                              <CommandGroup>
-                                {schools.slice(0, 100).map((school) => (
-                                  <CommandItem
-                                    key={school.id}
-                                    value={`${school.school_name} ${school.city} ${school.state}`}
-                                    onSelect={() => {
-                                      const value = school.id.toString();
-                                      setSchoolSearchValue(value);
-                                      signUpForm.setValue("schoolId", value);
-                                      setSchoolSearchOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={`mr-2 h-4 w-4 ${
-                                        schoolSearchValue === school.id.toString()
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      }`}
-                                    />
-                                    <div>
-                                      <div className="font-medium">{school.school_name}</div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {school.city && school.state ? `${school.city}, ${school.state}` : "Location not specified"}
+                              {isSearching && (
+                                <div className="flex items-center justify-center p-4">
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  <span className="text-sm text-muted-foreground">Searching...</span>
+                                </div>
+                              )}
+                              {!isSearching && searchQuery.length >= 2 && schools.length === 0 && (
+                                <CommandEmpty>No schools found.</CommandEmpty>
+                              )}
+                              {!isSearching && searchQuery.length < 2 && (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                  Type at least 2 characters to search
+                                </div>
+                              )}
+                              {!isSearching && schools.length > 0 && (
+                                <CommandGroup>
+                                  {schools.map((school) => (
+                                    <CommandItem
+                                      key={school.id}
+                                      value={school.id.toString()}
+                                      onSelect={() => {
+                                        setSelectedSchool(school);
+                                        signUpForm.setValue("schoolId", school.id.toString());
+                                        setSchoolSearchOpen(false);
+                                        setSearchQuery("");
+                                      }}
+                                    >
+                                      <Check
+                                        className={`mr-2 h-4 w-4 ${
+                                          selectedSchool?.id === school.id
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        }`}
+                                      />
+                                      <div>
+                                        <div className="font-medium">{school.school_name}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                          {school.city && school.state ? `${school.city}, ${school.state}` : "Location not specified"}
+                                        </div>
                                       </div>
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
                             </CommandList>
                           </Command>
                         </PopoverContent>
