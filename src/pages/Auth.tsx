@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GraduationCap, Mail, Lock, User, Building, UserCheck } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { GraduationCap, Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,7 +35,9 @@ const Auth = () => {
   const navigate = useNavigate();
   const SEO = useSEO();
   const [isLoading, setIsLoading] = useState(false);
-  const [schools, setSchools] = useState<{ id: number; school_name: string }[]>([]);
+  const [schools, setSchools] = useState<{ id: number; school_name: string; city: string; state: string }[]>([]);
+  const [schoolSearchOpen, setSchoolSearchOpen] = useState(false);
+  const [schoolSearchValue, setSchoolSearchValue] = useState("");
 
   const signInForm = useForm<SignInForm>();
   const signUpForm = useForm<SignUpForm>();
@@ -42,7 +46,7 @@ const Auth = () => {
     const fetchSchools = async () => {
       const { data } = await supabase
         .from('schools')
-        .select('id, school_name')
+        .select('id, school_name, city, state')
         .order('school_name');
       if (data) setSchools(data);
     };
@@ -190,18 +194,60 @@ const Auth = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="schoolId">School</Label>
-                      <Select onValueChange={(value) => signUpForm.setValue("schoolId", value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your school" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {schools.map((school) => (
-                            <SelectItem key={school.id} value={school.id.toString()}>
-                              {school.school_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={schoolSearchOpen} onOpenChange={setSchoolSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={schoolSearchOpen}
+                            className="w-full justify-between"
+                          >
+                            {schoolSearchValue
+                              ? (() => {
+                                  const school = schools.find((s) => s.id.toString() === schoolSearchValue);
+                                  return school ? `${school.school_name} (${school.city}, ${school.state})` : "Search for your school...";
+                                })()
+                              : "Search for your school..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                          <Command>
+                            <CommandInput placeholder="Search schools..." />
+                            <CommandList>
+                              <CommandEmpty>No schools found.</CommandEmpty>
+                              <CommandGroup>
+                                {schools.slice(0, 100).map((school) => (
+                                  <CommandItem
+                                    key={school.id}
+                                    value={`${school.school_name} ${school.city} ${school.state}`}
+                                    onSelect={() => {
+                                      const value = school.id.toString();
+                                      setSchoolSearchValue(value);
+                                      signUpForm.setValue("schoolId", value);
+                                      setSchoolSearchOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={`mr-2 h-4 w-4 ${
+                                        schoolSearchValue === school.id.toString()
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      }`}
+                                    />
+                                    <div>
+                                      <div className="font-medium">{school.school_name}</div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {school.city && school.state ? `${school.city}, ${school.state}` : "Location not specified"}
+                                      </div>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     
                     <div className="space-y-2">
