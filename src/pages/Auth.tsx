@@ -54,14 +54,16 @@ const Auth = () => {
     setIsSearching(true);
     try {
       const { data } = await supabase
-        .from('schools')
-        .select('id, school_name, city, state')
-        .ilike('school_name', `%${query}%`)
-        .order('school_name')
-        .limit(50);
+        .rpc('get_schools_for_signup');
       
       if (data) {
-        setSchools(data);
+        // Filter results on client side for the search query
+        const filteredSchools = data
+          .filter(school => 
+            school.school_name.toLowerCase().includes(query.toLowerCase())
+          )
+          .slice(0, 50);
+        setSchools(filteredSchools);
       }
     } catch (error) {
       console.error('Error searching schools:', error);

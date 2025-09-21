@@ -878,6 +878,7 @@ export type Database = {
           auto_dismissal_enabled: boolean | null
           car_lines_enabled: boolean | null
           city: string | null
+          county: string | null
           created_at: string
           dismissal_time: string | null
           email_notifications_enabled: boolean | null
@@ -887,6 +888,7 @@ export type Database = {
           phone_number: string | null
           preparation_time_minutes: number | null
           primary_color: string | null
+          school_district: string | null
           school_logo: string | null
           school_name: string | null
           secondary_color: string | null
@@ -899,6 +901,7 @@ export type Database = {
           updated_at: string
           walkers_enabled: boolean | null
           zipcode: string | null
+          zipcode_4_digit: string | null
         }
         Insert: {
           address?: string | null
@@ -907,6 +910,7 @@ export type Database = {
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
           city?: string | null
+          county?: string | null
           created_at?: string
           dismissal_time?: string | null
           email_notifications_enabled?: boolean | null
@@ -916,6 +920,7 @@ export type Database = {
           phone_number?: string | null
           preparation_time_minutes?: number | null
           primary_color?: string | null
+          school_district?: string | null
           school_logo?: string | null
           school_name?: string | null
           secondary_color?: string | null
@@ -928,6 +933,7 @@ export type Database = {
           updated_at?: string
           walkers_enabled?: boolean | null
           zipcode?: string | null
+          zipcode_4_digit?: string | null
         }
         Update: {
           address?: string | null
@@ -936,6 +942,7 @@ export type Database = {
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
           city?: string | null
+          county?: string | null
           created_at?: string
           dismissal_time?: string | null
           email_notifications_enabled?: boolean | null
@@ -945,6 +952,7 @@ export type Database = {
           phone_number?: string | null
           preparation_time_minutes?: number | null
           primary_color?: string | null
+          school_district?: string | null
           school_logo?: string | null
           school_name?: string | null
           secondary_color?: string | null
@@ -957,6 +965,7 @@ export type Database = {
           updated_at?: string
           walkers_enabled?: boolean | null
           zipcode?: string | null
+          zipcode_4_digit?: string | null
         }
         Relationships: []
       }
@@ -1387,6 +1396,15 @@ export type Database = {
       get_current_user_school_id: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      get_schools_for_signup: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          city: string
+          id: number
+          school_name: string
+          state: string
+        }[]
       }
       get_student_safe_view: {
         Args: { student_uuid: string }
