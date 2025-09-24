@@ -3,6 +3,9 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { isRateLimited, isValidEmail } from '@/lib/security';
+import { logger } from '@/lib/logger';
+import { handleError } from '@/lib/errorHandler';
+import { auditLogger } from '@/lib/auditLogger';
 
 interface AuthContextType {
   user: User | null;
@@ -41,7 +44,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               : null;
       setUserRole(effectiveRole);
     } catch (err) {
-      console.error('Error fetching user roles:', err);
+      const secureError = handleError(err, 'user roles fetch');
+      logger.error({
+        message: 'Failed to fetch user roles',
+        error: err instanceof Error ? err : new Error(String(err)),
+        userId: user?.id
+      });
       setUserRole(null);
     } finally {
       setLoading(false);

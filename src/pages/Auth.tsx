@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,20 +16,12 @@ import { GraduationCap, Mail, Lock, User, Building, UserCheck, Check, ChevronsUp
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { signInSchema, signUpSchema, type SignInFormData, type SignUpFormData } from "@/lib/validation";
+import { handleError } from "@/lib/errorHandler";
+import { logger } from "@/lib/logger";
 
-interface SignInForm {
-  email: string;
-  password: string;
-}
-
-interface SignUpForm {
-  firstName: string;
-  lastName: string;
-  schoolId: string;
-  role: string;
-  email: string;
-  password: string;
-}
+interface SignInForm extends SignInFormData {}
+interface SignUpForm extends SignUpFormData {}
 
 const Auth = () => {
   const { signIn, signUp, user, userRole, loading } = useAuth();
@@ -42,8 +35,12 @@ const Auth = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
-  const signInForm = useForm<SignInForm>();
-  const signUpForm = useForm<SignUpForm>();
+  const signInForm = useForm<SignInForm>({
+    resolver: zodResolver(signInSchema)
+  });
+  const signUpForm = useForm<SignUpForm>({
+    resolver: zodResolver(signUpSchema)
+  });
 
   const searchSchools = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -66,7 +63,11 @@ const Auth = () => {
         setSchools(filteredSchools);
       }
     } catch (error) {
-      console.error('Error searching schools:', error);
+      const secureError = handleError(error, 'school search');
+      logger.warn({
+        message: 'School search failed',
+        data: { query, error: secureError.message }
+      });
       setSchools([]);
     } finally {
       setIsSearching(false);
@@ -164,8 +165,13 @@ const Auth = () => {
                           type="email" 
                           placeholder="Enter your email"
                           className="pl-9"
-                          {...signInForm.register("email", { required: true })}
+                          {...signInForm.register("email")}
                         />
+                        {signInForm.formState.errors.email && (
+                          <p className="text-sm text-destructive mt-1">
+                            {signInForm.formState.errors.email.message}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
@@ -178,8 +184,13 @@ const Auth = () => {
                           type="password" 
                           placeholder="Enter your password"
                           className="pl-9"
-                          {...signInForm.register("password", { required: true })}
+                          {...signInForm.register("password")}
                         />
+                        {signInForm.formState.errors.password && (
+                          <p className="text-sm text-destructive mt-1">
+                            {signInForm.formState.errors.password.message}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
@@ -202,21 +213,31 @@ const Auth = () => {
                         <Label htmlFor="firstName">First Name</Label>
                         <div className="relative">
                           <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            id="firstName" 
-                            placeholder="John"
-                            className="pl-9"
-                            {...signUpForm.register("firstName", { required: true })}
-                          />
+                            <Input 
+                              id="firstName" 
+                              placeholder="John"
+                              className="pl-9"
+                              {...signUpForm.register("firstName")}
+                            />
+                            {signUpForm.formState.errors.firstName && (
+                              <p className="text-sm text-destructive mt-1">
+                                {signUpForm.formState.errors.firstName.message}
+                              </p>
+                            )}
                         </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="lastName">Last Name</Label>
-                        <Input 
-                          id="lastName" 
-                          placeholder="Doe"
-                          {...signUpForm.register("lastName", { required: true })}
-                        />
+                          <Input 
+                            id="lastName" 
+                            placeholder="Doe"
+                            {...signUpForm.register("lastName")}
+                          />
+                          {signUpForm.formState.errors.lastName && (
+                            <p className="text-sm text-destructive mt-1">
+                              {signUpForm.formState.errors.lastName.message}
+                            </p>
+                          )}
                       </div>
                     </div>
                     
@@ -296,7 +317,7 @@ const Auth = () => {
                     
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
-                      <Select onValueChange={(value) => signUpForm.setValue("role", value)}>
+                      <Select onValueChange={(value) => signUpForm.setValue("role", value as "school_admin" | "teacher")}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select your role" />
                         </SelectTrigger>
@@ -305,6 +326,11 @@ const Auth = () => {
                           <SelectItem value="teacher">Teacher</SelectItem>
                         </SelectContent>
                       </Select>
+                      {signUpForm.formState.errors.role && (
+                        <p className="text-sm text-destructive mt-1">
+                          {signUpForm.formState.errors.role.message}
+                        </p>
+                      )}
                     </div>
                     
                     <div className="space-y-2">
@@ -316,8 +342,13 @@ const Auth = () => {
                           type="email" 
                           placeholder="john@school.edu"
                           className="pl-9"
-                          {...signUpForm.register("email", { required: true })}
+                          {...signUpForm.register("email")}
                         />
+                        {signUpForm.formState.errors.email && (
+                          <p className="text-sm text-destructive mt-1">
+                            {signUpForm.formState.errors.email.message}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
@@ -330,8 +361,13 @@ const Auth = () => {
                           type="password" 
                           placeholder="Create a strong password"
                           className="pl-9"
-                          {...signUpForm.register("password", { required: true })}
+                          {...signUpForm.register("password")}
                         />
+                        {signUpForm.formState.errors.password && (
+                          <p className="text-sm text-destructive mt-1">
+                            {signUpForm.formState.errors.password.message}
+                          </p>
+                        )}
                       </div>
                     </div>
                     
