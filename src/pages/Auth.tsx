@@ -67,9 +67,28 @@ const searchSchools = useCallback(async (query: string) => {
       const { data } = await supabase.rpc('get_schools_for_signup');
       list = data ?? [];
       setAllSchools(list);
+      console.debug?.('[Auth] prefetched on demand', { count: list.length });
     }
 
-    const searchResults = enhancedSchoolSearch(list, q, 15);
+    let searchResults = enhancedSchoolSearch(list, q, 15);
+    console.debug?.('[Auth] local search', { query: q, results: searchResults.length });
+
+    // Server-side fallback if local search yields nothing for a longer query
+    if (searchResults.length === 0 && q.length >= 6) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .rpc('get_schools_for_signup');
+
+      if (!fallbackError && Array.isArray(fallbackData) && fallbackData.length > 0) {
+        console.debug?.('[Auth] fallback RPC fetched', { query: q, count: fallbackData.length });
+        // Merge and dedupe by id
+        const byId = new Map<number, { id: number; school_name: string; city: string; state: string }>();
+        [...list, ...fallbackData].forEach((s) => byId.set(s.id, s as any));
+        const merged = Array.from(byId.values());
+        setAllSchools(merged);
+        searchResults = enhancedSchoolSearch(merged, q, 15);
+      }
+    }
+
     setSchools(searchResults);
   } catch (error) {
     const secureError = handleError(error, 'school search');

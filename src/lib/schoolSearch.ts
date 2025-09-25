@@ -132,7 +132,7 @@ function scoreSchool(school: any, queryWords: string[], fullQuery: string): numb
 }
 
 /**
- * Enhanced school search with deterministic exact-first matching
+ * Enhanced school search with deterministic exact-first matching + canonical buckets
  */
 export function enhancedSchoolSearch(schools: any[], query: string, maxResults: number = 15): SchoolSearchResult[] {
   const normalize = (s: string) => (s || '')
@@ -143,6 +143,24 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
     .replace(/\s+/g, ' ')
     .trim();
 
+  // Canonicalize by stripping common suffixes like "school", "elementary", "middle", etc.
+  const canonicalize = (s: string) => {
+    const n = normalize(s);
+    // remove common trailing descriptors
+    const SUFFIXES = [
+      ' elementary school', ' middle school', ' high school', ' primary school', ' secondary school',
+      ' elementary', ' middle', ' high', ' academy', ' school'
+    ];
+    let out = n;
+    for (const suf of SUFFIXES) {
+      if (out.endsWith(suf)) {
+        out = out.slice(0, -suf.length).trim();
+        break; // strip only one to avoid over-trimming
+      }
+    }
+    return out;
+  };
+
   if (!query?.trim()) return [];
   const trimmedQuery = query.trim();
   if (trimmedQuery.length < 2) return [];
@@ -150,6 +168,7 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
   const rawWords = trimmedQuery.split(/\s+/).filter(Boolean);
   const queryWords = rawWords.map((w) => normalize(w)).filter(Boolean);
   const fullQuery = normalize(rawWords.join(' '));
+  const queryCanon = canonicalize(fullQuery);
   if (queryWords.length === 0) return [];
 
   // Progressive result limiting based on query length
@@ -158,19 +177,61 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
   else if (trimmedQuery.length >= 6) dynamicMaxResults = Math.min(8, maxResults);
   else dynamicMaxResults = Math.min(12, maxResults);
 
-  const withNorm = schools.map((s) => ({ ...s, _nameNorm: normalize(s.school_name || '') }));
+  const withNorm = schools.map((s) => ({
+    ...s,
+    _nameNorm: normalize(s.school_name || ''),
+    _nameCanon: canonicalize(s.school_name || ''),
+  }));
 
-  // Buckets
-  const exact = withNorm.filter((s) => s._nameNorm === fullQuery);
-  const starts = withNorm.filter((s) => s._nameNorm.startsWith(fullQuery) && s._nameNorm !== fullQuery);
-  const phrase = withNorm.filter((s) => s._nameNorm.includes(fullQuery) && !s._nameNorm.startsWith(fullQuery) && s._nameNorm !== fullQuery);
-
+  // Tie-breakers
   const byTieBreakers = (a: any, b: any) => {
     const lenA = Math.abs((a._nameNorm || '').length - fullQuery.length);
     const lenB = Math.abs((b._nameNorm || '').length - fullQuery.length);
     if (lenA !== lenB) return lenA - lenB;
     return (a.school_name || '').localeCompare(b.school_name || '');
   };
+  const byTieBreakersCanon = (a: any, b: any) => {
+    const lenA = Math.abs((a._nameCanon || '').length - queryCanon.length);
+    const lenB = Math.abs((b._nameCanon || '').length - queryCanon.length);
+    if (lenA !== lenB) return lenA - lenB;
+    return (a.school_name || '').localeCompare(b.school_name || '');
+  };
+
+  // Canonical buckets come first to catch naming variants
+  const exactCanon = withNorm.filter((s) => s._nameCanon === queryCanon);
+  if (exactCanon.length) {
+    const out = exactCanon
+      .sort(byTieBreakersCanon)
+      .slice(0, dynamicMaxResults)
+      .map((s) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: 1100 }));
+    console.debug?.('[schoolSearch] exact-canon', { query: queryCanon, count: out.length });
+    return out as SchoolSearchResult[];
+  }
+
+  const startsCanon = withNorm.filter((s) => s._nameCanon.startsWith(queryCanon) && s._nameCanon !== queryCanon);
+  if (startsCanon.length) {
+    const out = startsCanon
+      .sort(byTieBreakersCanon)
+      .slice(0, dynamicMaxResults)
+      .map((s) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: 400 }));
+    console.debug?.('[schoolSearch] starts-canon', { query: queryCanon, count: out.length });
+    return out as SchoolSearchResult[];
+  }
+
+  const containsCanon = withNorm.filter((s) => s._nameCanon.includes(queryCanon) && s._nameCanon !== queryCanon);
+  if (containsCanon.length) {
+    const out = containsCanon
+      .sort(byTieBreakersCanon)
+      .slice(0, dynamicMaxResults)
+      .map((s) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: 300 }));
+    console.debug?.('[schoolSearch] contains-canon', { query: queryCanon, count: out.length });
+    return out as SchoolSearchResult[];
+  }
+
+  // Original deterministic buckets on full normalized string
+  const exact = withNorm.filter((s) => s._nameNorm === fullQuery);
+  const starts = withNorm.filter((s) => s._nameNorm.startsWith(fullQuery) && s._nameNorm !== fullQuery);
+  const phrase = withNorm.filter((s) => s._nameNorm.includes(fullQuery) && !s._nameNorm.startsWith(fullQuery) && s._nameNorm !== fullQuery);
 
   if (exact.length) {
     const out = exact.sort(byTieBreakers).slice(0, dynamicMaxResults).map((s) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: 1000 }));
