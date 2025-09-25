@@ -38,88 +38,113 @@ function calculateSimilarity(str1: string, str2: string): number {
  * Score a school based on search query match
  */
 function scoreSchool(school: any, queryWords: string[]): number {
-  const schoolName = school.school_name?.toLowerCase() || '';
-  const city = school.city?.toLowerCase() || '';
-  const state = school.state?.toLowerCase() || '';
-  const fullQuery = queryWords.join(' ').toLowerCase();
-  
+  const normalize = (s: string) => (s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '') // strip diacritics
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const STOPWORDS = new Set([
+    'school','elementary','middle','high','academy','the','of','and','for','public','charter','magnet'
+  ]);
+
+  const schoolName = normalize(school.school_name);
+  const city = normalize(school.city);
+  const state = normalize(school.state);
+  const fullQueryRaw = queryWords.join(' ');
+  const fullQuery = normalize(fullQueryRaw);
+
+  if (!fullQuery) return 0;
+
+  // Exact and starts-with get decisive boosts
+  if (schoolName === fullQuery) {
+    return 1000;
+  }
+  if (schoolName.startsWith(fullQuery)) {
+    return 200 + Math.min(50, fullQuery.length);
+  }
+
+  // Build significant words (remove stopwords, very short words)
+  const words = fullQuery
+    .split(' ')
+    .filter(w => w.length >= 3 && !STOPWORDS.has(w));
+
+  // If no significant words, fallback to simple contains
+  if (words.length === 0) {
+    if (schoolName.includes(fullQuery)) {
+      return 120 + (fullQuery.length / Math.max(schoolName.length, 1)) * 10;
+    }
+    return 0;
+  }
+
+  // Check adjacent bigram presence for phrase proximity
+  const containsBigram = (() => {
+    for (let i = 0; i < words.length - 1; i++) {
+      const bigram = `${words[i]} ${words[i + 1]}`;
+      if (schoolName.includes(bigram)) return true;
+    }
+    return false;
+  })();
+
   let totalScore = 0;
   let matchedWords = 0;
-  
-  // Check for exact full name match (highest priority)
-  if (schoolName === fullQuery) {
-    return 10.0; // Extremely high score for exact matches
-  }
-  
-  // Check if school name starts with the query (very high priority)
-  if (schoolName.startsWith(fullQuery)) {
-    return 8.0;
-  }
-  
-  // Check if query is contained in school name (high priority)
-  if (schoolName.includes(fullQuery)) {
-    return 6.0 + (fullQuery.length / schoolName.length); // Bonus for longer matches
-  }
-  
-  for (const word of queryWords) {
-    const wordLower = word.toLowerCase();
-    let bestScore = 0;
-    
-    // Only process words that are at least 2 characters
-    if (wordLower.length < 2) continue;
-    
-    // Exact word matches get high score
-    if (schoolName.includes(wordLower)) {
-      bestScore = Math.max(bestScore, 2.0);
-    }
-    if (city.includes(wordLower)) {
-      bestScore = Math.max(bestScore, 1.5);
-    }
-    if (state.includes(wordLower)) {
-      bestScore = Math.max(bestScore, 1.0);
-    }
-    
-    // Stricter fuzzy matching for typos (only very similar words)
-    const schoolWords = schoolName.split(/\s+/);
-    for (const schoolWord of schoolWords) {
-      if (schoolWord.length > 2 && wordLower.length > 2) {
-        const similarity = calculateSimilarity(wordLower, schoolWord);
-        if (similarity > 0.85) { // Much stricter threshold
-          bestScore = Math.max(bestScore, similarity * 1.5);
+
+  const schoolWords = schoolName.split(' ');
+  for (const w of words) {
+    let best = 0;
+
+    // Direct term presence weights
+    if (schoolName.includes(w)) best = Math.max(best, 10);
+    if (city.includes(w)) best = Math.max(best, 2);
+    if (state.includes(w)) best = Math.max(best, 1);
+
+    // Very strict fuzzy for longer words
+    if (w.length > 4) {
+      for (const sw of schoolWords) {
+        if (sw.length > 4) {
+          const similarity = calculateSimilarity(w, sw);
+          if (similarity >= 0.9) {
+            best = Math.max(best, 6 * similarity);
+          }
         }
       }
     }
-    
-    // Stricter partial word matching (minimum 3 characters)
-    if (wordLower.length >= 3) {
-      for (const schoolWord of schoolWords) {
-        if (schoolWord.startsWith(wordLower) && wordLower.length >= 3) {
-          bestScore = Math.max(bestScore, 1.8);
-        }
-      }
-    }
-    
-    if (bestScore > 0) {
+
+    if (best > 0) {
       matchedWords++;
-      totalScore += bestScore;
+      totalScore += best;
     }
   }
-  
-  // Require all significant words to match for a valid result
-  if (queryWords.length > 1 && matchedWords < queryWords.length) {
-    return 0; // Filter out partial matches for multi-word queries
+
+  // Phrase proximity bonus
+  if (containsBigram) totalScore += 50;
+
+  // Full phrase containment bonus (but less than starts-with)
+  if (schoolName.includes(fullQuery)) totalScore += 80;
+
+  // Enforce strong completeness for multi-word queries
+  const completeness = matchedWords / words.length;
+  if (words.length > 1 && completeness < 0.8 && !containsBigram) {
+    return 0;
   }
-  
-  // Bonus for matching all words
-  const completenessBonus = queryWords.length > 0 ? (matchedWords / queryWords.length) * 2.0 : 0;
-  
-  return totalScore + completenessBonus;
+
+  return totalScore;
 }
 
 /**
  * Enhanced school search with multi-word support and fuzzy matching
  */
 export function enhancedSchoolSearch(schools: any[], query: string, maxResults: number = 15): SchoolSearchResult[] {
+  const normalize = (s: string) => (s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   if (!query.trim()) {
     return [];
   }
@@ -132,7 +157,9 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
   }
   
   // Split query into words and filter out empty strings
-  const queryWords = trimmedQuery.split(/\s+/).filter(word => word.length > 0);
+  const rawWords = trimmedQuery.split(/\s+/).filter(word => word.length > 0);
+  const queryWords = rawWords.map(w => normalize(w)).filter(Boolean);
+  const fullQuery = normalize(rawWords.join(' '));
   
   if (queryWords.length === 0) {
     return [];
@@ -140,23 +167,48 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
   
   // Progressive result limiting based on query length
   let dynamicMaxResults = maxResults;
-  if (trimmedQuery.length >= 10) {
+  if (trimmedQuery.length >= 12) {
     dynamicMaxResults = Math.min(5, maxResults); // Very focused results for long queries
   } else if (trimmedQuery.length >= 6) {
     dynamicMaxResults = Math.min(8, maxResults); // Moderate results for medium queries
   } else {
     dynamicMaxResults = Math.min(12, maxResults); // More results for short queries
   }
+
+  // Helper for bigram priority
+  const hasBigram = (nameNorm: string, words: string[]) => {
+    for (let i = 0; i < words.length - 1; i++) {
+      const bigram = `${words[i]} ${words[i + 1]}`;
+      if (nameNorm.includes(bigram)) return true;
+    }
+    return false;
+  };
   
-  // Score all schools
-  const scoredSchools = schools
-    .map(school => ({
-      ...school,
-      score: scoreSchool(school, queryWords)
-    }))
-    .filter(school => school.score >= 2.0) // Only include schools with meaningful scores
-    .sort((a, b) => b.score - a.score) // Sort by score descending
-    .slice(0, dynamicMaxResults);
+  // Score all schools with prioritization and tie-breakers
+  const scored = schools
+    .map((school) => {
+      const nameNorm = normalize(school.school_name);
+      const priority = nameNorm === fullQuery
+        ? 2
+        : (nameNorm.startsWith(fullQuery) ? 1 : (hasBigram(nameNorm, queryWords) ? 0 : -1));
+      const score = scoreSchool(school, queryWords);
+      return { ...school, score, _priority: priority, _nameNorm: nameNorm } as any;
+    })
+    .filter((s: any) => s.score >= 10)
+    .sort((a: any, b: any) => {
+      // Priority: exact > starts-with > others
+      if (b._priority !== a._priority) return b._priority - a._priority;
+      // Then by score
+      if (b.score !== a.score) return b.score - a.score;
+      // Then by name length proximity to query
+      const lenA = Math.abs(a._nameNorm.length - fullQuery.length);
+      const lenB = Math.abs(b._nameNorm.length - fullQuery.length);
+      if (lenA !== lenB) return lenA - lenB;
+      // Finally alphabetical
+      return (a.school_name || '').localeCompare(b.school_name || '');
+    })
+    .slice(0, dynamicMaxResults)
+    .map((s: any) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: s.score }));
   
-  return scoredSchools;
+  return scored;
 }

@@ -31,7 +31,8 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const SEO = useSEO();
   const [isLoading, setIsLoading] = useState(false);
-  const [schools, setSchools] = useState<{ id: number; school_name: string; city: string; state: string }[]>([]);
+const [schools, setSchools] = useState<{ id: number; school_name: string; city: string; state: string }[]>([]);
+const [allSchools, setAllSchools] = useState<{ id: number; school_name: string; city: string; state: string }[]>([]);
   const [schoolSearchOpen, setSchoolSearchOpen] = useState(false);
   const [schoolSearchValue, setSchoolSearchValue] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<{ id: number; school_name: string; city: string; state: string } | null>(null);
@@ -51,33 +52,36 @@ const Auth = () => {
     resolver: zodResolver(signUpSchema)
   });
 
-  const searchSchools = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setSchools([]);
-      return;
+const searchSchools = useCallback(async (query: string) => {
+  const q = query.trim();
+  if (q.length < 2) {
+    setSchools([]);
+    return;
+  }
+
+  setIsSearching(true);
+  try {
+    let list = allSchools;
+
+    if (list.length === 0) {
+      const { data } = await supabase.rpc('get_schools_for_signup');
+      list = data ?? [];
+      setAllSchools(list);
     }
 
-    setIsSearching(true);
-    try {
-      const { data } = await supabase
-        .rpc('get_schools_for_signup');
-      
-      if (data) {
-        // Use enhanced search with multi-word support and fuzzy matching
-        const searchResults = enhancedSchoolSearch(data, query, 50);
-        setSchools(searchResults);
-      }
-    } catch (error) {
-      const secureError = handleError(error, 'school search');
-      logger.warn({
-        message: 'School search failed',
-        data: { query, error: secureError.message }
-      });
-      setSchools([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
+    const searchResults = enhancedSchoolSearch(list, q, 15);
+    setSchools(searchResults);
+  } catch (error) {
+    const secureError = handleError(error, 'school search');
+    logger.warn({
+      message: 'School search failed',
+      data: { query: q, error: secureError.message }
+    });
+    setSchools([]);
+  } finally {
+    setIsSearching(false);
+  }
+}, [allSchools]);
 
   // Check for teacher invitation in URL params
   useEffect(() => {
