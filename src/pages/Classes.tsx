@@ -47,66 +47,58 @@ const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     setIsSubmitting(true);
-
     try {
-      // Create teacher record only
-      const { data: teacherData, error: teacherError } = await supabase
-        .from('teachers')
-        .insert({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          school_id: schoolId
-        })
-        .select()
-        .single();
-
-      if (teacherError) throw teacherError;
-
-      // Get school name for the invitation email
-      const { data: schoolData } = await supabase
-        .from('schools')
-        .select('school_name')
-        .eq('id', schoolId)
-        .single();
-
-      // Send invitation email via edge function
-      const inviteUrl = `${window.location.origin}/auth?mode=teacher-signup&email=${encodeURIComponent(formData.email)}&teacher_id=${teacherData.id}`;
-      
-      const { error: emailError } = await supabase.functions.invoke('send-teacher-invitation', {
+      const response = await supabase.functions.invoke('invite-teacher-unified', {
         body: {
           email: formData.email,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          schoolName: schoolData?.school_name || 'Your School',
-          inviteUrl: inviteUrl
+          schoolId: schoolId
         }
       });
 
-      if (emailError) {
-        console.error('Error sending invitation email:', emailError);
-        toast("Teacher Created", {
-          description: "Teacher record created but invitation email failed to send. Please contact the teacher manually.",
-        });
-      } else {
-        toast.success("Success", {
-          description: "Teacher created and invitation email sent successfully!",
-        });
+      if (response.error) {
+        throw response.error;
       }
 
-      resetForm();
-      setOpen(false);
-      onTeacherAdded({
-        id: teacherData.id,
-        first_name: teacherData.first_name,
-        last_name: teacherData.last_name
-      });
-    } catch (error) {
-      console.error('Error adding teacher:', error);
-      toast.error("Error", {
-        description: "Failed to add teacher. Please try again.",
-      });
+      const result = response.data;
+      if (result.success > 0) {
+        toast.success(`Teacher invitation sent to ${formData.email}`);
+        
+        // Add the teacher optimistically
+        const newTeacher: Teacher = {
+          id: result.invitations[0]?.teacherId || crypto.randomUUID(),
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          school_id: schoolId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          invitation_status: 'pending',
+          invitation_sent_at: new Date().toISOString(),
+          invitation_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        };
+        
+        onTeacherAdded(newTeacher);
+        setFormData({ firstName: '', lastName: '', email: '' });
+        setOpen(false);
+      } else {
+        throw new Error(result.errors?.[0] || 'Failed to send invitation');
+      }
+    } catch (error: any) {
+      console.error('Error inviting teacher:', error);
+      toast.error(error.message || "Failed to send teacher invitation");
     } finally {
       setIsSubmitting(false);
     }
@@ -204,6 +196,13 @@ interface Teacher {
   id: string;
   first_name: string;
   last_name: string;
+  email: string;
+  school_id: number;
+  created_at: string;
+  updated_at: string;
+  invitation_status?: string;
+  invitation_sent_at?: string;
+  invitation_expires_at?: string;
 }
 
 const Classes = () => {
@@ -363,7 +362,7 @@ const Classes = () => {
       if (profile?.school_id) {
         const { data: teachers } = await supabase
           .from('teachers')
-          .select('id, first_name, last_name')
+          .select('id, first_name, last_name, email, school_id, created_at, updated_at, invitation_status, invitation_sent_at, invitation_expires_at')
           .eq('school_id', profile.school_id);
 
         if (teachers) {

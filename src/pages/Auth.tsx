@@ -222,364 +222,369 @@ const Auth = () => {
     <>
       <SEO />
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-16 flex items-center justify-center">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <div className="p-3 rounded-full bg-gradient-to-r from-primary to-secondary">
-                <GraduationCap className="h-8 w-8 text-white" />
+        <Navbar />
+        
+        <div className="container mx-auto px-4 py-16 flex items-center justify-center">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <div className="flex justify-center mb-4">
+                <div className="p-3 rounded-full bg-gradient-to-r from-primary to-secondary">
+                  <GraduationCap className="h-8 w-8 text-white" />
+                </div>
               </div>
+              <h1 className="text-3xl font-bold mb-2">Welcome to Dismissal Pro</h1>
+              <p className="text-muted-foreground">Streamline your school's dismissal process</p>
             </div>
-            <h1 className="text-3xl font-bold mb-2">Welcome to Dismissal Pro</h1>
-            <p className="text-muted-foreground">Streamline your school's dismissal process</p>
-          </div>
 
-          <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-            {invitationToken && teacherData ? (
-              // Teacher invitation completion form
-              <div>
-                <CardHeader>
-                  <CardTitle className="text-xl">Complete Your Account Setup</CardTitle>
-                  <CardDescription>
-                    Welcome to {teacherData.schools?.school_name}! Create your password below.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 mb-6">
-                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                      <h3 className="font-semibold text-primary mb-2">Your Details</h3>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Name:</strong> {teacherData.first_name} {teacherData.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Email:</strong> {teacherData.email}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>School:</strong> {teacherData.schools?.school_name}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const password = formData.get('password') as string;
-                    const confirmPassword = formData.get('confirmPassword') as string;
-                    
-                    if (password !== confirmPassword) {
-                      toast.error('Passwords do not match');
-                      return;
-                    }
-                    
-                    if (password.length < 8) {
-                      toast.error('Password must be at least 8 characters');
-                      return;
-                    }
-                    
-                    handleTeacherInvitationSignup({ password });
-                  }} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Create Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="password" 
-                          name="password"
-                          type="password" 
-                          placeholder="Create a strong password"
-                          className="pl-9"
-                          required
-                          minLength={8}
-                        />
+            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              {invitationToken && teacherData ? (
+                // Teacher invitation completion form
+                <div>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Complete Your Account Setup</CardTitle>
+                    <CardDescription>
+                      Welcome to {teacherData.schools?.school_name}! Create your password below.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4 mb-6">
+                      <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                        <h3 className="font-semibold text-primary mb-2">Your Details</h3>
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Name:</strong> {teacherData.first_name} {teacherData.last_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Email:</strong> {teacherData.email}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          <strong>School:</strong> {teacherData.schools?.school_name}
+                        </p>
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="confirmPassword" 
-                          name="confirmPassword"
-                          type="password" 
-                          placeholder="Confirm your password"
-                          className="pl-9"
-                          required
-                          minLength={8}
-                        />
-                      </div>
-                    </div>
-                    
-                    <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
-                      {isLoading ? "Creating Account..." : "Complete Setup"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </div>
-            ) : (
-              // Regular login/signup tabs
-              <Tabs defaultValue="login" className="w-full">
-              <CardHeader>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="login">Sign In</TabsTrigger>
-                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="login">
-                  <CardTitle className="text-xl">Sign in to your account</CardTitle>
-                  <CardDescription>
-                    Welcome back! Enter your credentials to continue.
-                  </CardDescription>
-                </TabsContent>
-                
-                <TabsContent value="signup">
-                  <CardTitle className="text-xl">Create your account</CardTitle>
-                  <CardDescription>
-                    Join thousands of schools using Dismissal Pro.
-                  </CardDescription>
-                </TabsContent>
-              </CardHeader>
-              
-              <CardContent>
-                <TabsContent value="login">
-                  <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="email" 
-                          type="email" 
-                          placeholder="Enter your email"
-                          className="pl-9"
-                          {...signInForm.register("email")}
-                        />
-                        {signInForm.formState.errors.email && (
-                          <p className="text-sm text-destructive mt-1">
-                            {signInForm.formState.errors.email.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="password" 
-                          type="password" 
-                          placeholder="Enter your password"
-                          className="pl-9"
-                          {...signInForm.register("password")}
-                        />
-                        {signInForm.formState.errors.password && (
-                          <p className="text-sm text-destructive mt-1">
-                            {signInForm.formState.errors.password.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
-                      {isLoading ? "Signing in..." : "Sign In"}
-                    </Button>
-                    
-                    <div className="text-center">
-                      <Button variant="link" size="sm">
-                        Forgot your password?
-                      </Button>
-                    </div>
-                  </form>
-                </TabsContent>
-                
-                <TabsContent value="signup">
-                  <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      const password = formData.get('password') as string;
+                      const confirmPassword = formData.get('confirmPassword') as string;
+                      
+                      if (password !== confirmPassword) {
+                        toast.error('Passwords do not match');
+                        return;
+                      }
+                      
+                      if (password.length < 8) {
+                        toast.error('Password must be at least 8 characters');
+                        return;
+                      }
+                      
+                      handleTeacherInvitationSignup({ password });
+                    }} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
+                        <Label htmlFor="password">Create Password</Label>
                         <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              id="firstName" 
-                              placeholder="John"
-                              className="pl-9"
-                              {...signUpForm.register("firstName")}
-                            />
-                            {signUpForm.formState.errors.firstName && (
-                              <p className="text-sm text-destructive mt-1">
-                                {signUpForm.formState.errors.firstName.message}
-                              </p>
-                            )}
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            id="password" 
+                            name="password"
+                            type="password" 
+                            placeholder="Create a strong password"
+                            className="pl-9"
+                            required
+                            minLength={8}
+                          />
                         </div>
                       </div>
+                      
                       <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
+                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input 
-                            id="lastName" 
-                            placeholder="Doe"
-                            {...signUpForm.register("lastName")}
+                            id="confirmPassword" 
+                            name="confirmPassword"
+                            type="password" 
+                            placeholder="Confirm your password"
+                            className="pl-9"
+                            required
+                            minLength={8}
                           />
-                          {signUpForm.formState.errors.lastName && (
+                        </div>
+                      </div>
+                      
+                      <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
+                        {isLoading ? "Creating Account..." : "Complete Setup"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </div>
+              ) : (
+                // Regular login/signup tabs
+                <Tabs defaultValue="login" className="w-full">
+                  <CardHeader>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="login">Sign In</TabsTrigger>
+                      <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="login">
+                      <CardTitle className="text-xl">Sign in to your account</CardTitle>
+                      <CardDescription>
+                        Welcome back! Enter your credentials to continue.
+                      </CardDescription>
+                    </TabsContent>
+                    
+                    <TabsContent value="signup">
+                      <CardTitle className="text-xl">Create your account</CardTitle>
+                      <CardDescription>
+                        Join thousands of schools using Dismissal Pro.
+                      </CardDescription>
+                    </TabsContent>
+                  </CardHeader>
+                  
+                  <CardContent>
+                    <TabsContent value="login">
+                      <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              id="email" 
+                              type="email" 
+                              placeholder="Enter your email"
+                              className="pl-9"
+                              {...signInForm.register("email")}
+                            />
+                            {signInForm.formState.errors.email && (
+                              <p className="text-sm text-destructive mt-1">
+                                {signInForm.formState.errors.email.message}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="password">Password</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              id="password" 
+                              type="password" 
+                              placeholder="Enter your password"
+                              className="pl-9"
+                              {...signInForm.register("password")}
+                            />
+                            {signInForm.formState.errors.password && (
+                              <p className="text-sm text-destructive mt-1">
+                                {signInForm.formState.errors.password.message}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
+                          {isLoading ? "Signing in..." : "Sign In"}
+                        </Button>
+                        
+                        <div className="text-center">
+                          <Button variant="link" size="sm">
+                            Forgot your password?
+                          </Button>
+                        </div>
+                      </form>
+                    </TabsContent>
+                    
+                    <TabsContent value="signup">
+                      <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="firstName">First Name</Label>
+                            <div className="relative">
+                              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  id="firstName" 
+                                  placeholder="John"
+                                  className="pl-9"
+                                  {...signUpForm.register("firstName")}
+                                />
+                                {signUpForm.formState.errors.firstName && (
+                                  <p className="text-sm text-destructive mt-1">
+                                    {signUpForm.formState.errors.firstName.message}
+                                  </p>
+                                )}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="lastName">Last Name</Label>
+                              <Input 
+                                id="lastName" 
+                                placeholder="Doe"
+                                {...signUpForm.register("lastName")}
+                              />
+                              {signUpForm.formState.errors.lastName && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {signUpForm.formState.errors.lastName.message}
+                                </p>
+                              )}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="schoolId">School</Label>
+                          <Popover open={schoolSearchOpen} onOpenChange={setSchoolSearchOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={schoolSearchOpen}
+                                className="w-full justify-between"
+                              >
+                                {selectedSchool
+                                  ? `${selectedSchool.school_name} (${selectedSchool.city}, ${selectedSchool.state})`
+                                  : "Search for your school..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0">
+                              <Command shouldFilter={false}>
+                                <CommandInput 
+                                  placeholder="Type to search schools..." 
+                                  value={searchQuery}
+                                  onValueChange={setSearchQuery}
+                                />
+                                <CommandList>
+                                  {isSearching && (
+                                    <div className="flex items-center justify-center p-4">
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      <span className="text-sm text-muted-foreground">Searching...</span>
+                                    </div>
+                                  )}
+                                  {!isSearching && searchQuery.length >= 2 && schools.length === 0 && (
+                                    <CommandEmpty>No schools found.</CommandEmpty>
+                                  )}
+                                  {!isSearching && searchQuery.length < 2 && (
+                                    <div className="p-4 text-center text-sm text-muted-foreground">
+                                      Type at least 2 characters to search
+                                    </div>
+                                  )}
+                                  {!isSearching && schools.length > 0 && (
+                                    <CommandGroup>
+                                      {schools.map((school) => (
+                                        <CommandItem
+                                          key={school.id}
+                                          value={school.id.toString()}
+                                          onSelect={() => {
+                                            setSelectedSchool(school);
+                                            signUpForm.setValue("schoolId", school.id.toString());
+                                            setSchoolSearchOpen(false);
+                                            setSearchQuery("");
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              selectedSchool?.id === school.id
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                          <div>
+                                            <div className="font-medium">{school.school_name}</div>
+                                            <div className="text-sm text-muted-foreground">
+                                              {school.city && school.state ? `${school.city}, ${school.state}` : "Location not specified"}
+                                            </div>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  )}
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="role">Role</Label>
+                          <Select onValueChange={(value) => signUpForm.setValue("role", value as "school_admin" | "teacher")}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select your role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="school_admin">School Admin</SelectItem>
+                              <SelectItem value="teacher">Teacher</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {signUpForm.formState.errors.role && (
                             <p className="text-sm text-destructive mt-1">
-                              {signUpForm.formState.errors.lastName.message}
+                              {signUpForm.formState.errors.role.message}
                             </p>
                           )}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="schoolId">School</Label>
-                      <Popover open={schoolSearchOpen} onOpenChange={setSchoolSearchOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={schoolSearchOpen}
-                            className="w-full justify-between"
-                          >
-                            {selectedSchool
-                              ? `${selectedSchool.school_name} (${selectedSchool.city}, ${selectedSchool.state})`
-                              : "Search for your school..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-full p-0">
-                          <Command shouldFilter={false}>
-                            <CommandInput 
-                              placeholder="Type to search schools..." 
-                              value={searchQuery}
-                              onValueChange={setSearchQuery}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="signupEmail">Email</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              id="signupEmail" 
+                              type="email" 
+                              placeholder="john@school.edu"
+                              className="pl-9"
+                              {...signUpForm.register("email")}
                             />
-                            <CommandList>
-                              {isSearching && (
-                                <div className="flex items-center justify-center p-4">
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  <span className="text-sm text-muted-foreground">Searching...</span>
-                                </div>
-                              )}
-                              {!isSearching && searchQuery.length >= 2 && schools.length === 0 && (
-                                <CommandEmpty>No schools found.</CommandEmpty>
-                              )}
-                              {!isSearching && searchQuery.length < 2 && (
-                                <div className="p-4 text-center text-sm text-muted-foreground">
-                                  Type at least 2 characters to search
-                                </div>
-                              )}
-                              {!isSearching && schools.length > 0 && (
-                                <CommandGroup>
-                                  {schools.map((school) => (
-                                    <CommandItem
-                                      key={school.id}
-                                      value={school.id.toString()}
-                                      onSelect={() => {
-                                        setSelectedSchool(school);
-                                        signUpForm.setValue("schoolId", school.id.toString());
-                                        setSchoolSearchOpen(false);
-                                        setSearchQuery("");
-                                      }}
-                                    >
-                                      <Check
-                                        className={`mr-2 h-4 w-4 ${
-                                          selectedSchool?.id === school.id
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                        }`}
-                                      />
-                                      <div>
-                                        <div className="font-medium">{school.school_name}</div>
-                                        <div className="text-sm text-muted-foreground">
-                                          {school.city && school.state ? `${school.city}, ${school.state}` : "Location not specified"}
-                                        </div>
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              )}
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select onValueChange={(value) => signUpForm.setValue("role", value as "school_admin" | "teacher")}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="school_admin">School Admin</SelectItem>
-                          <SelectItem value="teacher">Teacher</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {signUpForm.formState.errors.role && (
-                        <p className="text-sm text-destructive mt-1">
-                          {signUpForm.formState.errors.role.message}
+                            {signUpForm.formState.errors.email && (
+                              <p className="text-sm text-destructive mt-1">
+                                {signUpForm.formState.errors.email.message}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="signupPassword">Password</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              id="signupPassword" 
+                              type="password" 
+                              placeholder="Create a strong password"
+                              className="pl-9"
+                              {...signUpForm.register("password")}
+                            />
+                            {signUpForm.formState.errors.password && (
+                              <p className="text-sm text-destructive mt-1">
+                                {signUpForm.formState.errors.password.message}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
+                          {isLoading ? "Creating account..." : "Create Account"}
+                        </Button>
+                        
+                        <p className="text-xs text-muted-foreground text-center">
+                          By creating an account, you agree to our Terms of Service and Privacy Policy.
                         </p>
-                      )}
-                    </div>
+                      </form>
+                    </TabsContent>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="signupEmail">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="signupEmail" 
-                          type="email" 
-                          placeholder="john@school.edu"
-                          className="pl-9"
-                          {...signUpForm.register("email")}
-                        />
-                        {signUpForm.formState.errors.email && (
-                          <p className="text-sm text-destructive mt-1">
-                            {signUpForm.formState.errors.email.message}
-                          </p>
-                        )}
+                    <div className="mt-6">
+                      <Separator className="my-4" />
+                      <div className="text-center text-sm text-muted-foreground">
+                        "The intuitive dismissal system has transformed our afternoon routine. Teachers love how easy it is to manage their classes." - Sarah M., Elementary Principal
                       </div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="signupPassword">Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="signupPassword" 
-                          type="password" 
-                          placeholder="Create a strong password"
-                          className="pl-9"
-                          {...signUpForm.register("password")}
-                        />
-                        {signUpForm.formState.errors.password && (
-                          <p className="text-sm text-destructive mt-1">
-                            {signUpForm.formState.errors.password.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
-                      {isLoading ? "Creating account..." : "Create Account"}
-                    </Button>
-                    
-                    <p className="text-xs text-muted-foreground text-center">
-                      By creating an account, you agree to our Terms of Service and Privacy Policy.
-                    </p>
-                  </form>
-                </TabsContent>
-                
-                <div className="mt-6">
-                  <Separator className="my-4" />
-                  <div className="text-center text-sm text-muted-foreground">
-                    Trusted by 500+ schools nationwide
-                  </div>
-                </div>
-              </CardContent>
-            </Tabs>
-          </Card>
-        </div>
+                  </CardContent>
+                </Tabs>
+              )}
+            </Card>
+
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              Trusted by 500+ schools nationwide
+            </div>
+          </div>
         </div>
       </div>
     </>
