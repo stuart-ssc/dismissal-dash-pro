@@ -73,19 +73,39 @@ const searchSchools = useCallback(async (query: string) => {
     let searchResults = enhancedSchoolSearch(list, q, 15);
     console.debug?.('[Auth] local search', { query: q, results: searchResults.length });
 
-    // Server-side fallback if local search yields nothing for a longer query
-    if (searchResults.length === 0 && q.length >= 6) {
+    // Server-side fallback and hard contains filter if local search yields nothing
+    if (searchResults.length === 0 && q.length >= 3) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .rpc('get_schools_for_signup');
 
       if (!fallbackError && Array.isArray(fallbackData) && fallbackData.length > 0) {
-        console.debug?.('[Auth] fallback RPC fetched', { query: q, count: fallbackData.length });
+        // Normalize helper
+        const normalize = (s: string) => (s || '')
+          .toLowerCase()
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const fq = normalize(q);
+        const filtered = fallbackData.filter((s: any) => normalize(s.school_name).includes(fq));
+        console.debug?.('[Auth] fallback RPC filtered', { query: q, fetched: fallbackData.length, filtered: filtered.length });
+
         // Merge and dedupe by id
         const byId = new Map<number, { id: number; school_name: string; city: string; state: string }>();
-        [...list, ...fallbackData].forEach((s) => byId.set(s.id, s as any));
+        [...list, ...filtered].forEach((s: any) => byId.set(s.id, s));
         const merged = Array.from(byId.values());
         setAllSchools(merged);
         searchResults = enhancedSchoolSearch(merged, q, 15);
+
+        // Last resort: simple contains list to avoid empty UI
+        if (searchResults.length === 0) {
+          searchResults = merged
+            .filter((s) => normalize(s.school_name).includes(fq))
+            .slice(0, 15)
+            .map((s) => ({ ...s, score: 25 }));
+        }
       }
     }
 
@@ -116,6 +136,11 @@ const prefetchSchools = useCallback(async () => {
     });
   }
 }, [allSchools]);
+
+  // Prefetch schools immediately on mount to avoid empty-list races
+  useEffect(() => {
+    prefetchSchools();
+  }, [prefetchSchools]);
 
   // Check for teacher invitation in URL params
   useEffect(() => {

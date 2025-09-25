@@ -124,7 +124,7 @@ function scoreSchool(school: any, queryWords: string[], fullQuery: string): numb
 
   // Enforce strong completeness for multi-word queries
   const completeness = words.length > 0 ? matchedWords / words.length : 0;
-  if (words.length > 1 && completeness < 0.8 && !containsBigram) {
+  if (words.length > 1 && completeness < 0.5 && !containsBigram) {
     return 0;
   }
 
@@ -148,8 +148,10 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
     const n = normalize(s);
     // remove common trailing descriptors
     const SUFFIXES = [
-      ' elementary school', ' middle school', ' high school', ' primary school', ' secondary school',
-      ' elementary', ' middle', ' high', ' academy', ' school'
+      ' junior high school',' jr high school',' junior high',' jr high',
+      ' elementary school',' middle school',' high school',' primary school',' secondary school',
+      ' elementary sch',' elem',' es',' ms',' hs',
+      ' elementary',' middle',' high',' academy',' school'
     ];
     let out = n;
     for (const suf of SUFFIXES) {
@@ -182,6 +184,17 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
     _nameNorm: normalize(s.school_name || ''),
     _nameCanon: canonicalize(s.school_name || ''),
   }));
+
+  // Unconditional exact normalized match short-circuit
+  const exactNorm = withNorm.filter((s) => s._nameNorm === fullQuery);
+  if (exactNorm.length) {
+    const out = exactNorm
+      .sort((a, b) => (a.school_name || '').localeCompare(b.school_name || ''))
+      .slice(0, dynamicMaxResults)
+      .map((s) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: 1200 }));
+    console.debug?.('[schoolSearch] exact-norm', { query: fullQuery, count: out.length });
+    return out as SchoolSearchResult[];
+  }
 
   // Tie-breakers
   const byTieBreakers = (a: any, b: any) => {
