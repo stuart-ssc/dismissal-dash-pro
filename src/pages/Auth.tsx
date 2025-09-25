@@ -83,6 +83,21 @@ const searchSchools = useCallback(async (query: string) => {
   }
 }, [allSchools]);
 
+const prefetchSchools = useCallback(async () => {
+  if (allSchools.length > 0) return;
+  try {
+    const { data } = await supabase.rpc('get_schools_for_signup');
+    setAllSchools(data ?? []);
+    console.debug?.('[Auth] prefetched schools', { count: (data ?? []).length });
+  } catch (error) {
+    const secureError = handleError(error, 'prefetch schools');
+    logger.warn({
+      message: 'Prefetch schools failed',
+      data: { error: secureError.message }
+    });
+  }
+}, [allSchools]);
+
   // Check for teacher invitation in URL params
   useEffect(() => {
     const invitation = searchParams.get('invitation');
@@ -433,7 +448,7 @@ const searchSchools = useCallback(async (query: string) => {
                         
                         <div className="space-y-2">
                           <Label htmlFor="schoolId">School</Label>
-                          <Popover open={schoolSearchOpen} onOpenChange={setSchoolSearchOpen}>
+                          <Popover open={schoolSearchOpen} onOpenChange={(open) => { setSchoolSearchOpen(open); if (open) prefetchSchools(); }}>
                             <PopoverTrigger asChild>
                               <Button
                                 variant="outline"
