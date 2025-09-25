@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSEO } from "@/hooks/useSEO";
@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { signInSchema, signUpSchema, type SignInFormData, type SignUpFormData } from "@/lib/validation";
 import { handleError } from "@/lib/errorHandler";
 import { logger } from "@/lib/logger";
+import { toast } from "sonner";
 
 interface SignInForm extends SignInFormData {}
 interface SignUpForm extends SignUpFormData {}
@@ -26,6 +27,7 @@ interface SignUpForm extends SignUpFormData {}
 const Auth = () => {
   const { signIn, signUp, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const SEO = useSEO();
   const [isLoading, setIsLoading] = useState(false);
   const [schools, setSchools] = useState<{ id: number; school_name: string; city: string; state: string }[]>([]);
@@ -34,6 +36,12 @@ const Auth = () => {
   const [selectedSchool, setSelectedSchool] = useState<{ id: number; school_name: string; city: string; state: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  
+  // Teacher invitation state
+  const [invitationToken, setInvitationToken] = useState<string | null>(null);
+  const [invitationType, setInvitationType] = useState<string | null>(null);
+  const [teacherData, setTeacherData] = useState<any>(null);
+  const [isValidatingInvitation, setIsValidatingInvitation] = useState(false);
 
   const signInForm = useForm<SignInForm>({
     resolver: zodResolver(signInSchema)
@@ -74,6 +82,48 @@ const Auth = () => {
     }
   }, []);
 
+  // Check for teacher invitation in URL params
+  useEffect(() => {
+    const invitation = searchParams.get('invitation');
+    const type = searchParams.get('type');
+    
+    if (invitation && type === 'teacher') {
+      setInvitationToken(invitation);
+      setInvitationType(type);
+      validateTeacherInvitation(invitation);
+    }
+  }, [searchParams]);
+
+  const validateTeacherInvitation = async (token: string) => {
+    setIsValidatingInvitation(true);
+    try {
+      const { data: teacher, error } = await supabase
+        .from('teachers')
+        .select('*, schools(school_name)')
+        .eq('invitation_token', token)
+        .gte('invitation_expires_at', new Date().toISOString())
+        .eq('invitation_status', 'pending')
+        .single();
+
+      if (error || !teacher) {
+        toast.error('Invalid or expired invitation link');
+        setInvitationToken(null);
+        setInvitationType(null);
+        return;
+      }
+
+      setTeacherData(teacher);
+      toast.success(`Welcome ${teacher.first_name}! Please complete your account setup.`);
+    } catch (error) {
+      console.error('Error validating invitation:', error);
+      toast.error('Error validating invitation');
+      setInvitationToken(null);
+      setInvitationType(null);
+    } finally {
+      setIsValidatingInvitation(false);
+    }
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       searchSchools(searchQuery);
@@ -104,10 +154,66 @@ const Auth = () => {
     setIsLoading(false);
   };
 
-  if (loading) {
+  const handleTeacherInvitationSignup = async (data: { password: string }) => {
+    if (!teacherData || !invitationToken) return;
+    
+    setIsLoading(true);
+    try {
+      // Create user account
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: teacherData.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            first_name: teacherData.first_name,
+            last_name: teacherData.last_name,
+            school_id: teacherData.school_id,
+          }
+        }
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (authData.user) {
+        // Update teacher record
+        await supabase
+          .from('teachers')
+          .update({
+            invitation_status: 'completed',
+            account_completed_at: new Date().toISOString(),
+            invitation_token: null // Clear the token
+          })
+          .eq('invitation_token', invitationToken);
+
+        // Create user role
+        await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: 'teacher'
+          });
+
+        toast.success('Account created successfully! Please check your email to verify your account.');
+        setInvitationToken(null);
+        setInvitationType(null);
+        setTeacherData(null);
+      }
+    } catch (error: any) {
+      console.error('Error completing teacher signup:', error);
+      toast.error(error.message || 'Failed to complete account setup');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (loading || isValidatingInvitation) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        {isValidatingInvitation && (
+          <p className="mt-4 text-muted-foreground">Validating invitation...</p>
+        )}
       </div>
     );
   }
@@ -131,7 +237,90 @@ const Auth = () => {
           </div>
 
           <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-            <Tabs defaultValue="login" className="w-full">
+            {invitationToken && teacherData ? (
+              // Teacher invitation completion form
+              <div>
+                <CardHeader>
+                  <CardTitle className="text-xl">Complete Your Account Setup</CardTitle>
+                  <CardDescription>
+                    Welcome to {teacherData.schools?.school_name}! Create your password below.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 mb-6">
+                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                      <h3 className="font-semibold text-primary mb-2">Your Details</h3>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Name:</strong> {teacherData.first_name} {teacherData.last_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Email:</strong> {teacherData.email}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <strong>School:</strong> {teacherData.schools?.school_name}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const password = formData.get('password') as string;
+                    const confirmPassword = formData.get('confirmPassword') as string;
+                    
+                    if (password !== confirmPassword) {
+                      toast.error('Passwords do not match');
+                      return;
+                    }
+                    
+                    if (password.length < 8) {
+                      toast.error('Password must be at least 8 characters');
+                      return;
+                    }
+                    
+                    handleTeacherInvitationSignup({ password });
+                  }} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Create Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          id="password" 
+                          name="password"
+                          type="password" 
+                          placeholder="Create a strong password"
+                          className="pl-9"
+                          required
+                          minLength={8}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          id="confirmPassword" 
+                          name="confirmPassword"
+                          type="password" 
+                          placeholder="Confirm your password"
+                          className="pl-9"
+                          required
+                          minLength={8}
+                        />
+                      </div>
+                    </div>
+                    
+                    <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
+                      {isLoading ? "Creating Account..." : "Complete Setup"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </div>
+            ) : (
+              // Regular login/signup tabs
+              <Tabs defaultValue="login" className="w-full">
               <CardHeader>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="login">Sign In</TabsTrigger>
@@ -391,7 +580,7 @@ const Auth = () => {
             </Tabs>
           </Card>
         </div>
-      </div>
+        </div>
       </div>
     </>
   );

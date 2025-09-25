@@ -1153,28 +1153,43 @@ export type Database = {
       }
       teachers: {
         Row: {
+          account_completed_at: string | null
           created_at: string
           email: string
           first_name: string
           id: string
+          invitation_expires_at: string | null
+          invitation_sent_at: string | null
+          invitation_status: string | null
+          invitation_token: string | null
           last_name: string
           school_id: number
           updated_at: string
         }
         Insert: {
+          account_completed_at?: string | null
           created_at?: string
           email: string
           first_name: string
           id?: string
+          invitation_expires_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
+          invitation_token?: string | null
           last_name: string
           school_id: number
           updated_at?: string
         }
         Update: {
+          account_completed_at?: string | null
           created_at?: string
           email?: string
           first_name?: string
           id?: string
+          invitation_expires_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
+          invitation_token?: string | null
           last_name?: string
           school_id?: number
           updated_at?: string

@@ -365,13 +365,42 @@ serve(async (req) => {
                  processedBuses.set(transportationMethodValue, busId);
                }
 
-              // Assign student to bus
-              await client.queryObject(
-                `INSERT INTO student_bus_assignments (student_id, bus_id) VALUES ($1, $2) 
-                 ON CONFLICT (student_id, bus_id) DO NOTHING`,
-                [studentId, busId]
-              );
-              results.transportationAssignments++;
+        if (transportationMethod && transportationMethod.trim()) {
+          // Assign student to bus
+          await client.queryObject(
+            `INSERT INTO student_bus_assignments (student_id, bus_id) VALUES ($1, $2) 
+             ON CONFLICT (student_id, bus_id) DO NOTHING`,
+            [studentId, busId]
+          );
+          results.transportationAssignments++;
+        }
+        
+        // Send teacher invitation email if needed
+        const shouldSendInvitation = !processedTeachers.has(row.teacherEmail + '_invited');
+        if (shouldSendInvitation) {
+          try {
+            const invitationResponse = await supabase.functions.invoke('invite-teacher-unified', {
+              body: {
+                email: row.teacherEmail,
+                firstName: row.teacherFirstName,
+                lastName: row.teacherLastName,
+                schoolId: profile.school_id
+              }
+            });
+            
+            if (invitationResponse.error) {
+              console.error('Failed to send teacher invitation:', invitationResponse.error);
+              results.errors.push(`Failed to send invitation to ${row.teacherEmail}: ${invitationResponse.error.message}`);
+            } else {
+              console.log(`Teacher invitation sent to ${row.teacherEmail}`);
+            }
+            
+            processedTeachers.set(row.teacherEmail + '_invited', 'sent');
+          } catch (inviteError) {
+            console.error('Error sending teacher invitation:', inviteError);
+            results.errors.push(`Failed to send invitation to ${row.teacherEmail}: ${inviteError.message}`);
+          }
+        }
 
             } else if (transportationType === 'car') {
                // Handle car line assignment
