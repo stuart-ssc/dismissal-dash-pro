@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { signInSchema, signUpSchema, type SignInFormData, type SignUpFormData } from "@/lib/validation";
 import { handleError } from "@/lib/errorHandler";
 import { logger } from "@/lib/logger";
+import { enhancedSchoolSearch } from "@/lib/schoolSearch";
 import { toast } from "sonner";
 
 interface SignInForm extends SignInFormData {}
@@ -62,13 +63,9 @@ const Auth = () => {
         .rpc('get_schools_for_signup');
       
       if (data) {
-        // Filter results on client side for the search query
-        const filteredSchools = data
-          .filter(school => 
-            school.school_name.toLowerCase().includes(query.toLowerCase())
-          )
-          .slice(0, 50);
-        setSchools(filteredSchools);
+        // Use enhanced search with multi-word support and fuzzy matching
+        const searchResults = enhancedSchoolSearch(data, query, 50);
+        setSchools(searchResults);
       }
     } catch (error) {
       const secureError = handleError(error, 'school search');
