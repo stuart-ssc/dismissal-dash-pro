@@ -264,11 +264,26 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
     return out as SchoolSearchResult[];
   }
 
+  // Short query starts-with for 1-2 chars (prevents noise)
+  if (fullQuery.length >= 1 && fullQuery.length <= 2) {
+    const shortStarts = withNorm.filter((s) => 
+      s._nameNorm.startsWith(fullQuery) || s._nameCanon.startsWith(queryCanon)
+    );
+    if (shortStarts.length) {
+      const out = shortStarts
+        .sort(byTieBreakersCanon)
+        .slice(0, dynamicMaxResults)
+        .map((s) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: 500 }));
+      console.debug?.('[schoolSearch] short-starts', { query: fullQuery, count: out.length });
+      return out as SchoolSearchResult[];
+    }
+  }
+
   // Multi-token AND matching across name/city/state
   const STOPWORDS = new Set([
     'school','elementary','middle','high','academy','the','of','and','for','public','charter','magnet'
   ]);
-  const sigWords = fullQuery.split(' ').filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+  const sigWords = fullQuery.split(' ').filter((w) => w.length >= 2 && !STOPWORDS.has(w));
   if (sigWords.length > 0) {
     const tokensAllPresent = withNorm.filter((s) => {
       const nameCanon = s._nameCanon || '';

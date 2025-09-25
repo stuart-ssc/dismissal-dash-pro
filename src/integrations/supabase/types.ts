@@ -1553,6 +1553,15 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      search_schools_for_signup: {
+        Args: { q: string }
+        Returns: {
+          city: string
+          id: number
+          school_name: string
+          state: string
+        }[]
+      }
       update_dismissal_run_times: {
         Args: {
           new_dismissal_time: string

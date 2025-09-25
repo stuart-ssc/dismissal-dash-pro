@@ -61,64 +61,33 @@ const searchSchools = useCallback(async (query: string) => {
 
   setIsSearching(true);
   try {
-    let list = allSchools;
+    let searchResults: any[] = [];
 
-    if (list.length === 0) {
-      const { data } = await supabase.rpc('get_schools_for_signup');
-      list = data ?? [];
-      setAllSchools(list);
-      console.debug?.('[Auth] prefetched on demand', { count: list.length });
+    // For queries 2+ chars, prioritize server search
+    if (q.length >= 2) {
+      const { data: serverData, error } = await supabase
+        .rpc('search_schools_for_signup', { q })
+        .throwOnError();
+      
+      if (serverData?.length) {
+        searchResults = serverData.map(s => ({ ...s, score: 400 }));
+        console.debug?.('[Auth] server search', { query: q, count: searchResults.length });
+      }
     }
 
-    let searchResults = enhancedSchoolSearch(list, q, 15);
-    console.debug?.('[Auth] local search', { query: q, results: searchResults.length });
+    // Client-side fallback if no server results
+    if (searchResults.length === 0) {
+      let list = allSchools;
 
-    // Server-side fallback and hard contains filter if local search yields nothing
-    if (searchResults.length === 0 && q.length >= 3) {
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .rpc('get_schools_for_signup');
-
-      if (!fallbackError && Array.isArray(fallbackData) && fallbackData.length > 0) {
-        // Normalize helper
-        const normalize = (s: string) => (s || '')
-          .toLowerCase()
-          .normalize('NFKD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9\s]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-        const fq = normalize(q);
-        const STOPWORDS = new Set([
-          'school','elementary','middle','high','academy','the','of','and','for','public','charter','magnet'
-        ]);
-        const tokens = fq.split(' ').filter((w) => w.length >= 3 && !STOPWORDS.has(w));
-        const hasAllTokens = (s: any) => {
-          const name = normalize(s.school_name);
-          const city = normalize(s.city);
-          const state = normalize(s.state);
-          if (tokens.length === 0) return name.includes(fq);
-          return tokens.every((t) => name.includes(t) || city.includes(t) || state.includes(t));
-        };
-
-        const filtered = fallbackData.filter(hasAllTokens);
-        console.debug?.('[Auth] fallback RPC filtered', { query: q, fetched: fallbackData.length, filtered: filtered.length, tokens });
-
-        // Merge and dedupe by id
-        const byId = new Map<number, { id: number; school_name: string; city: string; state: string }>();
-        [...list, ...filtered].forEach((s: any) => byId.set(s.id, s));
-        const merged = Array.from(byId.values());
-        setAllSchools(merged);
-        searchResults = enhancedSchoolSearch(merged, q, 15);
-
-        // Last resort: simple AND contains list to avoid empty UI
-        if (searchResults.length === 0) {
-          searchResults = merged
-            .filter(hasAllTokens)
-            .slice(0, 15)
-            .map((s) => ({ ...s, score: 25 }));
-        }
+      if (list.length === 0) {
+        const { data } = await supabase.rpc('get_schools_for_signup');
+        list = data ?? [];
+        setAllSchools(list);
+        console.debug?.('[Auth] prefetched on demand', { count: list.length });
       }
+
+      searchResults = enhancedSchoolSearch(list, q, 15);
+      console.debug?.('[Auth] client search fallback', { query: q, results: searchResults.length });
     }
 
     setSchools(searchResults);
