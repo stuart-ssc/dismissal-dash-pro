@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { EmailChangeDialog } from "@/components/EmailChangeDialog";
+import { Mail } from "lucide-react";
 
 interface PersonData {
   id: string;
@@ -33,6 +35,7 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
   const [availableCarLines, setAvailableCarLines] = useState<Array<{ id: string; line_name: string }>>([]);
   const [availableWalkerLocations, setAvailableWalkerLocations] = useState<Array<{ id: string; location_name: string }>>([]);
   const [availableActivities, setAvailableActivities] = useState<Array<{ id: string; activity_name: string }>>([]);
+  const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -288,14 +291,31 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
 
           {(person.role === 'Teacher' || person.role === 'School Admin') && (
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="email">Email *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowEmailChangeDialog(true)}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  <Mail className="h-3 w-3" />
+                  Change Email
+                </Button>
+              </div>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
+                disabled
+                className="bg-muted text-muted-foreground"
               />
+              <p className="text-xs text-muted-foreground">
+                Use "Change Email" button for secure email updates that sync with authentication.
+              </p>
             </div>
           )}
 
@@ -452,6 +472,18 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
             </Button>
           </DialogFooter>
         </form>
+
+        {/* Email Change Dialog */}
+        {person && (person.role === 'Teacher' || person.role === 'School Admin') && (
+          <EmailChangeDialog
+            open={showEmailChangeDialog}
+            onOpenChange={setShowEmailChangeDialog}
+            userId={person.id}
+            currentEmail={person.email || ''}
+            userName={`${person.firstName} ${person.lastName}`}
+            userType={person.role === 'Teacher' ? 'pending_teacher' : 'completed_account'}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

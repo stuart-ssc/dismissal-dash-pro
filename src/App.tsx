@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound";
 import DismissalGroups from "./pages/admin/DismissalGroups";
 import AdminClasses from "./pages/admin/Classes";
 import AdminUsers from "./pages/admin/Users";
+import EmailManagement from "./pages/admin/EmailManagement";
 import PeopleManagement from "./pages/People";
 import AdminSettings from "./pages/admin/Settings";
 import AdminSchools from "./pages/admin/Schools";
@@ -81,6 +82,7 @@ const AppContent = () => {
         <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
         <Route path="/admin/classes" element={<AdminClasses />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/email-management" element={<EmailManagement />} />
         <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/admin/schools" element={<AdminSchools />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

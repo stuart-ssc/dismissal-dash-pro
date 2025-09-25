@@ -787,6 +787,60 @@ export type Database = {
         }
         Relationships: []
       }
+      email_change_requests: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          new_email: string
+          notes: string | null
+          old_email: string
+          reason: string | null
+          request_ip: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+          verification_token: string | null
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_email: string
+          notes?: string | null
+          old_email: string
+          reason?: string | null
+          request_ip?: string | null
+          requested_by: string
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+          verification_token?: string | null
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_email?: string
+          notes?: string | null
+          old_email?: string
+          reason?: string | null
+          request_ip?: string | null
+          requested_by?: string
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+          verification_token?: string | null
+        }
+        Relationships: []
+      }
       mode_sessions: {
         Row: {
           created_at: string
@@ -1403,6 +1457,10 @@ export type Database = {
       can_view_school_data: {
         Args: { target_school_id: number }
         Returns: boolean
+      }
+      cleanup_expired_email_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       create_scheduled_dismissal_run: {
         Args: { target_date?: string; target_school_id: number }

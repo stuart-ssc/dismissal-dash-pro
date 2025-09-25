@@ -144,6 +144,10 @@ const navigate = useNavigate();
                 <Users className="mr-2 h-4 w-4" />
                 User Management
               </Button>
+              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/email-management')}>
+                <Shield className="mr-2 h-4 w-4" />
+                Email Management
+              </Button>
               <Button className="w-full justify-start" variant="outline">
                 <Database className="mr-2 h-4 w-4" />
                 Database Administration
