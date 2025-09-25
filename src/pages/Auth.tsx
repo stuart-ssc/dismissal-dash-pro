@@ -89,8 +89,20 @@ const searchSchools = useCallback(async (query: string) => {
           .trim();
 
         const fq = normalize(q);
-        const filtered = fallbackData.filter((s: any) => normalize(s.school_name).includes(fq));
-        console.debug?.('[Auth] fallback RPC filtered', { query: q, fetched: fallbackData.length, filtered: filtered.length });
+        const STOPWORDS = new Set([
+          'school','elementary','middle','high','academy','the','of','and','for','public','charter','magnet'
+        ]);
+        const tokens = fq.split(' ').filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+        const hasAllTokens = (s: any) => {
+          const name = normalize(s.school_name);
+          const city = normalize(s.city);
+          const state = normalize(s.state);
+          if (tokens.length === 0) return name.includes(fq);
+          return tokens.every((t) => name.includes(t) || city.includes(t) || state.includes(t));
+        };
+
+        const filtered = fallbackData.filter(hasAllTokens);
+        console.debug?.('[Auth] fallback RPC filtered', { query: q, fetched: fallbackData.length, filtered: filtered.length, tokens });
 
         // Merge and dedupe by id
         const byId = new Map<number, { id: number; school_name: string; city: string; state: string }>();
@@ -99,10 +111,10 @@ const searchSchools = useCallback(async (query: string) => {
         setAllSchools(merged);
         searchResults = enhancedSchoolSearch(merged, q, 15);
 
-        // Last resort: simple contains list to avoid empty UI
+        // Last resort: simple AND contains list to avoid empty UI
         if (searchResults.length === 0) {
           searchResults = merged
-            .filter((s) => normalize(s.school_name).includes(fq))
+            .filter(hasAllTokens)
             .slice(0, 15)
             .map((s) => ({ ...s, score: 25 }));
         }

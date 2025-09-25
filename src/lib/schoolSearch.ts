@@ -124,7 +124,7 @@ function scoreSchool(school: any, queryWords: string[], fullQuery: string): numb
 
   // Enforce strong completeness for multi-word queries
   const completeness = words.length > 0 ? matchedWords / words.length : 0;
-  if (words.length > 1 && completeness < 0.5 && !containsBigram) {
+  if (words.length > 1 && matchedWords < Math.min(2, words.length) && !containsBigram) {
     return 0;
   }
 
@@ -262,6 +262,31 @@ export function enhancedSchoolSearch(schools: any[], query: string, maxResults: 
     const out = phrase.sort(byTieBreakers).slice(0, dynamicMaxResults).map((s) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: 200 }));
     console.debug?.('[schoolSearch] phrase-contains', { query: fullQuery, count: out.length });
     return out as SchoolSearchResult[];
+  }
+
+  // Multi-token AND matching across name/city/state
+  const STOPWORDS = new Set([
+    'school','elementary','middle','high','academy','the','of','and','for','public','charter','magnet'
+  ]);
+  const sigWords = fullQuery.split(' ').filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+  if (sigWords.length > 0) {
+    const tokensAllPresent = withNorm.filter((s) => {
+      const nameCanon = s._nameCanon || '';
+      const nameNorm = s._nameNorm || '';
+      const cityNorm = normalize(s.city || '');
+      const stateNorm = normalize(s.state || '');
+      return sigWords.every((w) =>
+        nameCanon.includes(w) || nameNorm.includes(w) || cityNorm.includes(w) || stateNorm.includes(w)
+      );
+    });
+    if (tokensAllPresent.length) {
+      const out = tokensAllPresent
+        .sort(byTieBreakersCanon)
+        .slice(0, dynamicMaxResults)
+        .map((s) => ({ id: s.id, school_name: s.school_name, city: s.city, state: s.state, score: 350 }));
+      console.debug?.('[schoolSearch] tokens-all-present', { query: fullQuery, count: out.length });
+      return out as SchoolSearchResult[];
+    }
   }
 
   // Scored fallback
