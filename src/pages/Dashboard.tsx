@@ -290,8 +290,8 @@ const Dashboard = () => {
   const showDismissalControls = !!planStartDate && prep !== null && now >= new Date(planStartDate.getTime() - (prep as number) * 60000) && run?.status !== 'completed';
   const afterStart = !!planStartDate && now >= planStartDate;
 
-  // For school admins, show the sidebar layout
-  if (userRole === 'school_admin') {
+  // For school admins and teachers, show the sidebar layout
+  if (userRole === 'school_admin' || userRole === 'teacher') {
     return (
       <>
         <SEO />
