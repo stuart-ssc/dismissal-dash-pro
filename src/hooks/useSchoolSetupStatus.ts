@@ -47,29 +47,33 @@ export const useSchoolSetupStatus = () => {
           return;
         }
 
-         const [busesRes, carLinesRes, walkersRes, teachersRes, studentsRes, classesRes, schoolRes] = await Promise.all([
-          supabase.from("buses").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
-          supabase.from("car_lines").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
-          supabase.from("walker_locations").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
-          supabase.from("teachers").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
-          supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
-          supabase.from("classes").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
-          supabase.from("schools").select("created_at, updated_at, school_name, dismissal_time").eq("id", schoolId).maybeSingle(),
-        ]);
-
-        const transportationReady = (busesRes.count ?? 0) > 0 || (carLinesRes.count ?? 0) > 0 || (walkersRes.count ?? 0) > 0;
-        const hasTeacher = (teachersRes.count ?? 0) > 0;
-        const hasStudent = (studentsRes.count ?? 0) > 0;
-        const hasClass = (classesRes.count ?? 0) > 0;
-        const meta = (schoolRes as any)?.data;
+        // Use RPC function to get setup status without RLS restrictions
+        const { data, error: rpcError } = await supabase.rpc('get_school_setup_status', { 
+          target_school_id: schoolId 
+        });
         
-        // Improved schoolUpdated logic - consider school updated if it has basic info or was explicitly updated
-        const schoolUpdated = meta && (
-          new Date(meta.updated_at).getTime() > new Date(meta.created_at).getTime() ||
-          (meta.school_name && meta.school_name.trim().length > 0)
-        );
+        if (rpcError) throw rpcError;
+        
+        if (!data || data.length === 0) {
+          setStatuses({
+            transportationReady: false,
+            hasTeacher: false,
+            hasStudent: false,
+            hasClass: false,
+            schoolUpdated: false,
+          });
+          setLoading(false);
+          return;
+        }
 
-        setStatuses({ transportationReady, hasTeacher, hasStudent, hasClass, schoolUpdated });
+        const status = data[0];
+        setStatuses({
+          transportationReady: status.transportation_ready,
+          hasTeacher: status.has_teacher,
+          hasStudent: status.has_student,
+          hasClass: status.has_class,
+          schoolUpdated: status.school_updated,
+        });
       } catch (e: any) {
         console.error("Error computing setup status", e);
         setError(e?.message ?? "Unknown error");

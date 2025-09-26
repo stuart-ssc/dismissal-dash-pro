@@ -1479,6 +1479,16 @@ export type Database = {
           last_name: string
         }[]
       }
+      get_school_setup_status: {
+        Args: { target_school_id?: number }
+        Returns: {
+          has_class: boolean
+          has_student: boolean
+          has_teacher: boolean
+          school_updated: boolean
+          transportation_ready: boolean
+        }[]
+      }
       get_schools_for_signup: {
         Args: Record<PropertyKey, never>
         Returns: {
