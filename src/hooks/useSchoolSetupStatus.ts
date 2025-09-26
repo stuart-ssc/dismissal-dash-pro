@@ -47,14 +47,14 @@ export const useSchoolSetupStatus = () => {
           return;
         }
 
-        const [busesRes, carLinesRes, walkersRes, teachersRes, studentsRes, classesRes, schoolRes] = await Promise.all([
+         const [busesRes, carLinesRes, walkersRes, teachersRes, studentsRes, classesRes, schoolRes] = await Promise.all([
           supabase.from("buses").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
           supabase.from("car_lines").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
           supabase.from("walker_locations").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
           supabase.from("teachers").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
           supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
           supabase.from("classes").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
-          supabase.from("schools").select("created_at, updated_at").eq("id", schoolId).maybeSingle(),
+          supabase.from("schools").select("created_at, updated_at, school_name, dismissal_time").eq("id", schoolId).maybeSingle(),
         ]);
 
         const transportationReady = (busesRes.count ?? 0) > 0 || (carLinesRes.count ?? 0) > 0 || (walkersRes.count ?? 0) > 0;
@@ -62,7 +62,12 @@ export const useSchoolSetupStatus = () => {
         const hasStudent = (studentsRes.count ?? 0) > 0;
         const hasClass = (classesRes.count ?? 0) > 0;
         const meta = (schoolRes as any)?.data;
-        const schoolUpdated = meta ? new Date(meta.updated_at).getTime() > new Date(meta.created_at).getTime() : false;
+        
+        // Improved schoolUpdated logic - consider school updated if it has basic info or was explicitly updated
+        const schoolUpdated = meta && (
+          new Date(meta.updated_at).getTime() > new Date(meta.created_at).getTime() ||
+          (meta.school_name && meta.school_name.trim().length > 0)
+        );
 
         setStatuses({ transportationReady, hasTeacher, hasStudent, hasClass, schoolUpdated });
       } catch (e: any) {
