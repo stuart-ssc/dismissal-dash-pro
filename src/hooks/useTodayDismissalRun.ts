@@ -55,12 +55,22 @@ export const useTodayDismissalRun = () => {
         if (!schoolId) throw new Error("User has no school assigned");
       }
 
-      const today = new Date().toISOString().slice(0, 10);
+      // Get school timezone for accurate date calculation
+      const { data: school, error: schoolError } = await supabase
+        .from("schools")
+        .select("timezone")
+        .eq("id", schoolId)
+        .single();
 
-      // Only fetch existing run - don't create new ones, join with dismissal_plans to get dismissal_time
+      if (schoolError) throw schoolError;
+      
+      const timezone = school?.timezone || 'America/New_York';
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
+
+      // Fetch existing run without embedded join
       const { data: existing, error: findErr } = await supabase
         .from("dismissal_runs")
-        .select("*, dismissal_plans!inner(dismissal_time)")
+        .select("*")
         .eq("school_id", schoolId)
         .eq("date", today)
         .maybeSingle();
@@ -68,8 +78,20 @@ export const useTodayDismissalRun = () => {
       if (findErr) throw findErr;
 
       if (existing) {
-        // Extract dismissal_time from joined data
-        const dismissalTime = (existing as any).dismissal_plans?.dismissal_time || null;
+        // Fetch dismissal plan separately if plan_id exists
+        let dismissalTime = null;
+        if (existing.plan_id) {
+          const { data: plan, error: planError } = await supabase
+            .from("dismissal_plans")
+            .select("dismissal_time")
+            .eq("id", existing.plan_id)
+            .maybeSingle();
+          
+          if (!planError && plan) {
+            dismissalTime = plan.dismissal_time;
+          }
+        }
+
         const runWithDismissalTime = {
           ...existing,
           dismissal_time: dismissalTime
@@ -96,15 +118,28 @@ export const useTodayDismissalRun = () => {
             .update({ updated_at: new Date().toISOString() })
             .eq("id", existing.id);
           
-          // Fetch updated run with dismissal plan data
+          // Fetch updated run without embedded join
           const { data: updatedRun, error: updateErr } = await supabase
             .from("dismissal_runs")
-            .select("*, dismissal_plans!inner(dismissal_time)")
+            .select("*")
             .eq("id", existing.id)
             .single();
             
           if (!updateErr && updatedRun) {
-            const updatedDismissalTime = (updatedRun as any).dismissal_plans?.dismissal_time || null;
+            // Fetch plan separately if needed
+            let updatedDismissalTime = null;
+            if (updatedRun.plan_id) {
+              const { data: plan, error: planError } = await supabase
+                .from("dismissal_plans")
+                .select("dismissal_time")
+                .eq("id", updatedRun.plan_id)
+                .maybeSingle();
+              
+              if (!planError && plan) {
+                updatedDismissalTime = plan.dismissal_time;
+              }
+            }
+            
             const updatedRunWithDismissalTime = {
               ...updatedRun,
               dismissal_time: updatedDismissalTime
@@ -130,16 +165,29 @@ export const useTodayDismissalRun = () => {
         }
 
         if (runId) {
-          // Fetch the created run with dismissal plan data
+          // Fetch the created run without embedded join
           const { data: newRun, error: fetchErr } = await supabase
             .from("dismissal_runs")
-            .select("*, dismissal_plans!inner(dismissal_time)")
+            .select("*")
             .eq("id", runId)
             .single();
 
           if (fetchErr) throw fetchErr;
           
-          const dismissalTime = (newRun as any).dismissal_plans?.dismissal_time || null;
+          // Fetch plan separately if needed
+          let dismissalTime = null;
+          if (newRun.plan_id) {
+            const { data: plan, error: planError } = await supabase
+              .from("dismissal_plans")
+              .select("dismissal_time")
+              .eq("id", newRun.plan_id)
+              .maybeSingle();
+            
+            if (!planError && plan) {
+              dismissalTime = plan.dismissal_time;
+            }
+          }
+          
           const newRunWithDismissalTime = {
             ...newRun,
             dismissal_time: dismissalTime
