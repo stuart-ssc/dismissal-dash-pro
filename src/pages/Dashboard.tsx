@@ -336,7 +336,7 @@ const Dashboard = () => {
                 <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these insights.</p>
               </div>
             )}
-            <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div aria-hidden={!setupLoading && !isReady ? true : undefined} className={`grid gap-6 ${userRole === 'teacher' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Today's Dismissal Time</CardTitle>
@@ -431,98 +431,100 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="relative">
-            {!setupLoading && !isReady && (
-              <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these actions and activity.</p>
-              </div>
-            )}
-            <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                  <CardDescription>
-                    Common tasks for school administrators
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4">
-                  <Button asChild className="w-full justify-start" variant="outline">
-                    <Link to="/dashboard/dismissal">
-                      <Users className="mr-2 h-4 w-4" />
-                      Launch Dismissal
-                    </Link>
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline">
-                    <GraduationCap className="mr-2 h-4 w-4" />
-                    Dismissal Groups
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline">
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    View Reports
-                  </Button>
-                  <Button asChild className="w-full justify-start" variant="outline">
-                    <Link to="/dashboard/import">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import Roster
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+          {userRole === 'school_admin' && (
+            <div className="relative">
+              {!setupLoading && !isReady && (
+                <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                  <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these actions and activity.</p>
+                </div>
+              )}
+              <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle>Quick Actions</CardTitle>
+                    <CardDescription>
+                      Common tasks for school administrators
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 gap-4">
+                    <Button asChild className="w-full justify-start" variant="outline">
+                      <Link to="/dashboard/dismissal">
+                        <Users className="mr-2 h-4 w-4" />
+                        Launch Dismissal
+                      </Link>
+                    </Button>
+                    <Button className="w-full justify-start" variant="outline">
+                      <GraduationCap className="mr-2 h-4 w-4" />
+                      Dismissal Groups
+                    </Button>
+                    <Button className="w-full justify-start" variant="outline">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      View Reports
+                    </Button>
+                    <Button asChild className="w-full justify-start" variant="outline">
+                      <Link to="/dashboard/import">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import Roster
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader>
-                  <CardTitle>Recent Dismissals</CardTitle>
-                  <CardDescription>
-                    Elapsed time for the 5 most recent dismissals (minutes)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {recentDismissals.length > 0 ? (
-                    <div className="h-48">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={recentDismissals}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="name" 
-                            fontSize={12}
-                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          />
-                          <YAxis 
-                            fontSize={12}
-                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                            label={{ 
-                              value: 'Minutes', 
-                              angle: -90, 
-                              position: 'insideLeft',
-                              style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
-                            }}
-                          />
-                          <Tooltip 
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--background))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '6px'
-                            }}
-                            formatter={(value: number) => [`${value} min`, 'Elapsed Time']}
-                            labelFormatter={(label) => `Date: ${label}`}
-                          />
-                          <Bar 
-                            dataKey="elapsed" 
-                            fill="hsl(var(--primary))"
-                            radius={[2, 2, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="h-48 flex items-center justify-center text-muted-foreground">
-                      <p className="text-sm">No recent dismissals found</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader>
+                    <CardTitle>Recent Dismissals</CardTitle>
+                    <CardDescription>
+                      Elapsed time for the 5 most recent dismissals (minutes)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {recentDismissals.length > 0 ? (
+                      <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={recentDismissals}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="name" 
+                              fontSize={12}
+                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            />
+                            <YAxis 
+                              fontSize={12}
+                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                              label={{ 
+                                value: 'Minutes', 
+                                angle: -90, 
+                                position: 'insideLeft',
+                                style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
+                              }}
+                            />
+                            <Tooltip 
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--background))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '6px'
+                              }}
+                              formatter={(value: number) => [`${value} min`, 'Elapsed Time']}
+                              labelFormatter={(label) => `Date: ${label}`}
+                            />
+                            <Bar 
+                              dataKey="elapsed" 
+                              fill="hsl(var(--primary))"
+                              radius={[2, 2, 0, 0]}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="h-48 flex items-center justify-center text-muted-foreground">
+                        <p className="text-sm">No recent dismissals found</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </div>
+          )}
         </main>
       </>
     );
@@ -568,7 +570,7 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these insights.</p>
             </div>
           )}
-          <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div aria-hidden={!setupLoading && !isReady ? true : undefined} className={`grid gap-6 ${userRole === 'teacher' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Today's Dismissal Time</CardTitle>
@@ -663,96 +665,86 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="relative">
-          {!setupLoading && !isReady && (
-            <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these actions and activity.</p>
-            </div>
-          )}
-          <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>
-                  Common tasks for {userRole === 'teacher' ? 'teachers' : 'users'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4">
-                {userRole === 'teacher' && (
-                  <>
-                    <Button className="w-full justify-start" variant="outline">
-                      <Users className="mr-2 h-4 w-4" />
-                      Manage My Classes
-                    </Button>
-                    <Button className="w-full justify-start" variant="outline">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Update Dismissal Plans
-                    </Button>
-                  </>
-                )}
-                <Button asChild className="w-full justify-start" variant="outline">
-                  <Link to="/dashboard/import">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Import Roster
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+        {userRole !== 'teacher' && (
+          <div className="relative">
+            {!setupLoading && !isReady && (
+              <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these actions and activity.</p>
+              </div>
+            )}
+            <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                  <CardDescription>
+                    Common tasks for users
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 gap-4">
+                  <Button asChild className="w-full justify-start" variant="outline">
+                    <Link to="/dashboard/import">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import Roster
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
 
-            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Recent Dismissals</CardTitle>
-                <CardDescription>
-                  Elapsed time for the 5 most recent dismissals (minutes)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {recentDismissals.length > 0 ? (
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={recentDismissals}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="name" 
-                          fontSize={12}
-                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                        />
-                        <YAxis 
-                          fontSize={12}
-                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                          label={{ 
-                            value: 'Minutes', 
-                            angle: -90, 
-                            position: 'insideLeft',
-                            style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
-                          }}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '6px'
-                          }}
-                          formatter={(value: number) => [`${value} min`, 'Elapsed Time']}
-                          labelFormatter={(label) => `Date: ${label}`}
-                        />
-                        <Bar 
-                          dataKey="elapsed" 
-                          fill="hsl(var(--primary))"
-                          radius={[2, 2, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-48 flex items-center justify-center text-muted-foreground">
-                    <p className="text-sm">No recent dismissals found</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <CardHeader>
+                  <CardTitle>Recent Dismissals</CardTitle>
+                  <CardDescription>
+                    Elapsed time for the 5 most recent dismissals (minutes)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {recentDismissals.length > 0 ? (
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={recentDismissals}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="name" 
+                            fontSize={12}
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          />
+                          <YAxis 
+                            fontSize={12}
+                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                            label={{ 
+                              value: 'Minutes', 
+                              angle: -90, 
+                              position: 'insideLeft',
+                              style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
+                            }}
+                          />
+                          <Tooltip 
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '6px'
+                            }}
+                            formatter={(value: number) => [`${value} min`, 'Elapsed Time']}
+                            labelFormatter={(label) => `Date: ${label}`}
+                          />
+                          <Bar 
+                            dataKey="elapsed" 
+                            fill="hsl(var(--primary))"
+                            radius={[2, 2, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-48 flex items-center justify-center text-muted-foreground">
+                      <p className="text-sm">No recent dismissals found</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       </div>
     </>
