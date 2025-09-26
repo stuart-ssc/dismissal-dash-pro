@@ -14,7 +14,7 @@ import { ModeCompletionButton } from "@/components/ModeCompletionButton";
 import { TeacherUsageCard } from "@/components/TeacherUsageCard";
 
 export default function DismissalLauncher() {
-  const { signOut, user } = useAuth();
+  const { signOut, user, userRole } = useAuth();
   const { run, schoolId, refetch } = useTodayDismissalRun();
 
   const [schoolName, setSchoolName] = useState<string>('');
@@ -195,12 +195,14 @@ export default function DismissalLauncher() {
           </div>
         </section>
 
-        {/* Teacher Usage */}
-        <section className="mt-6 max-w-5xl">
-          <div className="w-full">
-            <TeacherUsageCard schoolId={schoolId} />
-          </div>
-        </section>
+        {/* Teacher Usage - Only visible to school admins */}
+        {userRole === 'school_admin' && (
+          <section className="mt-6 max-w-5xl">
+            <div className="w-full">
+              <TeacherUsageCard schoolId={schoolId} />
+            </div>
+          </section>
+        )}
 
         {/* End Dismissal Button */}
         {run && run.status !== 'completed' && (isBusCompleted && isCarLineCompleted && isWalkerCompleted) && (
