@@ -24,6 +24,7 @@ type DismissalRun = {
   bus_completed_by: string | null;
   car_line_completed_by: string | null;
   walker_completed_by: string | null;
+  dismissal_time?: string | null;
 };
 
 export const useTodayDismissalRun = () => {
@@ -56,10 +57,10 @@ export const useTodayDismissalRun = () => {
 
       const today = new Date().toISOString().slice(0, 10);
 
-      // Only fetch existing run - don't create new ones
+      // Only fetch existing run - don't create new ones, join with dismissal_plans to get dismissal_time
       const { data: existing, error: findErr } = await supabase
         .from("dismissal_runs")
-        .select("*")
+        .select("*, dismissal_plans!inner(dismissal_time)")
         .eq("school_id", schoolId)
         .eq("date", today)
         .maybeSingle();
@@ -67,6 +68,13 @@ export const useTodayDismissalRun = () => {
       if (findErr) throw findErr;
 
       if (existing) {
+        // Extract dismissal_time from joined data
+        const dismissalTime = (existing as any).dismissal_plans?.dismissal_time || null;
+        const runWithDismissalTime = {
+          ...existing,
+          dismissal_time: dismissalTime
+        } as DismissalRun;
+
         // Check if status needs updating based on current time
         const now = new Date();
         let needsUpdate = false;
@@ -88,19 +96,24 @@ export const useTodayDismissalRun = () => {
             .update({ updated_at: new Date().toISOString() })
             .eq("id", existing.id);
           
-          // Fetch updated run
+          // Fetch updated run with dismissal plan data
           const { data: updatedRun, error: updateErr } = await supabase
             .from("dismissal_runs")
-            .select("*")
+            .select("*, dismissal_plans!inner(dismissal_time)")
             .eq("id", existing.id)
             .single();
             
           if (!updateErr && updatedRun) {
-            return { run: updatedRun as DismissalRun, schoolId };
+            const updatedDismissalTime = (updatedRun as any).dismissal_plans?.dismissal_time || null;
+            const updatedRunWithDismissalTime = {
+              ...updatedRun,
+              dismissal_time: updatedDismissalTime
+            } as DismissalRun;
+            return { run: updatedRunWithDismissalTime, schoolId };
           }
         }
         
-        return { run: existing as DismissalRun, schoolId };
+        return { run: runWithDismissalTime, schoolId };
       }
 
       // Try to create scheduled run using the database function
@@ -117,15 +130,22 @@ export const useTodayDismissalRun = () => {
         }
 
         if (runId) {
-          // Fetch the created run
+          // Fetch the created run with dismissal plan data
           const { data: newRun, error: fetchErr } = await supabase
             .from("dismissal_runs")
-            .select("*")
+            .select("*, dismissal_plans!inner(dismissal_time)")
             .eq("id", runId)
             .single();
 
           if (fetchErr) throw fetchErr;
-          return { run: newRun as DismissalRun, schoolId };
+          
+          const dismissalTime = (newRun as any).dismissal_plans?.dismissal_time || null;
+          const newRunWithDismissalTime = {
+            ...newRun,
+            dismissal_time: dismissalTime
+          } as DismissalRun;
+          
+          return { run: newRunWithDismissalTime, schoolId };
         }
       } catch (error) {
         console.warn("Error creating scheduled run:", error);

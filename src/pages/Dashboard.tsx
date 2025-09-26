@@ -25,7 +25,7 @@ const Dashboard = () => {
   const SEO = useSEO();
   const { run, schoolId, isLoading: runLoading } = useTodayDismissalRun();
   const [prepMinutes, setPrepMinutes] = useState<number | null>(null);
-  const [planDismissalTime, setPlanDismissalTime] = useState<string | null>(null);
+  
   const [nowTs, setNowTs] = useState<number>(Date.now());
   const { loading: setupLoading, isReady, statuses } = useSchoolSetupStatus();
   const [recentDismissals, setRecentDismissals] = useState<any[]>([]);
@@ -95,22 +95,6 @@ const Dashboard = () => {
     })();
   }, [schoolId]);
 
-  // Fetch today's plan dismissal time
-  useEffect(() => {
-    const planId = run?.plan_id as string | null | undefined;
-    if (!planId) {
-      setPlanDismissalTime(null);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase
-        .from('dismissal_plans')
-        .select('dismissal_time')
-        .eq('id', planId)
-        .single();
-      setPlanDismissalTime((data as any)?.dismissal_time ?? null);
-    })();
-  }, [run?.plan_id]);
 
   // Fetch recent dismissals for chart and average calculation
   useEffect(() => {
@@ -275,6 +259,7 @@ const Dashboard = () => {
   console.log('User object:', user);
 
   // Compute dismissal timing state
+  const planDismissalTime = run?.dismissal_time;
   const planStartDate = (() => {
     if (!planDismissalTime) return null;
     const parts = planDismissalTime.split(':');
@@ -358,11 +343,13 @@ const Dashboard = () => {
                     </>
                   ) : (
                     <>
-                      <Button asChild variant="outline" size="sm">
-                        <Link to="/dashboard/dismissal-plans">
-                          Manage Dismissal Plans
-                        </Link>
-                      </Button>
+                      {userRole === 'school_admin' && (
+                        <Button asChild variant="outline" size="sm">
+                          <Link to="/dashboard/dismissal-plans">
+                            Manage Dismissal Plans
+                          </Link>
+                        </Button>
+                      )}
                       <p className="text-xs text-muted-foreground mt-2">
                         No plan set for today
                       </p>
@@ -592,11 +579,13 @@ const Dashboard = () => {
                   </>
                 ) : (
                   <>
-                    <Button asChild variant="outline" size="sm">
-                      <Link to="/dashboard/dismissal-plans">
-                        Manage Dismissal Plans
-                      </Link>
-                    </Button>
+                    {userRole === 'school_admin' && (
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/dashboard/dismissal-plans">
+                          Manage Dismissal Plans
+                        </Link>
+                      </Button>
+                    )}
                     <p className="text-xs text-muted-foreground mt-2">
                       No plan set for today
                     </p>
