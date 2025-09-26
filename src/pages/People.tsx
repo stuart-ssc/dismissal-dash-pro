@@ -827,10 +827,10 @@ const People = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-4xl font-bold mb-2">
-                {schoolName}
+                {schoolName ? `${schoolName} ` : ''}People
               </h1>
               <p className="text-muted-foreground">
-                Welcome back, {firstName} {lastName}
+                Welcome {firstName} {lastName}
               </p>
             </div>
             <Button onClick={signOut} variant="outline">
