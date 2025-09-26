@@ -63,6 +63,10 @@ export default function DismissalLauncher() {
     }
   }, [run]);
 
+  // Normalize run status for consistent comparison
+  const normalizedStatus = run?.status?.toLowerCase();
+  const isButtonsEnabled = run && (normalizedStatus === 'preparation' || normalizedStatus === 'active');
+
   // Real-time updates for dismissal runs
   useEffect(() => {
     if (!run?.id) return;
@@ -150,12 +154,12 @@ export default function DismissalLauncher() {
             <Button
               variant="outline"
               className={`h-32 text-lg justify-center flex-col gap-2 ${
-                !run || (run.status !== 'preparation' && run.status !== 'active') 
-                  ? 'opacity-50' : ''
+                !isButtonsEnabled ? 'opacity-50' : ''
               }`}
               onClick={() => navigate("/dashboard/dismissal/bus")}
-              disabled={!run || (run.status !== 'preparation' && run.status !== 'active')}
-            >
+              disabled={!isButtonsEnabled}
+              title={!isButtonsEnabled ? "Available during preparation and active phases" : ""}
+             >
               <div className="flex items-center gap-2">
                 <Bus className="h-8 w-8" />
                 {isBusCompleted && <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
@@ -165,11 +169,11 @@ export default function DismissalLauncher() {
             <Button
               variant="outline"
               className={`h-32 text-lg justify-center flex-col gap-2 ${
-                !run || (run.status !== 'preparation' && run.status !== 'active') 
-                  ? 'opacity-50' : ''
+                !isButtonsEnabled ? 'opacity-50' : ''
               }`}
               onClick={() => navigate("/dashboard/dismissal/car-line")}
-              disabled={!run || (run.status !== 'preparation' && run.status !== 'active')}
+              disabled={!isButtonsEnabled}
+              title={!isButtonsEnabled ? "Available during preparation and active phases" : ""}
             >
               <div className="flex items-center gap-2">
                 <Car className="h-8 w-8" />
@@ -180,12 +184,12 @@ export default function DismissalLauncher() {
             <Button
               variant="outline"
               className={`h-32 text-lg justify-center flex-col gap-2 ${
-                !run || (run.status !== 'preparation' && run.status !== 'active') 
-                  ? 'opacity-50' : ''
+                !isButtonsEnabled ? 'opacity-50' : ''
               }`}
               onClick={() => navigate("/dashboard/dismissal/walker")}
-              disabled={!run || (run.status !== 'preparation' && run.status !== 'active')}
-            >
+              disabled={!isButtonsEnabled}
+              title={!isButtonsEnabled ? "Available during preparation and active phases" : ""}
+             >
               <div className="flex items-center gap-2">
                 <MapPin className="h-8 w-8" />
                 {isWalkerCompleted && <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
