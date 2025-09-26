@@ -36,17 +36,20 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Ensure caller is a system admin
-    const { data: hasSysRole } = await supabase
+    // Get user's roles and profile
+    const { data: userRoles, error: userRoleError } = await supabase
       .from('user_roles')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('role', 'system_admin')
-      .maybeSingle();
+      .select('role')
+      .eq('user_id', user.id);
 
-    if (!hasSysRole) {
-      return new Response(JSON.stringify({ error: 'Forbidden: system_admin required' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (userRoleError) {
+      return new Response(JSON.stringify({ error: 'Failed to verify user roles' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
+
+    const isSystemAdmin = userRoles?.some(r => r.role === 'system_admin');
 
     const { email, firstName, lastName, role, schoolId, sendInvite = true } = await req.json() as CreateUserRequest;
 
@@ -56,6 +59,74 @@ serve(async (req) => {
 
     if ((role === 'teacher' || role === "school_admin") && !schoolId) {
       return new Response(JSON.stringify({ error: 'schoolId is required for teacher and school_admin roles' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // For school_admin role creation, allow teachers to invite if no admin exists
+    if (role === 'school_admin' && !isSystemAdmin) {
+      // Get caller's profile to verify school
+      const { data: callerProfile, error: callerProfileError } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (callerProfileError || !callerProfile?.school_id) {
+        return new Response(JSON.stringify({ error: 'Caller must belong to a school' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Verify school_id matches
+      if (callerProfile.school_id !== schoolId) {
+        return new Response(JSON.stringify({ error: 'Can only invite admins for your own school' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Check if school already has an admin
+      const { data: adminUsers, error: adminCheckError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'school_admin');
+
+      if (adminCheckError) {
+        return new Response(JSON.stringify({ error: 'Failed to check existing admins' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const adminUserIds = adminUsers?.map(r => r.user_id) || [];
+      
+      if (adminUserIds.length > 0) {
+        const { data: existingAdmins, error: existingAdminsError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('school_id', schoolId)
+          .in('id', adminUserIds);
+
+        if (existingAdminsError) {
+          return new Response(JSON.stringify({ error: 'Failed to check existing school admins' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        if (existingAdmins && existingAdmins.length > 0) {
+          return new Response(JSON.stringify({ error: 'School already has an administrator' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+    } else if (!isSystemAdmin) {
+      // For all other roles or non-school-admin creation, require system admin
+      return new Response(JSON.stringify({ error: 'Forbidden: system_admin required' }), { 
+        status: 403, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
     }
 
     // Send invite (recommended) so user sets their password securely
@@ -73,21 +144,21 @@ serve(async (req) => {
     }
 
     // Upsert profile
-    const { error: profileError } = await supabase.from('profiles').upsert({
+    const { error: upsertProfileError } = await supabase.from('profiles').upsert({
       id: newUserId,
       first_name: firstName,
       last_name: lastName,
       email,
       school_id: schoolId ?? null,
     });
-    if (profileError) {
-      return new Response(JSON.stringify({ error: profileError.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (upsertProfileError) {
+      return new Response(JSON.stringify({ error: upsertProfileError.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Set role
-    const { error: roleError } = await supabase.from('user_roles').insert({ user_id: newUserId, role });
-    if (roleError) {
-      return new Response(JSON.stringify({ error: roleError.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const { error: insertRoleError } = await supabase.from('user_roles').insert({ user_id: newUserId, role });
+    if (insertRoleError) {
+      return new Response(JSON.stringify({ error: insertRoleError.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({ success: true, userId: newUserId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

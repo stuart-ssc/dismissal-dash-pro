@@ -1470,6 +1470,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      get_school_admins_for_current_user: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+        }[]
+      }
       get_schools_for_signup: {
         Args: Record<PropertyKey, never>
         Returns: {

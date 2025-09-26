@@ -24,49 +24,9 @@ export const useSchoolAdmins = () => {
       setError(null);
       
       try {
-        // Get current user's school_id
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("school_id")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (profileError) throw profileError;
-        if (!profile?.school_id) {
-          setSchoolAdmins([]);
-          setHasSchoolAdmin(false);
-          setLoading(false);
-          return;
-        }
-
-        // Get school admin user IDs first
-        const { data: adminRoles, error: rolesError } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "school_admin");
-
-        if (rolesError) throw rolesError;
-        
-        const adminUserIds = adminRoles?.map(role => role.user_id) || [];
-        
-        if (adminUserIds.length === 0) {
-          setSchoolAdmins([]);
-          setHasSchoolAdmin(false);
-          setLoading(false);
-          return;
-        }
-
-        // Find all school admins for this school
+        // Use secure RPC to get school admins for current user
         const { data: admins, error: adminsError } = await supabase
-          .from("profiles")
-          .select(`
-            id,
-            first_name,
-            last_name,
-            email
-          `)
-          .eq("school_id", profile.school_id)
-          .in("id", adminUserIds);
+          .rpc('get_school_admins_for_current_user');
 
         if (adminsError) throw adminsError;
 
