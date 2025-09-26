@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import Navbar from "@/components/Navbar";
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AddPersonDialog } from "@/components/AddPersonDialog";
@@ -819,26 +819,24 @@ const People = () => {
   return (
     <>
       <SEO />
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-16">
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">
-                {schoolName ? `${schoolName} ` : ''}People
-              </h1>
-              <p className="text-muted-foreground">
-                Welcome {firstName} {lastName}
-              </p>
-            </div>
-            <Button onClick={signOut} variant="outline">
-              Sign Out
-            </Button>
+      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">
+              {schoolName}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Welcome {firstName} {lastName}
+            </p>
           </div>
         </div>
+        <Button onClick={signOut} variant="outline">
+          Sign Out
+        </Button>
+      </header>
 
+      <main className="flex-1 p-6 space-y-6">
         <div className="space-y-6">
           <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
             <CardHeader>
@@ -1110,8 +1108,7 @@ const People = () => {
             }}
           />
         )}
-      </div>
-      </div>
+    </main>
     </>
   );
 };
