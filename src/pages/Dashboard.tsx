@@ -11,6 +11,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import SetupChecklistCard from "@/components/SetupChecklistCard";
+import TeacherSetupGuide from "@/components/TeacherSetupGuide";
 import { useSchoolSetupStatus } from "@/hooks/useSchoolSetupStatus";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
@@ -314,7 +315,11 @@ const Dashboard = () => {
 
         <main className="flex-1 p-6 space-y-6">
           {!setupLoading && !isReady && (
-            <SetupChecklistCard statuses={statuses} />
+            userRole === 'school_admin' ? (
+              <SetupChecklistCard statuses={statuses} />
+            ) : (
+              <TeacherSetupGuide />
+            )
           )}
           {showDismissalControls && (
             <section aria-label="Dismissal controls">
