@@ -222,7 +222,7 @@ serve(async (req) => {
           );
 
           if (existingClassResult.rows.length > 0) {
-            classId = existingClassResult.rows[0].id as string;
+            classId = (existingClassResult.rows[0] as any).id as string;
           } else {
             const newClassResult = await client.queryObject(
               `INSERT INTO classes (class_name, room_number, school_id, grade_level) 
@@ -233,7 +233,7 @@ serve(async (req) => {
             if (newClassResult.rows.length === 0) {
               throw new Error(`Failed to create class ${row.className}`);
             }
-            classId = newClassResult.rows[0].id as string;
+            classId = (newClassResult.rows[0] as any).id as string;
             results.classesCreated++;
           }
           processedClasses.set(classKey, classId);
@@ -250,7 +250,7 @@ serve(async (req) => {
           );
 
           if (existingTeacherResult.rows.length > 0) {
-            teacherId = existingTeacherResult.rows[0].id as string;
+            teacherId = (existingTeacherResult.rows[0] as any).id as string;
           } else {
             // Create teacher record
             const newTeacherResult = await client.queryObject(
@@ -262,7 +262,7 @@ serve(async (req) => {
             if (newTeacherResult.rows.length === 0) {
               throw new Error(`Failed to create teacher ${row.teacherFirstName} ${row.teacherLastName}`);
             }
-            teacherId = newTeacherResult.rows[0].id as string;
+            teacherId = (newTeacherResult.rows[0] as any).id as string;
             results.teachersCreated++;
           }
           processedTeachers.set(row.teacherEmail, teacherId);
@@ -288,8 +288,8 @@ serve(async (req) => {
           );
         }
         
-        if (existingStudentResult?.rows.length > 0) {
-          studentId = existingStudentResult.rows[0].id as string;
+        if (existingStudentResult?.rows && existingStudentResult.rows.length > 0) {
+          studentId = (existingStudentResult.rows[0] as any).id as string;
         } else {
           const newStudentResult = await client.queryObject(
             `INSERT INTO students (student_id, first_name, last_name, grade_level, school_id, 
@@ -311,7 +311,7 @@ serve(async (req) => {
           if (newStudentResult.rows.length === 0) {
             throw new Error(`Failed to create student ${row.firstName} ${row.lastName}`);
           }
-          studentId = newStudentResult.rows[0].id as string;
+          studentId = (newStudentResult.rows[0] as any).id as string;
           results.studentsCreated++;
         }
 
@@ -346,8 +346,8 @@ serve(async (req) => {
                    [transportationMethodValue, profile.school_id]
                  );
 
-                 if (existingBusResult.rows.length > 0) {
-                   busId = existingBusResult.rows[0].id as string;
+                  if (existingBusResult.rows.length > 0) {
+                    busId = (existingBusResult.rows[0] as any).id as string;
                  } else {
                    // Create new bus
                    const newBusResult = await client.queryObject(
@@ -359,7 +359,7 @@ serve(async (req) => {
                    if (newBusResult.rows.length === 0) {
                      throw new Error(`Failed to create bus ${transportationMethodValue}`);
                    }
-                   busId = newBusResult.rows[0].id as string;
+                   busId = (newBusResult.rows[0] as any).id as string;
                    results.busesCreated++;
                  }
                  processedBuses.set(transportationMethodValue, busId);
@@ -398,7 +398,7 @@ serve(async (req) => {
             processedTeachers.set(row.teacherEmail + '_invited', 'sent');
           } catch (inviteError) {
             console.error('Error sending teacher invitation:', inviteError);
-            results.errors.push(`Failed to send invitation to ${row.teacherEmail}: ${inviteError.message}`);
+            results.errors.push(`Failed to send invitation to ${row.teacherEmail}: ${inviteError instanceof Error ? inviteError.message : 'Unknown error'}`);
           }
         }
 
@@ -413,8 +413,8 @@ serve(async (req) => {
                    [transportationMethodValue, profile.school_id]
                  );
 
-                 if (existingCarLineResult.rows.length > 0) {
-                   carLineId = existingCarLineResult.rows[0].id as string;
+                  if (existingCarLineResult.rows.length > 0) {
+                    carLineId = (existingCarLineResult.rows[0] as any).id as string;
                  } else {
                    // Create new car line
                    const newCarLineResult = await client.queryObject(
@@ -426,7 +426,7 @@ serve(async (req) => {
                    if (newCarLineResult.rows.length === 0) {
                      throw new Error(`Failed to create car line ${transportationMethodValue}`);
                    }
-                   carLineId = newCarLineResult.rows[0].id as string;
+                   carLineId = (newCarLineResult.rows[0] as any).id as string;
                    results.carLinesCreated++;
                  }
                  processedCarLines.set(transportationMethodValue, carLineId);
@@ -451,8 +451,8 @@ serve(async (req) => {
                    [transportationMethodValue, profile.school_id]
                  );
 
-                 if (existingWalkerLocationResult.rows.length > 0) {
-                   walkerLocationId = existingWalkerLocationResult.rows[0].id as string;
+                  if (existingWalkerLocationResult.rows.length > 0) {
+                    walkerLocationId = (existingWalkerLocationResult.rows[0] as any).id as string;
                  } else {
                    // Create new walker location
                    const newWalkerLocationResult = await client.queryObject(
@@ -464,7 +464,7 @@ serve(async (req) => {
                    if (newWalkerLocationResult.rows.length === 0) {
                      throw new Error(`Failed to create walker location ${transportationMethodValue}`);
                    }
-                   walkerLocationId = newWalkerLocationResult.rows[0].id as string;
+                   walkerLocationId = (newWalkerLocationResult.rows[0] as any).id as string;
                    results.walkerLocationsCreated++;
                  }
                  processedWalkerLocations.set(transportationMethodValue, walkerLocationId);
@@ -483,13 +483,13 @@ serve(async (req) => {
               console.log(`Row ${i + 1}: Unrecognized transportation type: ${transportationType} (original: ${row.transportation})`);
             }
           } catch (transportError) {
-            console.log(`Row ${i + 1}: Transportation processing error - ${transportError.message}`);
+            console.log(`Row ${i + 1}: Transportation processing error - ${transportError instanceof Error ? transportError.message : 'Unknown error'}`);
           }
         }
 
       } catch (error) {
         console.error(`Critical error processing row ${i + 1}:`, error);
-        throw new Error(`Row ${i + 1}: ${error.message}`);
+        throw new Error(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
@@ -521,7 +521,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: false,
       error: 'Import failed and was rolled back',
-      details: transactionError.message,
+      details: transactionError instanceof Error ? transactionError.message : 'Unknown error',
       message: 'The import failed and no changes were made to the database. Please fix the errors and try again.'
     }), {
       status: 400,
@@ -536,7 +536,7 @@ serve(async (req) => {
     console.error('Import error:', error);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

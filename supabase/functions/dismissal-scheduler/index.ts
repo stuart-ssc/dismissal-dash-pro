@@ -62,7 +62,7 @@ serve(async (req) => {
         results.push({
           school_id: school.id,
           success: false,
-          error: error.message || 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
@@ -130,7 +130,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
