@@ -67,12 +67,14 @@ export const useTodayDismissalRun = () => {
       const timezone = school?.timezone || 'America/New_York';
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
 
-      // Fetch existing run without embedded join
+      // Fetch existing run without embedded join (get most recent if multiple exist)
       const { data: existing, error: findErr } = await supabase
         .from("dismissal_runs")
         .select("*")
         .eq("school_id", schoolId)
         .eq("date", today)
+        .order('updated_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (findErr) throw findErr;
@@ -130,6 +132,8 @@ export const useTodayDismissalRun = () => {
             .from("dismissal_runs")
             .select("*")
             .eq("id", existing.id)
+            .order('updated_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
           
           if (updateErr) {

@@ -328,7 +328,20 @@ const Dashboard = () => {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  {planDismissalTime ? (
+                  {run?.status === 'completed' ? (
+                    <>
+                      <div className="text-lg font-semibold text-green-600">Dismissal completed today</div>
+                      {run.ended_at && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ended at {new Date(run.ended_at).toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </p>
+                      )}
+                    </>
+                  ) : planDismissalTime ? (
                     <>
                       <div className="text-2xl font-bold">
                         {new Date(`2000-01-01T${planDismissalTime}`).toLocaleTimeString('en-US', {
