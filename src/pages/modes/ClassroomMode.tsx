@@ -181,7 +181,7 @@ export default function ClassroomMode() {
         
         // Check if this group should be active (within 5 minutes of release time)
         const timeDiff = scheduledReleaseTime.getTime() - now.getTime();
-        const shouldBeActive = timeDiff <= 5 * 60000 && timeDiff >= -30 * 60000; // Show 5 min before, hide 30 min after
+        const shouldBeActive = timeDiff <= 5 * 60000 && timeDiff >= -60 * 60000; // Show 5 min before, hide 60 min after
 
         if (!shouldBeActive) continue;
 
@@ -423,6 +423,33 @@ export default function ClassroomMode() {
           buses,
           students
         });
+      }
+
+      // Check if we should auto-complete the dismissal run (60 minutes past last group)
+      if (allGroups.length > 0 && run?.status !== 'completed') {
+        const lastGroup = allGroups[allGroups.length - 1];
+        const lastGroupReleaseTime = new Date(baseDismissalTime.getTime() + (lastGroup.release_offset_minutes * 60000));
+        const timeSinceLastGroup = now.getTime() - lastGroupReleaseTime.getTime();
+        
+        // If it's been more than 60 minutes since the last group's release time
+        if (timeSinceLastGroup > 60 * 60000) {
+          try {
+            const { error } = await supabase
+              .from('dismissal_runs')
+              .update({
+                status: 'completed',
+                ended_at: new Date().toISOString(),
+                completion_method: 'auto_timeout'
+              })
+              .eq('id', runId);
+            
+            if (error) {
+              console.error('Error auto-completing dismissal run:', error);
+            }
+          } catch (error) {
+            console.error('Error auto-completing dismissal run:', error);
+          }
+        }
       }
 
       setGroups(activeGroups);

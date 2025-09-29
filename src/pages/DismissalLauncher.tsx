@@ -231,7 +231,8 @@ export default function DismissalLauncher() {
                           .from('dismissal_runs')
                           .update({ 
                             ended_at: new Date().toISOString(),
-                            status: 'completed'
+                            status: 'completed',
+                            completion_method: 'manual'
                           })
                           .eq('id', run.id);
 

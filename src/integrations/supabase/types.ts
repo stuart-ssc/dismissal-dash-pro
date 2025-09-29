@@ -723,6 +723,7 @@ export type Database = {
           car_line_completed: boolean | null
           car_line_completed_at: string | null
           car_line_completed_by: string | null
+          completion_method: string | null
           created_at: string
           date: string
           ended_at: string | null
@@ -746,6 +747,7 @@ export type Database = {
           car_line_completed?: boolean | null
           car_line_completed_at?: string | null
           car_line_completed_by?: string | null
+          completion_method?: string | null
           created_at?: string
           date?: string
           ended_at?: string | null
@@ -769,6 +771,7 @@ export type Database = {
           car_line_completed?: boolean | null
           car_line_completed_at?: string | null
           car_line_completed_by?: string | null
+          completion_method?: string | null
           created_at?: string
           date?: string
           ended_at?: string | null
