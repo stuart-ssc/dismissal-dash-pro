@@ -130,9 +130,13 @@ export const useTodayDismissalRun = () => {
             .from("dismissal_runs")
             .select("*")
             .eq("id", existing.id)
-            .single();
+            .maybeSingle();
+          
+          if (updateErr) {
+            console.error("Error fetching updated dismissal run:", updateErr);
+          }
             
-          if (!updateErr && updatedRun) {
+          if (updatedRun) {
             // Fetch plan separately if needed
             let updatedDismissalTime = null;
             if (updatedRun.plan_id) {
@@ -181,9 +185,17 @@ export const useTodayDismissalRun = () => {
             .from("dismissal_runs")
             .select("*")
             .eq("id", runId)
-            .single();
+            .maybeSingle();
 
-          if (fetchErr) throw fetchErr;
+          if (fetchErr) {
+            console.error("Error fetching newly created dismissal run:", fetchErr);
+            throw fetchErr;
+          }
+          
+          if (!newRun) {
+            console.error("Newly created dismissal run not found (RLS issue?)");
+            return null;
+          }
           
           // Fetch plan separately if needed
           let dismissalTime = null;
