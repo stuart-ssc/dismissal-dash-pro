@@ -87,7 +87,11 @@ export const useTodayDismissalRun = () => {
             .eq("id", existing.plan_id)
             .maybeSingle();
           
-          if (!planError && plan) {
+          if (planError) {
+            console.error("Error fetching dismissal plan:", planError);
+          }
+          
+          if (plan) {
             dismissalTime = plan.dismissal_time;
           }
         }
@@ -135,7 +139,11 @@ export const useTodayDismissalRun = () => {
                 .eq("id", updatedRun.plan_id)
                 .maybeSingle();
               
-              if (!planError && plan) {
+              if (planError) {
+                console.error("Error fetching dismissal plan:", planError);
+              }
+              
+              if (plan) {
                 updatedDismissalTime = plan.dismissal_time;
               }
             }
@@ -183,7 +191,11 @@ export const useTodayDismissalRun = () => {
               .eq("id", newRun.plan_id)
               .maybeSingle();
             
-            if (!planError && plan) {
+            if (planError) {
+              console.error("Error fetching dismissal plan:", planError);
+            }
+            
+            if (plan) {
               dismissalTime = plan.dismissal_time;
             }
           }
