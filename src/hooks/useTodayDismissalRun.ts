@@ -132,8 +132,6 @@ export const useTodayDismissalRun = () => {
             .from("dismissal_runs")
             .select("*")
             .eq("id", existing.id)
-            .order('updated_at', { ascending: false })
-            .limit(1)
             .maybeSingle();
           
           if (updateErr) {
