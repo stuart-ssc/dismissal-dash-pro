@@ -426,10 +426,10 @@ export default function ClassroomMode() {
       }
 
       // Check if we should auto-complete the dismissal run (60 minutes past last group)
-      if (allGroups.length > 0 && run?.status !== 'completed') {
+      if (allGroups.length > 0) {
         const lastGroup = allGroups[allGroups.length - 1];
         const lastGroupReleaseTime = new Date(baseDismissalTime.getTime() + (lastGroup.release_offset_minutes * 60000));
-        const timeSinceLastGroup = now.getTime() - lastGroupReleaseTime.getTime();
+        const timeSinceLastGroup = currentTime.getTime() - lastGroupReleaseTime.getTime();
         
         // If it's been more than 60 minutes since the last group's release time
         if (timeSinceLastGroup > 60 * 60000) {
@@ -441,7 +441,8 @@ export default function ClassroomMode() {
                 ended_at: new Date().toISOString(),
                 completion_method: 'auto_timeout'
               })
-              .eq('id', runId);
+              .eq('id', runId)
+              .neq('status', 'completed'); // Only update if not already completed
             
             if (error) {
               console.error('Error auto-completing dismissal run:', error);
