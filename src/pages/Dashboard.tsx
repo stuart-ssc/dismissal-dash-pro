@@ -23,7 +23,7 @@ const Dashboard = () => {
   const [lastName, setLastName] = useState<string>('');
   
   const SEO = useSEO();
-  const { run, schoolId, isLoading: runLoading } = useTodayDismissalRun();
+  const { run, schoolId, planTimeFallback, isLoading: runLoading } = useTodayDismissalRun();
   const [prepMinutes, setPrepMinutes] = useState<number | null>(null);
   
   const [nowTs, setNowTs] = useState<number>(Date.now());
@@ -258,8 +258,8 @@ const Dashboard = () => {
   console.log('Current user role:', userRole);
   console.log('User object:', user);
 
-  // Compute dismissal timing state
-  const planDismissalTime = run?.dismissal_time;
+  // Compute dismissal timing state - use planTimeFallback if no run
+  const planDismissalTime = run?.dismissal_time || planTimeFallback;
   const planStartDate = (() => {
     if (!planDismissalTime) return null;
     const parts = planDismissalTime.split(':');

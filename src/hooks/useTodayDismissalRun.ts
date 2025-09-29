@@ -27,14 +27,15 @@ type DismissalRun = {
   dismissal_time?: string | null;
 };
 
-export const useTodayDismissalRun = () => {
+export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
   const { user } = useAuth();
   const { impersonatedSchoolId } = useImpersonation();
+  const allowCreate = options?.allowCreate ?? false;
 
   const query = useQuery({
-    queryKey: ["today-dismissal-run", user?.id, impersonatedSchoolId],
+    queryKey: ["today-dismissal-run", user?.id, impersonatedSchoolId, allowCreate],
     enabled: !!user?.id,
-    queryFn: async (): Promise<{ run: DismissalRun; schoolId: number } | null> => {
+    queryFn: async (): Promise<{ run: DismissalRun | null; schoolId: number; planTimeFallback?: string | null } | null> => {
       if (!user?.id) throw new Error("Not authenticated");
 
       let schoolId: number;
@@ -67,17 +68,36 @@ export const useTodayDismissalRun = () => {
       const timezone = school?.timezone || 'America/New_York';
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
 
-      // Fetch existing run without embedded join (get most recent if multiple exist)
-      const { data: existing, error: findErr } = await supabase
+      console.log(`[useTodayDismissalRun] Fetching runs for school ${schoolId}, date ${today}`);
+
+      // Fetch ALL existing runs for today (not just one)
+      const { data: allRuns, error: findErr } = await supabase
         .from("dismissal_runs")
         .select("*")
         .eq("school_id", schoolId)
         .eq("date", today)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('updated_at', { ascending: false });
 
       if (findErr) throw findErr;
+
+      console.log(`[useTodayDismissalRun] Found ${allRuns?.length || 0} runs for today`);
+
+      // Select the "best" candidate: prioritize runs with plan_id, then non-completed, then anything
+      let existing: typeof allRuns extends (infer U)[] ? U : never | null = null;
+      if (allRuns && allRuns.length > 0) {
+        // First try to find a run with a plan_id
+        existing = allRuns.find(r => r.plan_id) || null;
+        // If none with plan_id, pick the first non-completed
+        if (!existing) {
+          existing = allRuns.find(r => r.status !== 'completed') || null;
+        }
+        // Otherwise just take the most recent
+        if (!existing) {
+          existing = allRuns[0];
+        }
+      }
+
+      console.log(`[useTodayDismissalRun] Selected run:`, existing?.id, existing?.status);
 
       if (existing) {
         // Fetch dismissal plan separately if plan_id exists
@@ -168,7 +188,54 @@ export const useTodayDismissalRun = () => {
         return { run: runWithDismissalTime, schoolId };
       }
 
+      // If no run exists, fetch the applicable dismissal plan as fallback
+      console.log(`[useTodayDismissalRun] No existing run, fetching applicable plan for today`);
+      let planTimeFallback: string | null = null;
+      
+      const { data: applicablePlan, error: planErr } = await supabase
+        .from("dismissal_plans")
+        .select("dismissal_time")
+        .eq("school_id", schoolId)
+        .eq("status", "active")
+        .or(`and(start_date.lte.${today},end_date.gte.${today}),and(start_date.lte.${today},end_date.is.null),and(start_date.is.null,end_date.gte.${today}),and(start_date.is.null,end_date.is.null)`)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!planErr && applicablePlan) {
+        planTimeFallback = applicablePlan.dismissal_time;
+        console.log(`[useTodayDismissalRun] Found applicable plan with time:`, planTimeFallback);
+      } else {
+        // Fallback to default plan
+        const { data: defaultPlan, error: defaultErr } = await supabase
+          .from("dismissal_plans")
+          .select("dismissal_time")
+          .eq("school_id", schoolId)
+          .eq("status", "active")
+          .eq("is_default", true)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!defaultErr && defaultPlan) {
+          planTimeFallback = defaultPlan.dismissal_time;
+          console.log(`[useTodayDismissalRun] Found default plan with time:`, planTimeFallback);
+        }
+      }
+
+      // Only try to create a run if allowCreate is true and we have a plan
+      if (!allowCreate) {
+        console.log(`[useTodayDismissalRun] allowCreate=false, returning with planTimeFallback`);
+        return { run: null, schoolId, planTimeFallback };
+      }
+
+      if (!planTimeFallback) {
+        console.log(`[useTodayDismissalRun] No plan found, cannot create run`);
+        return { run: null, schoolId, planTimeFallback: null };
+      }
+
       // Try to create scheduled run using the database function
+      console.log(`[useTodayDismissalRun] Attempting to create scheduled run`);
       try {
         const { data: runId, error: createError } = await supabase
           .rpc('create_scheduled_dismissal_run', {
@@ -222,19 +289,22 @@ export const useTodayDismissalRun = () => {
             dismissal_time: dismissalTime
           } as DismissalRun;
           
-          return { run: newRunWithDismissalTime, schoolId };
+          console.log(`[useTodayDismissalRun] Successfully created and fetched new run`);
+          return { run: newRunWithDismissalTime, schoolId, planTimeFallback };
         }
       } catch (error) {
-        console.warn("Error creating scheduled run:", error);
+        console.warn("[useTodayDismissalRun] Error creating scheduled run:", error);
       }
 
-      return null;
+      console.log(`[useTodayDismissalRun] Could not create run, returning with planTimeFallback`);
+      return { run: null, schoolId, planTimeFallback };
     },
   });
 
   return {
-    run: query.data?.run,
+    run: query.data?.run ?? null,
     schoolId: query.data?.schoolId,
+    planTimeFallback: query.data?.planTimeFallback,
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,

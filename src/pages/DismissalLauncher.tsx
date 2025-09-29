@@ -15,7 +15,7 @@ import { TeacherUsageCard } from "@/components/TeacherUsageCard";
 
 export default function DismissalLauncher() {
   const { signOut, user, userRole } = useAuth();
-  const { run, schoolId, refetch } = useTodayDismissalRun();
+  const { run, schoolId, planTimeFallback, isLoading, refetch } = useTodayDismissalRun({ allowCreate: true });
 
   const [schoolName, setSchoolName] = useState<string>('');
   const [isBusCompleted, setIsBusCompleted] = useState(false);
@@ -92,6 +92,28 @@ export default function DismissalLauncher() {
       supabase.removeChannel(channel);
     };
   }, [run?.id, refetch]);
+
+  // Show loader if we're creating a run
+  if (isLoading || (!run && planTimeFallback)) {
+    return (
+      <>
+        <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <h1 className="text-2xl font-bold">{schoolName || '—'}</h1>
+          </div>
+          <Button onClick={signOut} variant="outline">Sign Out</Button>
+        </header>
+        <main className="flex-1 p-6 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
+            <p className="text-lg text-muted-foreground">Preparing today's dismissal…</p>
+          </div>
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
