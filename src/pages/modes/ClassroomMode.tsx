@@ -23,6 +23,12 @@ type ActiveGroup = {
     bus_number: string;
     checked_in: boolean;
   }[];
+  students: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    destination: string;
+  }[];
 };
 
 export default function ClassroomMode() {
@@ -116,7 +122,7 @@ export default function ClassroomMode() {
 
   // Calculate time-based active groups
   const fetchTimeBasedGroups = useMemo(() => async () => {
-    if (!runId || !planId || !dismissalTime) {
+    if (!runId || !planId || !dismissalTime || !user?.id) {
       setGroups([]);
       setLoadingGroups(false);
       return;
@@ -125,10 +131,28 @@ export default function ClassroomMode() {
     setLoadingGroups(true);
 
     try {
+      // Get teacher's class and students
+      const { data: classTeacher } = await supabase
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      let teacherStudentIds: string[] = [];
+      if (classTeacher?.class_id) {
+        const { data: roster } = await supabase
+          .from("class_rosters")
+          .select("student_id")
+          .eq("class_id", classTeacher.class_id);
+        
+        teacherStudentIds = (roster || []).map(r => r.student_id);
+      }
+
       // Get all groups from the plan
       const { data: allGroups, error: groupsErr } = await supabase
         .from("dismissal_groups")
-        .select("id, name, group_type, release_offset_minutes")
+        .select("id, name, group_type, release_offset_minutes, walker_location_id")
         .eq("dismissal_plan_id", planId)
         .order("release_offset_minutes", { ascending: true });
 
@@ -165,6 +189,7 @@ export default function ClassroomMode() {
         let delay_reason: string | undefined;
         let actual_release_time = scheduledReleaseTime;
         let buses: ActiveGroup['buses'] = [];
+        let students: ActiveGroup['students'] = [];
 
         // Handle bus groups - check if buses are checked in
         if (group.group_type && group.group_type.toLowerCase().includes("bus")) {
@@ -219,6 +244,167 @@ export default function ClassroomMode() {
           }
         }
 
+        // Fetch students for this group based on type
+        if (teacherStudentIds.length > 0) {
+          // Get all students in the teacher's class
+          const { data: allStudents } = await supabase
+            .from("students")
+            .select("id, first_name, last_name")
+            .in("id", teacherStudentIds);
+
+          const studentMap = new Map((allStudents || []).map(s => [s.id, s]));
+
+          if (group.group_type?.toLowerCase().includes("bus")) {
+            // Get buses for this group
+            const { data: groupBuses } = await supabase
+              .from("dismissal_group_buses")
+              .select("bus_id")
+              .eq("dismissal_group_id", group.id);
+
+            if (groupBuses && groupBuses.length > 0) {
+              const busIds = groupBuses.map(gb => gb.bus_id);
+              
+              // Get bus assignments for teacher's students
+              const { data: busAssignments } = await supabase
+                .from("student_bus_assignments")
+                .select("student_id, bus_id")
+                .in("student_id", teacherStudentIds)
+                .in("bus_id", busIds);
+
+              // Get bus numbers
+              const { data: busDetails } = await supabase
+                .from("buses")
+                .select("id, bus_number")
+                .in("id", busIds);
+
+              const busNumberMap = new Map((busDetails || []).map(b => [b.id, b.bus_number]));
+
+              students = (busAssignments || [])
+                .map(ba => {
+                  const student = studentMap.get(ba.student_id);
+                  if (!student) return null;
+                  return {
+                    id: student.id,
+                    first_name: student.first_name,
+                    last_name: student.last_name,
+                    destination: `Bus ${busNumberMap.get(ba.bus_id) || 'Unknown'}`
+                  };
+                })
+                .filter((s): s is NonNullable<typeof s> => s !== null);
+            }
+          } else if (group.group_type?.toLowerCase().includes("car")) {
+            // Get car lines for this group
+            const { data: groupCarLines } = await supabase
+              .from("dismissal_group_car_lines")
+              .select("car_line_id")
+              .eq("dismissal_group_id", group.id);
+
+            if (groupCarLines && groupCarLines.length > 0) {
+              const carLineIds = groupCarLines.map(gc => gc.car_line_id);
+              
+              // Get car line assignments for teacher's students
+              const { data: carAssignments } = await supabase
+                .from("student_car_assignments")
+                .select("student_id, car_line_id")
+                .in("student_id", teacherStudentIds)
+                .in("car_line_id", carLineIds);
+
+              // Get car line names
+              const { data: carLineDetails } = await supabase
+                .from("car_lines")
+                .select("id, line_name")
+                .in("id", carLineIds);
+
+              const carLineNameMap = new Map((carLineDetails || []).map(cl => [cl.id, cl.line_name]));
+
+              students = (carAssignments || [])
+                .map(ca => {
+                  const student = studentMap.get(ca.student_id);
+                  if (!student) return null;
+                  return {
+                    id: student.id,
+                    first_name: student.first_name,
+                    last_name: student.last_name,
+                    destination: carLineNameMap.get(ca.car_line_id) || 'Car Line'
+                  };
+                })
+                .filter((s): s is NonNullable<typeof s> => s !== null);
+            }
+          } else if (group.group_type?.toLowerCase().includes("walker") && group.walker_location_id) {
+            // Get walker assignments for teacher's students
+            const { data: walkerAssignments } = await supabase
+              .from("student_walker_assignments")
+              .select("student_id")
+              .in("student_id", teacherStudentIds)
+              .eq("walker_location_id", group.walker_location_id);
+
+            // Get walker location name
+            const { data: walkerLocation } = await supabase
+              .from("walker_locations")
+              .select("location_name")
+              .eq("id", group.walker_location_id)
+              .single();
+
+            students = (walkerAssignments || [])
+              .map(wa => {
+                const student = studentMap.get(wa.student_id);
+                if (!student) return null;
+                return {
+                  id: student.id,
+                  first_name: student.first_name,
+                  last_name: student.last_name,
+                  destination: walkerLocation?.location_name || 'Walker Location'
+                };
+              })
+              .filter((s): s is NonNullable<typeof s> => s !== null);
+          } else if (group.group_type?.toLowerCase().includes("activity")) {
+            // Get activities for this group
+            const { data: groupActivities } = await supabase
+              .from("dismissal_group_activities")
+              .select("after_school_activity_id")
+              .eq("dismissal_group_id", group.id);
+
+            if (groupActivities && groupActivities.length > 0) {
+              const activityIds = groupActivities.map(ga => ga.after_school_activity_id);
+              
+              // Get activity assignments for teacher's students
+              const { data: activityAssignments } = await supabase
+                .from("student_after_school_assignments")
+                .select("student_id, after_school_activity_id")
+                .in("student_id", teacherStudentIds)
+                .in("after_school_activity_id", activityIds);
+
+              // Get activity names
+              const { data: activityDetails } = await supabase
+                .from("after_school_activities")
+                .select("id, activity_name")
+                .in("id", activityIds);
+
+              const activityNameMap = new Map((activityDetails || []).map(a => [a.id, a.activity_name]));
+
+              students = (activityAssignments || [])
+                .map(aa => {
+                  const student = studentMap.get(aa.student_id);
+                  if (!student) return null;
+                  return {
+                    id: student.id,
+                    first_name: student.first_name,
+                    last_name: student.last_name,
+                    destination: activityNameMap.get(aa.after_school_activity_id) || 'After School Activity'
+                  };
+                })
+                .filter((s): s is NonNullable<typeof s> => s !== null);
+            }
+          }
+
+          // Sort students by last name, then first name
+          students.sort((a, b) => {
+            const lastNameCompare = a.last_name.localeCompare(b.last_name);
+            if (lastNameCompare !== 0) return lastNameCompare;
+            return a.first_name.localeCompare(b.first_name);
+          });
+        }
+
         // Check if this group has been completed in any mode
         const isCompleted = await checkGroupCompletion(group.id, runId);
         if (isCompleted) {
@@ -234,7 +420,8 @@ export default function ClassroomMode() {
           actual_release_time,
           status,
           delay_reason,
-          buses
+          buses,
+          students
         });
       }
 
@@ -244,7 +431,7 @@ export default function ClassroomMode() {
     } finally {
       setLoadingGroups(false);
     }
-  }, [runId, schoolId, planId, dismissalTime, currentTime]);
+  }, [runId, schoolId, planId, dismissalTime, currentTime, user?.id]);
 
   // Check if a group has been completed
   const checkGroupCompletion = async (groupId: string, runId: string): Promise<boolean> => {
@@ -336,6 +523,34 @@ export default function ClassroomMode() {
         event: "*",
         schema: "public",
         table: "walker_sessions",
+      }, () => {
+        fetchTimeBasedGroups();
+      })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "student_bus_assignments",
+      }, () => {
+        fetchTimeBasedGroups();
+      })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "student_car_assignments",
+      }, () => {
+        fetchTimeBasedGroups();
+      })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "student_walker_assignments",
+      }, () => {
+        fetchTimeBasedGroups();
+      })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "student_after_school_assignments",
       }, () => {
         fetchTimeBasedGroups();
       })
@@ -498,6 +713,28 @@ export default function ClassroomMode() {
                         'This group is ready for dismissal.'
                       }
                     </p>
+                  )}
+
+                  {/* Students in this group from teacher's class */}
+                  {group.students.length > 0 && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="font-semibold mb-2">Your Students ({group.students.length}):</p>
+                      <div className="space-y-1">
+                        {group.students.map(student => (
+                          <div 
+                            key={student.id} 
+                            className="flex justify-between items-center py-1 px-2 rounded hover:bg-muted/50"
+                          >
+                            <span className="text-sm">
+                              {student.last_name}, {student.first_name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              → {student.destination}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
