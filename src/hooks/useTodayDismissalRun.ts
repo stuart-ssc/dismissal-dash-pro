@@ -81,11 +81,14 @@ export const useTodayDismissalRun = () => {
         // Fetch dismissal plan separately if plan_id exists
         let dismissalTime = null;
         if (existing.plan_id) {
+          console.log("Fetching dismissal plan for teacher, plan_id:", existing.plan_id);
           const { data: plan, error: planError } = await supabase
             .from("dismissal_plans")
             .select("dismissal_time")
             .eq("id", existing.plan_id)
             .maybeSingle();
+          
+          console.log("Dismissal plan fetch result:", { plan, planError });
           
           if (planError) {
             console.error("Error fetching dismissal plan:", planError);
