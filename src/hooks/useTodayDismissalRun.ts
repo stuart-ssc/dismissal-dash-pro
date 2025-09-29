@@ -48,11 +48,11 @@ export const useTodayDismissalRun = () => {
           .from("profiles")
           .select("school_id")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         if (profileError) throw profileError;
-        schoolId = profile?.school_id;
-        if (!schoolId) throw new Error("User has no school assigned");
+        if (!profile?.school_id) throw new Error("User has no school assigned");
+        schoolId = profile.school_id;
       }
 
       // Get school timezone for accurate date calculation
@@ -60,7 +60,7 @@ export const useTodayDismissalRun = () => {
         .from("schools")
         .select("timezone")
         .eq("id", schoolId)
-        .single();
+        .maybeSingle();
 
       if (schoolError) throw schoolError;
       

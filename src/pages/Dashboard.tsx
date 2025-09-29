@@ -49,7 +49,7 @@ const Dashboard = () => {
           .from('profiles')
           .select('school_id, first_name, last_name')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         if (profile) {
           setFirstName(profile.first_name || '');
@@ -61,7 +61,7 @@ const Dashboard = () => {
               .from('schools')
               .select('school_name')
               .eq('id', profile.school_id)
-              .single();
+              .maybeSingle();
 
             if (school?.school_name) {
               setSchoolName(school.school_name);
@@ -90,7 +90,7 @@ const Dashboard = () => {
         .from('schools')
         .select('preparation_time_minutes')
         .eq('id', schoolId)
-        .single();
+        .maybeSingle();
       setPrepMinutes((data as any)?.preparation_time_minutes ?? 5);
     })();
   }, [schoolId]);
