@@ -155,6 +155,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error('Error creating user role:', roleError);
         }
 
+        // If role is teacher, also create teacher record
+        if (role === 'teacher') {
+          const { error: teacherError } = await supabase
+            .from('teachers')
+            .insert({
+              id: data.user.id,
+              email: email,
+              first_name: firstName,
+              last_name: lastName,
+              school_id: schoolId,
+              invitation_status: 'completed',
+              account_completed_at: new Date().toISOString()
+            });
+
+          if (teacherError) {
+            console.error('Error creating teacher record:', teacherError);
+          }
+        }
+
         if (!data.session) {
           toast({
             title: "Check your email",
