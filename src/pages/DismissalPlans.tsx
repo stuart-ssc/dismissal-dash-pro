@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,6 +66,8 @@ export default function DismissalPlans() {
   const [editingPlan, setEditingPlan] = useState<DismissalPlan | null>(null);
   const [schoolName, setSchoolName] = useState<string>('');
   const [schoolDismissalTime, setSchoolDismissalTime] = useState<string>('');
+  const [showTimeWarningDialog, setShowTimeWarningDialog] = useState(false);
+  const [pendingPlanData, setPendingPlanData] = useState<PlanFormData | null>(null);
   const itemsPerPage = 10;
 
   const form = useForm<PlanFormData>({
@@ -239,14 +242,6 @@ export default function DismissalPlans() {
 
       if (!schoolIdToUse) return;
 
-      // If setting as default, remove default from other plans
-      if (data.is_default) {
-        await supabase
-          .from('dismissal_plans')
-          .update({ is_default: false })
-          .eq('school_id', schoolIdToUse);
-      }
-
       const planData = {
         name: data.name,
         description: data.description,
@@ -262,6 +257,50 @@ export default function DismissalPlans() {
       const dismissalTimeChanged = editingPlan && 
         editingPlan.dismissal_time !== planData.dismissal_time;
 
+      // If time changed, check if today's dismissal has started
+      if (editingPlan && dismissalTimeChanged && planData.dismissal_time) {
+        const today = new Date().toISOString().slice(0, 10);
+        
+        const { data: todayRun } = await supabase
+          .from('dismissal_runs')
+          .select('id, plan_id, status, started_by, started_at')
+          .eq('school_id', schoolIdToUse)
+          .eq('date', today)
+          .maybeSingle();
+
+        // Check if run exists, uses this plan, and has started or completed
+        if (todayRun && 
+            (todayRun.plan_id === editingPlan.id || (data.is_default && !todayRun.plan_id)) &&
+            (todayRun.started_by || todayRun.status === 'completed' || todayRun.status === 'cancelled')) {
+          // Show warning dialog and store pending data
+          setPendingPlanData(data);
+          setShowTimeWarningDialog(true);
+          return;
+        }
+      }
+
+      // Proceed with the update
+      await savePlan(data, planData, schoolIdToUse, dismissalTimeChanged);
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save dismissal plan",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const savePlan = async (data: PlanFormData, planData: any, schoolIdToUse: number, dismissalTimeChanged: boolean) => {
+    try {
+      // If setting as default, remove default from other plans
+      if (data.is_default) {
+        await supabase
+          .from('dismissal_plans')
+          .update({ is_default: false })
+          .eq('school_id', schoolIdToUse);
+      }
+
       if (editingPlan) {
         const { error } = await supabase
           .from('dismissal_plans')
@@ -270,11 +309,10 @@ export default function DismissalPlans() {
 
         if (error) throw error;
 
-        // If dismissal time changed, update today's run if it exists and uses this plan
+        // If dismissal time changed, try to update today's run if it hasn't started
         if (dismissalTimeChanged && planData.dismissal_time) {
           const today = new Date().toISOString().slice(0, 10);
           
-          // Get today's run for this school
           const { data: todayRun } = await supabase
             .from('dismissal_runs')
             .select('id, plan_id, status, started_by')
@@ -282,11 +320,13 @@ export default function DismissalPlans() {
             .eq('date', today)
             .maybeSingle();
 
-          // Update run times if it exists and uses this plan (or if this is the default plan)
-          if (todayRun && (todayRun.plan_id === editingPlan.id || 
-              (data.is_default && !todayRun.plan_id))) {
+          // Only update if run exists, uses this plan, and hasn't started
+          if (todayRun && 
+              (todayRun.plan_id === editingPlan.id || (data.is_default && !todayRun.plan_id)) &&
+              !todayRun.started_by && 
+              todayRun.status !== 'completed' && 
+              todayRun.status !== 'cancelled') {
             
-            // Get school timezone for calculation
             const { data: school } = await supabase
               .from('schools')
               .select('timezone, preparation_time_minutes')
@@ -305,16 +345,23 @@ export default function DismissalPlans() {
               console.warn('Failed to update run times:', updateError);
             } else if (updateResult) {
               toast({
-                title: "Run Updated",
-                description: "Today's dismissal run times have been updated to match the new plan schedule",
+                title: "Plan Updated",
+                description: "Dismissal plan updated and today's run times have been adjusted",
               });
+              setShowAddDialog(false);
+              setEditingPlan(null);
+              form.reset();
+              fetchPlans();
+              return;
             }
           }
         }
 
         toast({
-          title: "Success",
-          description: "Dismissal plan updated successfully",
+          title: "Plan Updated",
+          description: dismissalTimeChanged && pendingPlanData 
+            ? "Dismissal plan updated. The new time will take effect tomorrow as today's dismissal has already started"
+            : "Dismissal plan updated successfully",
         });
       } else {
         const { error } = await supabase
@@ -331,15 +378,12 @@ export default function DismissalPlans() {
 
       setShowAddDialog(false);
       setEditingPlan(null);
+      setPendingPlanData(null);
       form.reset();
       fetchPlans();
     } catch (error) {
       console.error('Error saving plan:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save dismissal plan",
-        variant: "destructive",
-      });
+      throw error;
     }
   };
 
@@ -411,6 +455,58 @@ export default function DismissalPlans() {
 
   return (
     <>
+      <AlertDialog open={showTimeWarningDialog} onOpenChange={setShowTimeWarningDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Dismissal Already Started</AlertDialogTitle>
+            <AlertDialogDescription>
+              Today's dismissal has already started or completed. The new dismissal time will take effect tomorrow. Do you want to proceed with this change?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setPendingPlanData(null);
+              setShowTimeWarningDialog(false);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (pendingPlanData) {
+                setShowTimeWarningDialog(false);
+                const schoolIdToUse = (userRole === 'system_admin' && impersonatedSchoolId) ? impersonatedSchoolId : null;
+                let schoolId = schoolIdToUse;
+                
+                if (!schoolId) {
+                  const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('school_id')
+                    .eq('id', user!.id)
+                    .single();
+                  schoolId = profile?.school_id ?? null;
+                }
+
+                if (schoolId) {
+                  const planData = {
+                    name: pendingPlanData.name,
+                    description: pendingPlanData.description,
+                    dismissal_time: pendingPlanData.dismissal_time || schoolDismissalTime,
+                    is_default: pendingPlanData.is_default,
+                    status: pendingPlanData.status,
+                    start_date: pendingPlanData.start_date || null,
+                    end_date: pendingPlanData.end_date || null,
+                    school_id: schoolId,
+                  };
+                  
+                  await savePlan(pendingPlanData, planData, schoolId, true);
+                }
+              }
+            }}>
+              Proceed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <header className="bg-card border-b border-border p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <SidebarTrigger />
