@@ -72,7 +72,7 @@ serve(async (req) => {
       .from('dismissal_runs')
       .select('*')
       .eq('date', today)
-      .in('status', ['scheduled', 'preparation']);
+      .in('status', ['scheduled', 'preparation', 'active']);
 
     if (runsError) {
       console.error('Error fetching runs to update:', runsError);
@@ -85,10 +85,62 @@ serve(async (req) => {
         
         let newStatus = run.status;
         
+        // Handle status transitions
         if (run.status === 'scheduled' && now >= prepTime) {
           newStatus = 'preparation';
         } else if (run.status === 'preparation' && now >= startTime) {
           newStatus = 'active';
+        }
+        
+        // Check for 60-minute auto-timeout on active runs
+        if ((run.status === 'active' || run.status === 'preparation') && run.plan_id) {
+          const { data: groups } = await supabaseClient
+            .from('dismissal_groups')
+            .select('release_offset_minutes')
+            .eq('dismissal_plan_id', run.plan_id)
+            .order('release_offset_minutes', { ascending: true });
+
+          if (groups && groups.length > 0) {
+            const { data: plan } = await supabaseClient
+              .from('dismissal_plans')
+              .select('dismissal_time')
+              .eq('id', run.plan_id)
+              .maybeSingle();
+
+            if (plan?.dismissal_time) {
+              const lastGroup = groups[groups.length - 1];
+              const [hours, minutes] = plan.dismissal_time.split(':').map(Number);
+              const baseDismissalTime = new Date(run.date + 'T00:00:00Z');
+              baseDismissalTime.setUTCHours(hours, minutes, 0, 0);
+              
+              const lastGroupReleaseTime = new Date(
+                baseDismissalTime.getTime() + (lastGroup.release_offset_minutes * 60000)
+              );
+              
+              const timeSinceLastGroup = now.getTime() - lastGroupReleaseTime.getTime();
+
+              // If 60 minutes have passed since last group, auto-complete
+              if (timeSinceLastGroup > 60 * 60 * 1000) {
+                newStatus = 'completed';
+                const { error: completeError } = await supabaseClient
+                  .from('dismissal_runs')
+                  .update({
+                    status: 'completed',
+                    ended_at: now.toISOString(),
+                    completion_method: 'auto_timeout',
+                    updated_at: now.toISOString()
+                  })
+                  .eq('id', run.id);
+                
+                if (completeError) {
+                  console.error(`Error auto-completing run ${run.id}:`, completeError);
+                } else {
+                  console.log(`Auto-completed run ${run.id} due to 60-minute timeout`);
+                }
+                continue;
+              }
+            }
+          }
         }
         
         if (newStatus !== run.status) {

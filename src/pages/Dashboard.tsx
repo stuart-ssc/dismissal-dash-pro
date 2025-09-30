@@ -82,6 +82,39 @@ const Dashboard = () => {
     return () => clearInterval(id);
   }, []);
 
+  // Check for auto-timeout on mount and periodically
+  useEffect(() => {
+    const checkAutoTimeout = async () => {
+      if (!user || !run || run.status === 'completed') return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('complete-today-run-if-timeout');
+        
+        if (error) {
+          console.error('Error checking auto-timeout:', error);
+          return;
+        }
+
+        // If the run was completed, refetch the dismissal run
+        if (data?.completed) {
+          console.log('Dismissal run auto-completed, refetching...');
+          // Trigger a refetch by updating a state or using the refetch function if available
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Exception checking auto-timeout:', error);
+      }
+    };
+
+    // Check on mount
+    checkAutoTimeout();
+
+    // Check every 60 seconds
+    const intervalId = setInterval(checkAutoTimeout, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [user, run]);
+
   // Fetch school's preparation time
   useEffect(() => {
     if (!schoolId) return;

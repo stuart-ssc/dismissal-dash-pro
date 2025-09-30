@@ -26,56 +26,21 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
       setLocationCheck({ completed: false, loading: true });
 
       try {
-        // For classroom mode, check if auto-timeout should trigger BEFORE checking completion
-        if (mode === "classroom" && run.status !== "completed" && run.plan_id) {
-          // Fetch dismissal groups to check the last group's release time
-          const { data: groups } = await supabase
-            .from("dismissal_groups")
-            .select("release_offset_minutes")
-            .eq("dismissal_plan_id", run.plan_id)
-            .order("release_offset_minutes", { ascending: true });
-
-          if (groups && groups.length > 0) {
-            const { data: plan } = await supabase
-              .from("dismissal_plans")
-              .select("dismissal_time")
-              .eq("id", run.plan_id)
-              .single();
-
-            if (plan?.dismissal_time) {
-              const lastGroup = groups[groups.length - 1];
-              const [hours, minutes] = plan.dismissal_time.split(':').map(Number);
-              const baseDismissalTime = new Date(run.date);
-              baseDismissalTime.setHours(hours, minutes, 0, 0);
-              
-              const lastGroupReleaseTime = new Date(
-                baseDismissalTime.getTime() + (lastGroup.release_offset_minutes * 60000)
-              );
-              const now = new Date();
-              const timeSinceLastGroup = now.getTime() - lastGroupReleaseTime.getTime();
-
-              // If 60 minutes have passed, auto-complete the run
-              if (timeSinceLastGroup > 60 * 60000) {
-                await supabase
-                  .from("dismissal_runs")
-                  .update({
-                    status: "completed",
-                    ended_at: now.toISOString(),
-                    completion_method: "auto_timeout"
-                  })
-                  .eq("id", run.id)
-                  .neq("status", "completed");
-                
-                // Block access after auto-completing
-                toast({
-                  title: "Access Denied",
-                  description: "Today's dismissal has been automatically completed (60 minutes elapsed).",
-                  variant: "destructive",
-                });
-                navigate("/dashboard/dismissal", { replace: true });
-                return;
-              }
-            }
+        // Check for auto-timeout using the edge function
+        if (run.status !== "completed") {
+          const { data: timeoutData, error: timeoutError } = await supabase.functions.invoke('complete-today-run-if-timeout');
+          
+          if (timeoutError) {
+            console.error('Error checking auto-timeout:', timeoutError);
+          } else if (timeoutData?.completed) {
+            // The run was auto-completed, block access
+            toast({
+              title: "Access Denied",
+              description: "Today's dismissal has been automatically completed (60 minutes elapsed).",
+              variant: "destructive",
+            });
+            navigate("/dashboard/dismissal", { replace: true });
+            return;
           }
         }
 
