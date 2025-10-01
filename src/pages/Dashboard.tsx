@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock } from "lucide-react";
+import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock, RotateCcw } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -313,14 +313,33 @@ const Dashboard = () => {
   const afterStart = !!planStartDate && now >= planStartDate;
 
   const handleResetDismissalRun = async () => {
-    if (!run?.id) {
-      toast.error("No active dismissal run to reset");
-      return;
-    }
-
     setResetting(true);
     try {
-      await resetDismissalRun(run.id);
+      let runIdToReset = run?.id;
+      
+      // If no run exists, create one first
+      if (!runIdToReset && schoolId) {
+        const { data: newRunId, error: createError } = await supabase.rpc('create_scheduled_dismissal_run', {
+          target_school_id: schoolId,
+          target_date: new Date().toISOString().split('T')[0]
+        });
+        
+        if (createError) {
+          console.error("Error creating dismissal run:", createError);
+          toast.error("Failed to create dismissal run");
+          return;
+        }
+        
+        runIdToReset = newRunId;
+        toast.info("Created new dismissal run");
+      }
+      
+      if (!runIdToReset) {
+        toast.error("Unable to create or find dismissal run");
+        return;
+      }
+      
+      await resetDismissalRun(runIdToReset);
       toast.success("Dismissal run reset successfully");
       window.location.reload();
     } catch (error) {
@@ -353,14 +372,6 @@ const Dashboard = () => {
           </Button>
         </header>
 
-        {run && (
-          <div className="px-6 pt-2 pb-0">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-mono">Run ID: {run.id.slice(0, 8)}... | Status: {run.status}</span>
-            </p>
-          </div>
-        )}
-
         <main className="flex-1 p-6 space-y-6">
           {!setupLoading && !isReady && (
             userRole === 'school_admin' ? (
@@ -375,19 +386,6 @@ const Dashboard = () => {
                 <Link to="/dashboard/dismissal">
                   {afterStart ? "Dismissal Has Already Begun Today" : "Launch Dismissal"}
                 </Link>
-              </Button>
-            </section>
-          )}
-          {run && (
-            <section aria-label="Reset dismissal">
-              <Button 
-                onClick={handleResetDismissalRun} 
-                size="lg" 
-                variant="outline" 
-                className="w-full h-14 text-base"
-                disabled={resetting}
-              >
-                {resetting ? "Resetting..." : "Reset Today's Dismissal (Testing)"}
               </Button>
             </section>
           )}
@@ -543,6 +541,15 @@ const Dashboard = () => {
                         Import Roster
                       </Link>
                     </Button>
+                    <Button 
+                      onClick={handleResetDismissalRun}
+                      className="w-full justify-start" 
+                      variant="outline"
+                      disabled={resetting}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      {resetting ? "Resetting..." : "Reset Today's Dismissal (Testing)"}
+                    </Button>
                   </CardContent>
                 </Card>
 
@@ -600,6 +607,34 @@ const Dashboard = () => {
                 </Card>
               </div>
             </div>
+          )}
+
+          {userRole === 'teacher' && (
+            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>
+                  Common tasks for teachers
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-4">
+                <Button asChild className="w-full justify-start" variant="outline">
+                  <Link to="/dashboard/dismissal">
+                    <Users className="mr-2 h-4 w-4" />
+                    Launch Dismissal
+                  </Link>
+                </Button>
+                <Button 
+                  onClick={handleResetDismissalRun}
+                  className="w-full justify-start" 
+                  variant="outline"
+                  disabled={resetting}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  {resetting ? "Resetting..." : "Reset Today's Dismissal (Testing)"}
+                </Button>
+              </CardContent>
+            </Card>
           )}
         </main>
       </>
@@ -764,6 +799,15 @@ const Dashboard = () => {
                       <Upload className="mr-2 h-4 w-4" />
                       Import Roster
                     </Link>
+                  </Button>
+                  <Button 
+                    onClick={handleResetDismissalRun}
+                    className="w-full justify-start" 
+                    variant="outline"
+                    disabled={resetting}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    {resetting ? "Resetting..." : "Reset Today's Dismissal (Testing)"}
                   </Button>
                 </CardContent>
               </Card>
