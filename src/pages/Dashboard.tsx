@@ -647,33 +647,6 @@ const Dashboard = () => {
             </div>
           )}
 
-          {userRole === 'teacher' && (
-            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>
-                  Common tasks for teachers
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4">
-                <Button asChild className="w-full justify-start" variant="outline">
-                  <Link to="/dashboard/dismissal">
-                    <Users className="mr-2 h-4 w-4" />
-                    Launch Dismissal
-                  </Link>
-                </Button>
-                <Button 
-                  onClick={handleResetDismissalRun}
-                  className="w-full justify-start" 
-                  variant="outline"
-                  disabled={resetting}
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  {resetting ? "Resetting..." : "Reset Today's Dismissal (Testing)"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </main>
       </>
     );
