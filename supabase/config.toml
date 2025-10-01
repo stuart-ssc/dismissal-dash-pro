@@ -44,3 +44,6 @@ port = 54329
 
 [functions]
 verify_jwt = true
+
+[functions.delete-today-dismissal]
+verify_jwt = true

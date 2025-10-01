@@ -16,6 +16,7 @@ import { useSchoolSetupStatus } from "@/hooks/useSchoolSetupStatus";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { resetDismissalRun } from "@/lib/resetDismissalRun";
+import { deleteTodayDismissal } from "@/lib/deleteTodayDismissal";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTodayDismissalRun as useDismissalRunRefetch } from "@/hooks/useTodayDismissalRun";
@@ -37,6 +38,7 @@ const Dashboard = () => {
   const [studentCount, setStudentCount] = useState<number>(0);
   const [fastestDismissal, setFastestDismissal] = useState<{date: string, duration: number} | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -352,6 +354,20 @@ const Dashboard = () => {
     }
   };
 
+  const handleDeleteTodayDismissal = async () => {
+    setDeleting(true);
+    try {
+      await deleteTodayDismissal();
+      toast.success("Successfully deleted all dismissal data for today");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error deleting today's dismissal:", error);
+      toast.error("Failed to delete today's dismissal data");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleExitTestingMode = async () => {
     if (!run?.id) return;
     
@@ -587,6 +603,15 @@ const Dashboard = () => {
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
                       {resetting ? "Resetting..." : "Reset Today's Dismissal (Testing)"}
+                    </Button>
+                    <Button 
+                      onClick={handleDeleteTodayDismissal}
+                      className="w-full justify-start" 
+                      variant="destructive"
+                      disabled={deleting}
+                    >
+                      <AlertCircle className="mr-2 h-4 w-4" />
+                      {deleting ? "Deleting..." : "Delete Today's Dismissal"}
                     </Button>
                   </CardContent>
                 </Card>
