@@ -353,6 +353,14 @@ const Dashboard = () => {
           </Button>
         </header>
 
+        {run && (
+          <div className="px-6 pt-2 pb-0">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-mono">Run ID: {run.id.slice(0, 8)}... | Status: {run.status}</span>
+            </p>
+          </div>
+        )}
+
         <main className="flex-1 p-6 space-y-6">
           {!setupLoading && !isReady && (
             userRole === 'school_admin' ? (
@@ -370,7 +378,7 @@ const Dashboard = () => {
               </Button>
             </section>
           )}
-          {run?.status === 'completed' && (
+          {run && (
             <section aria-label="Reset dismissal">
               <Button 
                 onClick={handleResetDismissalRun} 
