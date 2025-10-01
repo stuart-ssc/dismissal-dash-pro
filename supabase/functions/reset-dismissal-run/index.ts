@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
     console.log(`Resetting dismissal run ${runId} to active status`);
 
-    // Reset the dismissal run to active status
+    // Reset the dismissal run to active status with testing mode enabled
     const { data, error } = await supabase
       .from('dismissal_runs')
       .update({
@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
         bus_completed_by: null,
         car_line_completed_by: null,
         walker_completed_by: null,
+        testing_mode: true,
         updated_at: new Date().toISOString(),
       })
       .eq('id', runId)

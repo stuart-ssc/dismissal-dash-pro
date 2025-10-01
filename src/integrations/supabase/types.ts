@@ -735,6 +735,7 @@ export type Database = {
           started_at: string
           started_by: string | null
           status: string
+          testing_mode: boolean | null
           updated_at: string
           walker_completed: boolean | null
           walker_completed_at: string | null
@@ -759,6 +760,7 @@ export type Database = {
           started_at?: string
           started_by?: string | null
           status?: string
+          testing_mode?: boolean | null
           updated_at?: string
           walker_completed?: boolean | null
           walker_completed_at?: string | null
@@ -783,6 +785,7 @@ export type Database = {
           started_at?: string
           started_by?: string | null
           status?: string
+          testing_mode?: boolean | null
           updated_at?: string
           walker_completed?: boolean | null
           walker_completed_at?: string | null

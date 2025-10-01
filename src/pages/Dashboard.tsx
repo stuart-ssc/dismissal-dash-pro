@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock, RotateCcw } from "lucide-react";
+import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock, RotateCcw, AlertCircle } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -17,6 +17,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format } from "date-fns";
 import { resetDismissalRun } from "@/lib/resetDismissalRun";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useTodayDismissalRun as useDismissalRunRefetch } from "@/hooks/useTodayDismissalRun";
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -340,13 +342,32 @@ const Dashboard = () => {
       }
       
       await resetDismissalRun(runIdToReset);
-      toast.success("Dismissal run reset successfully");
+      toast.success("Testing Mode Enabled - Auto-timeout disabled");
       window.location.reload();
     } catch (error) {
       console.error("Error resetting dismissal run:", error);
       toast.error("Failed to reset dismissal run");
     } finally {
       setResetting(false);
+    }
+  };
+
+  const handleExitTestingMode = async () => {
+    if (!run?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('dismissal_runs')
+        .update({ testing_mode: false })
+        .eq('id', run.id);
+
+      if (error) throw error;
+
+      toast.success("Testing Mode Disabled - Normal auto-timeout restored");
+      window.location.reload();
+    } catch (error) {
+      console.error('Error exiting testing mode:', error);
+      toast.error("Failed to exit testing mode");
     }
   };
 
@@ -373,6 +394,23 @@ const Dashboard = () => {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
+          {run?.testing_mode && (
+            <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertTitle className="text-amber-900 dark:text-amber-100">Testing Mode Active</AlertTitle>
+              <AlertDescription className="text-amber-800 dark:text-amber-200 flex items-center justify-between">
+                <span>Auto-timeout is disabled. Run will not auto-complete.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExitTestingMode}
+                  className="ml-4"
+                >
+                  Exit Testing Mode
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           {!setupLoading && !isReady && (
             userRole === 'school_admin' ? (
               <SetupChecklistCard statuses={statuses} />
@@ -664,6 +702,24 @@ const Dashboard = () => {
             </Button>
           </div>
         </div>
+
+        {run?.testing_mode && (
+          <Alert className="mb-8 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertTitle className="text-amber-900 dark:text-amber-100">Testing Mode Active</AlertTitle>
+            <AlertDescription className="text-amber-800 dark:text-amber-200 flex items-center justify-between">
+              <span>Auto-timeout is disabled. Run will not auto-complete.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExitTestingMode}
+                className="ml-4"
+              >
+                Exit Testing Mode
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {showDismissalControls && (
           <section aria-label="Dismissal controls" className="mb-8">

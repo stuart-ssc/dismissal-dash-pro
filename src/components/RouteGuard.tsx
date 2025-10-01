@@ -26,6 +26,13 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
       setLocationCheck({ completed: false, loading: true });
 
       try {
+        // Skip timeout check if in testing mode
+        if (run.testing_mode) {
+          console.log('RouteGuard: Run is in testing mode, skipping timeout check');
+          setLocationCheck({ loading: false, completed: false });
+          return;
+        }
+
         // Check for auto-timeout using the edge function
         if (run.status !== "completed") {
           const { data: timeoutData, error: timeoutError } = await supabase.functions.invoke('complete-today-run-if-timeout');

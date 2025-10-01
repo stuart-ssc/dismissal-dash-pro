@@ -91,6 +91,23 @@ serve(async (req) => {
 
     const run = runs[0];
 
+    // Skip timeout check if in testing mode
+    if (run.testing_mode) {
+      console.log('Run is in testing mode, skipping auto-timeout');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Run is in testing mode, auto-timeout disabled',
+          testing_mode: true,
+          completed: false
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
     // Check if run has a plan_id to get dismissal groups
     if (!run.plan_id) {
       return new Response(

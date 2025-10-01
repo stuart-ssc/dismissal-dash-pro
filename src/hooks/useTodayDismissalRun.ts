@@ -24,6 +24,7 @@ type DismissalRun = {
   bus_completed_by: string | null;
   car_line_completed_by: string | null;
   walker_completed_by: string | null;
+  testing_mode: boolean;
   dismissal_time?: string | null;
 };
 
