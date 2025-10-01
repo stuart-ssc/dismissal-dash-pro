@@ -15,6 +15,8 @@ import TeacherSetupGuide from "@/components/TeacherSetupGuide";
 import { useSchoolSetupStatus } from "@/hooks/useSchoolSetupStatus";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
+import { resetDismissalRun } from "@/lib/resetDismissalRun";
+import { toast } from "sonner";
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -32,6 +34,7 @@ const Dashboard = () => {
   const [avgDismissals, setAvgDismissals] = useState<any[]>([]);
   const [studentCount, setStudentCount] = useState<number>(0);
   const [fastestDismissal, setFastestDismissal] = useState<{date: string, duration: number} | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -309,6 +312,25 @@ const Dashboard = () => {
   const showDismissalControls = !!planStartDate && prep !== null && now >= new Date(planStartDate.getTime() - (prep as number) * 60000) && run?.status !== 'completed';
   const afterStart = !!planStartDate && now >= planStartDate;
 
+  const handleResetDismissalRun = async () => {
+    if (!run?.id) {
+      toast.error("No active dismissal run to reset");
+      return;
+    }
+
+    setResetting(true);
+    try {
+      await resetDismissalRun(run.id);
+      toast.success("Dismissal run reset successfully");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error resetting dismissal run:", error);
+      toast.error("Failed to reset dismissal run");
+    } finally {
+      setResetting(false);
+    }
+  };
+
   // For school admins and teachers, show the sidebar layout
   if (userRole === 'school_admin' || userRole === 'teacher') {
     return (
@@ -345,6 +367,19 @@ const Dashboard = () => {
                 <Link to="/dashboard/dismissal">
                   {afterStart ? "Dismissal Has Already Begun Today" : "Launch Dismissal"}
                 </Link>
+              </Button>
+            </section>
+          )}
+          {run?.status === 'completed' && (
+            <section aria-label="Reset dismissal">
+              <Button 
+                onClick={handleResetDismissalRun} 
+                size="lg" 
+                variant="outline" 
+                className="w-full h-14 text-base"
+                disabled={resetting}
+              >
+                {resetting ? "Resetting..." : "Reset Today's Dismissal (Testing)"}
               </Button>
             </section>
           )}
