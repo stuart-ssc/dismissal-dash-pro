@@ -1460,6 +1460,10 @@ export type Database = {
         Args: { student_uuid: string }
         Returns: boolean
       }
+      can_operate_school_data: {
+        Args: { target_school_id: number }
+        Returns: boolean
+      }
       can_view_school_data: {
         Args: { target_school_id: number }
         Returns: boolean
