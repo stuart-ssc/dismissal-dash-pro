@@ -84,19 +84,15 @@ export function useModeLogger({
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (isSessionActiveRef.current && sessionIdRef.current) {
-        // Use sendBeacon for reliable cleanup on page unload
-        const payload = JSON.stringify({
-          sessionId: sessionIdRef.current,
-          endedAt: new Date().toISOString(),
+        // Use supabase functions invoke
+        supabase.functions.invoke('end-mode-session', {
+          body: {
+            sessionId: sessionIdRef.current,
+            endedAt: new Date().toISOString(),
+          }
+        }).catch(err => {
+          console.warn('Failed to end session on unload:', err);
         });
-        
-        // Try to send the end session request
-        if (navigator.sendBeacon) {
-          navigator.sendBeacon('/api/end-mode-session', payload);
-        } else {
-          // Fallback for browsers without sendBeacon
-          endSession();
-        }
       }
     };
 

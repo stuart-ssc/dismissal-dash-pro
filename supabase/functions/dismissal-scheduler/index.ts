@@ -68,10 +68,18 @@ serve(async (req) => {
     }
 
     // Update any runs that should transition status based on current time
+    // Get all schools to process their runs with correct timezone
+    const { data: schoolsForRuns } = await supabaseClient
+      .from('schools')
+      .select('id, timezone');
+
+    const schoolTimezoneMap = new Map(
+      (schoolsForRuns || []).map(s => [s.id, s.timezone || 'America/New_York'])
+    );
+
     const { data: runsToUpdate, error: runsError } = await supabaseClient
       .from('dismissal_runs')
       .select('*')
-      .eq('date', today)
       .in('status', ['scheduled', 'preparation', 'active']);
 
     if (runsError) {
@@ -80,6 +88,21 @@ serve(async (req) => {
       const now = new Date();
       
       for (const run of runsToUpdate || []) {
+        const schoolTz = schoolTimezoneMap.get(run.school_id) || 'America/New_York';
+        
+        // Calculate "today" in school's timezone
+        const schoolDateStr = new Intl.DateTimeFormat('en-CA', {
+          timeZone: schoolTz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(now);
+
+        // Only process runs for "today" in the school's timezone
+        if (run.date !== schoolDateStr) {
+          continue;
+        }
+
         const prepTime = new Date(run.preparation_start_time);
         const startTime = new Date(run.scheduled_start_time);
         
@@ -101,20 +124,13 @@ serve(async (req) => {
             .order('release_offset_minutes', { ascending: true });
 
           if (groups && groups.length > 0) {
-            const { data: plan } = await supabaseClient
-              .from('dismissal_plans')
-              .select('dismissal_time')
-              .eq('id', run.plan_id)
-              .maybeSingle();
-
-            if (plan?.dismissal_time) {
+            if (run.scheduled_start_time) {
               const lastGroup = groups[groups.length - 1];
-              const [hours, minutes] = plan.dismissal_time.split(':').map(Number);
-              const baseDismissalTime = new Date(run.date + 'T00:00:00Z');
-              baseDismissalTime.setUTCHours(hours, minutes, 0, 0);
               
+              // Use the run's scheduled_start_time (UTC) + offset
+              const scheduledStartTime = new Date(run.scheduled_start_time);
               const lastGroupReleaseTime = new Date(
-                baseDismissalTime.getTime() + (lastGroup.release_offset_minutes * 60000)
+                scheduledStartTime.getTime() + (lastGroup.release_offset_minutes * 60000)
               );
               
               const timeSinceLastGroup = now.getTime() - lastGroupReleaseTime.getTime();

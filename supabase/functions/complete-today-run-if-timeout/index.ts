@@ -54,19 +54,36 @@ serve(async (req) => {
 
     const schoolId = profile.school_id;
 
+    // Get school timezone
+    const { data: school } = await supabaseClient
+      .from('schools')
+      .select('timezone')
+      .eq('id', schoolId)
+      .single();
+
+    const schoolTimezone = school?.timezone || 'America/New_York';
+
     // Create service role client to update runs (bypass RLS)
     const supabaseServiceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Calculate "today" in the school's timezone
+    const nowUtc = new Date();
+    const schoolDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: schoolTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(nowUtc);
+
     // Get today's run for this school
-    const today = new Date().toISOString().split('T')[0];
     const { data: runs, error: runsError } = await supabaseServiceClient
       .from('dismissal_runs')
       .select('*')
       .eq('school_id', schoolId)
-      .eq('date', today)
+      .eq('date', schoolDateStr)
       .neq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(1);
@@ -137,18 +154,12 @@ serve(async (req) => {
       );
     }
 
-    // Get the plan's dismissal time
-    const { data: plan, error: planError } = await supabaseServiceClient
-      .from('dismissal_plans')
-      .select('dismissal_time')
-      .eq('id', run.plan_id)
-      .single();
-
-    if (planError || !plan?.dismissal_time) {
-      console.error('Error fetching dismissal plan:', planError);
+    // Use the run's scheduled_start_time (which is already in UTC and correct)
+    // scheduled_start_time was computed using calculate_dismissal_times
+    if (!run.scheduled_start_time) {
       return new Response(
         JSON.stringify({ 
-          message: 'Plan dismissal time not found',
+          message: 'Run has no scheduled start time',
           completed: false 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -157,12 +168,9 @@ serve(async (req) => {
 
     // Calculate the last group's release time
     const lastGroup = groups[groups.length - 1];
-    const [hours, minutes] = plan.dismissal_time.split(':').map(Number);
-    const baseDismissalTime = new Date(run.date + 'T00:00:00Z');
-    baseDismissalTime.setUTCHours(hours, minutes, 0, 0);
-    
+    const scheduledStartTime = new Date(run.scheduled_start_time);
     const lastGroupReleaseTime = new Date(
-      baseDismissalTime.getTime() + (lastGroup.release_offset_minutes * 60000)
+      scheduledStartTime.getTime() + (lastGroup.release_offset_minutes * 60000)
     );
     
     const now = new Date();

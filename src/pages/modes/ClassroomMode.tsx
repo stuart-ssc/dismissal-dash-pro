@@ -168,20 +168,25 @@ export default function ClassroomMode() {
         return;
       }
 
-      // Parse dismissal time and calculate release times
-      const today = new Date();
-      const [hours, minutes] = dismissalTime.split(':').map(Number);
-      const baseDismissalTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
-
+      // Use run.scheduled_start_time (UTC) as the base, not browser local time
+      // scheduled_start_time is already correctly computed by calculate_dismissal_times
       const activeGroups: ActiveGroup[] = [];
+
+      // Get the base dismissal start time from the run
+      const baseDismissalTime = run?.scheduled_start_time 
+        ? new Date(run.scheduled_start_time)
+        : new Date(); // Fallback (shouldn't happen)
 
       for (const group of allGroups) {
         const scheduledReleaseTime = new Date(baseDismissalTime.getTime() + (group.release_offset_minutes * 60000));
         const now = currentTime;
         
+        // In testing mode, bypass time filters and show all groups
+        const inTestingMode = run?.testing_mode === true;
+        
         // Check if this group should be active (within 5 minutes of release time)
         const timeDiff = scheduledReleaseTime.getTime() - now.getTime();
-        const shouldBeActive = timeDiff <= 5 * 60000 && timeDiff >= -60 * 60000; // Show 5 min before, hide 60 min after
+        const shouldBeActive = inTestingMode || (timeDiff <= 5 * 60000 && timeDiff >= -60 * 60000);
 
         if (!shouldBeActive) continue;
 

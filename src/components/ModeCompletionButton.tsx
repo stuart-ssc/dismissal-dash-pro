@@ -36,27 +36,16 @@ export function ModeCompletionButton({
     console.log(`Attempting to complete ${mode} mode for run ${runId} by user ${user.id}`);
     setIsLoading(true);
     try {
-      const updateData = {
-        [`${mode}_completed`]: true,
-        [`${mode}_completed_at`]: new Date().toISOString(),
-        [`${mode}_completed_by`]: user.id,
-        updated_at: new Date().toISOString()
-      };
-
-      console.log('Update data:', updateData);
-
-      const { data, error } = await supabase
-        .from('dismissal_runs')
-        .update(updateData)
-        .eq('id', runId)
-        .select();
+      const { error } = await supabase.functions.invoke('complete-mode', {
+        body: { runId, mode }
+      });
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Edge function error:', error);
         throw error;
       }
 
-      console.log('Update successful:', data);
+      console.log('Mode completion successful');
 
       toast({
         title: "Mode Completed",

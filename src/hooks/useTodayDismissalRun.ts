@@ -235,8 +235,43 @@ export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
         return { run: null, schoolId, planTimeFallback: null };
       }
 
+      // Check if we're within the 30-minute pre-dismissal window before creating
+      // Get school's preparation time setting (default 5 minutes)
+      const { data: schoolConfig } = await supabase
+        .from('schools')
+        .select('preparation_time_minutes, timezone')
+        .eq('id', schoolId)
+        .maybeSingle();
+
+      const prepMinutes = schoolConfig?.preparation_time_minutes || 5;
+      const schoolTz = schoolConfig?.timezone || 'America/New_York';
+
+      // Calculate when preparation window opens using the DB function
+      const { data: times, error: timesError } = await supabase
+        .rpc('calculate_dismissal_times', {
+          plan_dismissal_time: planTimeFallback,
+          preparation_minutes: prepMinutes,
+          school_timezone: schoolTz,
+          target_date: today
+        });
+
+      if (timesError || !times || times.length === 0) {
+        console.warn('[useTodayDismissalRun] Could not calculate dismissal times:', timesError);
+        return { run: null, schoolId, planTimeFallback };
+      }
+
+      const { preparation_start_time } = times[0];
+      const now = new Date();
+      const prepStart = new Date(preparation_start_time);
+
+      // Only create the run if we're at or past the preparation window
+      if (now < prepStart) {
+        console.log(`[useTodayDismissalRun] Not yet in preparation window. Prep starts at ${prepStart.toISOString()}, current time is ${now.toISOString()}`);
+        return { run: null, schoolId, planTimeFallback };
+      }
+
       // Try to create scheduled run using the database function
-      console.log(`[useTodayDismissalRun] Attempting to create scheduled run`);
+      console.log(`[useTodayDismissalRun] Within preparation window, attempting to create scheduled run`);
       try {
         const { data: runId, error: createError } = await supabase
           .rpc('create_scheduled_dismissal_run', {
@@ -246,7 +281,7 @@ export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
 
         if (createError) {
           console.warn("Could not create scheduled run:", createError.message);
-          return null;
+          return { run: null, schoolId, planTimeFallback };
         }
 
         if (runId) {

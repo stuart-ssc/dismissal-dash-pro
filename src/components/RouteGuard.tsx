@@ -33,8 +33,11 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
           return;
         }
 
-        // Check for auto-timeout using the edge function
-        if (run.status !== "completed") {
+        // Only check auto-timeout if run is in active/preparation status
+        // Don't check if scheduled and we're outside the dismissal window
+        const shouldCheckTimeout = run.status === 'active' || run.status === 'preparation';
+
+        if (shouldCheckTimeout) {
           const { data: timeoutData, error: timeoutError } = await supabase.functions.invoke('complete-today-run-if-timeout');
           
           if (timeoutError) {

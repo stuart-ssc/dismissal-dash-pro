@@ -47,3 +47,15 @@ verify_jwt = true
 
 [functions.delete-today-dismissal]
 verify_jwt = true
+
+[functions.complete-mode]
+verify_jwt = true
+
+[functions.complete-today-run-if-timeout]
+verify_jwt = true
+
+[functions.dismissal-scheduler]
+verify_jwt = false
+
+[functions.end-mode-session]
+verify_jwt = true
