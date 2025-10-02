@@ -27,6 +27,7 @@ import CarLines from "./pages/CarLines";
 import WalkerLocations from "./pages/WalkerLocations";
 import Reports from "./pages/Reports";
 import ModeUsageReports from "./pages/ModeUsageReports";
+import VerifyEmailChange from "./pages/VerifyEmailChange";
 import { AuthProvider } from "./hooks/useAuth";
 import { useSessionTimeout } from "./hooks/useSessionTimeout";
 import DismissalLauncher from "./pages/DismissalLauncher";
@@ -49,6 +50,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/verify-email-change" element={<VerifyEmailChange />} />
 
         {/* Admin layout for dashboard routes */}
         <Route element={<AdminLayout />}>

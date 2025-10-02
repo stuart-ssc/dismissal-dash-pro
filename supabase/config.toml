@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.end-mode-session]
 verify_jwt = true
+
+[functions.send-auth-email]
+verify_jwt = false

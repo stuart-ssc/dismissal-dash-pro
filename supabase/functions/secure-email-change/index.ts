@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { Resend } from 'npm:resend@4.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,7 +37,15 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get authenticated user
+    const url = new URL(req.url);
+    const path = url.pathname.split('/').pop();
+    
+    // Verify endpoint doesn't require authentication (uses token from email)
+    if (path === 'verify') {
+      return await handleEmailVerification(req, supabase, null);
+    }
+    
+    // All other endpoints require authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Authorization required' }), {
@@ -82,15 +91,10 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const url = new URL(req.url);
-    const path = url.pathname.split('/').pop();
-
     // Handle different endpoints
     switch (path) {
       case 'request':
         return await handleEmailChangeRequest(req, supabase, currentUser, isSystemAdmin, isSchoolAdmin);
-      case 'verify':
-        return await handleEmailVerification(req, supabase, currentUser);
       case 'approve':
         return await handleEmailChangeApproval(req, supabase, currentUser, isSystemAdmin, isSchoolAdmin);
       case 'list':
@@ -257,13 +261,30 @@ async function handleEmailVerification(
   supabase: any, 
   currentUser: any
 ): Promise<Response> {
-  const { requestId, verificationToken }: EmailChangeVerification = await req.json();
+  // Support both JSON body and query parameters
+  let verificationToken: string;
+  
+  const url = new URL(req.url);
+  const tokenFromQuery = url.searchParams.get('token');
+  
+  if (tokenFromQuery) {
+    verificationToken = tokenFromQuery;
+  } else {
+    const body = await req.json();
+    verificationToken = body.token;
+  }
 
-  // Find and validate request
+  if (!verificationToken) {
+    return new Response(JSON.stringify({ error: 'Verification token required' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Find and validate request by token
   const { data: request, error: requestError } = await supabase
     .from('email_change_requests')
     .select('*')
-    .eq('id', requestId)
     .eq('verification_token', verificationToken)
     .eq('status', 'pending')
     .single();
@@ -280,7 +301,7 @@ async function handleEmailVerification(
     await supabase
       .from('email_change_requests')
       .update({ status: 'expired' })
-      .eq('id', requestId);
+      .eq('id', request.id);
 
     return new Response(JSON.stringify({ error: 'Verification token has expired' }), {
       status: 410,
@@ -318,9 +339,9 @@ async function handleEmailVerification(
     .from('email_change_requests')
     .update({ 
       status: 'approved',
-      approved_by: currentUser.id 
+      approved_by: request.user_id // Self-approved via verification
     })
-    .eq('id', requestId);
+    .eq('id', request.id);
 
   return new Response(JSON.stringify({ 
     message: 'Email successfully updated',
@@ -475,21 +496,72 @@ async function handleListRequests(
 }
 
 async function sendVerificationEmail(email: string, token: string, requestId: string) {
-  // TODO: Implement email sending with Resend
-  console.log('Would send verification email to:', email, 'with token:', token, 'for request:', requestId);
+  const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
   
-  // const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
-  // const verificationUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/secure-email-change/verify`;
+  const verificationUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}/verify-email-change?token=${token}`;
   
   try {
-    // For now, just log the email details - implement actual sending later
-    console.log('Verification email details:', {
-      to: email,
-      subject: 'Verify Your Email Change Request',
-      verificationUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/secure-email-change/verify?token=${token}&request=${requestId}`
+    await resend.emails.send({
+      from: 'Dismissal Pro <noreply@resend.dev>',
+      to: [email],
+      subject: 'Verify Your Email Change',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Verify Email Change</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+              <tr>
+                <td align="center">
+                  <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <tr>
+                      <td style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); padding: 40px 40px 30px; text-align: center;">
+                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">Verify Your Email Change</h1>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 40px;">
+                        <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 24px;">
+                          You requested to change your email address. To complete this change, please click the button below to verify your new email address:
+                        </p>
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td align="center">
+                              <a href="${verificationUrl}" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                                Verify Email Change
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                        <p style="margin: 30px 0 0; color: #6B7280; font-size: 14px; line-height: 20px;">
+                          This link will expire in 24 hours. If you didn't request this change, please ignore this email or contact your school administrator.
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="background-color: #F9FAFB; padding: 30px 40px; border-top: 1px solid #E5E7EB;">
+                        <p style="margin: 0; color: #6B7280; font-size: 12px; line-height: 18px; text-align: center;">
+                          This email was sent by Dismissal Pro. If you have questions, contact your school administrator.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
     });
+    
+    console.log('Verification email sent successfully to:', email);
   } catch (error) {
     console.error('Failed to send verification email:', error);
+    throw new Error('Failed to send verification email');
   }
 }
 
