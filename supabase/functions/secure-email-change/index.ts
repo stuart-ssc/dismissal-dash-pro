@@ -502,7 +502,7 @@ async function sendVerificationEmail(email: string, token: string, requestId: st
   
   try {
     await resend.emails.send({
-      from: 'Dismissal Pro <noreply@resend.dev>',
+      from: 'Dismissal Pro <noreply@dismissalpro.io>',
       to: [email],
       subject: 'Verify Your Email Change',
       html: `

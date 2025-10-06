@@ -27,7 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, firstName, lastName, schoolName, inviteUrl }: TeacherInvitationRequest = await req.json();
 
     const emailResponse = await resend.emails.send({
-      from: "School Admin <onboarding@resend.dev>",
+      from: "School Admin <invite@dismissalpro.io>",
       to: [email],
       subject: `Invitation to join ${schoolName} as a Teacher`,
       html: `

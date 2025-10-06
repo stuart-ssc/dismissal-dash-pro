@@ -110,7 +110,7 @@ serve(async (req) => {
     }
 
     const { error } = await resend.emails.send({
-      from: 'Dismissal Pro <noreply@resend.dev>',
+      from: 'Dismissal Pro <noreply@dismissalpro.io>',
       to: [user.email],
       subject,
       html,

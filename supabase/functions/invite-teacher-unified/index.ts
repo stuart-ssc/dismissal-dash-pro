@@ -153,7 +153,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Send email invitation
         const emailResponse = await resend.emails.send({
-          from: `${school?.school_name || 'School'} Admin <onboarding@resend.dev>`,
+          from: `${school?.school_name || 'School'} Admin <invite@dismissalpro.io>`,
           to: [teacher.email],
           subject: `Invitation to join ${school?.school_name || 'your school'} - Dismissal Pro`,
           html: `
