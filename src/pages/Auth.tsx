@@ -248,6 +248,31 @@ const prefetchSchools = useCallback(async () => {
     }
   };
 
+  const handlePasswordReset = async () => {
+    const email = signInForm.getValues('email');
+    
+    if (!email) {
+      toast.error('Please enter your email address first');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/`,
+      });
+
+      if (error) throw error;
+
+      toast.success('Password reset email sent! Check your inbox.');
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      toast.error(error.message || 'Failed to send password reset email');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (loading || isValidatingInvitation) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -429,7 +454,13 @@ const prefetchSchools = useCallback(async () => {
                         </Button>
                         
                         <div className="text-center">
-                          <Button variant="link" size="sm">
+                          <Button 
+                            type="button" 
+                            variant="link" 
+                            size="sm"
+                            onClick={handlePasswordReset}
+                            disabled={isLoading}
+                          >
                             Forgot your password?
                           </Button>
                         </div>
