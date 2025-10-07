@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { useAuth } from "@/hooks/useAuth";
 import ExitModeButton from "@/components/ExitModeButton";
 import { useModeLogger } from "@/hooks/useModeLogger";
-import { Loader2, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { GroupViewLayout } from "@/components/classroom-modes/GroupViewLayout";
+import { TransportationColumnsLayout } from "@/components/classroom-modes/TransportationColumnsLayout";
+import { ClassroomModeLayoutToggle } from "@/components/ClassroomModeLayoutToggle";
 
 type ActiveGroup = {
   id: string;
@@ -40,6 +42,7 @@ export default function ClassroomMode() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { user } = useAuth();
   const [teacherClassName, setTeacherClassName] = useState<string | null>(null);
+  const [layout, setLayout] = useState<'group-view' | 'transportation-columns'>('transportation-columns');
 
   const runId = run?.id;
   const planId = run?.plan_id ?? null;
@@ -50,6 +53,14 @@ export default function ClassroomMode() {
     schoolId,
     dismissalRunId: run?.id,
   });
+
+  // Load layout preference from localStorage
+  useEffect(() => {
+    const savedLayout = localStorage.getItem('classroom-layout') as 'group-view' | 'transportation-columns' | null;
+    if (savedLayout) {
+      setLayout(savedLayout);
+    }
+  }, []);
 
   // Update current time every 30 seconds
   useEffect(() => {
@@ -210,20 +221,22 @@ export default function ClassroomMode() {
             // Get bus details and check-in status
             const { data: busDetails } = await supabase
               .from("buses")
-              .select("id, bus_number")
+              .select("id, bus_number, driver_first_name, driver_last_name")
               .in("id", busIds)
               .eq("school_id", schoolId ?? -1);
 
             const { data: busEvents } = await supabase
               .from("bus_run_events")
-              .select("bus_id, check_in_time")
+              .select("bus_id, check_in_time, departed_at")
               .eq("dismissal_run_id", runId)
               .in("bus_id", busIds);
 
             buses = (busDetails || []).map(bus => ({
               id: bus.id,
               bus_number: bus.bus_number,
-              checked_in: (busEvents || []).some(event => event.bus_id === bus.id && event.check_in_time)
+              driver_name: `${bus.driver_first_name} ${bus.driver_last_name}`,
+              checked_in: (busEvents || []).some(event => event.bus_id === bus.id && event.check_in_time),
+              departed: (busEvents || []).some(event => event.bus_id === bus.id && event.departed_at)
             }));
 
             const uncheckedBuses = buses.filter(b => !b.checked_in);
@@ -585,30 +598,9 @@ export default function ClassroomMode() {
     };
   }, [runId, fetchTimeBasedGroups]);
 
-  const getStatusIcon = (status: ActiveGroup['status']) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'delayed':
-        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-gray-500" />;
-      default:
-        return <Clock className="h-5 w-5 text-blue-500" />;
-    }
-  };
-
-  const getStatusBadge = (status: ActiveGroup['status']) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>;
-      case 'delayed':
-        return <Badge variant="destructive">Delayed</Badge>;
-      case 'completed':
-        return <Badge variant="secondary">Completed</Badge>;
-      default:
-        return <Badge variant="outline">Pending</Badge>;
-    }
+  const handleLayoutChange = (newLayout: 'group-view' | 'transportation-columns') => {
+    setLayout(newLayout);
+    localStorage.setItem('classroom-layout', newLayout);
   };
 
   const formatTime = (date: Date) => {
@@ -620,148 +612,57 @@ export default function ClassroomMode() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground p-6">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">
-            Classroom Dismissal
-          </h1>
-          
-          <p className="text-muted-foreground mt-2 text-center">
-            Groups are automatically displayed based on dismissal timing.
-          </p>
-          {planName && (
-            <p className="text-sm text-muted-foreground text-center mt-1">
-              Plan: {planName} | Current Time: {formatTime(currentTime)}
+    <div className="min-h-screen w-full bg-background text-foreground">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Classroom Dismissal</h1>
+            <p className="text-muted-foreground mt-1">
+              {teacherClassName ? `${teacherClassName} - ` : ''}
+              {planName || 'Today\'s Dismissal'}
             </p>
-          )}
-          {teacherClassName && (
-            <p className="text-sm text-muted-foreground text-center">
-              Class: {teacherClassName}
-            </p>
-          )}
-        </header>
+          </div>
+          <div className="flex items-center gap-4">
+            <ClassroomModeLayoutToggle
+              currentLayout={layout}
+              onLayoutChange={handleLayoutChange}
+            />
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Current Time</p>
+              <p className="text-2xl font-bold">
+                {formatTime(currentTime)}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {run && !planId && (
-          <Alert className="mb-6">
-            <AlertTitle>No dismissal plan assigned for today</AlertTitle>
-            <AlertDescription>
-              Please set a date-specific plan for today or mark a default plan in Dismissal Plans.
+          <Alert className="bg-yellow-50 border-yellow-200">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              No dismissal plan assigned for today. Please set a date-specific plan or mark a default plan in Dismissal Plans.
             </AlertDescription>
           </Alert>
         )}
 
         {isLoading || loadingGroups ? (
-          <div className="flex items-center gap-2 text-muted-foreground justify-center">
+          <div className="flex items-center gap-2 text-muted-foreground justify-center py-12">
             <Loader2 className="animate-spin" />
-            Loading...
+            Loading dismissal groups...
           </div>
-        ) : groups.length === 0 ? (
-          <div className="text-center">
-            <p className="text-xl text-muted-foreground">No groups are scheduled for release yet.</p>
-            {dismissalTime && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Dismissal starts at {(() => {
-                  const [hours, minutes] = dismissalTime.split(':').map(Number);
-                  const date = new Date();
-                  date.setHours(hours, minutes);
-                  return formatTime(date);
-                })()}
-              </p>
-            )}
-          </div>
+        ) : layout === 'group-view' ? (
+          <GroupViewLayout
+            groups={groups}
+            currentTime={currentTime}
+            dismissalPlanName={planName || undefined}
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {groups.map(group => (
-              <Card key={group.id} className={`border-2 ${
-                group.status === 'active' ? 'border-green-500' : 
-                group.status === 'delayed' ? 'border-yellow-500' : 
-                group.status === 'completed' ? 'border-gray-400' : 
-                'border-blue-500'
-              }`}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-3xl flex items-center gap-2">
-                      {getStatusIcon(group.status)}
-                      {group.name}
-                    </CardTitle>
-                    {getStatusBadge(group.status)}
-                  </div>
-                  <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                    <div>Scheduled: {formatTime(group.scheduled_release_time)}</div>
-                    {group.actual_release_time && group.actual_release_time !== group.scheduled_release_time && (
-                      <div>Actual: {formatTime(group.actual_release_time)}</div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {group.delay_reason && (
-                    <Alert className="mb-4">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{group.delay_reason}</AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  {group.group_type && group.group_type.toLowerCase().includes("bus") ? (
-                    <div>
-                      <p className="text-muted-foreground mb-2">Buses:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {group.buses.map(bus => (
-                          <span 
-                            key={bus.id} 
-                            className={`px-3 py-1 rounded-full text-lg flex items-center gap-1 ${
-                              bus.checked_in 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {bus.checked_in ? (
-                              <CheckCircle className="h-4 w-4" />
-                            ) : (
-                              <AlertCircle className="h-4 w-4" />
-                            )}
-                            {bus.bus_number}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      {group.status === 'completed' ? 
-                        'This group has been dismissed.' : 
-                        'This group is ready for dismissal.'
-                      }
-                    </p>
-                  )}
-
-                  {/* Students in this group from teacher's class */}
-                  {group.students.length > 0 && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="font-semibold mb-2">Your Students ({group.students.length}):</p>
-                      <div className="space-y-1">
-                        {group.students.map(student => (
-                          <div 
-                            key={student.id} 
-                            className="flex justify-between items-center py-1 px-2 rounded hover:bg-muted/50"
-                          >
-                            <span className="text-sm">
-                              {student.last_name}, {student.first_name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              → {student.destination}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <TransportationColumnsLayout
+            groups={groups}
+            currentTime={currentTime}
+          />
         )}
 
-        {/* Exit Button - Below All Content */}
         <div className="mt-8 flex justify-center">
           <ExitModeButton label="Exit Classroom Mode" inHeader />
         </div>

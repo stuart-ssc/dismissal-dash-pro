@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, School, Bell, Shield, Clock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Settings as SettingsIcon, School, Bell, Shield, Clock, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,6 +43,7 @@ interface SchoolData {
   primary_color: string;
   secondary_color: string;
   school_logo?: string;
+  classroom_mode_layout?: string;
 }
 
 const Settings = () => {
@@ -49,6 +51,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [classroomLayout, setClassroomLayout] = useState<string>('transportation-columns');
 
   const form = useForm<z.infer<typeof schoolFormSchema>>({
     resolver: zodResolver(schoolFormSchema),
@@ -102,6 +105,7 @@ const Settings = () => {
 
         if (school) {
           setSchoolData(school as SchoolData);
+          setClassroomLayout(school.classroom_mode_layout || 'transportation-columns');
           form.reset({
             school_name: school.school_name || "",
             address: school.address || "",
@@ -145,6 +149,29 @@ const Settings = () => {
     } catch (error) {
       console.error('Error updating school:', error);
       toast.error('Failed to update school information');
+    }
+  };
+
+  const handleClassroomLayoutChange = async (value: string) => {
+    if (!schoolData) return;
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({ classroom_mode_layout: value })
+        .eq('id', schoolData.id);
+
+      if (error) {
+        console.error('Error updating classroom layout:', error);
+        toast.error('Failed to update classroom layout');
+        return;
+      }
+
+      setClassroomLayout(value);
+      toast.success('Classroom layout preference updated');
+    } catch (error) {
+      console.error('Error updating classroom layout:', error);
+      toast.error('Failed to update classroom layout');
     }
   };
 
@@ -300,6 +327,37 @@ const Settings = () => {
             </div>
             
             <Button>Save Settings</Button>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Monitor className="h-5 w-5 text-blue-500" />
+              Classroom Display
+            </CardTitle>
+            <CardDescription>Configure how teachers see dismissal information</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="classroom-layout">Default Classroom Layout</Label>
+              <Select value={classroomLayout} onValueChange={handleClassroomLayoutChange}>
+                <SelectTrigger id="classroom-layout">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="transportation-columns">
+                    Student View (Transportation Columns)
+                  </SelectItem>
+                  <SelectItem value="group-view">
+                    Group View (Dismissal Groups)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Teachers can override this setting per session. Student View organizes students by transportation type for easy visibility on projectors.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

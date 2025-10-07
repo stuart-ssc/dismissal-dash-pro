@@ -938,6 +938,7 @@ export type Database = {
           auto_dismissal_enabled: boolean | null
           car_lines_enabled: boolean | null
           city: string | null
+          classroom_mode_layout: string | null
           county: string | null
           created_at: string
           dismissal_time: string | null
@@ -970,6 +971,7 @@ export type Database = {
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
           city?: string | null
+          classroom_mode_layout?: string | null
           county?: string | null
           created_at?: string
           dismissal_time?: string | null
@@ -1002,6 +1004,7 @@ export type Database = {
           auto_dismissal_enabled?: boolean | null
           car_lines_enabled?: boolean | null
           city?: string | null
+          classroom_mode_layout?: string | null
           county?: string | null
           created_at?: string
           dismissal_time?: string | null
