@@ -432,6 +432,23 @@ export default function ClassroomMode() {
 
       // Auto-timeout logic is now handled by RouteGuard to prevent race conditions
 
+      // Sort groups: completed groups first (most recent first), then active/pending by offset
+      activeGroups.sort((a, b) => {
+        // Completed groups come first
+        if (a.status === 'completed' && b.status !== 'completed') return -1;
+        if (a.status !== 'completed' && b.status === 'completed') return 1;
+        
+        // Both completed: sort by release time descending (most recent first)
+        if (a.status === 'completed' && b.status === 'completed') {
+          const timeA = a.actual_release_time?.getTime() || a.scheduled_release_time.getTime();
+          const timeB = b.actual_release_time?.getTime() || b.scheduled_release_time.getTime();
+          return timeB - timeA; // Descending
+        }
+        
+        // Both active/pending/delayed: maintain original order by offset
+        return a.release_offset_minutes - b.release_offset_minutes;
+      });
+
       setGroups(activeGroups);
     } catch (error) {
       console.error("Error calculating time-based groups:", error);
