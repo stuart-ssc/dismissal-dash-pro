@@ -195,11 +195,14 @@ export default function ClassroomMode() {
         // In testing mode, bypass time filters and show all groups
         const inTestingMode = run?.testing_mode === true;
         
-        // Check if this group should be active (within 5 minutes of release time)
+        // Check if this group should be shown
         const timeDiff = scheduledReleaseTime.getTime() - now.getTime();
-        const shouldBeActive = inTestingMode || (timeDiff <= 5 * 60000 && timeDiff >= -60 * 60000);
+        const isWithinTimeWindow = timeDiff <= 5 * 60000 && timeDiff >= -60 * 60000;
+        
+        // Show groups if: testing mode, within time window, or already started (keep visible even after 60min)
+        const shouldShowGroup = inTestingMode || isWithinTimeWindow || scheduledReleaseTime <= now;
 
-        if (!shouldBeActive) continue;
+        if (!shouldShowGroup) continue;
 
         let status: ActiveGroup['status'] = 'active';
         let delay_reason: string | undefined;
