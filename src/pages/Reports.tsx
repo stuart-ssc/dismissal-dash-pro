@@ -207,23 +207,23 @@ const Reports = () => {
                         <TableCell className="font-medium">
                           {format(new Date(run.date), "MMM d, yyyy")}
                         </TableCell>
-                        <TableCell>{formatTime(run.started_at)}</TableCell>
+                        <TableCell>{formatTime(run.scheduled_start_time)}</TableCell>
                         <TableCell>{formatTime(run.ended_at)}</TableCell>
                         <TableCell>
                           {run.car_line_completed_at 
-                            ? formatDuration(run.started_at, run.car_line_completed_at)
+                            ? formatDuration(run.scheduled_start_time, run.car_line_completed_at)
                             : "--"
                           }
                         </TableCell>
                         <TableCell>
                           {run.walker_completed_at 
-                            ? formatDuration(run.started_at, run.walker_completed_at)
+                            ? formatDuration(run.scheduled_start_time, run.walker_completed_at)
                             : "--"
                           }
                         </TableCell>
                         <TableCell>
                           {run.bus_completed_at 
-                            ? formatDuration(run.started_at, run.bus_completed_at)
+                            ? formatDuration(run.scheduled_start_time, run.bus_completed_at)
                             : "--"
                           }
                         </TableCell>

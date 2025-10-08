@@ -7,7 +7,7 @@ import { format, subDays } from "date-fns";
 interface DismissalRun {
   id: string;
   date: string;
-  started_at: string | null;
+  scheduled_start_time: string | null;
   ended_at: string | null;
   status: string;
   car_line_completed_at: string | null;
@@ -62,10 +62,11 @@ export function useReportsData(dateRangeDays: number, currentPage: number, items
         // Fetch chart data (for the chart visualization)
         const { data: chartRuns, error: chartError } = await supabase
           .from('dismissal_runs')
-          .select('date, started_at, ended_at, status')
+          .select('date, scheduled_start_time, ended_at, status')
           .eq('school_id', schoolId)
           .eq('status', 'completed')
           .not('ended_at', 'is', null)
+          .not('scheduled_start_time', 'is', null)
           .gte('date', startDate)
           .order('date', { ascending: true });
 
@@ -73,7 +74,7 @@ export function useReportsData(dateRangeDays: number, currentPage: number, items
 
         // Process chart data
         const processedChartData = chartRuns?.map((run) => {
-          const startTime = new Date(run.started_at!);
+          const startTime = new Date(run.scheduled_start_time!);
           const endTime = new Date(run.ended_at!);
           const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
           
@@ -101,7 +102,7 @@ export function useReportsData(dateRangeDays: number, currentPage: number, items
           .select(`
             id,
             date,
-            started_at,
+            scheduled_start_time,
             ended_at,
             status,
             car_line_completed_at,
