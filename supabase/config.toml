@@ -62,3 +62,6 @@ verify_jwt = true
 
 [functions.send-auth-email]
 verify_jwt = false
+
+[functions.notify-first-school-user]
+verify_jwt = false
