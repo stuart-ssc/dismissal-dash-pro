@@ -373,7 +373,6 @@ export default function AdminSchools() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [stateFilter, setStateFilter] = useState<string>("");
-  const [hasAdminFilter, setHasAdminFilter] = useState<string>("");
   
   // Pagination state
   const [page, setPage] = useState(1);
@@ -382,7 +381,7 @@ export default function AdminSchools() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, stateFilter, hasAdminFilter]);
+  }, [searchQuery, stateFilter]);
 
   // Paginated schools query with server-side filtering
   const { data: paginatedData, isLoading: schoolsLoading, error: schoolsError } = useQuery({
@@ -414,37 +413,6 @@ export default function AdminSchools() {
   const schools = paginatedData?.schools || [];
   const totalCount = paginatedData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
-
-  // Get "has admin" status for current page only
-  const pageSchoolIds = schools.map(s => s.id);
-  const { data: pageAdminsData } = useQuery({
-    queryKey: ["page-admins", pageSchoolIds],
-    queryFn: async () => {
-      if (pageSchoolIds.length === 0) return [];
-      
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("school_id, user_roles!inner(role)")
-        .in("school_id", pageSchoolIds)
-        .eq("user_roles.role", "school_admin");
-
-      if (error) throw error;
-      return data.map(p => p.school_id).filter(Boolean) as number[];
-    },
-    enabled: pageSchoolIds.length > 0,
-  });
-
-  const hasAdminSet = new Set(pageAdminsData || []);
-
-  // Apply has-admin filter
-  const filteredSchools = useMemo(() => {
-    if (hasAdminFilter === "yes") {
-      return schools.filter(s => hasAdminSet.has(s.id));
-    } else if (hasAdminFilter === "no") {
-      return schools.filter(s => !hasAdminSet.has(s.id));
-    }
-    return schools;
-  }, [schools, hasAdminFilter, hasAdminSet]);
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const {
@@ -602,18 +570,6 @@ export default function AdminSchools() {
                   </SelectContent>
                 </Select>
 
-                {/* Has Admin Filter */}
-                <Select value={hasAdminFilter} onValueChange={setHasAdminFilter}>
-                  <SelectTrigger className="w-32 sm:w-40">
-                    <SelectValue placeholder="Has Admin?" />
-                  </SelectTrigger>
-                  <SelectContent className="z-[60] bg-background">
-                    <SelectItem value="">All Schools</SelectItem>
-                    <SelectItem value="yes">Has Admin</SelectItem>
-                    <SelectItem value="no">No Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-
                 <Button onClick={openCreate}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add School
@@ -622,23 +578,20 @@ export default function AdminSchools() {
             </div>
             
             {/* Active Filters Display */}
-            {(searchQuery || stateFilter || hasAdminFilter) && (
+            {(searchQuery || stateFilter) && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Showing {filteredSchools.length} of {totalCount} schools</span>
-                {(searchQuery || stateFilter || hasAdminFilter) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setStateFilter("");
-                      setHasAdminFilter("");
-                    }}
-                    className="h-6 px-2"
-                  >
-                    Clear filters
-                  </Button>
-                )}
+                <span>Showing {schools.length} of {totalCount} schools</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStateFilter("");
+                  }}
+                  className="h-6 px-2"
+                >
+                  Clear filters
+                </Button>
               </div>
             )}
             
@@ -671,7 +624,7 @@ export default function AdminSchools() {
         <CardContent>
           {schoolsLoading ? <div className="py-6 text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading schools...
-            </div> : schoolsError ? <div className="text-destructive">Error loading schools: {schoolsError.message}</div> : filteredSchools.length === 0 ? (
+            </div> : schoolsError ? <div className="text-destructive">Error loading schools: {schoolsError.message}</div> : schools.length === 0 ? (
               <div className="py-6 text-muted-foreground text-center">
                 No schools found matching your filters.
               </div>
@@ -690,7 +643,7 @@ export default function AdminSchools() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSchools?.map((s) => (
+                  {schools?.map((s) => (
                     <TableRow key={s.id}>
                       <TableCell>
                         <div className="flex flex-col">
