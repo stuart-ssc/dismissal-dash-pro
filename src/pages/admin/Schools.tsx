@@ -397,20 +397,20 @@ export default function AdminSchools() {
   const [stateFilter, setStateFilter] = useState<string>("");
   const [hasAdminFilter, setHasAdminFilter] = useState<string>("");
 
-  // Get schools with admins
+  // Get schools with admins - optimized query
   const { data: schoolsWithAdmins } = useQuery<number[]>({
     queryKey: ["schools-with-admins"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("school_id, user_roles!inner(role)")
-        .eq("user_roles.role", "school_admin")
-        .not("school_id", "is", null);
+        .from("user_roles")
+        .select("user_id, profiles!inner(school_id)")
+        .eq("role", "school_admin")
+        .not("profiles.school_id", "is", null);
       
       if (error) throw error;
       
       // Extract unique school IDs
-      const schoolIds = [...new Set(data.map(p => p.school_id).filter(Boolean))] as number[];
+      const schoolIds = [...new Set(data.map(item => item.profiles?.school_id).filter(Boolean))] as number[];
       return schoolIds;
     }
   });
