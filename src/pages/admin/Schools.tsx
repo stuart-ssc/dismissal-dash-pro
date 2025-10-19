@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination";
 
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -393,7 +393,7 @@ export default function AdminSchools() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 25;
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Calculate pagination
   const totalItems = data?.length || 0;
@@ -401,6 +401,49 @@ export default function AdminSchools() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = data?.slice(startIndex, endIndex) || [];
+
+  // Reset to page 1 when changing items per page
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1);
+  };
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible + 2) {
+      // Show all pages if there aren't many
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+
+      if (currentPage > 3) {
+        pages.push('ellipsis');
+      }
+
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 2) {
+        pages.push('ellipsis');
+      }
+
+      // Always show last page
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const {
@@ -543,11 +586,28 @@ export default function AdminSchools() {
                 </TableBody>
               </Table>
               
-              {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between">
+              <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
                   <div className="text-sm text-muted-foreground">
                     Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems} schools
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="items-per-page" className="text-sm whitespace-nowrap">Per page:</Label>
+                    <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                      <SelectTrigger id="items-per-page" className="w-[80px] h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-[60] bg-background">
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="75">75</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                {totalPages > 1 && (
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
@@ -557,15 +617,19 @@ export default function AdminSchools() {
                         />
                       </PaginationItem>
                       
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                        <PaginationItem key={page}>
-                          <PaginationLink
-                            onClick={() => setCurrentPage(page)}
-                            isActive={currentPage === page}
-                            className="cursor-pointer"
-                          >
-                            {page}
-                          </PaginationLink>
+                      {getPageNumbers().map((page, idx) => (
+                        <PaginationItem key={`${page}-${idx}`}>
+                          {page === 'ellipsis' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              onClick={() => setCurrentPage(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          )}
                         </PaginationItem>
                       ))}
                       
@@ -577,8 +641,8 @@ export default function AdminSchools() {
                       </PaginationItem>
                     </PaginationContent>
                   </Pagination>
-                </div>
-              )}
+                )}
+              </div>
             </div>}
         </CardContent>
       </Card>
