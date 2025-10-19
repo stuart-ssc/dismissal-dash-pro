@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 
@@ -394,13 +394,31 @@ export default function AdminSchools() {
   const [editing, setEditing] = useState<School | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Calculate pagination
-  const totalItems = data?.length || 0;
+  // Filter schools based on search query
+  const filteredData = data?.filter(school => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const name = school.school_name?.toLowerCase() || '';
+    const city = school.city?.toLowerCase() || '';
+    const phone = school.phone_number?.toLowerCase() || '';
+    
+    return name.includes(query) || city.includes(query) || phone.includes(query);
+  }) || [];
+
+  // Calculate pagination with filtered data
+  const totalItems = filteredData.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedData = data?.slice(startIndex, endIndex) || [];
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Reset to page 1 when changing items per page
   const handleItemsPerPageChange = (value: string) => {
@@ -515,12 +533,25 @@ export default function AdminSchools() {
         </Card>
       )}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Schools</CardTitle>
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add School
-            </Button>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+            <CardTitle>Schools</CardTitle>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-initial sm:w-[300px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, city, or phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button onClick={openCreate} className="w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                Add School
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? <div className="py-6 text-muted-foreground flex items-center gap-2">
