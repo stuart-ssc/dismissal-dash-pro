@@ -363,32 +363,10 @@ export default function AdminSchools() {
   } = useToast();
   const qc = useQueryClient();
   useEffect(() => {
-    document.title = "Manage Schools | System Administration";
-    const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", "Manage schools, settings, and access for Dismissal Pro.");
-  }, []);
-  useEffect(() => {
     if (!loading && userRole !== "system_admin") {
       navigate("/dashboard");
     }
   }, [loading, userRole, navigate]);
-  const {
-    data,
-    isLoading,
-    error
-  } = useQuery<School[]>({
-    queryKey: ["schools"],
-    queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("schools").select("*").order("id", {
-        ascending: true
-      });
-      if (error) throw error;
-      return data as School[];
-    }
-  });
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   
@@ -396,55 +374,77 @@ export default function AdminSchools() {
   const [searchQuery, setSearchQuery] = useState("");
   const [stateFilter, setStateFilter] = useState<string>("");
   const [hasAdminFilter, setHasAdminFilter] = useState<string>("");
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
-  // Get schools with admins - optimized query
-  const { data: schoolsWithAdmins } = useQuery<number[]>({
-    queryKey: ["schools-with-admins"],
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, stateFilter, hasAdminFilter]);
+
+  // Paginated schools query with server-side filtering
+  const { data: paginatedData, isLoading: schoolsLoading, error: schoolsError } = useQuery({
+    queryKey: ["schools-paginated", page, pageSize, searchQuery, stateFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("user_id, profiles!inner(school_id)")
-        .eq("role", "school_admin")
-        .not("profiles.school_id", "is", null);
-      
+      let query = supabase
+        .from("schools")
+        .select("*", { count: "exact" })
+        .order("id", { ascending: true })
+        .range((page - 1) * pageSize, page * pageSize - 1);
+
+      // Apply server-side filters
+      if (stateFilter) {
+        query = query.eq("state", stateFilter);
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim();
+        query = query.or(`school_name.ilike.%${q}%,city.ilike.%${q}%,state.ilike.%${q}%`);
+      }
+
+      const { data, error, count } = await query;
       if (error) throw error;
-      
-      // Extract unique school IDs
-      const schoolIds = [...new Set(data.map(item => item.profiles?.school_id).filter(Boolean))] as number[];
-      return schoolIds;
-    }
+
+      return { schools: data as School[], totalCount: count || 0 };
+    },
   });
 
-  // Filter and search logic
+  const schools = paginatedData?.schools || [];
+  const totalCount = paginatedData?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  // Get "has admin" status for current page only
+  const pageSchoolIds = schools.map(s => s.id);
+  const { data: pageAdminsData } = useQuery({
+    queryKey: ["page-admins", pageSchoolIds],
+    queryFn: async () => {
+      if (pageSchoolIds.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("school_id, user_roles!inner(role)")
+        .in("school_id", pageSchoolIds)
+        .eq("user_roles.role", "school_admin");
+
+      if (error) throw error;
+      return data.map(p => p.school_id).filter(Boolean) as number[];
+    },
+    enabled: pageSchoolIds.length > 0,
+  });
+
+  const hasAdminSet = new Set(pageAdminsData || []);
+
+  // Apply has-admin filter
   const filteredSchools = useMemo(() => {
-    if (!data) return [];
-    
-    let filtered = data;
-
-    // Search by name, city, or state
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(school => 
-        school.school_name?.toLowerCase().includes(query) ||
-        school.city?.toLowerCase().includes(query) ||
-        school.state?.toLowerCase().includes(query)
-      );
-    }
-
-    // Filter by state
-    if (stateFilter) {
-      filtered = filtered.filter(school => school.state === stateFilter);
-    }
-
-    // Filter by has admin
     if (hasAdminFilter === "yes") {
-      filtered = filtered.filter(school => schoolsWithAdmins?.includes(school.id));
+      return schools.filter(s => hasAdminSet.has(s.id));
     } else if (hasAdminFilter === "no") {
-      filtered = filtered.filter(school => !schoolsWithAdmins?.includes(school.id));
+      return schools.filter(s => !hasAdminSet.has(s.id));
     }
-
-    return filtered;
-  }, [data, searchQuery, stateFilter, hasAdminFilter, schoolsWithAdmins]);
+    return schools;
+  }, [schools, hasAdminFilter, hasAdminSet]);
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const {
@@ -624,7 +624,7 @@ export default function AdminSchools() {
             {/* Active Filters Display */}
             {(searchQuery || stateFilter || hasAdminFilter) && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Showing {filteredSchools.length} of {data?.length || 0} schools</span>
+                <span>Showing {filteredSchools.length} of {totalCount} schools</span>
                 {(searchQuery || stateFilter || hasAdminFilter) && (
                   <Button
                     variant="ghost"
@@ -641,12 +641,41 @@ export default function AdminSchools() {
                 )}
               </div>
             )}
+            
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Page {page} of {totalPages || 1} ({totalCount} total schools)
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1 || schoolsLoading}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || schoolsLoading}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? <div className="py-6 text-muted-foreground flex items-center gap-2">
+          {schoolsLoading ? <div className="py-6 text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading schools...
-            </div> : error ? <div className="text-destructive">Error loading schools</div> : <div className="overflow-x-auto">
+            </div> : schoolsError ? <div className="text-destructive">Error loading schools: {schoolsError.message}</div> : filteredSchools.length === 0 ? (
+              <div className="py-6 text-muted-foreground text-center">
+                No schools found matching your filters.
+              </div>
+            ) : <div className="overflow-x-auto">
               <Table>
                 
                 <TableHeader>
