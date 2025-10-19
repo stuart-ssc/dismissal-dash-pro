@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 
@@ -391,6 +391,60 @@ export default function AdminSchools() {
   });
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
+  
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [stateFilter, setStateFilter] = useState<string>("");
+  const [hasAdminFilter, setHasAdminFilter] = useState<string>("");
+
+  // Get schools with admins
+  const { data: schoolsWithAdmins } = useQuery<number[]>({
+    queryKey: ["schools-with-admins"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("school_id, user_roles!inner(role)")
+        .eq("user_roles.role", "school_admin")
+        .not("school_id", "is", null);
+      
+      if (error) throw error;
+      
+      // Extract unique school IDs
+      const schoolIds = [...new Set(data.map(p => p.school_id).filter(Boolean))] as number[];
+      return schoolIds;
+    }
+  });
+
+  // Filter and search logic
+  const filteredSchools = useMemo(() => {
+    if (!data) return [];
+    
+    let filtered = data;
+
+    // Search by name, city, or state
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(school => 
+        school.school_name?.toLowerCase().includes(query) ||
+        school.city?.toLowerCase().includes(query) ||
+        school.state?.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by state
+    if (stateFilter) {
+      filtered = filtered.filter(school => school.state === stateFilter);
+    }
+
+    // Filter by has admin
+    if (hasAdminFilter === "yes") {
+      filtered = filtered.filter(school => schoolsWithAdmins?.includes(school.id));
+    } else if (hasAdminFilter === "no") {
+      filtered = filtered.filter(school => !schoolsWithAdmins?.includes(school.id));
+    }
+
+    return filtered;
+  }, [data, searchQuery, stateFilter, hasAdminFilter, schoolsWithAdmins]);
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const {
@@ -462,12 +516,132 @@ export default function AdminSchools() {
         </Card>
       )}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Schools</CardTitle>
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add School
-            </Button>
+        <CardHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <CardTitle>Schools</CardTitle>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                {/* Search Input */}
+                <div className="relative flex-1 sm:flex-initial sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search schools..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-9"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* State Filter */}
+                <Select value={stateFilter} onValueChange={setStateFilter}>
+                  <SelectTrigger className="w-32 sm:w-36">
+                    <SelectValue placeholder="All States" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[60] bg-background">
+                    <SelectItem value="">All States</SelectItem>
+                    <SelectItem value="AL">Alabama</SelectItem>
+                    <SelectItem value="AK">Alaska</SelectItem>
+                    <SelectItem value="AZ">Arizona</SelectItem>
+                    <SelectItem value="AR">Arkansas</SelectItem>
+                    <SelectItem value="CA">California</SelectItem>
+                    <SelectItem value="CO">Colorado</SelectItem>
+                    <SelectItem value="CT">Connecticut</SelectItem>
+                    <SelectItem value="DE">Delaware</SelectItem>
+                    <SelectItem value="FL">Florida</SelectItem>
+                    <SelectItem value="GA">Georgia</SelectItem>
+                    <SelectItem value="HI">Hawaii</SelectItem>
+                    <SelectItem value="ID">Idaho</SelectItem>
+                    <SelectItem value="IL">Illinois</SelectItem>
+                    <SelectItem value="IN">Indiana</SelectItem>
+                    <SelectItem value="IA">Iowa</SelectItem>
+                    <SelectItem value="KS">Kansas</SelectItem>
+                    <SelectItem value="KY">Kentucky</SelectItem>
+                    <SelectItem value="LA">Louisiana</SelectItem>
+                    <SelectItem value="ME">Maine</SelectItem>
+                    <SelectItem value="MD">Maryland</SelectItem>
+                    <SelectItem value="MA">Massachusetts</SelectItem>
+                    <SelectItem value="MI">Michigan</SelectItem>
+                    <SelectItem value="MN">Minnesota</SelectItem>
+                    <SelectItem value="MS">Mississippi</SelectItem>
+                    <SelectItem value="MO">Missouri</SelectItem>
+                    <SelectItem value="MT">Montana</SelectItem>
+                    <SelectItem value="NE">Nebraska</SelectItem>
+                    <SelectItem value="NV">Nevada</SelectItem>
+                    <SelectItem value="NH">New Hampshire</SelectItem>
+                    <SelectItem value="NJ">New Jersey</SelectItem>
+                    <SelectItem value="NM">New Mexico</SelectItem>
+                    <SelectItem value="NY">New York</SelectItem>
+                    <SelectItem value="NC">North Carolina</SelectItem>
+                    <SelectItem value="ND">North Dakota</SelectItem>
+                    <SelectItem value="OH">Ohio</SelectItem>
+                    <SelectItem value="OK">Oklahoma</SelectItem>
+                    <SelectItem value="OR">Oregon</SelectItem>
+                    <SelectItem value="PA">Pennsylvania</SelectItem>
+                    <SelectItem value="RI">Rhode Island</SelectItem>
+                    <SelectItem value="SC">South Carolina</SelectItem>
+                    <SelectItem value="SD">South Dakota</SelectItem>
+                    <SelectItem value="TN">Tennessee</SelectItem>
+                    <SelectItem value="TX">Texas</SelectItem>
+                    <SelectItem value="UT">Utah</SelectItem>
+                    <SelectItem value="VT">Vermont</SelectItem>
+                    <SelectItem value="VA">Virginia</SelectItem>
+                    <SelectItem value="WA">Washington</SelectItem>
+                    <SelectItem value="WV">West Virginia</SelectItem>
+                    <SelectItem value="WI">Wisconsin</SelectItem>
+                    <SelectItem value="WY">Wyoming</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Has Admin Filter */}
+                <Select value={hasAdminFilter} onValueChange={setHasAdminFilter}>
+                  <SelectTrigger className="w-32 sm:w-40">
+                    <SelectValue placeholder="Has Admin?" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[60] bg-background">
+                    <SelectItem value="">All Schools</SelectItem>
+                    <SelectItem value="yes">Has Admin</SelectItem>
+                    <SelectItem value="no">No Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button onClick={openCreate}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add School
+                </Button>
+              </div>
+            </div>
+            
+            {/* Active Filters Display */}
+            {(searchQuery || stateFilter || hasAdminFilter) && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Showing {filteredSchools.length} of {data?.length || 0} schools</span>
+                {(searchQuery || stateFilter || hasAdminFilter) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setStateFilter("");
+                      setHasAdminFilter("");
+                    }}
+                    className="h-6 px-2"
+                  >
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? <div className="py-6 text-muted-foreground flex items-center gap-2">
@@ -487,7 +661,7 @@ export default function AdminSchools() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.map((s) => (
+                  {filteredSchools?.map((s) => (
                     <TableRow key={s.id}>
                       <TableCell>
                         <div className="flex flex-col">
