@@ -13,6 +13,26 @@ serve(async (req) => {
   }
 
   try {
+    // Verify secret token for cron job authentication
+    const authHeader = req.headers.get('authorization');
+    const expectedSecret = Deno.env.get('DISMISSAL_SCHEDULER_SECRET');
+    
+    if (!expectedSecret) {
+      console.error('DISMISSAL_SCHEDULER_SECRET not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Server configuration error' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+    
+    if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+      console.warn('Unauthorized dismissal scheduler attempt');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
