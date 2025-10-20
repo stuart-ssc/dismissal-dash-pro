@@ -431,7 +431,7 @@ export default function AdminSchools() {
       // Apply pagination and ordering
       const startIndex = (currentPage - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage - 1;
-      dataQuery = dataQuery.range(startIndex, endIndex).order("id", { ascending: true });
+      dataQuery = dataQuery.range(startIndex, endIndex).order("school_name", { ascending: true });
       
       const { data, error } = await dataQuery;
       if (error) throw error;
