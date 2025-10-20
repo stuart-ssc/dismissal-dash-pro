@@ -21,6 +21,15 @@ import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search, Filter 
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 
+// US States for dropdown filter
+const US_STATES = [
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+];
+
 // Types matching public.schools table (simplified)
 interface School {
   id: number;
@@ -432,30 +441,8 @@ export default function AdminSchools() {
     enabled: searchQuery.trim().length >= 3 || selectedState !== "all"
   });
 
-  // Separate query for fetching unique states
-  const { data: statesData } = useQuery<string[]>({
-    queryKey: ["schools-states"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schools")
-        .select("state")
-        .not("state", "is", null)
-        .order("state");
-      
-      if (error) throw error;
-      
-      const states = data
-        .map(item => item.state)
-        .filter((state): state is string => !!state && state.trim() !== '');
-      
-      return Array.from(new Set(states)).sort();
-    }
-  });
-
   const data = queryResult?.data || [];
   const totalItems = queryResult?.count || 0;
-
-  const uniqueStates = statesData || [];
 
   // Calculate pagination
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -603,9 +590,9 @@ export default function AdminSchools() {
                     <SelectValue placeholder="All States" />
                   </div>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60] bg-background">
                   <SelectItem value="all">All States</SelectItem>
-                  {uniqueStates.map(state => (
+                  {US_STATES.map(state => (
                     <SelectItem key={state} value={state}>
                       {state}
                     </SelectItem>
