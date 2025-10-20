@@ -164,9 +164,15 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
+    // Log detailed error server-side
     console.error('Error deleting dismissal data:', error);
+    
+    // Return generic error to client
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: 'Failed to delete dismissal data',
+        code: 'DELETE_DISMISSAL_ERROR'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

@@ -799,6 +799,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          last_verification_attempt_at: string | null
           new_email: string
           notes: string | null
           old_email: string
@@ -809,6 +810,7 @@ export type Database = {
           updated_at: string
           user_agent: string | null
           user_id: string
+          verification_attempts: number | null
           verification_token: string | null
         }
         Insert: {
@@ -816,6 +818,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          last_verification_attempt_at?: string | null
           new_email: string
           notes?: string | null
           old_email: string
@@ -826,6 +829,7 @@ export type Database = {
           updated_at?: string
           user_agent?: string | null
           user_id: string
+          verification_attempts?: number | null
           verification_token?: string | null
         }
         Update: {
@@ -833,6 +837,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          last_verification_attempt_at?: string | null
           new_email?: string
           notes?: string | null
           old_email?: string
@@ -843,6 +848,7 @@ export type Database = {
           updated_at?: string
           user_agent?: string | null
           user_id?: string
+          verification_attempts?: number | null
           verification_token?: string | null
         }
         Relationships: []

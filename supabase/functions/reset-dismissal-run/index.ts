@@ -51,9 +51,15 @@ Deno.serve(async (req) => {
       .single();
 
     if (error) {
+      // Log detailed error server-side
       console.error('Error resetting dismissal run:', error);
+      
+      // Return generic error to client
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ 
+          error: 'Failed to reset dismissal run',
+          code: 'RESET_RUN_ERROR'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -65,9 +71,15 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Unexpected error:', error);
+    // Log detailed error server-side
+    console.error('Unexpected error in reset-dismissal-run:', error);
+    
+    // Return generic error to client
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: 'Failed to reset dismissal run',
+        code: 'RESET_RUN_ERROR'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

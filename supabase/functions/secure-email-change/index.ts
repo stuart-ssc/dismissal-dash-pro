@@ -263,6 +263,9 @@ async function handleEmailVerification(
 ): Promise<Response> {
   // Support both JSON body and query parameters
   let verificationToken: string;
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+                   req.headers.get('x-real-ip') ||
+                   'unknown';
   
   const url = new URL(req.url);
   const tokenFromQuery = url.searchParams.get('token');
@@ -290,18 +293,69 @@ async function handleEmailVerification(
     .single();
 
   if (requestError || !request) {
+    console.warn(`Failed verification attempt from IP ${clientIp}: Invalid token`);
     return new Response(JSON.stringify({ error: 'Invalid or expired verification token' }), {
       status: 404,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  // Check if expired
-  if (new Date(request.expires_at) < new Date()) {
+  // Rate limiting: Check verification attempts
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 3600000);
+  
+  // Check if there have been too many recent attempts
+  if (request.verification_attempts >= 5) {
+    const lastAttempt = request.last_verification_attempt_at 
+      ? new Date(request.last_verification_attempt_at)
+      : null;
+    
+    if (lastAttempt && lastAttempt > oneHourAgo) {
+      console.warn(`Rate limit exceeded for verification token from IP ${clientIp}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many verification attempts. Please try again in 1 hour.' 
+        }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Reset counter if more than 1 hour has passed
     await supabase
       .from('email_change_requests')
-      .update({ status: 'expired' })
+      .update({ 
+        verification_attempts: 0,
+        last_verification_attempt_at: now.toISOString()
+      })
       .eq('id', request.id);
+  }
+
+  // Progressive delay based on attempts
+  const delays = [0, 2000, 5000, 10000, 20000]; // milliseconds
+  const delayMs = delays[Math.min(request.verification_attempts || 0, delays.length - 1)];
+  
+  if (delayMs > 0) {
+    console.info(`Applying ${delayMs}ms delay for verification attempt ${request.verification_attempts + 1}`);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+
+  // Check if expired
+  if (new Date(request.expires_at) < now) {
+    // Increment failed attempt counter
+    await supabase
+      .from('email_change_requests')
+      .update({ 
+        status: 'expired',
+        verification_attempts: (request.verification_attempts || 0) + 1,
+        last_verification_attempt_at: now.toISOString()
+      })
+      .eq('id', request.id);
+
+    console.warn(`Expired token verification attempt from IP ${clientIp}`);
 
     return new Response(JSON.stringify({ error: 'Verification token has expired' }), {
       status: 410,
@@ -316,6 +370,16 @@ async function handleEmailVerification(
 
   if (updateError) {
     console.error('Error updating user email:', updateError);
+    
+    // Increment failed attempt counter
+    await supabase
+      .from('email_change_requests')
+      .update({ 
+        verification_attempts: (request.verification_attempts || 0) + 1,
+        last_verification_attempt_at: now.toISOString()
+      })
+      .eq('id', request.id);
+    
     return new Response(JSON.stringify({ error: 'Failed to update email' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -334,14 +398,19 @@ async function handleEmailVerification(
     .update({ email: request.new_email })
     .eq('id', request.user_id);
 
-  // Mark request as approved
+  // Mark request as approved and reset attempt counter
   await supabase
     .from('email_change_requests')
     .update({ 
       status: 'approved',
-      approved_by: request.user_id // Self-approved via verification
+      approved_by: request.user_id, // Self-approved via verification
+      verification_attempts: 0, // Reset on success
+      last_verification_attempt_at: now.toISOString()
     })
     .eq('id', request.id);
+
+  // Log successful verification
+  console.info(`Successful email verification from IP ${clientIp} for user ${request.user_id}`);
 
   return new Response(JSON.stringify({ 
     message: 'Email successfully updated',

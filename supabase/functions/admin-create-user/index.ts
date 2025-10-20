@@ -163,7 +163,19 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, userId: newUserId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
+    // Log detailed error server-side
     console.error('admin-create-user error:', err);
-    return new Response(JSON.stringify({ error: err.message || 'Internal error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    
+    // Return generic error to client
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to create user account',
+        code: 'CREATE_USER_ERROR'
+      }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
   }
 });

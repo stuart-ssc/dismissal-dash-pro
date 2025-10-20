@@ -141,9 +141,15 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+    // Log detailed error server-side
+    console.error('Unexpected error in complete-mode:', error);
+    
+    // Return generic error to client
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Failed to complete mode',
+        code: 'COMPLETE_MODE_ERROR'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

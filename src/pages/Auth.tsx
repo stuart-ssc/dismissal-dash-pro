@@ -201,53 +201,33 @@ const prefetchSchools = useCallback(async () => {
   };
 
   const handleTeacherInvitationSignup = async (data: { password: string }) => {
-    if (!teacherData || !invitationToken) return;
+    if (!invitationToken) return;
     
     setIsLoading(true);
     try {
-      // Create user account
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: teacherData.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            first_name: teacherData.first_name,
-            last_name: teacherData.last_name,
-            school_id: teacherData.school_id,
-          }
+      // Use secure edge function to complete signup
+      const { data: result, error } = await supabase.functions.invoke('complete-teacher-signup', {
+        body: { 
+          token: invitationToken,
+          password: data.password
         }
       });
 
-      if (signUpError) throw signUpError;
-
-      if (authData.user) {
-        // Update teacher record
-        await supabase
-          .from('teachers')
-          .update({
-            invitation_status: 'completed',
-            account_completed_at: new Date().toISOString(),
-            invitation_token: null // Clear the token
-          })
-          .eq('invitation_token', invitationToken);
-
-        // Create user role
-        await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role: 'teacher'
-          });
-
-        toast.success('Account created successfully! Please check your email to verify your account.');
-        setInvitationToken(null);
-        setInvitationType(null);
-        setTeacherData(null);
+      if (error || !result?.success) {
+        throw new Error(result?.error || error?.message || 'Failed to complete account setup');
       }
+
+      toast.success(result.message || 'Account created successfully! Please check your email to verify your account.');
+      setInvitationToken(null);
+      setInvitationType(null);
+      setTeacherData(null);
     } catch (error: any) {
-      console.error('Error completing teacher signup:', error);
-      toast.error(error.message || 'Failed to complete account setup');
+      const secureError = handleError(error, 'teacher signup');
+      logger.warn({
+        message: 'Teacher signup failed',
+        data: { error: secureError.message }
+      });
+      toast.error(secureError.userMessage);
     } finally {
       setIsLoading(false);
     }
