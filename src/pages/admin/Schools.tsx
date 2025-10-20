@@ -373,63 +373,97 @@ export default function AdminSchools() {
       navigate("/dashboard");
     }
   }, [loading, userRole, navigate]);
-  const {
-    data,
-    isLoading,
-    error
-  } = useQuery<School[]>({
-    queryKey: ["schools"],
-    queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("schools").select("*").order("id", {
-        ascending: true
-      });
-      if (error) throw error;
-      return data as School[];
-    }
-  });
+  
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string>("all");
+  
+  // Server-side paginated query with filtering
+  const {
+    data: queryResult,
+    isLoading,
+    error
+  } = useQuery<{ data: School[], count: number }>({
+    queryKey: ["schools", searchQuery, selectedState, currentPage, itemsPerPage],
+    queryFn: async () => {
+      // Only fetch if there's a search query (min 3 chars) or state filter
+      const hasSearch = searchQuery.trim().length >= 3;
+      const hasStateFilter = selectedState !== "all";
+      
+      if (!hasSearch && !hasStateFilter) {
+        return { data: [], count: 0 };
+      }
 
-  // Get unique states from data for filter dropdown
-  const uniqueStates = useMemo(() => {
-    if (!data) return [];
-    const states = data
-      .map(school => school.state)
-      .filter((state): state is string => !!state && state.trim() !== '');
-    return Array.from(new Set(states)).sort();
-  }, [data]);
+      // Build base queries for both data and count
+      let dataQuery = supabase.from("schools").select("*");
+      let countQuery = supabase.from("schools").select("*", { count: 'exact', head: true });
+      
+      // Apply state filter
+      if (hasStateFilter) {
+        dataQuery = dataQuery.eq("state", selectedState);
+        countQuery = countQuery.eq("state", selectedState);
+      }
+      
+      // Apply search filter (min 3 characters)
+      if (hasSearch) {
+        const query = searchQuery.trim();
+        const searchPattern = `%${query}%`;
+        const searchCondition = `school_name.ilike.${searchPattern},city.ilike.${searchPattern},phone_number.ilike.${searchPattern}`;
+        dataQuery = dataQuery.or(searchCondition);
+        countQuery = countQuery.or(searchCondition);
+      }
+      
+      // Get total count
+      const { count } = await countQuery;
+      
+      // Apply pagination and ordering
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+      dataQuery = dataQuery.range(startIndex, endIndex).order("id", { ascending: true });
+      
+      const { data, error } = await dataQuery;
+      if (error) throw error;
+      
+      return { data: data as School[], count: count || 0 };
+    },
+    enabled: searchQuery.trim().length >= 3 || selectedState !== "all"
+  });
 
-  // Filter schools based on search query and state
-  const filteredData = data?.filter(school => {
-    // State filter
-    if (selectedState !== "all" && school.state !== selectedState) {
-      return false;
+  // Separate query for fetching unique states
+  const { data: statesData } = useQuery<string[]>({
+    queryKey: ["schools-states"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("schools")
+        .select("state")
+        .not("state", "is", null)
+        .order("state");
+      
+      if (error) throw error;
+      
+      const states = data
+        .map(item => item.state)
+        .filter((state): state is string => !!state && state.trim() !== '');
+      
+      return Array.from(new Set(states)).sort();
     }
-    
-    // Search filter
-    if (!searchQuery.trim()) return true;
-    
-    const query = searchQuery.toLowerCase();
-    const name = school.school_name?.toLowerCase() || '';
-    const city = school.city?.toLowerCase() || '';
-    const phone = school.phone_number?.toLowerCase() || '';
-    
-    return name.includes(query) || city.includes(query) || phone.includes(query);
-  }) || [];
+  });
 
-  // Calculate pagination with filtered data
-  const totalItems = filteredData.length;
+  const data = queryResult?.data || [];
+  const totalItems = queryResult?.count || 0;
+
+  const uniqueStates = statesData || [];
+
+  // Calculate pagination
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedData = filteredData.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  
+  // Check if search/filter is active
+  const isFilterActive = searchQuery.trim().length >= 3 || selectedState !== "all";
 
   // Reset to page 1 when search query or state filter changes
   useEffect(() => {
@@ -586,9 +620,28 @@ export default function AdminSchools() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? <div className="py-6 text-muted-foreground flex items-center gap-2">
+          {!isFilterActive ? (
+            <div className="py-12 text-center">
+              <div className="mb-4">
+                <Search className="h-12 w-12 mx-auto text-muted-foreground/50" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Search to View Schools</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Enter at least 3 characters in the search box or select a state to filter and view schools.
+              </p>
+            </div>
+          ) : isLoading ? (
+            <div className="py-6 text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading schools...
-            </div> : error ? <div className="text-destructive">Error loading schools</div> : <div className="overflow-x-auto">
+            </div>
+          ) : error ? (
+            <div className="text-destructive">Error loading schools</div>
+          ) : data.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">No schools found matching your criteria.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
               <Table>
                 
                 <TableHeader>
@@ -603,7 +656,7 @@ export default function AdminSchools() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.map((s) => (
+                  {data.map((s) => (
                     <TableRow key={s.id}>
                       <TableCell>
                         <div className="flex flex-col">
@@ -649,7 +702,8 @@ export default function AdminSchools() {
                 </TableBody>
               </Table>
               
-              <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              {totalItems > 0 && (
+                <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-muted-foreground">
                     Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems} schools
@@ -705,8 +759,10 @@ export default function AdminSchools() {
                     </PaginationContent>
                   </Pagination>
                 )}
-              </div>
-            </div>}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </main>
