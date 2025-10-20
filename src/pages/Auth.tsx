@@ -138,25 +138,30 @@ const prefetchSchools = useCallback(async () => {
   const validateTeacherInvitation = async (token: string) => {
     setIsValidatingInvitation(true);
     try {
-      const { data: teacher, error } = await supabase
-        .from('teachers')
-        .select('*, schools(school_name)')
-        .eq('invitation_token', token)
-        .gte('invitation_expires_at', new Date().toISOString())
-        .eq('invitation_status', 'pending')
-        .single();
+      // Use secure edge function instead of direct table query
+      const { data, error } = await supabase.functions.invoke('validate-teacher-invitation', {
+        body: { token }
+      });
 
-      if (error || !teacher) {
-        toast.error('Invalid or expired invitation link');
+      if (error || !data?.valid) {
+        toast.error(data?.error || 'Invalid or expired invitation link');
         setInvitationToken(null);
         setInvitationType(null);
         return;
       }
 
-      setTeacherData(teacher);
-      toast.success(`Welcome ${teacher.first_name}! Please complete your account setup.`);
+      // Store minimal data returned from secure endpoint
+      setTeacherData({
+        first_name: data.firstName,
+        schools: { school_name: data.schoolName }
+      });
+      toast.success(`Welcome ${data.firstName}! Please complete your account setup.`);
     } catch (error) {
-      console.error('Error validating invitation:', error);
+      const secureError = handleError(error, 'invitation validation');
+      logger.warn({
+        message: 'Invitation validation failed',
+        data: { error: secureError.message }
+      });
       toast.error('Error validating invitation');
       setInvitationToken(null);
       setInvitationType(null);
