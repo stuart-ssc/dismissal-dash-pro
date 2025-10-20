@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search, Filter } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 
@@ -395,9 +395,25 @@ export default function AdminSchools() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedState, setSelectedState] = useState<string>("all");
 
-  // Filter schools based on search query
+  // Get unique states from data for filter dropdown
+  const uniqueStates = useMemo(() => {
+    if (!data) return [];
+    const states = data
+      .map(school => school.state)
+      .filter((state): state is string => !!state && state.trim() !== '');
+    return Array.from(new Set(states)).sort();
+  }, [data]);
+
+  // Filter schools based on search query and state
   const filteredData = data?.filter(school => {
+    // State filter
+    if (selectedState !== "all" && school.state !== selectedState) {
+      return false;
+    }
+    
+    // Search filter
     if (!searchQuery.trim()) return true;
     
     const query = searchQuery.toLowerCase();
@@ -415,10 +431,10 @@ export default function AdminSchools() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  // Reset to page 1 when search query changes
+  // Reset to page 1 when search query or state filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, selectedState]);
 
   // Reset to page 1 when changing items per page
   const handleItemsPerPageChange = (value: string) => {
@@ -546,6 +562,22 @@ export default function AdminSchools() {
                   className="pl-9"
                 />
               </div>
+              <Select value={selectedState} onValueChange={setSelectedState}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4" />
+                    <SelectValue placeholder="All States" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {uniqueStates.map(state => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button onClick={openCreate} className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Add School
