@@ -41,7 +41,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', userId)
         .single();
       
-      if (profileError) throw profileError;
+      // If no profile exists, create one for OAuth users
+      if (profileError?.code === 'PGRST116') {
+        const { data: { user } } = await supabase.auth.getUser();
+        const isOAuthUser = user?.app_metadata?.provider !== 'email';
+        
+        if (isOAuthUser) {
+          // Create profile with needs_school_association = true
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              email: user?.email,
+              first_name: user?.user_metadata?.name || user?.user_metadata?.full_name,
+              auth_provider: user?.app_metadata?.provider || 'google',
+              needs_school_association: true
+            });
+          
+          if (insertError) throw insertError;
+          
+          // Set the flag and return early
+          setNeedsSchoolAssociation(true);
+          setUserRole(null);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      if (profileError && profileError.code !== 'PGRST116') throw profileError;
       
       if (profileData?.needs_school_association) {
         setNeedsSchoolAssociation(true);
