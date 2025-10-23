@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { GraduationCap, Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
+import { OAuthButtons } from "@/components/OAuthButtons";
 import { supabase } from "@/integrations/supabase/client";
 import { signInSchema, signUpSchema, type SignInFormData, type SignUpFormData } from "@/lib/validation";
 import { handleError } from "@/lib/errorHandler";
@@ -26,7 +27,7 @@ interface SignInForm extends SignInFormData {}
 interface SignUpForm extends SignUpFormData {}
 
 const Auth = () => {
-  const { signIn, signUp, user, userRole, loading } = useAuth();
+  const { signIn, signUp, user, userRole, loading, signInWithGoogle, signInWithMicrosoft, linkOAuthToInvitation } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const SEO = useSEO();
@@ -258,6 +259,47 @@ const prefetchSchools = useCallback(async () => {
     }
   };
 
+  const handleOAuthGoogle = async () => {
+    setIsLoading(true);
+    try {
+      // If there's an invitation token, store it in localStorage to retrieve after OAuth redirect
+      if (invitationToken) {
+        localStorage.setItem('pendingInvitation', invitationToken);
+      }
+      await signInWithGoogle();
+    } catch (error) {
+      toast.error('Failed to sign in with Google');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOAuthMicrosoft = async () => {
+    setIsLoading(true);
+    try {
+      // If there's an invitation token, store it in localStorage to retrieve after OAuth redirect
+      if (invitationToken) {
+        localStorage.setItem('pendingInvitation', invitationToken);
+      }
+      await signInWithMicrosoft();
+    } catch (error) {
+      toast.error('Failed to sign in with Microsoft');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Check for pending invitation after OAuth redirect
+  useEffect(() => {
+    const pendingInvitation = localStorage.getItem('pendingInvitation');
+    if (pendingInvitation && user && !userRole) {
+      // User just completed OAuth and has a pending invitation
+      linkOAuthToInvitation(pendingInvitation).then(() => {
+        localStorage.removeItem('pendingInvitation');
+      });
+    }
+  }, [user, userRole, linkOAuthToInvitation]);
+
   if (loading || isValidatingInvitation) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -395,7 +437,13 @@ const prefetchSchools = useCallback(async () => {
                   
                   <CardContent>
                     <TabsContent value="login">
-                      <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
+                      <OAuthButtons
+                        onGoogleClick={handleOAuthGoogle}
+                        onMicrosoftClick={handleOAuthMicrosoft}
+                        disabled={isLoading}
+                      />
+                      
+                      <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4 mt-4">
                         <div className="space-y-2">
                           <Label htmlFor="email">Email</Label>
                           <div className="relative">
@@ -453,7 +501,13 @@ const prefetchSchools = useCallback(async () => {
                     </TabsContent>
                     
                     <TabsContent value="signup">
-                      <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
+                      <OAuthButtons
+                        onGoogleClick={handleOAuthGoogle}
+                        onMicrosoftClick={handleOAuthMicrosoft}
+                        disabled={isLoading}
+                      />
+                      
+                      <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4 mt-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="firstName">First Name</Label>

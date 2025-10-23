@@ -14,6 +14,11 @@ interface AuthContextType {
   signUp: (email: string, password: string, firstName: string, lastName: string, schoolId: number, role: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<{ error: any }>;
+  signInWithMicrosoft: () => Promise<{ error: any }>;
+  linkOAuthToInvitation: (invitationToken: string) => Promise<{ error: any }>;
+  needsSchoolAssociation: boolean;
+  completeOAuthProfile: (schoolId: number, role: 'school_admin' | 'teacher') => Promise<{ error: any }>;
   loading: boolean;
 }
 
@@ -23,11 +28,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [needsSchoolAssociation, setNeedsSchoolAssociation] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchAndSetUserRole = async (userId: string) => {
     try {
+      // First check if user needs school association
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('needs_school_association')
+        .eq('id', userId)
+        .single();
+      
+      if (profileError) throw profileError;
+      
+      if (profileData?.needs_school_association) {
+        setNeedsSchoolAssociation(true);
+        setUserRole(null);
+        setLoading(false);
+        return;
+      }
+      
+      setNeedsSchoolAssociation(false);
+      
       const { data: rolesData, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -259,6 +283,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setSession(null);
       setUserRole(null);
+      setNeedsSchoolAssociation(false);
       toast({
         title: "Signed out",
         description: "You have been signed out successfully.",
@@ -272,6 +297,139 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "OAuth sign-in failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      toast({
+        title: "OAuth sign-in failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
+  const signInWithMicrosoft = async () => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          redirectTo: redirectUrl,
+          scopes: 'email openid profile'
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "OAuth sign-in failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      toast({
+        title: "OAuth sign-in failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
+  const completeOAuthProfile = async (schoolId: number, role: 'school_admin' | 'teacher') => {
+    try {
+      const { data, error } = await supabase.functions.invoke('complete-oauth-profile', {
+        body: { schoolId, role }
+      });
+
+      if (error) {
+        toast({
+          title: "Profile completion failed",
+          description: "Failed to complete your profile. Please try again.",
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      // Refresh user data
+      if (user) {
+        await fetchAndSetUserRole(user.id);
+      }
+
+      toast({
+        title: "Profile completed!",
+        description: "Welcome to Dismissal Pro.",
+      });
+
+      return { error: null };
+    } catch (error: any) {
+      toast({
+        title: "Profile completion failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
+  const linkOAuthToInvitation = async (invitationToken: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('link-oauth-to-invitation', {
+        body: { invitationToken }
+      });
+
+      if (error) {
+        toast({
+          title: "Failed to link account",
+          description: "Could not link your account to the invitation.",
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      // Refresh user data
+      if (user) {
+        await fetchAndSetUserRole(user.id);
+      }
+
+      toast({
+        title: "Account linked!",
+        description: "Your account has been successfully linked.",
+      });
+
+      return { error: null };
+    } catch (error: any) {
+      toast({
+        title: "Failed to link account",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
   return (
     <AuthContext.Provider 
       value={{ 
@@ -280,7 +438,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userRole, 
         signUp, 
         signIn, 
-        signOut, 
+        signOut,
+        signInWithGoogle,
+        signInWithMicrosoft,
+        linkOAuthToInvitation,
+        needsSchoolAssociation,
+        completeOAuthProfile,
         loading 
       }}
     >

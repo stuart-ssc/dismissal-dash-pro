@@ -65,3 +65,9 @@ verify_jwt = false
 
 [functions.notify-first-school-user]
 verify_jwt = false
+
+[functions.complete-oauth-profile]
+verify_jwt = true
+
+[functions.link-oauth-to-invitation]
+verify_jwt = true

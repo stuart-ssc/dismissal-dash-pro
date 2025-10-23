@@ -900,29 +900,38 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auth_provider: string | null
           created_at: string
           email: string | null
           first_name: string | null
           id: string
           last_name: string | null
+          needs_school_association: boolean | null
+          oauth_sub: string | null
           school_id: number | null
           updated_at: string
         }
         Insert: {
+          auth_provider?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
           id?: string
           last_name?: string | null
+          needs_school_association?: boolean | null
+          oauth_sub?: string | null
           school_id?: number | null
           updated_at?: string
         }
         Update: {
+          auth_provider?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
           id?: string
           last_name?: string | null
+          needs_school_association?: boolean | null
+          oauth_sub?: string | null
           school_id?: number | null
           updated_at?: string
         }
@@ -1223,6 +1232,7 @@ export type Database = {
       teachers: {
         Row: {
           account_completed_at: string | null
+          auth_provider: string | null
           created_at: string
           email: string
           first_name: string
@@ -1237,6 +1247,7 @@ export type Database = {
         }
         Insert: {
           account_completed_at?: string | null
+          auth_provider?: string | null
           created_at?: string
           email: string
           first_name: string
@@ -1251,6 +1262,7 @@ export type Database = {
         }
         Update: {
           account_completed_at?: string | null
+          auth_provider?: string | null
           created_at?: string
           email?: string
           first_name?: string
@@ -1438,33 +1450,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      calculate_dismissal_times: {
-        Args:
-          | { plan_dismissal_time: string; preparation_minutes?: number }
-          | {
-              plan_dismissal_time: string
-              preparation_minutes?: number
-              school_timezone?: string
-            }
-          | {
+      calculate_dismissal_times:
+        | {
+            Args: {
               plan_dismissal_time: string
               preparation_minutes?: number
               school_timezone?: string
               target_date?: string
             }
-        Returns: {
-          dismissal_start_time: string
-          preparation_start_time: string
-        }[]
-      }
+            Returns: {
+              dismissal_start_time: string
+              preparation_start_time: string
+            }[]
+          }
+        | {
+            Args: {
+              plan_dismissal_time: string
+              preparation_minutes?: number
+              school_timezone?: string
+            }
+            Returns: {
+              dismissal_start_time: string
+              preparation_start_time: string
+            }[]
+          }
+        | {
+            Args: { plan_dismissal_time: string; preparation_minutes?: number }
+            Returns: {
+              dismissal_start_time: string
+              preparation_start_time: string
+            }[]
+          }
       can_manage_school_data: {
         Args: { target_school_id: number }
         Returns: boolean
       }
-      can_manage_student: {
-        Args: { student_uuid: string }
-        Returns: boolean
-      }
+      can_manage_student: { Args: { student_uuid: string }; Returns: boolean }
       can_manage_student_safe: {
         Args: { student_uuid: string }
         Returns: boolean
@@ -1477,20 +1498,14 @@ export type Database = {
         Args: { target_school_id: number }
         Returns: boolean
       }
-      cleanup_expired_email_requests: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      cleanup_expired_email_requests: { Args: never; Returns: number }
       create_scheduled_dismissal_run: {
         Args: { target_date?: string; target_school_id: number }
         Returns: string
       }
-      get_current_user_school_id: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      get_current_user_school_id: { Args: never; Returns: number }
       get_school_admins_for_current_user: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           email: string
           first_name: string
@@ -1509,7 +1524,7 @@ export type Database = {
         }[]
       }
       get_schools_for_signup: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           city: string
           id: number
@@ -1568,18 +1583,9 @@ export type Database = {
         Args: { teacher_uuid: string }
         Returns: string[]
       }
-      get_user_accessible_school_ids: {
-        Args: Record<PropertyKey, never>
-        Returns: number[]
-      }
-      get_user_school_id: {
-        Args: { user_uuid: string }
-        Returns: number
-      }
-      get_user_taught_class_ids: {
-        Args: Record<PropertyKey, never>
-        Returns: string[]
-      }
+      get_user_accessible_school_ids: { Args: never; Returns: number[] }
+      get_user_school_id: { Args: { user_uuid: string }; Returns: number }
+      get_user_taught_class_ids: { Args: never; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -28,8 +28,9 @@ import WalkerLocations from "./pages/WalkerLocations";
 import Reports from "./pages/Reports";
 import ModeUsageReports from "./pages/ModeUsageReports";
 import VerifyEmailChange from "./pages/VerifyEmailChange";
-import { AuthProvider } from "./hooks/useAuth";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useSessionTimeout } from "./hooks/useSessionTimeout";
+import { OAuthSchoolAssociation } from "./components/OAuthSchoolAssociation";
 import DismissalLauncher from "./pages/DismissalLauncher";
 import AdminLayout from "./layouts/AdminLayout";
 import ClassroomMode from "./pages/modes/ClassroomMode";
@@ -42,55 +43,24 @@ import { RouteGuard } from "./components/RouteGuard";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  // Enable session timeout for enhanced security
   useSessionTimeout();
+  const { needsSchoolAssociation, user } = useAuth();
   
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/verify-email-change" element={<VerifyEmailChange />} />
-
-        {/* Admin layout for dashboard routes */}
-        <Route element={<AdminLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/people" element={<PeopleManagement />} />
-          <Route path="/dashboard/classes" element={<Classes />} />
-          <Route path="/dashboard/transportation" element={<Transportation />} />
-          <Route path="/dashboard/dismissals" element={<Dismissals />} />
-          <Route path="/dashboard/dismissal" element={<DismissalLauncher />} />
-          <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
-          <Route path="/dashboard/dismissal-plans/:planId/groups" element={<DismissalGroups />} />
-          <Route path="/dashboard/settings" element={<Settings />} />
-          <Route path="/dashboard/car-lines" element={<CarLines />} />
-          <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
-          <Route path="/dashboard/reports" element={<Reports />} />
-          <Route path="/dashboard/reports/mode-usage" element={<ModeUsageReports />} />
-          <Route path="/dashboard/import" element={<Import />} />
-        </Route>
-
-        {/* Fullscreen dismissal modes (no left navigation) */}
-        <Route path="/dashboard/dismissal/classroom" element={<ClassroomMode />} />
-        <Route path="/dashboard/dismissal/bus" element={
-          <RouteGuard mode="bus">
-            <BusMode />
-          </RouteGuard>
-        } />
-        <Route path="/dashboard/dismissal/car-line" element={<CarLineMode />} />
-        <Route path="/dashboard/dismissal/walker" element={<WalkerMode />} />
-
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/admin/dismissal-groups" element={<DismissalGroups />} />
-        <Route path="/admin/classes" element={<AdminClasses />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/email-management" element={<EmailManagement />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
-        <Route path="/admin/schools" element={<AdminSchools />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+    <>
+      {needsSchoolAssociation && user && (
+        <OAuthSchoolAssociation 
+          user={user} 
+          onComplete={() => window.location.reload()} 
+        />
+      )}
+      <BrowserRouter>
+        <Routes>
+...
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+    </>
   );
 };
 
