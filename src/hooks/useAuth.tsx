@@ -41,30 +41,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', userId)
         .single();
       
-      // If no profile exists, create one for OAuth users
+      // If no profile exists, call edge function to create one for OAuth users
       if (profileError?.code === 'PGRST116') {
         const { data: { user } } = await supabase.auth.getUser();
         const isOAuthUser = user?.app_metadata?.provider !== 'email';
         
         if (isOAuthUser) {
-          // Create profile with needs_school_association = true
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: userId,
-              email: user?.email,
-              first_name: user?.user_metadata?.name || user?.user_metadata?.full_name,
-              auth_provider: user?.app_metadata?.provider || 'google',
-              needs_school_association: true
-            });
+          // Create profile server-side with service role to bypass RLS
+          const { error: initError } = await supabase.functions.invoke('initialize-oauth-profile');
           
-          if (insertError) throw insertError;
-          
-          // Set the flag and return early
-          setNeedsSchoolAssociation(true);
-          setUserRole(null);
-          setLoading(false);
-          return;
+          if (!initError) {
+            setNeedsSchoolAssociation(true);
+            setUserRole(null);
+            setLoading(false);
+            return;
+          }
+          // If edge function fails, continue to normal error flow
+          console.error('Failed to initialize OAuth profile:', initError);
         }
       }
       

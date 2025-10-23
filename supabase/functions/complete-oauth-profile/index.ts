@@ -86,6 +86,47 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Ensure profile exists (defensive upsert)
+    const { data: existingProfile, error: profileSelectErr } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileSelectErr) {
+      console.error(`[${requestId}] Profile select error:`, profileSelectErr);
+      return createErrorResponse(
+        profileSelectErr,
+        'complete-oauth-profile',
+        500,
+        corsHeaders
+      );
+    }
+
+    if (!existingProfile) {
+      console.log(`[${requestId}] Profile missing, creating it now`);
+      const { error: createProfileErr } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email: user.email!,
+          first_name: user.user_metadata.first_name || user.user_metadata.name || '',
+          last_name: user.user_metadata.last_name || '',
+          auth_provider: user.app_metadata.provider || 'google',
+          needs_school_association: true,
+        });
+
+      if (createProfileErr) {
+        console.error(`[${requestId}] Profile creation error:`, createProfileErr);
+        return createErrorResponse(
+          createProfileErr,
+          'complete-oauth-profile',
+          500,
+          corsHeaders
+        );
+      }
+    }
+
     // Update profile with school association
     const { error: profileError } = await supabase
       .from('profiles')
