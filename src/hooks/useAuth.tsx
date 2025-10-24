@@ -44,9 +44,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // If no profile exists, call edge function to create one for OAuth users
       if (profileError?.code === 'PGRST116') {
         const { data: { user } } = await supabase.auth.getUser();
-        const isOAuthUser = user?.app_metadata?.provider !== 'email';
+        const providers = (user?.app_metadata?.providers ?? []) as string[];
+        const isOAuthLinked = providers.includes('google') || providers.includes('azure');
         
-        if (isOAuthUser) {
+        if (isOAuthLinked) {
           // Create profile server-side with service role to bypass RLS
           const { error: initError } = await supabase.functions.invoke('initialize-oauth-profile');
           
@@ -319,7 +320,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}/auth`;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -349,7 +350,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithMicrosoft = async () => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}/auth`;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'azure',
         options: {

@@ -30,9 +30,15 @@ const Navbar = () => {
               <Button variant="ghost">← Back to Home</Button>
             </Link>
           ) : isIndexPage ? (
-            <Link to="/auth">
-              <Button variant="hero">Get Started</Button>
-            </Link>
+            user && userRole ? (
+              <Link to="/dashboard">
+                <Button variant="hero">Dashboard</Button>
+              </Link>
+            ) : (
+              <Link to="/auth">
+                <Button variant="hero">Get Started</Button>
+              </Link>
+            )
           ) : isSystemAdmin ? (
             <>
               <SystemAdminSchoolSwitcher />
