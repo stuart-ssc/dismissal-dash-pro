@@ -30,7 +30,6 @@ import ModeUsageReports from "./pages/ModeUsageReports";
 import VerifyEmailChange from "./pages/VerifyEmailChange";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useSessionTimeout } from "./hooks/useSessionTimeout";
-import { OAuthSchoolAssociation } from "./components/OAuthSchoolAssociation";
 import DismissalLauncher from "./pages/DismissalLauncher";
 import AdminLayout from "./layouts/AdminLayout";
 import ClassroomMode from "./pages/modes/ClassroomMode";
@@ -44,16 +43,9 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   useSessionTimeout();
-  const { needsSchoolAssociation, user } = useAuth();
   
   return (
     <>
-      {needsSchoolAssociation && user && (
-        <OAuthSchoolAssociation 
-          user={user} 
-          onComplete={() => window.location.reload()} 
-        />
-      )}
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />

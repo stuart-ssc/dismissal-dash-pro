@@ -37,6 +37,7 @@ const [allSchools, setAllSchools] = useState<{ id: number; school_name: string; 
   const [schoolSearchOpen, setSchoolSearchOpen] = useState(false);
   const [schoolSearchValue, setSchoolSearchValue] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<{ id: number; school_name: string; city: string; state: string } | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'school_admin' | 'teacher' | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   
@@ -260,12 +261,27 @@ const prefetchSchools = useCallback(async () => {
   };
 
   const handleOAuthGoogle = async () => {
+    // Validate school and role are selected first
+    if (!selectedSchool || !selectedRole) {
+      toast.error('Please select your school and role first');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // If there's an invitation token, store it in localStorage to retrieve after OAuth redirect
+      // Store school and role data before OAuth redirect
+      const pendingData = {
+        schoolId: selectedSchool.id,
+        role: selectedRole,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('pending_oauth_signup', JSON.stringify(pendingData));
+      
+      // If there's an invitation token, store it separately
       if (invitationToken) {
         localStorage.setItem('pendingInvitation', invitationToken);
       }
+      
       await signInWithGoogle();
     } catch (error) {
       toast.error('Failed to sign in with Google');
@@ -275,12 +291,27 @@ const prefetchSchools = useCallback(async () => {
   };
 
   const handleOAuthMicrosoft = async () => {
+    // Validate school and role are selected first
+    if (!selectedSchool || !selectedRole) {
+      toast.error('Please select your school and role first');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // If there's an invitation token, store it in localStorage to retrieve after OAuth redirect
+      // Store school and role data before OAuth redirect
+      const pendingData = {
+        schoolId: selectedSchool.id,
+        role: selectedRole,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('pending_oauth_signup', JSON.stringify(pendingData));
+      
+      // If there's an invitation token, store it separately
       if (invitationToken) {
         localStorage.setItem('pendingInvitation', invitationToken);
       }
+      
       await signInWithMicrosoft();
     } catch (error) {
       toast.error('Failed to sign in with Microsoft');
@@ -501,48 +532,10 @@ const prefetchSchools = useCallback(async () => {
                     </TabsContent>
                     
                     <TabsContent value="signup">
-                      <OAuthButtons
-                        onGoogleClick={handleOAuthGoogle}
-                        onMicrosoftClick={handleOAuthMicrosoft}
-                        disabled={isLoading}
-                      />
-                      
-                      <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4 mt-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="firstName">First Name</Label>
-                            <div className="relative">
-                              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                  id="firstName" 
-                                  placeholder="John"
-                                  className="pl-9"
-                                  {...signUpForm.register("firstName")}
-                                />
-                                {signUpForm.formState.errors.firstName && (
-                                  <p className="text-sm text-destructive mt-1">
-                                    {signUpForm.formState.errors.firstName.message}
-                                  </p>
-                                )}
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="lastName">Last Name</Label>
-                              <Input 
-                                id="lastName" 
-                                placeholder="Doe"
-                                {...signUpForm.register("lastName")}
-                              />
-                              {signUpForm.formState.errors.lastName && (
-                                <p className="text-sm text-destructive mt-1">
-                                  {signUpForm.formState.errors.lastName.message}
-                                </p>
-                              )}
-                          </div>
-                        </div>
-                        
+                      <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
+                        {/* STEP 1: School Selection (Required First) */}
                         <div className="space-y-2">
-                          <Label htmlFor="schoolId">School</Label>
+                          <Label htmlFor="schoolId">School *</Label>
                           <Popover open={schoolSearchOpen} onOpenChange={(open) => { setSchoolSearchOpen(open); if (open) prefetchSchools(); }}>
                             <PopoverTrigger asChild>
                               <Button
@@ -615,11 +608,19 @@ const prefetchSchools = useCallback(async () => {
                           </Popover>
                         </div>
                         
+                        {/* STEP 2: Role Selection (Enabled after school selected) */}
                         <div className="space-y-2">
-                          <Label htmlFor="role">Role</Label>
-                          <Select onValueChange={(value) => signUpForm.setValue("role", value as "school_admin" | "teacher")}>
+                          <Label htmlFor="role">Role *</Label>
+                          <Select 
+                            disabled={!selectedSchool}
+                            onValueChange={(value) => {
+                              const roleValue = value as "school_admin" | "teacher";
+                              setSelectedRole(roleValue);
+                              signUpForm.setValue("role", roleValue);
+                            }}
+                          >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select your role" />
+                              <SelectValue placeholder={selectedSchool ? "Select your role" : "Select school first"} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="school_admin">School Admin</SelectItem>
@@ -632,42 +633,89 @@ const prefetchSchools = useCallback(async () => {
                             </p>
                           )}
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="signupEmail">Email</Label>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              id="signupEmail" 
-                              type="email" 
-                              placeholder="john@school.edu"
-                              className="pl-9"
-                              {...signUpForm.register("email")}
-                            />
-                            {signUpForm.formState.errors.email && (
-                              <p className="text-sm text-destructive mt-1">
-                                {signUpForm.formState.errors.email.message}
-                              </p>
-                            )}
+
+                        {/* STEP 3: Name Fields */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="firstName">First Name</Label>
+                            <div className="relative">
+                              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                  id="firstName" 
+                                  placeholder="John"
+                                  className="pl-9"
+                                  {...signUpForm.register("firstName")}
+                                />
+                                {signUpForm.formState.errors.firstName && (
+                                  <p className="text-sm text-destructive mt-1">
+                                    {signUpForm.formState.errors.firstName.message}
+                                  </p>
+                                )}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="lastName">Last Name</Label>
+                              <Input 
+                                id="lastName" 
+                                placeholder="Doe"
+                                {...signUpForm.register("lastName")}
+                              />
+                              {signUpForm.formState.errors.lastName && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {signUpForm.formState.errors.lastName.message}
+                                </p>
+                              )}
                           </div>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="signupPassword">Password</Label>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              id="signupPassword" 
-                              type="password" 
-                              placeholder="Create a strong password"
-                              className="pl-9"
-                              {...signUpForm.register("password")}
+
+                        {/* STEP 4: Authentication Method Options */}
+                        <div className="space-y-4">
+                          <Separator className="my-2" />
+                          
+                          <div className="space-y-3">
+                            <OAuthButtons
+                              onGoogleClick={handleOAuthGoogle}
+                              onMicrosoftClick={handleOAuthMicrosoft}
+                              disabled={isLoading || !selectedSchool || !selectedRole}
                             />
-                            {signUpForm.formState.errors.password && (
-                              <p className="text-sm text-destructive mt-1">
-                                {signUpForm.formState.errors.password.message}
-                              </p>
-                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="signupEmail">Email</Label>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                id="signupEmail" 
+                                type="email" 
+                                placeholder="john@school.edu"
+                                className="pl-9"
+                                {...signUpForm.register("email")}
+                              />
+                              {signUpForm.formState.errors.email && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {signUpForm.formState.errors.email.message}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="signupPassword">Password</Label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                id="signupPassword" 
+                                type="password" 
+                                placeholder="Create a strong password"
+                                className="pl-9"
+                                {...signUpForm.register("password")}
+                              />
+                              {signUpForm.formState.errors.password && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {signUpForm.formState.errors.password.message}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                         

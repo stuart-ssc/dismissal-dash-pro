@@ -41,24 +41,83 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', userId)
         .single();
       
-      // If no profile exists, call edge function to create one for OAuth users
+      // If no profile exists, check for pending OAuth signup data
       if (profileError?.code === 'PGRST116') {
         const { data: { user } } = await supabase.auth.getUser();
         const providers = (user?.app_metadata?.providers ?? []) as string[];
         const isOAuthLinked = providers.includes('google') || providers.includes('azure');
         
         if (isOAuthLinked) {
-          // Create profile server-side with service role to bypass RLS
-          const { error: initError } = await supabase.functions.invoke('initialize-oauth-profile');
+          // Check for pending signup data in localStorage
+          const pendingDataStr = localStorage.getItem('pending_oauth_signup');
           
-          if (!initError) {
-            setNeedsSchoolAssociation(true);
-            setUserRole(null);
-            setLoading(false);
-            return;
+          if (pendingDataStr) {
+            try {
+              const pendingData = JSON.parse(pendingDataStr);
+              
+              // Check if data is not stale (within 10 minutes)
+              const isStale = Date.now() - pendingData.timestamp > 10 * 60 * 1000;
+              
+              if (!isStale && pendingData.schoolId && pendingData.role) {
+                console.log('[useAuth] Found pending OAuth signup data, completing profile...');
+                
+                // Call complete-oauth-profile with the stored data
+                const { error: completeError } = await supabase.functions.invoke('complete-oauth-profile', {
+                  body: {
+                    schoolId: pendingData.schoolId,
+                    role: pendingData.role,
+                  },
+                });
+                
+                // Clear the pending data
+                localStorage.removeItem('pending_oauth_signup');
+                
+                if (completeError) {
+                  console.error('Failed to complete OAuth profile:', completeError);
+                  toast({
+                    title: "Profile setup failed",
+                    description: "Failed to complete your profile. Please contact support.",
+                    variant: "destructive",
+                  });
+                  setLoading(false);
+                  return;
+                }
+                
+                console.log('[useAuth] OAuth profile completed successfully');
+                
+                // Fetch the newly created role
+                const { data: roleData } = await supabase
+                  .from('user_roles')
+                  .select('role')
+                  .eq('user_id', userId)
+                  .maybeSingle();
+                
+                if (roleData) {
+                  setUserRole(roleData.role);
+                  setNeedsSchoolAssociation(false);
+                  setLoading(false);
+                  toast({
+                    title: "Welcome!",
+                    description: "Your account has been set up successfully.",
+                  });
+                  return;
+                }
+              } else {
+                // Data is stale or invalid, clean up
+                localStorage.removeItem('pending_oauth_signup');
+              }
+            } catch (error) {
+              console.error('Failed to parse pending OAuth data:', error);
+              localStorage.removeItem('pending_oauth_signup');
+            }
           }
-          // If edge function fails, continue to normal error flow
-          console.error('Failed to initialize OAuth profile:', initError);
+          
+          // If we get here, no pending data was found - this shouldn't happen in normal flow
+          console.warn('[useAuth] OAuth user has no profile and no pending signup data');
+          setNeedsSchoolAssociation(true);
+          setUserRole(null);
+          setLoading(false);
+          return;
         }
       }
       
