@@ -146,16 +146,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create user role
+    // Create or update user role (idempotent)
+    console.log(`[${requestId}] Upserting user role`);
     const { error: roleError } = await supabase
       .from('user_roles')
-      .insert({
+      .upsert({
         user_id: user.id,
         role: role
+      }, {
+        onConflict: 'user_id,role',
+        ignoreDuplicates: true
       });
 
     if (roleError) {
-      console.error(`[${requestId}] Role creation error:`, roleError);
+      console.error(`[${requestId}] Role upsert error:`, roleError);
       return createErrorResponse(
         roleError,
         'complete-oauth-profile',
@@ -164,11 +168,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If teacher, create teacher record
+    // If teacher, create or update teacher record (idempotent)
     if (role === 'teacher') {
+      console.log(`[${requestId}] Upserting teacher record`);
       const { error: teacherError } = await supabase
         .from('teachers')
-        .insert({
+        .upsert({
           id: user.id,
           email: user.email!,
           first_name: user.user_metadata.first_name || user.user_metadata.name || '',
@@ -177,10 +182,13 @@ Deno.serve(async (req) => {
           auth_provider: user.app_metadata.provider || 'google',
           invitation_status: 'completed',
           account_completed_at: new Date().toISOString()
+        }, {
+          onConflict: 'id',
+          ignoreDuplicates: true
         });
 
       if (teacherError) {
-        console.error(`[${requestId}] Teacher record creation error:`, teacherError);
+        console.error(`[${requestId}] Teacher record upsert error:`, teacherError);
         return createErrorResponse(
           teacherError,
           'complete-oauth-profile',

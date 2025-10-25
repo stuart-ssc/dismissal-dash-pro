@@ -124,6 +124,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (profileError && profileError.code !== 'PGRST116') throw profileError;
       
       if (profileData?.needs_school_association) {
+        // Check for pending OAuth signup data
+        const pendingDataStr = localStorage.getItem('pending_oauth_signup');
+        
+        if (pendingDataStr) {
+          try {
+            const pendingData = JSON.parse(pendingDataStr);
+            
+            // Check if data is not stale (within 10 minutes)
+            const isStale = Date.now() - pendingData.timestamp > 10 * 60 * 1000;
+            
+            if (!isStale && pendingData.schoolId && pendingData.role) {
+              console.log('[useAuth] Profile needs association, attempting to complete with pending data...');
+              
+              // Call complete-oauth-profile with the stored data
+              const { error: completeError } = await supabase.functions.invoke('complete-oauth-profile', {
+                body: {
+                  schoolId: pendingData.schoolId,
+                  role: pendingData.role,
+                },
+              });
+              
+              // Clear the pending data
+              localStorage.removeItem('pending_oauth_signup');
+              
+              if (!completeError) {
+                console.log('[useAuth] OAuth profile completed successfully');
+                
+                // Fetch the newly created role
+                const { data: roleData } = await supabase
+                  .from('user_roles')
+                  .select('role')
+                  .eq('user_id', userId)
+                  .maybeSingle();
+                
+                if (roleData) {
+                  setUserRole(roleData.role);
+                  setNeedsSchoolAssociation(false);
+                  setLoading(false);
+                  toast({
+                    title: "Welcome!",
+                    description: "Your account has been set up successfully.",
+                  });
+                  return;
+                }
+              } else {
+                console.error('Failed to complete OAuth profile:', completeError);
+              }
+            } else {
+              // Data is stale or invalid, clean up
+              localStorage.removeItem('pending_oauth_signup');
+            }
+          } catch (error) {
+            console.error('Failed to parse pending OAuth data:', error);
+            localStorage.removeItem('pending_oauth_signup');
+          }
+        }
+        
+        // Fallback: show UI for manual school selection
         setNeedsSchoolAssociation(true);
         setUserRole(null);
         setLoading(false);
