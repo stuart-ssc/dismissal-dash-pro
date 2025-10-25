@@ -12,12 +12,12 @@ export const OAuthButtons = ({ onGoogleClick, onMicrosoftClick, disabled }: OAut
       <Button
         type="button"
         variant="outline"
-        className="h-32 flex flex-col items-center justify-center gap-3"
+        className="h-16 flex flex-col items-center justify-center gap-2"
         onClick={onGoogleClick}
         disabled={disabled}
       >
         <svg
-          className="h-8 w-8"
+          className="h-5 w-5"
           viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"
         >
@@ -38,18 +38,18 @@ export const OAuthButtons = ({ onGoogleClick, onMicrosoftClick, disabled }: OAut
             fill="#EA4335"
           />
         </svg>
-        <span className="text-sm font-medium">Google</span>
+        <span className="text-xs font-medium">Google</span>
       </Button>
       
       <Button
         type="button"
         variant="outline"
-        className="h-32 flex flex-col items-center justify-center gap-3"
+        className="h-16 flex flex-col items-center justify-center gap-2"
         onClick={onMicrosoftClick}
         disabled={disabled}
       >
         <svg
-          className="h-8 w-8"
+          className="h-5 w-5"
           viewBox="0 0 23 23"
           fill="currentColor"
         >
@@ -58,7 +58,7 @@ export const OAuthButtons = ({ onGoogleClick, onMicrosoftClick, disabled }: OAut
           <path d="M0 12h11v11H0z" fill="#7fba00" />
           <path d="M12 12h11v11H12z" fill="#ffb900" />
         </svg>
-        <span className="text-sm font-medium">Microsoft</span>
+        <span className="text-xs font-medium">Microsoft</span>
       </Button>
     </div>
   );
