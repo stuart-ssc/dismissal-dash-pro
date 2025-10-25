@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +12,7 @@ import { Loader2, AlertTriangle } from "lucide-react";
 import { GroupViewLayout } from "@/components/classroom-modes/GroupViewLayout";
 import { TransportationColumnsLayout } from "@/components/classroom-modes/TransportationColumnsLayout";
 import { ClassroomModeLayoutToggle } from "@/components/ClassroomModeLayoutToggle";
+import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 
 type ActiveGroup = {
   id: string;
@@ -43,6 +46,13 @@ export default function ClassroomMode() {
   const { user } = useAuth();
   const [teacherClassName, setTeacherClassName] = useState<string | null>(null);
   const [layout, setLayout] = useState<'group-view' | 'transportation-columns'>('transportation-columns');
+  
+  // NEW: Add state for class selection
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [showClassSelector, setShowClassSelector] = useState(false);
+  
+  // NEW: Fetch all accessible classes for today
+  const { classes: accessibleClasses, loading: classesLoading } = useTeacherClasses();
 
   const runId = run?.id;
   const planId = run?.plan_id ?? null;
@@ -93,43 +103,39 @@ export default function ClassroomMode() {
     })();
   }, [planId]);
 
-  // Fetch teacher class name
+  // Fetch teacher class name with class selection support
   useEffect(() => {
     if (!user?.id) {
       setTeacherClassName(null);
       return;
     }
 
+    // If teacher has multiple classes, show selector
+    if (!classesLoading && accessibleClasses.length > 1 && !selectedClassId) {
+      setShowClassSelector(true);
+      return;
+    }
+
+    // If only one class or class is selected, fetch its name
+    const classIdToUse = selectedClassId || accessibleClasses[0]?.class_id;
+    
+    if (!classIdToUse) {
+      setTeacherClassName(null);
+      return;
+    }
+
     (async () => {
-      const { data: ct, error: ctErr } = await supabase
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", user.id)
-        .order("assigned_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (ctErr || !ct?.class_id) {
-        if (ctErr) console.warn("Error fetching teacher class:", ctErr.message);
-        setTeacherClassName(null);
-        return;
-      }
-
-      const { data: cls, error: clsErr } = await supabase
+      const { data, error } = await supabase
         .from("classes")
         .select("class_name")
-        .eq("id", ct.class_id)
+        .eq("id", classIdToUse)
         .maybeSingle();
 
-      if (clsErr) {
-        console.warn("Error fetching class name:", clsErr.message);
-        setTeacherClassName(null);
-        return;
+      if (!error && data) {
+        setTeacherClassName(data.class_name);
       }
-
-      setTeacherClassName(cls?.class_name ?? null);
     })();
-  }, [user?.id]);
+  }, [user?.id, accessibleClasses, classesLoading, selectedClassId]);
 
   // Calculate time-based active groups
   const fetchTimeBasedGroups = useMemo(() => async () => {
@@ -142,20 +148,15 @@ export default function ClassroomMode() {
     setLoadingGroups(true);
 
     try {
-      // Get teacher's class and students
-      const { data: classTeacher } = await supabase
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", user.id)
-        .limit(1)
-        .maybeSingle();
-
+      // Get teacher's class and students (use selected class or first accessible class)
+      const classIdToUse = selectedClassId || accessibleClasses[0]?.class_id;
+      
       let teacherStudentIds: string[] = [];
-      if (classTeacher?.class_id) {
+      if (classIdToUse) {
         const { data: roster } = await supabase
           .from("class_rosters")
           .select("student_id")
-          .eq("class_id", classTeacher.class_id);
+          .eq("class_id", classIdToUse);
         
         teacherStudentIds = (roster || []).map(r => r.student_id);
       }
@@ -616,6 +617,46 @@ export default function ClassroomMode() {
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
+      {/* Class Selector Dialog - shows if teacher has multiple classes */}
+      {showClassSelector && accessibleClasses.length > 1 && (
+        <Dialog open={showClassSelector} onOpenChange={setShowClassSelector}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Select Class to Monitor</DialogTitle>
+              <DialogDescription>
+                You have access to multiple classes today. Choose which class you'd like to monitor for dismissal.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-4">
+              {accessibleClasses.map((cls) => (
+                <Button
+                  key={cls.class_id}
+                  variant="outline"
+                  className="w-full justify-start text-left h-auto py-3"
+                  onClick={() => {
+                    setSelectedClassId(cls.class_id);
+                    setTeacherClassName(cls.class_name);
+                    setShowClassSelector(false);
+                  }}
+                >
+                  <div className="flex flex-col items-start gap-1">
+                    <div className="font-semibold">{cls.class_name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {cls.grade_level} • {cls.is_permanent ? 'Your class' : 'Coverage'}
+                    </div>
+                    {cls.coverage_notes && (
+                      <div className="text-xs text-muted-foreground italic mt-1">
+                        Note: {cls.coverage_notes}
+                      </div>
+                    )}
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>

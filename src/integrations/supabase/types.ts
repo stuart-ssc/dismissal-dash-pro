@@ -306,6 +306,54 @@ export type Database = {
         }
         Relationships: []
       }
+      class_coverage: {
+        Row: {
+          assigned_by: string
+          class_id: string
+          coverage_date: string
+          covering_teacher_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_by: string
+          class_id: string
+          coverage_date: string
+          covering_teacher_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string
+          class_id?: string
+          coverage_date?: string
+          covering_teacher_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_coverage_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_coverage_covering_teacher_id_fkey"
+            columns: ["covering_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_rosters: {
         Row: {
           class_id: string
@@ -1577,6 +1625,16 @@ export type Database = {
           special_notes: string
           student_id: string
           updated_at: string
+        }[]
+      }
+      get_teacher_accessible_classes: {
+        Args: { target_date?: string; teacher_uuid: string }
+        Returns: {
+          class_id: string
+          class_name: string
+          coverage_notes: string
+          grade_level: string
+          is_permanent: boolean
         }[]
       }
       get_teacher_class_ids: {

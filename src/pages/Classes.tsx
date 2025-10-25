@@ -21,6 +21,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { AddPersonDialog } from "@/components/AddPersonDialog";
 import { ManageClassStudentsDialog } from "@/components/ManageClassStudentsDialog";
+import { AssignClassCoverageDialog } from "@/components/AssignClassCoverageDialog";
 
 interface AddTeacherDialogProps {
   schoolId: number;
@@ -868,6 +869,17 @@ const Classes = () => {
                                       <Users className="h-4 w-4 mr-2" />
                                       Manage Students
                                     </DropdownMenuItem>
+                                    <AssignClassCoverageDialog
+                                      classId={classRecord.id}
+                                      className={classRecord.class_name}
+                                      availableTeachers={availableTeachers.map(t => ({
+                                        id: t.id,
+                                        first_name: t.first_name,
+                                        last_name: t.last_name,
+                                        email: t.email
+                                      }))}
+                                      onCoverageAssigned={fetchClasses}
+                                    />
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </TableCell>

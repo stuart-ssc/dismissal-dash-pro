@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format } from "date-fns";
@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AddPersonDialog } from "@/components/AddPersonDialog";
 import { EditPersonDialog } from "@/components/EditPersonDialog";
+import { AssignClassCoverageDialog } from "@/components/AssignClassCoverageDialog";
 
 interface PersonData {
   id: string;
@@ -26,6 +27,7 @@ interface PersonData {
   role: 'School Admin' | 'Teacher' | 'Student';
   grade?: string;
   classes: string[];
+  classIds?: string[];
   studentId?: string;
   transportation?: 'Bus' | 'Walker' | 'Car Rider' | 'After School';
   invitationStatus?: 'pending' | 'completed' | 'expired';
@@ -183,6 +185,7 @@ const People = () => {
           account_completed_at,
           auth_provider,
           class_teachers(
+            class_id,
             classes(class_name, grade_level)
           )
         `)
@@ -195,6 +198,7 @@ const People = () => {
           // Check if this teacher is already in the list (from profiles)
           const existingTeacher = allPeople.find(p => p.email === teacher.email);
           const teacherClasses = teacher.class_teachers?.map(ct => ct.classes?.class_name).filter(Boolean) || [];
+          const teacherClassIds = teacher.class_teachers?.map(ct => ct.class_id).filter(Boolean) || [];
           const teacherGrade = teacher.class_teachers?.[0]?.classes?.grade_level;
           
           // Compute invitation status
@@ -220,6 +224,7 @@ const People = () => {
               role: 'Teacher',
               grade: teacherGrade,
               classes: teacherClasses,
+              classIds: teacherClassIds,
               invitationStatus: computedStatus,
               invitationSentAt: teacher.invitation_sent_at,
               invitationExpiresAt: teacher.invitation_expires_at,
@@ -978,8 +983,22 @@ const People = () => {
                                     Copy Invitation Link
                                   </DropdownMenuItem>
                                 )}
+
+                                {person.role === 'Teacher' && person.classIds && person.classIds.length > 0 && (
+                                  <AssignClassCoverageDialog
+                                    classId={person.classIds[0]}
+                                    className={person.classes[0] || 'Class'}
+                                    availableTeachers={people.filter(p => p.role === 'Teacher' && p.id !== person.id).map(t => ({
+                                      id: t.id,
+                                      first_name: t.firstName,
+                                      last_name: t.lastName,
+                                      email: t.email || ''
+                                    }))}
+                                    onCoverageAssigned={() => schoolId && fetchPeople(schoolId)}
+                                  />
+                                )}
                                 
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => openDeleteDialog(person)} 
                                   className="flex items-center gap-2 text-destructive focus:text-destructive"
                                 >
