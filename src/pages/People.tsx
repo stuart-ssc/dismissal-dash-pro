@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { format } from "date-fns";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -807,10 +809,9 @@ const People = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Invitation Status</TableHead>
-                        <TableHead>Grade</TableHead>
+          <TableHead>Name</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Grade</TableHead>
                         <TableHead>Transportation</TableHead>
                         <TableHead>Classes</TableHead>
                         <TableHead>Actions</TableHead>
@@ -820,46 +821,120 @@ const People = () => {
                       {currentPeople.map((person) => (
                         <TableRow key={person.id}>
                           <TableCell className="font-medium">
-                            {person.firstName} {person.lastName}
+                            <div className="flex items-center gap-2">
+                              <span>{person.firstName} {person.lastName}</span>
+                              {person.role === 'Teacher' && person.invitationStatus && (
+                                <HoverCard>
+                                  <HoverCardTrigger asChild>
+                                    <button className="inline-flex items-center">
+                                      {person.invitationStatus === 'completed' && (
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                      )}
+                                      {person.invitationStatus === 'pending' && (
+                                        <Clock className="h-4 w-4 text-orange-600" />
+                                      )}
+                                      {person.invitationStatus === 'expired' && (
+                                        <AlertCircle className="h-4 w-4 text-red-600" />
+                                      )}
+                                    </button>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent className="w-80" side="right">
+                                    {person.invitationStatus === 'completed' && (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                          <h4 className="font-semibold text-green-600">Active Account</h4>
+                                        </div>
+                                        <div className="text-sm space-y-1">
+                                          <p className="flex items-center gap-2">
+                                            <span className="text-muted-foreground">Auth Method:</span>
+                                            <Badge variant="outline">
+                                              {person.authProvider === 'google' ? '🔵 Google' : 
+                                               person.authProvider === 'microsoft' ? '🟦 Microsoft' : 
+                                               '📧 Email'}
+                                            </Badge>
+                                          </p>
+                                          {person.accountCompletedAt && (
+                                            <p className="text-muted-foreground">
+                                              Completed: {format(new Date(person.accountCompletedAt), 'MMM d, yyyy')}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {person.invitationStatus === 'pending' && (
+                                      <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                          <Clock className="h-5 w-5 text-orange-600" />
+                                          <h4 className="font-semibold text-orange-600">Invitation Pending</h4>
+                                        </div>
+                                        <div className="text-sm space-y-1">
+                                          {person.invitationSentAt && (
+                                            <p className="text-muted-foreground">
+                                              Sent: {format(new Date(person.invitationSentAt), 'MMM d, yyyy')}
+                                            </p>
+                                          )}
+                                          {person.daysUntilExpiry !== undefined && (
+                                            <p className="text-muted-foreground">
+                                              Expires: {person.daysUntilExpiry > 0 
+                                                ? `in ${person.daysUntilExpiry} day${person.daysUntilExpiry !== 1 ? 's' : ''}`
+                                                : 'today'}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="flex gap-2 pt-2 border-t">
+                                          <Button size="sm" variant="outline" onClick={() => handleResendInvitation(person)}>
+                                            <Mail className="h-3 w-3 mr-1" />
+                                            Resend
+                                          </Button>
+                                          <Button size="sm" variant="outline" onClick={() => handleCopyInvitationLink(person)}>
+                                            <Copy className="h-3 w-3 mr-1" />
+                                            Copy Link
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {person.invitationStatus === 'expired' && (
+                                      <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                          <AlertCircle className="h-5 w-5 text-red-600" />
+                                          <h4 className="font-semibold text-red-600">Invitation Expired</h4>
+                                        </div>
+                                        <div className="text-sm space-y-1">
+                                          {person.invitationSentAt && (
+                                            <p className="text-muted-foreground">
+                                              Originally sent: {format(new Date(person.invitationSentAt), 'MMM d, yyyy')}
+                                            </p>
+                                          )}
+                                          {person.invitationExpiresAt && (
+                                            <p className="text-muted-foreground">
+                                              Expired: {format(new Date(person.invitationExpiresAt), 'MMM d, yyyy')}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="pt-2 border-t">
+                                          <Button 
+                                            size="sm" 
+                                            variant="default" 
+                                            className="w-full"
+                                            onClick={() => handleResendInvitation(person)}
+                                          >
+                                            <Mail className="h-3 w-3 mr-1" />
+                                            Resend Invitation
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </HoverCardContent>
+                                </HoverCard>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant={getRoleBadgeVariant(person.role)} className="flex items-center gap-1 w-fit">
                               {getRoleIcon(person.role)}
                               {person.role}
                             </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {person.role === 'Teacher' && person.invitationStatus === 'completed' && (
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="border-green-600 text-green-600">
-                                  ✓ Active
-                                </Badge>
-                                {person.authProvider && (
-                                  <span className="text-xs text-muted-foreground">
-                                    via {person.authProvider === 'google' ? 'Google' : person.authProvider === 'microsoft' ? 'Microsoft' : 'Email'}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {person.role === 'Teacher' && person.invitationStatus === 'pending' && (
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="border-orange-600 text-orange-600">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  Pending
-                                </Badge>
-                                {person.daysUntilExpiry !== undefined && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {person.daysUntilExpiry > 0 ? `${person.daysUntilExpiry}d left` : 'Expires today'}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {person.role === 'Teacher' && person.invitationStatus === 'expired' && (
-                              <Badge variant="outline" className="border-red-600 text-red-600">
-                                ⚠ Expired
-                              </Badge>
-                            )}
-                            {person.role !== 'Teacher' && '-'}
                           </TableCell>
                           <TableCell>{person.grade || '-'}</TableCell>
                           <TableCell>{person.transportation || '-'}</TableCell>
