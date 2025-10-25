@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { AssignClassCoverageDialog } from "@/components/AssignClassCoverageDialog";
 import { CoverageDashboardWidget } from "@/components/CoverageDashboardWidget";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -38,17 +39,55 @@ type CoverageAssignment = {
 };
 
 export default function TeacherCoverage() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { classes, loading: classesLoading } = useTeacherClasses();
   const [availableTeachers, setAvailableTeachers] = useState<TeacherInfo[]>([]);
   const [myAssignments, setMyAssignments] = useState<CoverageAssignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [schoolName, setSchoolName] = useState<string>("");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
 
   useEffect(() => {
     if (user) {
       fetchAvailableTeachers();
       fetchMyAssignments();
     }
+  }, [user]);
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (!user) return;
+
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("school_id, first_name, last_name")
+          .eq("id", user.id)
+          .single();
+
+        if (profile) {
+          setFirstName(profile.first_name || "");
+          setLastName(profile.last_name || "");
+
+          if (profile.school_id) {
+            const { data: school } = await supabase
+              .from("schools")
+              .select("school_name")
+              .eq("id", profile.school_id)
+              .single();
+
+            if (school) {
+              setSchoolName(school.school_name || "");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
+    };
+
+    fetchUserInfo();
   }, [user]);
 
   const fetchAvailableTeachers = async () => {
@@ -161,16 +200,27 @@ export default function TeacherCoverage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Class Coverage Management</h1>
-        <p className="text-muted-foreground mt-2">
-          Assign coverage for your classes and manage upcoming assignments
-        </p>
-      </div>
+    <>
+      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">
+              {schoolName ? `${schoolName} ` : ""}Class Coverage
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Welcome {firstName} {lastName}
+            </p>
+          </div>
+        </div>
+        <Button onClick={signOut} variant="outline">
+          Sign Out
+        </Button>
+      </header>
 
-      {/* My Classes */}
-      <Card>
+      <main className="flex-1 p-6 space-y-6">
+        {/* My Classes */}
+        <Card>
         <CardHeader>
           <CardTitle>My Classes</CardTitle>
           <CardDescription>
@@ -268,11 +318,12 @@ export default function TeacherCoverage() {
         </CardContent>
       </Card>
 
-      {/* Coverage I'm Providing */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Coverage I'm Providing</h2>
-        <CoverageDashboardWidget />
-      </div>
-    </div>
+        {/* Coverage I'm Providing */}
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Coverage I'm Providing</h2>
+          <CoverageDashboardWidget />
+        </div>
+      </main>
+    </>
   );
 }
