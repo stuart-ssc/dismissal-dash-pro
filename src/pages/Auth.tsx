@@ -634,12 +634,40 @@ const prefetchSchools = useCallback(async () => {
                           )}
                         </div>
 
-                        {/* STEP 3: Name Fields */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="firstName">First Name</Label>
-                            <div className="relative">
-                              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        {/* STEP 3: Authentication Method Options */}
+                        <div className="space-y-4">
+                          <Separator className="my-2" />
+                          
+                          {/* OAuth Section */}
+                          <div className="space-y-3">
+                            <OAuthButtons
+                              onGoogleClick={handleOAuthGoogle}
+                              onMicrosoftClick={handleOAuthMicrosoft}
+                              disabled={isLoading || !selectedSchool || !selectedRole}
+                            />
+                            <p className="text-xs text-muted-foreground text-center">
+                              Your name will be imported from your Google/Microsoft account
+                            </p>
+                          </div>
+
+                          {/* OR Divider */}
+                          <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                              <span className="w-full border-t" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                              <span className="bg-background px-2 text-muted-foreground">
+                                Or continue with email
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Name Fields - For email signup */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="firstName">First Name *</Label>
+                              <div className="relative">
+                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input 
                                   id="firstName" 
                                   placeholder="John"
@@ -651,10 +679,10 @@ const prefetchSchools = useCallback(async () => {
                                     {signUpForm.formState.errors.firstName.message}
                                   </p>
                                 )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="lastName">Last Name</Label>
+                            <div className="space-y-2">
+                              <Label htmlFor="lastName">Last Name *</Label>
                               <Input 
                                 id="lastName" 
                                 placeholder="Doe"
@@ -665,23 +693,11 @@ const prefetchSchools = useCallback(async () => {
                                   {signUpForm.formState.errors.lastName.message}
                                 </p>
                               )}
-                          </div>
-                        </div>
-
-                        {/* STEP 4: Authentication Method Options */}
-                        <div className="space-y-4">
-                          <Separator className="my-2" />
-                          
-                          <div className="space-y-3">
-                            <OAuthButtons
-                              onGoogleClick={handleOAuthGoogle}
-                              onMicrosoftClick={handleOAuthMicrosoft}
-                              disabled={isLoading || !selectedSchool || !selectedRole}
-                            />
+                            </div>
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="signupEmail">Email</Label>
+                            <Label htmlFor="signupEmail">Email *</Label>
                             <div className="relative">
                               <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                               <Input 
@@ -700,7 +716,7 @@ const prefetchSchools = useCallback(async () => {
                           </div>
                           
                           <div className="space-y-2">
-                            <Label htmlFor="signupPassword">Password</Label>
+                            <Label htmlFor="signupPassword">Password *</Label>
                             <div className="relative">
                               <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                               <Input 
