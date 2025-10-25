@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -26,6 +26,12 @@ interface PersonData {
   classes: string[];
   studentId?: string;
   transportation?: 'Bus' | 'Walker' | 'Car Rider' | 'After School';
+  invitationStatus?: 'pending' | 'completed' | 'expired';
+  invitationSentAt?: string;
+  invitationExpiresAt?: string;
+  accountCompletedAt?: string;
+  authProvider?: string;
+  daysUntilExpiry?: number;
 }
 
 const People = () => {
@@ -169,6 +175,11 @@ const People = () => {
           first_name, 
           last_name, 
           email,
+          invitation_status,
+          invitation_sent_at,
+          invitation_expires_at,
+          account_completed_at,
+          auth_provider,
           class_teachers(
             classes(class_name, grade_level)
           )
@@ -184,6 +195,20 @@ const People = () => {
           const teacherClasses = teacher.class_teachers?.map(ct => ct.classes?.class_name).filter(Boolean) || [];
           const teacherGrade = teacher.class_teachers?.[0]?.classes?.grade_level;
           
+          // Compute invitation status
+          const now = new Date();
+          const expiresAt = teacher.invitation_expires_at ? new Date(teacher.invitation_expires_at) : null;
+          const isExpired = expiresAt && expiresAt < now;
+          const computedStatus = teacher.account_completed_at 
+            ? 'completed' 
+            : isExpired 
+              ? 'expired' 
+              : 'pending';
+
+          const daysUntilExpiry = expiresAt 
+            ? Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+            : undefined;
+          
           if (!existingTeacher) {
             allPeople.push({
               id: teacher.id,
@@ -193,11 +218,23 @@ const People = () => {
               role: 'Teacher',
               grade: teacherGrade,
               classes: teacherClasses,
+              invitationStatus: computedStatus,
+              invitationSentAt: teacher.invitation_sent_at,
+              invitationExpiresAt: teacher.invitation_expires_at,
+              accountCompletedAt: teacher.account_completed_at,
+              authProvider: teacher.auth_provider,
+              daysUntilExpiry,
             });
           } else {
             // Update classes and grade for existing teacher
             existingTeacher.classes = teacherClasses;
             existingTeacher.grade = teacherGrade;
+            existingTeacher.invitationStatus = computedStatus;
+            existingTeacher.invitationSentAt = teacher.invitation_sent_at;
+            existingTeacher.invitationExpiresAt = teacher.invitation_expires_at;
+            existingTeacher.accountCompletedAt = teacher.account_completed_at;
+            existingTeacher.authProvider = teacher.auth_provider;
+            existingTeacher.daysUntilExpiry = daysUntilExpiry;
           }
         }
       }
@@ -358,6 +395,72 @@ const People = () => {
     setEditDialogOpen(true);
   };
 
+  const handleResendInvitation = async (person: PersonData) => {
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('invite-teacher-unified', {
+        body: {
+          teachers: [{
+            firstName: person.firstName,
+            lastName: person.lastName,
+            email: person.email,
+          }],
+          schoolId: schoolId,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Invitation resent to ${person.email}`,
+      });
+
+      // Refresh the data
+      if (schoolId) {
+        await fetchPeople(schoolId);
+      }
+    } catch (error) {
+      console.error('Error resending invitation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to resend invitation",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopyInvitationLink = async (person: PersonData) => {
+    try {
+      // Fetch the current invitation token
+      const { data: teacher, error } = await supabase
+        .from('teachers')
+        .select('invitation_token')
+        .eq('id', person.id)
+        .single();
+
+      if (error || !teacher?.invitation_token) throw new Error('No invitation token found');
+
+      const invitationUrl = `${window.location.origin}/auth?invitationToken=${teacher.invitation_token}`;
+      await navigator.clipboard.writeText(invitationUrl);
+
+      toast({
+        title: "Copied!",
+        description: "Invitation link copied to clipboard",
+      });
+    } catch (error) {
+      console.error('Error copying invitation link:', error);
+      toast({
+        title: "Error",
+        description: "Failed to copy invitation link",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'School Admin':
@@ -513,6 +616,53 @@ const People = () => {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {people.filter(p => p.role === 'Teacher').length}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'completed').length}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Pending Invites</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'pending').length}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Expired Invites</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-600">
+                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'expired').length}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -659,6 +809,7 @@ const People = () => {
                       <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Role</TableHead>
+                        <TableHead>Invitation Status</TableHead>
                         <TableHead>Grade</TableHead>
                         <TableHead>Transportation</TableHead>
                         <TableHead>Classes</TableHead>
@@ -676,6 +827,39 @@ const People = () => {
                               {getRoleIcon(person.role)}
                               {person.role}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {person.role === 'Teacher' && person.invitationStatus === 'completed' && (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="border-green-600 text-green-600">
+                                  ✓ Active
+                                </Badge>
+                                {person.authProvider && (
+                                  <span className="text-xs text-muted-foreground">
+                                    via {person.authProvider === 'google' ? 'Google' : person.authProvider === 'microsoft' ? 'Microsoft' : 'Email'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {person.role === 'Teacher' && person.invitationStatus === 'pending' && (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="border-orange-600 text-orange-600">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Pending
+                                </Badge>
+                                {person.daysUntilExpiry !== undefined && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {person.daysUntilExpiry > 0 ? `${person.daysUntilExpiry}d left` : 'Expires today'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {person.role === 'Teacher' && person.invitationStatus === 'expired' && (
+                              <Badge variant="outline" className="border-red-600 text-red-600">
+                                ⚠ Expired
+                              </Badge>
+                            )}
+                            {person.role !== 'Teacher' && '-'}
                           </TableCell>
                           <TableCell>{person.grade || '-'}</TableCell>
                           <TableCell>{person.transportation || '-'}</TableCell>
@@ -704,6 +888,22 @@ const People = () => {
                                   <Edit className="h-4 w-4" />
                                   Edit
                                 </DropdownMenuItem>
+                                
+                                {person.role === 'Teacher' && 
+                                 (person.invitationStatus === 'pending' || person.invitationStatus === 'expired') && (
+                                  <DropdownMenuItem onClick={() => handleResendInvitation(person)} className="flex items-center gap-2">
+                                    <Mail className="h-4 w-4" />
+                                    Resend Invitation
+                                  </DropdownMenuItem>
+                                )}
+                                
+                                {person.role === 'Teacher' && person.invitationStatus === 'pending' && (
+                                  <DropdownMenuItem onClick={() => handleCopyInvitationLink(person)} className="flex items-center gap-2">
+                                    <Copy className="h-4 w-4" />
+                                    Copy Invitation Link
+                                  </DropdownMenuItem>
+                                )}
+                                
                                 <DropdownMenuItem 
                                   onClick={() => openDeleteDialog(person)} 
                                   className="flex items-center gap-2 text-destructive focus:text-destructive"
