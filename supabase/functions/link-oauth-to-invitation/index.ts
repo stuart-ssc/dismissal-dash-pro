@@ -87,11 +87,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update teacher record with OAuth user ID
+    // Email validation - check if OAuth email matches invitation email
+    const invitedEmail = teacher.email.toLowerCase();
+    const oauthEmail = user.email?.toLowerCase() || '';
+    
+    if (invitedEmail !== oauthEmail) {
+      console.log(`[${requestId}] Email mismatch: invited=${invitedEmail}, oauth=${oauthEmail}`);
+      // Allow but log the mismatch - update teacher record with OAuth email
+    }
+
+    // Update teacher record with OAuth user ID (idempotent)
+    console.log(`[${requestId}] Updating teacher record`);
     const { error: updateError } = await supabase
       .from('teachers')
       .update({
         id: user.id,
+        email: oauthEmail, // Update with OAuth email
         invitation_status: 'completed',
         account_completed_at: new Date().toISOString(),
         auth_provider: user.app_metadata.provider || 'google'
@@ -108,35 +119,67 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Update profile with school association
-    const { error: profileError } = await supabase
+    // Ensure profile exists
+    console.log(`[${requestId}] Ensuring profile exists`);
+    const { data: existingProfile } = await supabase
       .from('profiles')
-      .update({
-        school_id: teacher.school_id,
-        needs_school_association: false
-      })
-      .eq('id', user.id);
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
 
-    if (profileError) {
-      console.error(`[${requestId}] Error updating profile:`, profileError);
-      return createErrorResponse(
-        profileError,
-        'link-oauth-to-invitation',
-        500,
-        corsHeaders
-      );
+    if (!existingProfile) {
+      const { error: profileCreateError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          school_id: teacher.school_id,
+          needs_school_association: false
+        });
+
+      if (profileCreateError) {
+        console.error(`[${requestId}] Error creating profile:`, profileCreateError);
+        return createErrorResponse(
+          profileCreateError,
+          'link-oauth-to-invitation',
+          500,
+          corsHeaders
+        );
+      }
+    } else {
+      // Update existing profile with school association
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          school_id: teacher.school_id,
+          needs_school_association: false
+        })
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.error(`[${requestId}] Error updating profile:`, profileError);
+        return createErrorResponse(
+          profileError,
+          'link-oauth-to-invitation',
+          500,
+          corsHeaders
+        );
+      }
     }
 
-    // Create user role
+    // Create or update user role (idempotent)
+    console.log(`[${requestId}] Upserting user role`);
     const { error: roleError } = await supabase
       .from('user_roles')
-      .insert({
+      .upsert({
         user_id: user.id,
         role: 'teacher'
+      }, {
+        onConflict: 'user_id,role',
+        ignoreDuplicates: true
       });
 
     if (roleError) {
-      console.error(`[${requestId}] Error creating role:`, roleError);
+      console.error(`[${requestId}] Error upserting role:`, roleError);
       return createErrorResponse(
         roleError,
         'link-oauth-to-invitation',
@@ -146,12 +189,18 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[${requestId}] OAuth account linked to invitation successfully`);
+    
+    // Log email mismatch if applicable (for admin tracking)
+    if (invitedEmail !== oauthEmail) {
+      console.log(`[${requestId}] NOTE: Teacher signed up with different email. Invited: ${invitedEmail}, Used: ${oauthEmail}`);
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true,
         message: 'Account linked successfully',
-        schoolId: teacher.school_id
+        schoolId: teacher.school_id,
+        emailChanged: invitedEmail !== oauthEmail
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

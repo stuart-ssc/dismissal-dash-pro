@@ -552,9 +552,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await fetchAndSetUserRole(user.id);
       }
 
+      // Show appropriate message based on whether email changed
+      const message = data?.emailChanged 
+        ? "Your account has been successfully linked. Note: You signed in with a different email than the invitation."
+        : "Your account has been successfully linked to your teacher invitation!";
+
       toast({
         title: "Account linked!",
-        description: "Your account has been successfully linked.",
+        description: message,
       });
 
       return { error: null };

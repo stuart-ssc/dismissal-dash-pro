@@ -261,7 +261,22 @@ const prefetchSchools = useCallback(async () => {
   };
 
   const handleOAuthGoogle = async () => {
-    // Validate school and role are selected first
+    // If invitation token exists, we don't need school/role selection
+    if (invitationToken) {
+      setIsLoading(true);
+      try {
+        // Store invitation token for post-OAuth processing
+        localStorage.setItem('pendingInvitation', invitationToken);
+        await signInWithGoogle();
+      } catch (error) {
+        toast.error('Failed to sign in with Google');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Regular signup - validate school and role are selected
     if (!selectedSchool || !selectedRole) {
       toast.error('Please select your school and role first');
       return;
@@ -276,11 +291,6 @@ const prefetchSchools = useCallback(async () => {
         timestamp: Date.now()
       };
       localStorage.setItem('pending_oauth_signup', JSON.stringify(pendingData));
-      
-      // If there's an invitation token, store it separately
-      if (invitationToken) {
-        localStorage.setItem('pendingInvitation', invitationToken);
-      }
       
       await signInWithGoogle();
     } catch (error) {
@@ -291,7 +301,22 @@ const prefetchSchools = useCallback(async () => {
   };
 
   const handleOAuthMicrosoft = async () => {
-    // Validate school and role are selected first
+    // If invitation token exists, we don't need school/role selection
+    if (invitationToken) {
+      setIsLoading(true);
+      try {
+        // Store invitation token for post-OAuth processing
+        localStorage.setItem('pendingInvitation', invitationToken);
+        await signInWithMicrosoft();
+      } catch (error) {
+        toast.error('Failed to sign in with Microsoft');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Regular signup - validate school and role are selected
     if (!selectedSchool || !selectedRole) {
       toast.error('Please select your school and role first');
       return;
@@ -306,11 +331,6 @@ const prefetchSchools = useCallback(async () => {
         timestamp: Date.now()
       };
       localStorage.setItem('pending_oauth_signup', JSON.stringify(pendingData));
-      
-      // If there's an invitation token, store it separately
-      if (invitationToken) {
-        localStorage.setItem('pendingInvitation', invitationToken);
-      }
       
       await signInWithMicrosoft();
     } catch (error) {
@@ -362,12 +382,12 @@ const prefetchSchools = useCallback(async () => {
 
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               {invitationToken && teacherData ? (
-                // Teacher invitation completion form
+                // Teacher invitation completion form with OAuth
                 <div>
                   <CardHeader>
                     <CardTitle className="text-xl">Complete Your Account Setup</CardTitle>
                     <CardDescription>
-                      Welcome to {teacherData.schools?.school_name}! Create your password below.
+                      Welcome to {teacherData.schools?.school_name}! Choose how you'd like to sign up.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -383,6 +403,33 @@ const prefetchSchools = useCallback(async () => {
                         <p className="text-sm text-muted-foreground">
                           <strong>School:</strong> {teacherData.schools?.school_name}
                         </p>
+                      </div>
+                    </div>
+
+                    {/* OAuth buttons for faster signup */}
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-muted-foreground mb-3">
+                          ⚡ Sign up faster with Google or Microsoft
+                        </p>
+                      </div>
+                      
+                      <OAuthButtons
+                        onGoogleClick={handleOAuthGoogle}
+                        onMicrosoftClick={handleOAuthMicrosoft}
+                        disabled={isLoading}
+                      />
+
+                      {/* OR Divider */}
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-background px-2 text-muted-foreground">
+                            Or use email/password
+                          </span>
+                        </div>
                       </div>
                     </div>
                     
@@ -403,7 +450,7 @@ const prefetchSchools = useCallback(async () => {
                       }
                       
                       handleTeacherInvitationSignup({ password });
-                    }} className="space-y-4">
+                    }} className="space-y-4 mt-4">
                       <div className="space-y-2">
                         <Label htmlFor="password">Create Password</Label>
                         <div className="relative">
@@ -461,7 +508,13 @@ const prefetchSchools = useCallback(async () => {
                     <TabsContent value="signup">
                       <CardTitle className="text-xl">Create your account</CardTitle>
                       <CardDescription>
-                        Join thousands of schools using Dismissal Pro.
+                        {invitationToken ? (
+                          <span className="text-primary font-medium">
+                            📧 You have a teacher invitation! Complete the setup below.
+                          </span>
+                        ) : (
+                          "Join thousands of schools using Dismissal Pro."
+                        )}
                       </CardDescription>
                     </TabsContent>
                   </CardHeader>
