@@ -37,6 +37,7 @@ import BusMode from "./pages/modes/BusMode";
 import CarLineMode from "./pages/modes/CarLineMode";
 import WalkerMode from "./pages/modes/WalkerMode";
 import { RouteGuard } from "./components/RouteGuard";
+import TeacherCoverage from "./pages/TeacherCoverage";
 
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const AppContent = () => {
           {/* Admin layout for dashboard routes */}
           <Route element={<AdminLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/coverage" element={<TeacherCoverage />} />
             <Route path="/dashboard/people" element={<PeopleManagement />} />
             <Route path="/dashboard/classes" element={<Classes />} />
             <Route path="/dashboard/transportation" element={<Transportation />} />

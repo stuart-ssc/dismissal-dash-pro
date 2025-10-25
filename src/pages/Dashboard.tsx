@@ -443,6 +443,34 @@ const Dashboard = () => {
               </Button>
             </section>
           )}
+          
+          {/* Teacher Coverage Management Quick Access */}
+          {userRole === 'teacher' && (
+            <Card className="shadow-elevated border-0 bg-gradient-to-r from-primary/10 to-secondary/10 backdrop-blur">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <CardTitle>Class Coverage Management</CardTitle>
+                </div>
+                <CardDescription>
+                  Assign other teachers to cover your classes when you're absent
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex gap-3">
+                <Button asChild variant="default">
+                  <Link to="/dashboard/coverage">
+                    Assign Coverage
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/dashboard/coverage">
+                    View Schedule
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+          
           <div className="relative">
             {!setupLoading && !isReady && (
               <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">

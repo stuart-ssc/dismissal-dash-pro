@@ -1,4 +1,4 @@
-import { Home, Users, GraduationCap, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3 } from "lucide-react";
+import { Home, Users, GraduationCap, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -26,6 +26,7 @@ const adminNavItems = [
 
 const teacherNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "Coverage", url: "/dashboard/coverage", icon: CalendarDays },
   { title: "People", url: "/dashboard/people", icon: UserCog },
 ];
 
