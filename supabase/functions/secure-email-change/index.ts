@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { Resend } from 'npm:resend@4.0.0';
+import { createErrorResponse } from '../_shared/errorHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -107,14 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
   } catch (error) {
-    console.error('Error in secure-email-change function:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error' 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return createErrorResponse(error, 'secure-email-change', 500, corsHeaders);
   }
 };
 
@@ -261,24 +255,31 @@ async function handleEmailVerification(
   supabase: any, 
   currentUser: any
 ): Promise<Response> {
-  // Support both JSON body and query parameters
-  let verificationToken: string;
+  // POST-only for security - no URL parameters
   const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
                    req.headers.get('x-real-ip') ||
                    'unknown';
   
-  const url = new URL(req.url);
-  const tokenFromQuery = url.searchParams.get('token');
+  let verificationToken: string;
   
-  if (tokenFromQuery) {
-    verificationToken = tokenFromQuery;
-  } else {
+  try {
     const body = await req.json();
     verificationToken = body.token;
+  } catch {
+    return new Response(JSON.stringify({ 
+      error: 'Invalid request body',
+      code: 'INVALID_REQUEST'
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   if (!verificationToken) {
-    return new Response(JSON.stringify({ error: 'Verification token required' }), {
+    return new Response(JSON.stringify({ 
+      error: 'Verification token required in request body',
+      code: 'MISSING_TOKEN'
+    }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

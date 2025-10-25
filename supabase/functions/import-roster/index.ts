@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
+import { createErrorResponse, sanitizeDatabaseError } from '../_shared/errorHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +76,21 @@ function validateAndMapColumns(sampleRow: any): { mappedColumns: string[], unmap
   const requiredMissing = requiredFields.filter(field => !foundMappings[field]);
   
   return { mappedColumns, unmappedColumns, requiredMissing };
+}
+
+// Sanitize CSV values to prevent formula injection
+function sanitizeCSVValue(value: string | null | undefined): string | null {
+  if (!value || typeof value !== 'string') return value || null;
+  
+  const dangerousChars = ['=', '+', '-', '@', '\t', '\r'];
+  const trimmed = value.trim();
+  
+  // Prefix with single quote if starts with dangerous character
+  if (dangerousChars.some(char => trimmed.startsWith(char))) {
+    return "'" + trimmed;
+  }
+  
+  return trimmed;
 }
 
 serve(async (req) => {
@@ -218,7 +234,7 @@ serve(async (req) => {
         if (!classId) {
           const existingClassResult = await client.queryObject(
             `SELECT id FROM classes WHERE class_name = $1 AND room_number = $2 AND school_id = $3`,
-            [row.className, row.roomNumber || null, profile.school_id]
+            [sanitizeCSVValue(row.className), row.roomNumber || null, profile.school_id]
           );
 
           if (existingClassResult.rows.length > 0) {
@@ -227,7 +243,7 @@ serve(async (req) => {
             const newClassResult = await client.queryObject(
               `INSERT INTO classes (class_name, room_number, school_id, grade_level) 
                VALUES ($1, $2, $3, $4) RETURNING id`,
-              [row.className, row.roomNumber || null, profile.school_id, row.gradeLevel]
+              [sanitizeCSVValue(row.className), row.roomNumber || null, profile.school_id, sanitizeCSVValue(row.gradeLevel)]
             );
 
             if (newClassResult.rows.length === 0) {
@@ -256,7 +272,7 @@ serve(async (req) => {
             const newTeacherResult = await client.queryObject(
               `INSERT INTO teachers (first_name, last_name, email, school_id) 
                VALUES ($1, $2, $3, $4) RETURNING id`,
-              [row.teacherFirstName, row.teacherLastName, row.teacherEmail, profile.school_id]
+              [sanitizeCSVValue(row.teacherFirstName), sanitizeCSVValue(row.teacherLastName), row.teacherEmail, profile.school_id]
             );
 
             if (newTeacherResult.rows.length === 0) {
@@ -297,13 +313,13 @@ serve(async (req) => {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
             [
               row.studentId || null,
-              row.firstName,
-              row.lastName,
-              row.gradeLevel,
+              sanitizeCSVValue(row.firstName),
+              sanitizeCSVValue(row.lastName),
+              sanitizeCSVValue(row.gradeLevel),
               profile.school_id,
-              row.parentGuardianName || null,
-              row.contactInfo || null,
-              row.specialNotes || null,
+              sanitizeCSVValue(row.parentGuardianName),
+              sanitizeCSVValue(row.contactInfo),
+              sanitizeCSVValue(row.specialNotes),
               row.dismissalGroup || null
             ]
           );
@@ -349,12 +365,12 @@ serve(async (req) => {
                   if (existingBusResult.rows.length > 0) {
                     busId = (existingBusResult.rows[0] as any).id as string;
                  } else {
-                   // Create new bus
-                   const newBusResult = await client.queryObject(
-                     `INSERT INTO buses (bus_number, school_id, driver_first_name, driver_last_name) 
-                      VALUES ($1, $2, $3, $4) RETURNING id`,
-                     [transportationMethodValue, profile.school_id, 'TBD', 'TBD']
-                   );
+                    // Create new bus
+                    const newBusResult = await client.queryObject(
+                      `INSERT INTO buses (bus_number, school_id, driver_first_name, driver_last_name) 
+                       VALUES ($1, $2, $3, $4) RETURNING id`,
+                      [sanitizeCSVValue(transportationMethodValue), profile.school_id, 'TBD', 'TBD']
+                    );
 
                    if (newBusResult.rows.length === 0) {
                      throw new Error(`Failed to create bus ${transportationMethodValue}`);
@@ -416,12 +432,12 @@ serve(async (req) => {
                   if (existingCarLineResult.rows.length > 0) {
                     carLineId = (existingCarLineResult.rows[0] as any).id as string;
                  } else {
-                   // Create new car line
-                   const newCarLineResult = await client.queryObject(
-                     `INSERT INTO car_lines (line_name, school_id, color, pickup_location) 
-                      VALUES ($1, $2, $3, $4) RETURNING id`,
-                     [transportationMethodValue, profile.school_id, '#3B82F6', transportationMethodValue]
-                   );
+                    // Create new car line
+                    const newCarLineResult = await client.queryObject(
+                      `INSERT INTO car_lines (line_name, school_id, color, pickup_location) 
+                       VALUES ($1, $2, $3, $4) RETURNING id`,
+                      [sanitizeCSVValue(transportationMethodValue), profile.school_id, '#3B82F6', sanitizeCSVValue(transportationMethodValue)]
+                    );
 
                    if (newCarLineResult.rows.length === 0) {
                      throw new Error(`Failed to create car line ${transportationMethodValue}`);
@@ -454,12 +470,12 @@ serve(async (req) => {
                   if (existingWalkerLocationResult.rows.length > 0) {
                     walkerLocationId = (existingWalkerLocationResult.rows[0] as any).id as string;
                  } else {
-                   // Create new walker location
-                   const newWalkerLocationResult = await client.queryObject(
-                     `INSERT INTO walker_locations (location_name, school_id) 
-                      VALUES ($1, $2) RETURNING id`,
-                     [transportationMethodValue, profile.school_id]
-                   );
+                    // Create new walker location
+                    const newWalkerLocationResult = await client.queryObject(
+                      `INSERT INTO walker_locations (location_name, school_id) 
+                       VALUES ($1, $2) RETURNING id`,
+                      [sanitizeCSVValue(transportationMethodValue), profile.school_id]
+                    );
 
                    if (newWalkerLocationResult.rows.length === 0) {
                      throw new Error(`Failed to create walker location ${transportationMethodValue}`);
@@ -533,13 +549,6 @@ serve(async (req) => {
   }
 
   } catch (error) {
-    console.error('Import error:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error' 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return createErrorResponse(error, 'import-roster', 500, corsHeaders);
   }
 });

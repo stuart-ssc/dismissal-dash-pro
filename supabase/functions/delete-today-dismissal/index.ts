@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createErrorResponse } from '../_shared/errorHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -164,16 +165,6 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    // Log detailed error server-side
-    console.error('Error deleting dismissal data:', error);
-    
-    // Return generic error to client
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to delete dismissal data',
-        code: 'DELETE_DISMISSAL_ERROR'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
+    return createErrorResponse(error, 'delete-dismissal', 500, corsHeaders);
   }
 });

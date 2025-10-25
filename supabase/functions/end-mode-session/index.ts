@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createErrorResponse } from '../_shared/errorHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,14 +41,7 @@ serve(async (req) => {
       .is('ended_at', null) // Only update if not already ended
 
     if (error) {
-      console.error('Error updating session:', error)
-      return new Response(
-        JSON.stringify({ error: 'Failed to update session' }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+      return createErrorResponse(error, 'end-session', 500, corsHeaders);
     }
 
     return new Response(
@@ -59,19 +53,6 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    // Log detailed error server-side
-    console.error('Unexpected error in end-mode-session:', error);
-    
-    // Return generic error to client
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to end mode session',
-        code: 'END_SESSION_ERROR'
-      }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return createErrorResponse(error, 'end-session', 500, corsHeaders);
   }
 })

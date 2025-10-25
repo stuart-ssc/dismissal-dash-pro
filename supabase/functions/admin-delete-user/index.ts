@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createErrorResponse } from '../_shared/errorHandler.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,31 +54,11 @@ serve(async (req) => {
     // Delete auth user
     const { error: delError } = await supabase.auth.admin.deleteUser(userId);
     if (delError) {
-      // Log detailed error server-side
-      console.error('Error deleting user:', delError);
-      
-      // Return generic error to client
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to delete user',
-          code: 'DELETE_USER_ERROR'
-        }), 
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createErrorResponse(delError, 'delete-user', 400, corsHeaders);
     }
 
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
-    // Log detailed error server-side
-    console.error('admin-delete-user error:', err);
-    
-    // Return generic error to client
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to delete user',
-        code: 'DELETE_USER_ERROR'
-      }), 
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(err, 'delete-user', 500, corsHeaders);
   }
 });

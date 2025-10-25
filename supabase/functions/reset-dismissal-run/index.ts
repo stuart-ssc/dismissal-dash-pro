@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createErrorResponse } from '../_shared/errorHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,17 +52,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (error) {
-      // Log detailed error server-side
-      console.error('Error resetting dismissal run:', error);
-      
-      // Return generic error to client
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to reset dismissal run',
-          code: 'RESET_RUN_ERROR'
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createErrorResponse(error, 'reset-run', 500, corsHeaders);
     }
 
     console.log('Successfully reset dismissal run:', data);
@@ -71,16 +62,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    // Log detailed error server-side
-    console.error('Unexpected error in reset-dismissal-run:', error);
-    
-    // Return generic error to client
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to reset dismissal run',
-        code: 'RESET_RUN_ERROR'
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(error, 'reset-run', 500, corsHeaders);
   }
 });

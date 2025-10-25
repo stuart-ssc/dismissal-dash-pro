@@ -1,10 +1,10 @@
 import {
   Body,
+  Button,
   Container,
   Head,
   Heading,
   Html,
-  Link,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22';
@@ -42,16 +42,26 @@ export const EmailChangeEmail = ({
           To confirm this change and complete the process, please click the button below:
         </Text>
         
-        <Link
-          href={`${supabaseUrl}/auth/v1/verify?token=${tokenHash}&type=${emailActionType}&redirect_to=${redirectTo}`}
-          target="_blank"
-          style={button}
+        <form 
+          action={`${supabaseUrl}/functions/v1/secure-email-change/verify`}
+          method="POST"
+          style={{ margin: '20px 0' }}
         >
-          Confirm Email Change
-        </Link>
+          <input type="hidden" name="token" value={token} />
+          <Button 
+            style={{
+              ...button,
+              border: 'none',
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            Confirm Email Change
+          </Button>
+        </form>
         
         <Text style={text}>
-          Or use this confirmation code:
+          Or copy and paste this verification code in the application:
         </Text>
         <code style={code}>{token}</code>
         
