@@ -145,7 +145,7 @@ const Dashboard = () => {
         // Fetch up to 10 for average calculation
         const { data: avgData, error: avgError } = await supabase
           .from('dismissal_runs')
-          .select('id, date, status, started_at, ended_at')
+          .select('id, date, status, started_at, ended_at, scheduled_start_time')
           .eq('school_id', schoolId)
           .not('ended_at', 'is', null)
           .eq('status', 'completed')
@@ -183,7 +183,9 @@ const Dashboard = () => {
 
         // Process average data (up to 10 for calculation)
         const processedAvgData = avgData?.map((dismissal) => {
-          const startTime = new Date(dismissal.started_at);
+          const startTime = dismissal.scheduled_start_time 
+            ? new Date(dismissal.scheduled_start_time) 
+            : new Date(dismissal.started_at);
           const endTime = new Date(dismissal.ended_at);
           const elapsedMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
           
@@ -243,7 +245,7 @@ const Dashboard = () => {
 
         const { data, error } = await supabase
           .from('dismissal_runs')
-          .select('date, started_at, ended_at')
+          .select('date, started_at, ended_at, scheduled_start_time')
           .eq('school_id', schoolId)
           .eq('status', 'completed')
           .not('ended_at', 'is', null)
@@ -258,7 +260,9 @@ const Dashboard = () => {
           let shortestDuration = Infinity;
 
           data.forEach((dismissal) => {
-            const startTime = new Date(dismissal.started_at);
+            const startTime = dismissal.scheduled_start_time 
+              ? new Date(dismissal.scheduled_start_time) 
+              : new Date(dismissal.started_at);
             const endTime = new Date(dismissal.ended_at);
             const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
             
