@@ -4,6 +4,7 @@ import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AssignClassCoverageDialog } from "@/components/AssignClassCoverageDialog";
 import { CoverageDashboardWidget } from "@/components/CoverageDashboardWidget";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -29,6 +30,12 @@ type TeacherInfo = {
   email: string;
 };
 
+type ClassInfo = {
+  class_id: string;
+  class_name: string;
+  grade_level: string;
+};
+
 type CoverageAssignment = {
   id: string;
   class_id: string;
@@ -36,10 +43,11 @@ type CoverageAssignment = {
   covering_teacher_name: string;
   coverage_date: string;
   notes?: string;
+  assigned_by_name?: string;
 };
 
 export default function TeacherCoverage() {
-  const { user, signOut } = useAuth();
+  const { user, userRole, signOut } = useAuth();
   const { classes, loading: classesLoading } = useTeacherClasses();
   const [availableTeachers, setAvailableTeachers] = useState<TeacherInfo[]>([]);
   const [myAssignments, setMyAssignments] = useState<CoverageAssignment[]>([]);
@@ -47,13 +55,24 @@ export default function TeacherCoverage() {
   const [schoolName, setSchoolName] = useState<string>("");
   const [firstName, setFirstName] = useState<string>("");
   const [lastName, setLastName] = useState<string>("");
+  
+  // School admin specific state
+  const [allSchoolClasses, setAllSchoolClasses] = useState<ClassInfo[]>([]);
+  const [selectedClassForCoverage, setSelectedClassForCoverage] = useState<string>("");
+  const [allSchoolAssignments, setAllSchoolAssignments] = useState<CoverageAssignment[]>([]);
 
   useEffect(() => {
     if (user) {
       fetchAvailableTeachers();
-      fetchMyAssignments();
+      
+      if (userRole === 'school_admin') {
+        fetchAllSchoolClasses();
+        fetchAllSchoolAssignments();
+      } else {
+        fetchMyAssignments();
+      }
     }
-  }, [user]);
+  }, [user, userRole]);
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -172,6 +191,90 @@ export default function TeacherCoverage() {
     }
   };
 
+  const fetchAllSchoolClasses = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from("classes")
+        .select("id, class_name, grade_level")
+        .eq("school_id", profile.school_id)
+        .order("class_name");
+
+      if (error) throw error;
+
+      const classList: ClassInfo[] = data.map(c => ({
+        class_id: c.id,
+        class_name: c.class_name,
+        grade_level: c.grade_level || '',
+      }));
+
+      setAllSchoolClasses(classList);
+    } catch (error) {
+      console.error("Error fetching school classes:", error);
+      toast.error("Failed to load classes");
+    }
+  };
+
+  const fetchAllSchoolAssignments = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from("class_coverage")
+        .select(`
+          id,
+          class_id,
+          coverage_date,
+          notes,
+          classes!inner(class_name, school_id),
+          profiles!class_coverage_covering_teacher_id_fkey(first_name, last_name),
+          assignedBy:profiles!class_coverage_assigned_by_fkey(first_name, last_name)
+        `)
+        .eq("classes.school_id", profile.school_id)
+        .gte("coverage_date", today)
+        .order("coverage_date", { ascending: true });
+
+      if (error) throw error;
+
+      const assignments: CoverageAssignment[] = data.map((item: any) => ({
+        id: item.id,
+        class_id: item.class_id,
+        class_name: item.classes.class_name,
+        covering_teacher_name: `${item.profiles.first_name} ${item.profiles.last_name}`,
+        coverage_date: item.coverage_date,
+        notes: item.notes,
+        assigned_by_name: `${item.assignedBy.first_name} ${item.assignedBy.last_name}`,
+      }));
+
+      setAllSchoolAssignments(assignments);
+    } catch (error) {
+      console.error("Error fetching school assignments:", error);
+      toast.error("Failed to load coverage assignments");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDeleteAssignment = async (assignmentId: string) => {
     try {
       const { error } = await supabase
@@ -182,7 +285,12 @@ export default function TeacherCoverage() {
       if (error) throw error;
 
       toast.success("Coverage assignment deleted");
-      fetchMyAssignments();
+      
+      if (userRole === 'school_admin') {
+        fetchAllSchoolAssignments();
+      } else {
+        fetchMyAssignments();
+      }
     } catch (error) {
       console.error("Error deleting assignment:", error);
       toast.error("Failed to delete assignment");
@@ -206,7 +314,8 @@ export default function TeacherCoverage() {
           <SidebarTrigger />
           <div>
             <h1 className="text-2xl font-bold">
-              {schoolName ? `${schoolName} ` : ""}Class Coverage
+              {schoolName ? `${schoolName} ` : ""}
+              {userRole === 'school_admin' ? 'Coverage Management' : 'Class Coverage'}
             </h1>
             <p className="text-sm text-muted-foreground">
               Welcome {firstName} {lastName}
@@ -219,54 +328,102 @@ export default function TeacherCoverage() {
       </header>
 
       <main className="flex-1 p-6 space-y-6">
-        {/* My Classes */}
-        <Card>
-        <CardHeader>
-          <CardTitle>My Classes</CardTitle>
-          <CardDescription>
-            Assign other teachers to cover your classes when you're absent
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {classes.length === 0 ? (
-            <p className="text-muted-foreground">No classes assigned to you</p>
-          ) : (
-            classes.map((cls) => (
-              <div
-                key={cls.class_id}
-                className="flex items-center justify-between p-4 border rounded-lg"
-              >
-                <div>
-                  <h3 className="font-semibold">{cls.class_name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Grade {cls.grade_level}
-                  </p>
-                </div>
-                <AssignClassCoverageDialog
-                  classId={cls.class_id}
-                  className={cls.class_name}
-                  availableTeachers={availableTeachers}
-                  onCoverageAssigned={fetchMyAssignments}
-                />
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+        {/* For Teachers: My Classes */}
+        {userRole === 'teacher' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>My Classes</CardTitle>
+              <CardDescription>
+                Assign other teachers to cover your classes when you're absent
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {classes.length === 0 ? (
+                <p className="text-muted-foreground">No classes assigned to you</p>
+              ) : (
+                classes.map((cls) => (
+                  <div
+                    key={cls.class_id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div>
+                      <h3 className="font-semibold">{cls.class_name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Grade {cls.grade_level}
+                      </p>
+                    </div>
+                    <AssignClassCoverageDialog
+                      classId={cls.class_id}
+                      className={cls.class_name}
+                      availableTeachers={availableTeachers}
+                      onCoverageAssigned={fetchMyAssignments}
+                    />
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Coverage I've Assigned */}
+        {/* For School Admins: Assign Coverage with Class Selection */}
+        {userRole === 'school_admin' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Assign Coverage</CardTitle>
+              <CardDescription>
+                Select a class and assign a teacher to provide coverage
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-end gap-4">
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-2 block">Select Class</label>
+                  <Select value={selectedClassForCoverage} onValueChange={setSelectedClassForCoverage}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a class..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allSchoolClasses.map((cls) => (
+                        <SelectItem key={cls.class_id} value={cls.class_id}>
+                          {cls.class_name} {cls.grade_level && `(Grade ${cls.grade_level})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedClassForCoverage && (
+                  <AssignClassCoverageDialog
+                    classId={selectedClassForCoverage}
+                    className={allSchoolClasses.find(c => c.class_id === selectedClassForCoverage)?.class_name || ''}
+                    availableTeachers={availableTeachers}
+                    onCoverageAssigned={() => {
+                      fetchAllSchoolAssignments();
+                      setSelectedClassForCoverage('');
+                    }}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+      {/* Coverage Assignments */}
       <Card>
         <CardHeader>
-          <CardTitle>Coverage I've Assigned</CardTitle>
+          <CardTitle>
+            {userRole === 'school_admin' ? 'All Coverage Assignments' : 'Coverage I\'ve Assigned'}
+          </CardTitle>
           <CardDescription>
-            Upcoming coverage assignments for your classes
+            {userRole === 'school_admin' 
+              ? 'All upcoming coverage assignments for your school'
+              : 'Upcoming coverage assignments for your classes'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {myAssignments.length === 0 ? (
+          {(userRole === 'school_admin' ? allSchoolAssignments : myAssignments).length === 0 ? (
             <p className="text-muted-foreground">No upcoming coverage assignments</p>
           ) : (
-            myAssignments.map((assignment) => (
+            (userRole === 'school_admin' ? allSchoolAssignments : myAssignments).map((assignment) => (
               <div
                 key={assignment.id}
                 className="flex items-center justify-between p-4 border rounded-lg"
@@ -282,6 +439,11 @@ export default function TeacherCoverage() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {format(new Date(assignment.coverage_date), "MMMM d, yyyy")}
                   </p>
+                  {userRole === 'school_admin' && assignment.assigned_by_name && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Assigned by: {assignment.assigned_by_name}
+                    </p>
+                  )}
                   {assignment.notes && (
                     <p className="text-sm text-muted-foreground mt-1 italic">
                       {assignment.notes}
@@ -318,11 +480,13 @@ export default function TeacherCoverage() {
         </CardContent>
       </Card>
 
-        {/* Coverage I'm Providing */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Coverage I'm Providing</h2>
-          <CoverageDashboardWidget />
-        </div>
+        {/* Coverage I'm Providing - Teachers Only */}
+        {userRole === 'teacher' && (
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Coverage I'm Providing</h2>
+            <CoverageDashboardWidget />
+          </div>
+        )}
       </main>
     </>
   );
