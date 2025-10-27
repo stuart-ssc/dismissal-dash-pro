@@ -157,18 +157,20 @@ const Dashboard = () => {
         // Fetch last 5 for chart display
         const { data: chartData, error: chartError } = await supabase
           .from('dismissal_runs')
-          .select('id, date, status, started_at, ended_at')
+          .select('id, date, status, started_at, ended_at, scheduled_start_time')
           .eq('school_id', schoolId)
           .not('ended_at', 'is', null)
           .eq('status', 'completed')
-          .order('date', { ascending: true })
+          .order('date', { ascending: false })
           .limit(5);
 
         if (chartError) throw chartError;
 
         // Process chart data (last 5 for display)
         const processedChartData = chartData?.map((dismissal, index) => {
-          const startTime = new Date(dismissal.started_at);
+          const startTime = dismissal.scheduled_start_time 
+            ? new Date(dismissal.scheduled_start_time) 
+            : new Date(dismissal.started_at);
           const endTime = new Date(dismissal.ended_at);
           const elapsedMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
           
