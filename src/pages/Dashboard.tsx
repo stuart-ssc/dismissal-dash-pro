@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock, RotateCcw, AlertCircle } from "lucide-react";
+import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock, RotateCcw, AlertCircle, CalendarDays } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -477,32 +477,6 @@ const Dashboard = () => {
             </Card>
           )}
 
-          {/* School Admin Coverage Management Quick Access */}
-          {userRole === 'school_admin' && (
-            <Card className="shadow-elevated border-0 bg-gradient-to-r from-primary/10 to-secondary/10 backdrop-blur">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  <CardTitle>Coverage Management</CardTitle>
-                </div>
-                <CardDescription>
-                  Assign coverage for any class and view all school-wide coverage assignments
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex gap-3">
-                <Button asChild variant="default">
-                  <Link to="/dashboard/coverage">
-                    Assign Coverage
-                  </Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/dashboard/coverage">
-                    View All Coverage
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
           
           <div className="relative">
             {!setupLoading && !isReady && (
@@ -656,7 +630,13 @@ const Dashboard = () => {
                         Import Roster
                       </Link>
                     </Button>
-                    <Button 
+                    <Button asChild className="w-full justify-start" variant="outline">
+                      <Link to="/dashboard/coverage">
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        Manage Coverage
+                      </Link>
+                    </Button>
+                    <Button
                       onClick={handleResetDismissalRun}
                       className="w-full justify-start" 
                       variant="outline"
