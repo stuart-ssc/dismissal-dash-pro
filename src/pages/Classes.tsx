@@ -85,10 +85,7 @@ const AddTeacherDialog = ({ schoolId, onTeacherAdded }: AddTeacherDialogProps) =
           email: formData.email,
           school_id: schoolId,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          invitation_status: 'pending',
-          invitation_sent_at: new Date().toISOString(),
-          invitation_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          updated_at: new Date().toISOString()
         };
         
         onTeacherAdded(newTeacher);
@@ -201,9 +198,6 @@ interface Teacher {
   school_id: number;
   created_at: string;
   updated_at: string;
-  invitation_status?: string;
-  invitation_sent_at?: string;
-  invitation_expires_at?: string;
 }
 
 const Classes = () => {
@@ -361,14 +355,32 @@ const Classes = () => {
         .single();
 
       if (profile?.school_id) {
-        const { data: teachers } = await supabase
-          .from('teachers')
-          .select('id, first_name, last_name, email, school_id, created_at, updated_at, invitation_status, invitation_sent_at, invitation_expires_at')
-          .eq('school_id', profile.school_id);
+        // Query profiles with teacher role
+        const { data: userRoles, error } = await supabase
+          .from('user_roles')
+          .select(`
+            user_id,
+            profiles!inner(
+              id,
+              first_name,
+              last_name,
+              email,
+              school_id,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq('role', 'teacher')
+          .eq('profiles.school_id', profile.school_id);
 
-        if (teachers) {
-          setAvailableTeachers(teachers);
+        if (error) {
+          console.error('Error fetching teachers:', error);
+          return;
         }
+
+        // Map the results to Teacher[] format
+        const teachers = userRoles?.map(ur => ur.profiles).filter(Boolean) || [];
+        setAvailableTeachers(teachers);
       }
     } catch (error) {
       console.error('Error fetching teachers:', error);
