@@ -339,6 +339,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "class_coverage_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "class_coverage_class_id_fkey"
             columns: ["class_id"]
             isOneToOne: false
@@ -349,7 +356,7 @@ export type Database = {
             foreignKeyName: "class_coverage_covering_teacher_id_fkey"
             columns: ["covering_teacher_id"]
             isOneToOne: false
-            referencedRelation: "teachers"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
