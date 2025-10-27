@@ -476,6 +476,33 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* School Admin Coverage Management Quick Access */}
+          {userRole === 'school_admin' && (
+            <Card className="shadow-elevated border-0 bg-gradient-to-r from-primary/10 to-secondary/10 backdrop-blur">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <CardTitle>Coverage Management</CardTitle>
+                </div>
+                <CardDescription>
+                  Assign coverage for any class and view all school-wide coverage assignments
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex gap-3">
+                <Button asChild variant="default">
+                  <Link to="/dashboard/coverage">
+                    Assign Coverage
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/dashboard/coverage">
+                    View All Coverage
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
           
           <div className="relative">
             {!setupLoading && !isReady && (

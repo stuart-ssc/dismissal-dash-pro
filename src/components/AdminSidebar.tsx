@@ -18,6 +18,7 @@ const adminNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Dismissal Plans", url: "/dashboard/dismissal-plans", icon: GraduationCap },
   { title: "Classes", url: "/dashboard/classes", icon: Users },
+  { title: "Coverage", url: "/dashboard/coverage", icon: CalendarDays },
   { title: "People", url: "/dashboard/people", icon: UserCog },
   { title: "Transportation", url: "/dashboard/transportation", icon: Bus },
   { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
