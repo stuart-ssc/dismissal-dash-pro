@@ -321,6 +321,8 @@ export default function ClassroomMode() {
               .select("car_line_id")
               .eq("dismissal_group_id", group.id);
 
+            console.log('[ClassroomMode] Car group:', group.name, 'groupCarLines:', groupCarLines, 'group.id:', group.id);
+
             if (groupCarLines && groupCarLines.length > 0) {
               const carLineIds = groupCarLines.map(gc => gc.car_line_id);
               
@@ -330,6 +332,8 @@ export default function ClassroomMode() {
                 .select("student_id, car_line_id")
                 .in("student_id", teacherStudentIds)
                 .in("car_line_id", carLineIds);
+
+              console.log('[ClassroomMode] Car assignments:', carAssignments?.length || 0, 'for teacherStudentIds:', teacherStudentIds.length, 'carLineIds:', carLineIds);
 
               // Get car line names
               const { data: carLineDetails } = await supabase
@@ -351,6 +355,8 @@ export default function ClassroomMode() {
                   };
                 })
                 .filter((s): s is NonNullable<typeof s> => s !== null);
+              
+              console.log('[ClassroomMode] Car students found:', students.length, 'for group:', group.name);
             }
           } else if (group.group_type?.toLowerCase().includes("walker") && group.walker_location_id) {
             // Get walker assignments for teacher's students
