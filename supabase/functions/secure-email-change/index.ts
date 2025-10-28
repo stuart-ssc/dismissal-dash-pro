@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { Resend } from 'npm:resend@4.0.0';
 import { createErrorResponse } from '../_shared/errorHandler.ts';
+import React from 'npm:react@18.3.1';
+import { renderAsync } from 'npm:@react-email/components@0.0.22';
+import { EmailVerification } from '../send-auth-email/_templates/email-verification.tsx';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -571,61 +574,19 @@ async function sendVerificationEmail(email: string, token: string, requestId: st
   const verificationUrl = `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}/verify-email-change?token=${token}`;
   
   try {
+    // Render React Email template
+    const html = await renderAsync(
+      React.createElement(EmailVerification, {
+        verificationUrl,
+        requestId,
+      })
+    );
+
     await resend.emails.send({
       from: 'Dismissal Pro <noreply@dismissalpro.io>',
       to: [email],
       subject: 'Verify Your Email Change',
-      html: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Verify Email Change</title>
-          </head>
-          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
-              <tr>
-                <td align="center">
-                  <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <tr>
-                      <td style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); padding: 40px 40px 30px; text-align: center;">
-                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">Verify Your Email Change</h1>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 40px;">
-                        <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 24px;">
-                          You requested to change your email address. To complete this change, please click the button below to verify your new email address:
-                        </p>
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                          <tr>
-                            <td align="center">
-                              <a href="${verificationUrl}" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-weight: 600; font-size: 16px;">
-                                Verify Email Change
-                              </a>
-                            </td>
-                          </tr>
-                        </table>
-                        <p style="margin: 30px 0 0; color: #6B7280; font-size: 14px; line-height: 20px;">
-                          This link will expire in 24 hours. If you didn't request this change, please ignore this email or contact your school administrator.
-                        </p>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="background-color: #F9FAFB; padding: 30px 40px; border-top: 1px solid #E5E7EB;">
-                        <p style="margin: 0; color: #6B7280; font-size: 12px; line-height: 18px; text-align: center;">
-                          This email was sent by Dismissal Pro. If you have questions, contact your school administrator.
-                        </p>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </body>
-        </html>
-      `,
+      html,
     });
     
     console.log('Verification email sent successfully to:', email);

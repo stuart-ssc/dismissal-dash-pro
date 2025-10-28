@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import React from 'npm:react@18.3.1';
+import { renderAsync } from 'npm:@react-email/components@0.0.22';
+import { TeacherInvitationEmail } from '../send-auth-email/_templates/teacher-invitation-email.tsx';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -26,40 +29,21 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { email, firstName, lastName, schoolName, inviteUrl }: TeacherInvitationRequest = await req.json();
 
+    // Render React Email template
+    const html = await renderAsync(
+      React.createElement(TeacherInvitationEmail, {
+        firstName,
+        lastName,
+        schoolName,
+        inviteUrl,
+      })
+    );
+
     const emailResponse = await resend.emails.send({
       from: "School Admin <invite@dismissalpro.io>",
       to: [email],
-      subject: `Invitation to join ${schoolName} as a Teacher`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333; text-align: center;">Welcome to ${schoolName}!</h1>
-          
-          <p>Dear ${firstName} ${lastName},</p>
-          
-          <p>You have been invited to join <strong>${schoolName}</strong> as a teacher on our school management platform.</p>
-          
-          <p>To complete your account setup and create your password, please click the link below:</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${inviteUrl}" 
-               style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Complete Account Setup
-            </a>
-          </div>
-          
-          <p>This invitation link will expire in 24 hours for security purposes.</p>
-          
-          <p>If you have any questions, please contact your school administrator.</p>
-          
-          <p>Best regards,<br>
-          The ${schoolName} Team</p>
-          
-          <hr style="margin-top: 30px; border: none; border-top: 1px solid #eee;">
-          <p style="font-size: 12px; color: #666; text-align: center;">
-            If you didn't expect this invitation, you can safely ignore this email.
-          </p>
-        </div>
-      `,
+      subject: `Invitation to join ${schoolName} - Dismissal Pro`,
+      html,
     });
 
     console.log("Teacher invitation sent successfully:", emailResponse);

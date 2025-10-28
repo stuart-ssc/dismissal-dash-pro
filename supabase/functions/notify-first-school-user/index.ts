@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
 import { Resend } from "npm:resend@2.0.0";
+import React from 'npm:react@18.3.1';
+import { renderAsync } from 'npm:@react-email/components@0.0.22';
+import { AdminNotificationEmail } from '../send-auth-email/_templates/admin-notification-email.tsx';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -73,45 +76,31 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('user_id', user_id);
 
     const roles = userRoles?.map(r => r.role).join(', ') || 'No role assigned';
+    const signupTime = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' EST';
+
+    // Render React Email template
+    const html = await renderAsync(
+      React.createElement(AdminNotificationEmail, {
+        schoolName: school.school_name || 'Unknown School',
+        schoolId: school.id,
+        schoolCity: school.city,
+        schoolState: school.state,
+        schoolDistrict: school.school_district,
+        firstName: first_name,
+        lastName: last_name,
+        email,
+        roles,
+        userId: user_id,
+        signupTime,
+      })
+    );
 
     // Send notification email
     const emailResponse = await resend.emails.send({
       from: "Dismissal Pro <notifications@dismissalpro.io>",
       to: ["stuart@dismissalpro.io"],
       subject: `🎉 New School Signup: ${school.school_name || 'Unknown School'}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #3B82F6;">New School Has Its First User!</h2>
-          
-          <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #1F2937;">School Details</h3>
-            <p><strong>School Name:</strong> ${school.school_name || 'Not set'}</p>
-            <p><strong>School ID:</strong> ${school.id}</p>
-            <p><strong>Location:</strong> ${school.city || 'Unknown'}, ${school.state || 'Unknown'}</p>
-            <p><strong>District:</strong> ${school.school_district || 'Not set'}</p>
-          </div>
-
-          <div style="background-color: #EFF6FF; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #1F2937;">User Details</h3>
-            <p><strong>Name:</strong> ${first_name} ${last_name}</p>
-            <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Role(s):</strong> ${roles}</p>
-            <p><strong>User ID:</strong> ${user_id}</p>
-            <p><strong>Signup Time:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST</p>
-          </div>
-
-          <div style="margin-top: 30px;">
-            <a href="https://lwbmtirzntexaxdlhgsk.supabase.co/project/lwbmtirzntexaxdlhgsk/auth/users" 
-               style="background-color: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              View in Supabase Admin
-            </a>
-          </div>
-
-          <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
-            This notification was sent because this is the first user to sign up for this school.
-          </p>
-        </div>
-      `,
+      html,
     });
 
     console.log("Email sent successfully:", emailResponse);
