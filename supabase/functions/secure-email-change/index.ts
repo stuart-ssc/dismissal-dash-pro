@@ -4,7 +4,7 @@ import { Resend } from 'npm:resend@4.0.0';
 import { createErrorResponse } from '../_shared/errorHandler.ts';
 import React from 'npm:react@18.3.1';
 import { renderAsync } from 'npm:@react-email/components@0.0.22';
-import { EmailVerification } from '../send-auth-email/_templates/email-verification.tsx';
+import { EmailVerification } from '../_shared/email-templates/email-verification.tsx';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

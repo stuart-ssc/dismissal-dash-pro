@@ -1,10 +1,10 @@
 import { Text } from 'npm:@react-email/components@0.0.22';
 import * as React from 'npm:react@18.3.1';
-import { EmailLayout } from '../_shared/EmailLayout.tsx';
-import { EmailHeader } from '../_shared/EmailHeader.tsx';
-import { EmailFooter } from '../_shared/EmailFooter.tsx';
-import { EmailButton } from '../_shared/EmailButton.tsx';
-import { styles, brandColors } from '../_shared/styles.ts';
+import { EmailLayout } from '../email-components/EmailLayout.tsx';
+import { EmailHeader } from '../email-components/EmailHeader.tsx';
+import { EmailFooter } from '../email-components/EmailFooter.tsx';
+import { EmailButton } from '../email-components/EmailButton.tsx';
+import { styles, brandColors } from '../email-components/styles.ts';
 
 interface TeacherInvitationEmailProps {
   firstName: string;
