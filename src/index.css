@@ -17,13 +17,13 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 220 15% 15%;
 
-    --primary: 213 85% 55%;
+    --primary: 229 98% 23%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 213 85% 65%;
+    --primary-glow: 207 97% 49%;
 
-    --secondary: 142 65% 48%;
+    --secondary: 166 97% 40%;
     --secondary-foreground: 0 0% 98%;
-    --secondary-glow: 142 65% 58%;
+    --secondary-glow: 166 97% 50%;
 
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
@@ -37,12 +37,12 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 98%;
     
-    --success: 142 65% 48%;
+    --success: 166 97% 40%;
     --success-foreground: 0 0% 98%;
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 213 85% 55%;
+    --ring: 229 98% 23%;
 
     /* Design system tokens */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
@@ -61,9 +61,9 @@ All colors MUST be HSL.
     --status-parent-arrived: 38 92% 50%;
     --status-parent-arrived-foreground: 48 96% 89%;
     --status-parent-arrived-accent: 45 93% 47%;
-    --status-picked-up: 142 76% 36%;
+    --status-picked-up: 166 97% 36%;
     --status-picked-up-foreground: 138 76% 97%;
-    --status-picked-up-accent: 142 71% 45%;
+    --status-picked-up-accent: 166 97% 45%;
 
     /* Status background variants for enhanced feedback */
     --status-waiting-bg: 220 13% 96%;
@@ -100,11 +100,11 @@ All colors MUST be HSL.
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 207 97% 49%;
+    --primary-foreground: 229 98% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 166 97% 45%;
+    --secondary-foreground: 229 98% 10%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -118,8 +118,8 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 222.2 47.4% 11.2%;
     
-    --success: 142 65% 48%;
-    --success-foreground: 222.2 47.4% 11.2%;
+    --success: 166 97% 45%;
+    --success-foreground: 229 98% 10%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
