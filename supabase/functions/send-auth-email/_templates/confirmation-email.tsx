@@ -26,7 +26,11 @@ export const ConfirmationEmail = ({
   tokenHash,
 }: ConfirmationEmailProps) => (
   <Html>
-    <Head />
+    <Head>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+      `}</style>
+    </Head>
     <Preview>Welcome to Dismissal Pro - Confirm your email to get started</Preview>
     <Body style={main}>
       <Container style={container}>
@@ -86,7 +90,7 @@ const container = {
 };
 
 const logoContainer = {
-  background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+  background: 'linear-gradient(135deg, #011576 0%, #0184F7 100%)',
   padding: '30px',
   textAlign: 'center' as const,
   borderRadius: '8px 8px 0 0',
@@ -98,6 +102,7 @@ const h1 = {
   fontSize: '28px',
   fontWeight: '600',
   margin: '0',
+  fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
 const text = {
@@ -105,10 +110,11 @@ const text = {
   fontSize: '16px',
   lineHeight: '24px',
   margin: '0 0 20px',
+  fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
 const button = {
-  backgroundColor: '#3B82F6',
+  backgroundColor: '#011576',
   borderRadius: '6px',
   color: '#ffffff',
   display: 'inline-block',
@@ -118,6 +124,7 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   margin: '20px 0',
+  fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
 const code = {
@@ -139,6 +146,7 @@ const footerText = {
   fontSize: '14px',
   lineHeight: '20px',
   margin: '20px 0',
+  fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
 const footer = {
@@ -148,4 +156,5 @@ const footer = {
   marginTop: '30px',
   paddingTop: '20px',
   borderTop: '1px solid #E5E7EB',
+  fontFamily: "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
