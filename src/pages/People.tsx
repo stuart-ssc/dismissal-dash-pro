@@ -1138,9 +1138,11 @@ const People = () => {
                 <Users className="h-5 w-5" />
                 People Management
               </CardTitle>
-              <CardDescription>
-                View students, teachers, and administrators
-              </CardDescription>
+            <CardDescription>
+              {userRole === 'teacher' 
+                ? 'Manage class students and fellow teachers'
+                : 'View students, teachers, and administrators'}
+            </CardDescription>
             </CardHeader>
             <CardContent>
               {/* Filters and Sort Controls */}
