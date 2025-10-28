@@ -36,8 +36,6 @@ const schoolFormSchema = z.object({
   school_name: z.string().min(1, "School name is required"),
   address: z.string().optional(),
   phone_number: z.string().optional(),
-  primary_color: z.string().min(1, "Primary color is required"),
-  secondary_color: z.string().min(1, "Secondary color is required"),
 });
 
 const dismissalFormSchema = z.object({
@@ -64,8 +62,6 @@ interface SchoolData {
   school_name: string;
   address?: string;
   phone_number?: string;
-  primary_color: string;
-  secondary_color: string;
   school_logo?: string;
   timezone?: string;
   preparation_time_minutes?: number;
@@ -116,8 +112,6 @@ const Settings = () => {
       school_name: "",
       address: "",
       phone_number: "",
-      primary_color: "#3B82F6",
-      secondary_color: "#EF4444",
     },
   });
 
@@ -200,8 +194,6 @@ const Settings = () => {
             school_name: school.school_name || "",
             address: school.address || "",
             phone_number: school.phone_number || "",
-            primary_color: school.primary_color || "#3B82F6",
-            secondary_color: school.secondary_color || "#EF4444",
           });
 
           dismissalForm.reset({
@@ -350,17 +342,15 @@ const Settings = () => {
     if (!schoolData) return;
 
     try {
-      const { error } = await supabase
-        .from('schools')
-        .update({
-          school_name: values.school_name,
-          address: values.address,
-          phone_number: values.phone_number,
-          primary_color: values.primary_color,
-          secondary_color: values.secondary_color,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', schoolData.id);
+    const { error } = await supabase
+      .from('schools')
+      .update({
+        school_name: values.school_name,
+        address: values.address,
+        phone_number: values.phone_number,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', schoolData.id);
 
       if (error) {
         console.error('Error updating school:', error);
@@ -581,67 +571,31 @@ const Settings = () => {
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="phone_number"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Phone Number</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="(555) 123-4567" 
-                                {...field}
-                                onChange={(e) => {
-                                  const formatted = formatPhoneNumber(e.target.value);
-                                  field.onChange(formatted);
-                                }}
-                                maxLength={14}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="primary_color"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Primary Color</FormLabel>
-                              <FormControl>
-                                <div className="flex items-center gap-2">
-                                  <Input type="color" className="w-16 h-10" {...field} />
-                                  <Input placeholder="#3B82F6" {...field} />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                <FormField
+                  control={form.control}
+                  name="phone_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="(555) 123-4567" 
+                          {...field}
+                          onChange={(e) => {
+                            const formatted = formatPhoneNumber(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          maxLength={14}
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                        <FormField
-                          control={form.control}
-                          name="secondary_color"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Secondary Color</FormLabel>
-                              <FormControl>
-                                <div className="flex items-center gap-2">
-                                  <Input type="color" className="w-16 h-10" {...field} />
-                                  <Input placeholder="#EF4444" {...field} />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <Button type="submit" className="w-full">
-                        Save Changes
-                      </Button>
+                <Button type="submit" className="w-full">
+                  Save Changes
+                </Button>
                     </form>
                   </Form>
                 </CardContent>
