@@ -140,108 +140,78 @@ const People = () => {
       console.log('Fetching people for school_id:', schoolId);
       const allPeople: PersonData[] = [];
 
-      // Fetch profiles with roles in one query
-      const { data: profilesData, error: profilesError } = await supabase
+      // Fetch staff (admins + teachers) with classes in a single unified query
+      const { data: staffData, error: staffError } = await supabase
         .from('profiles')
         .select(`
           id, 
           first_name, 
           last_name, 
           email,
-          user_roles(role)
+          user_roles(role),
+          teachers(
+            invitation_status,
+            invitation_sent_at,
+            invitation_expires_at,
+            account_completed_at,
+            auth_provider,
+            class_teachers(
+              class_id,
+              classes(class_name, grade_level)
+            )
+          )
         `)
         .eq('school_id', schoolId);
 
-      console.log('Profiles query result:', { profilesData, profilesError });
+      console.log('Staff query result:', { staffData, staffError });
 
-      // Process profiles with roles
-      if (profilesData) {
-        for (const profile of profilesData) {
-          const userRole = profile.user_roles?.[0]?.role;
+      // Process staff with unified query results
+      if (staffData) {
+        for (const profile of staffData) {
+          const userRole = (profile.user_roles as any)?.[0]?.role;
+          
+          // Only include school_admin and teacher roles
           if (userRole && (userRole === 'school_admin' || userRole === 'teacher')) {
+            const teacher = (profile.teachers as any)?.[0];
+            const teacherClasses = teacher?.class_teachers?.map((ct: any) => ct.classes?.class_name).filter(Boolean) || [];
+            const teacherClassIds = teacher?.class_teachers?.map((ct: any) => ct.class_id).filter(Boolean) || [];
+            const teacherGrade = teacher?.class_teachers?.[0]?.classes?.grade_level;
+            
+            // Compute invitation status if teacher data exists
+            let invitationStatus: 'completed' | 'expired' | 'pending' | undefined;
+            let daysUntilExpiry: number | undefined;
+            
+            if (teacher) {
+              const now = new Date();
+              const expiresAt = teacher.invitation_expires_at ? new Date(teacher.invitation_expires_at) : null;
+              const isExpired = expiresAt && expiresAt < now;
+              invitationStatus = teacher.account_completed_at 
+                ? 'completed' 
+                : isExpired 
+                  ? 'expired' 
+                  : 'pending';
+
+              daysUntilExpiry = expiresAt 
+                ? Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+                : undefined;
+            }
+            
             allPeople.push({
               id: profile.id,
               firstName: profile.first_name || '',
               lastName: profile.last_name || '',
               email: profile.email || '',
               role: userRole === 'school_admin' ? 'School Admin' : 'Teacher',
-              classes: [],
-            });
-          }
-        }
-      }
-
-      // Fetch teachers with their classes in one query using joins
-      const { data: teachersData, error: teachersError } = await supabase
-        .from('teachers')
-        .select(`
-          id, 
-          first_name, 
-          last_name, 
-          email,
-          invitation_status,
-          invitation_sent_at,
-          invitation_expires_at,
-          account_completed_at,
-          auth_provider,
-          class_teachers(
-            class_id,
-            classes(class_name, grade_level)
-          )
-        `)
-        .eq('school_id', schoolId);
-
-      console.log('Teachers query result:', { teachersData, teachersError });
-
-      if (teachersData) {
-        for (const teacher of teachersData) {
-          // Check if this teacher is already in the list (from profiles)
-          const existingTeacher = allPeople.find(p => p.email === teacher.email);
-          const teacherClasses = teacher.class_teachers?.map(ct => ct.classes?.class_name).filter(Boolean) || [];
-          const teacherClassIds = teacher.class_teachers?.map(ct => ct.class_id).filter(Boolean) || [];
-          const teacherGrade = teacher.class_teachers?.[0]?.classes?.grade_level;
-          
-          // Compute invitation status
-          const now = new Date();
-          const expiresAt = teacher.invitation_expires_at ? new Date(teacher.invitation_expires_at) : null;
-          const isExpired = expiresAt && expiresAt < now;
-          const computedStatus = teacher.account_completed_at 
-            ? 'completed' 
-            : isExpired 
-              ? 'expired' 
-              : 'pending';
-
-          const daysUntilExpiry = expiresAt 
-            ? Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
-            : undefined;
-          
-          if (!existingTeacher) {
-            allPeople.push({
-              id: teacher.id,
-              firstName: teacher.first_name,
-              lastName: teacher.last_name,
-              email: teacher.email,
-              role: 'Teacher',
               grade: teacherGrade,
               classes: teacherClasses,
               classIds: teacherClassIds,
-              invitationStatus: computedStatus,
-              invitationSentAt: teacher.invitation_sent_at,
-              invitationExpiresAt: teacher.invitation_expires_at,
-              accountCompletedAt: teacher.account_completed_at,
-              authProvider: teacher.auth_provider,
+              invitationStatus,
+              invitationSentAt: teacher?.invitation_sent_at,
+              invitationExpiresAt: teacher?.invitation_expires_at,
+              accountCompletedAt: teacher?.account_completed_at,
+              authProvider: teacher?.auth_provider,
               daysUntilExpiry,
             });
-          } else {
-            // Update classes and grade for existing teacher
-            existingTeacher.classes = teacherClasses;
-            existingTeacher.grade = teacherGrade;
-            existingTeacher.invitationStatus = computedStatus;
-            existingTeacher.invitationSentAt = teacher.invitation_sent_at;
-            existingTeacher.invitationExpiresAt = teacher.invitation_expires_at;
-            existingTeacher.accountCompletedAt = teacher.account_completed_at;
-            existingTeacher.authProvider = teacher.auth_provider;
-            existingTeacher.daysUntilExpiry = daysUntilExpiry;
           }
         }
       }
