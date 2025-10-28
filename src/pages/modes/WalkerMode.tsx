@@ -123,14 +123,8 @@ export default function WalkerMode() {
       if (!schoolId) return;
       setLoading(true);
 
-      let query = supabase
-        .from("student_walker_assignments")
-        .select("student_id,walker_location_id,walker_locations!inner(school_id)")
-        .eq("walker_locations.school_id", schoolId);
-      
-      if (selectedLoc) {
-        query = query.eq("walker_location_id", selectedLoc);
-      }
+      let query = supabase.from("student_walker_assignments").select("student_id,walker_location_id");
+      if (selectedLoc) query = query.eq("walker_location_id", selectedLoc);
       const { data: assigns } = await query;
 
       const studentIds = (assigns || []).map((a) => a.student_id);
