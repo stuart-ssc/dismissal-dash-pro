@@ -17,6 +17,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Sleep utility to respect Resend's rate limit (2 emails/second)
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -78,6 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       results.push({ template: "confirmation", status: "sent", messageId: res1.data?.id });
       console.log("✓ Confirmation email sent");
+      await sleep(600);
     } catch (e) {
       results.push({ template: "confirmation", status: "error", error: e.message });
       console.error("✗ Confirmation email failed:", e.message);
@@ -102,6 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       results.push({ template: "magic-link", status: "sent", messageId: res2.data?.id });
       console.log("✓ Magic link email sent");
+      await sleep(600);
     } catch (e) {
       results.push({ template: "magic-link", status: "error", error: e.message });
       console.error("✗ Magic link email failed:", e.message);
@@ -126,6 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       results.push({ template: "password-reset", status: "sent", messageId: res3.data?.id });
       console.log("✓ Password reset email sent");
+      await sleep(600);
     } catch (e) {
       results.push({ template: "password-reset", status: "error", error: e.message });
       console.error("✗ Password reset email failed:", e.message);
@@ -150,6 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       results.push({ template: "email-change", status: "sent", messageId: res4.data?.id });
       console.log("✓ Email change email sent");
+      await sleep(600);
     } catch (e) {
       results.push({ template: "email-change", status: "error", error: e.message });
       console.error("✗ Email change email failed:", e.message);
@@ -173,6 +180,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       results.push({ template: "teacher-invitation", status: "sent", messageId: res5.data?.id });
       console.log("✓ Teacher invitation email sent");
+      await sleep(600);
     } catch (e) {
       results.push({ template: "teacher-invitation", status: "error", error: e.message });
       console.error("✗ Teacher invitation email failed:", e.message);
@@ -194,6 +202,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       results.push({ template: "email-verification", status: "sent", messageId: res6.data?.id });
       console.log("✓ Email verification email sent");
+      await sleep(600);
     } catch (e) {
       results.push({ template: "email-verification", status: "error", error: e.message });
       console.error("✗ Email verification email failed:", e.message);
