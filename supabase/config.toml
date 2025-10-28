@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.link-oauth-to-invitation]
 verify_jwt = true
+
+[functions.send-test-emails]
+verify_jwt = false
