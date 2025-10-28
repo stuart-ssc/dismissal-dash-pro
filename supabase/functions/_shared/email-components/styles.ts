@@ -29,14 +29,14 @@ export const styles = {
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   logoContainer: {
-    background: `linear-gradient(135deg, ${brandColors.navyDeep} 0%, ${brandColors.blueBright} 100%)`,
+    backgroundColor: '#ffffff',
     padding: '30px',
     textAlign: 'center' as const,
     borderRadius: '8px 8px 0 0',
     marginBottom: '30px',
   },
   h1: {
-    color: '#ffffff',
+    color: brandColors.blueBright,
     fontSize: '28px',
     fontWeight: '600',
     margin: '0',
