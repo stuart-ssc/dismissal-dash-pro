@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
+import { usePaginatedPeople, type PersonData } from "@/hooks/usePaginatedPeople";
+import { useQueryClient } from "@tanstack/react-query";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format } from "date-fns";
@@ -19,36 +21,16 @@ import { AddPersonDialog } from "@/components/AddPersonDialog";
 import { EditPersonDialog } from "@/components/EditPersonDialog";
 import { AssignClassCoverageDialog } from "@/components/AssignClassCoverageDialog";
 
-interface PersonData {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-  role: 'School Admin' | 'Teacher' | 'Student';
-  grade?: string;
-  classes: string[];
-  classIds?: string[];
-  studentId?: string;
-  transportation?: 'Bus' | 'Walker' | 'Car Rider' | 'After School';
-  invitationStatus?: 'pending' | 'completed' | 'expired';
-  invitationSentAt?: string;
-  invitationExpiresAt?: string;
-  accountCompletedAt?: string;
-  authProvider?: string;
-  daysUntilExpiry?: number;
-}
-
 const People = () => {
   const { user, userRole, signOut, loading, session } = useAuth();
   const navigate = useNavigate();
   const SEO = useSEO();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [schoolName, setSchoolName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
   const [schoolId, setSchoolId] = useState<number | null>(null);
-  const [people, setPeople] = useState<PersonData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<PersonData | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -57,10 +39,27 @@ const People = () => {
   const [itemsPerPage] = useState(25);
   const [sortBy, setSortBy] = useState<'name' | 'role' | 'grade'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [filterRole, setFilterRole] = useState<'all' | 'School Admin' | 'Teacher' | 'Student'>('all');
+  const [filterRole, setFilterRole] = useState<'all' | 'school_admin' | 'teacher' | 'student'>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
-  const [filterClass, setFilterClass] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
+
+  // Use the paginated people hook
+  const { data: paginatedData, isLoading: isPeopleLoading, error: peopleError } = usePaginatedPeople({
+    schoolId,
+    page: currentPage,
+    pageSize: itemsPerPage,
+    roleFilter: filterRole,
+    gradeFilter: filterGrade,
+    searchQuery,
+    sortBy,
+    sortOrder,
+    enabled: !!schoolId,
+  });
+
+  const people = paginatedData?.people || [];
+  const totalCount = paginatedData?.totalCount || 0;
+  const isLoading = loading || isPeopleLoading;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -73,19 +72,12 @@ const People = () => {
       if (!user) return;
       
       try {
-        // Debug authentication
-        const { data: authTest } = await supabase.auth.getUser();
-        console.log('Auth debug - User ID:', user.id);
-        console.log('Auth debug - Session valid:', !!authTest.user);
-        
         // Get user's profile to get school_id, first_name, and last_name
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('school_id, first_name, last_name')
           .eq('id', user.id)
           .single();
-
-        console.log('Profile fetch result:', { profile, profileError });
 
         if (profile) {
           setFirstName(profile.first_name || '');
@@ -103,9 +95,6 @@ const People = () => {
             if (school?.school_name) {
               setSchoolName(school.school_name);
             }
-
-            // Fetch all people associated with the school
-            await fetchPeople(profile.school_id);
           }
         }
       } catch (error) {
@@ -133,173 +122,6 @@ const People = () => {
       setTeacherClasses(names);
     })();
   }, [userRole, user?.id]);
-
-  const fetchPeople = async (schoolId: number) => {
-    setIsLoading(true);
-    try {
-      console.log('Fetching people for school_id:', schoolId);
-      const allPeople: PersonData[] = [];
-
-      // Fetch staff (admins + teachers) with classes in a single unified query
-      const { data: staffData, error: staffError } = await supabase
-        .from('profiles')
-        .select(`
-          id, 
-          first_name, 
-          last_name, 
-          email,
-          user_roles(role),
-          teachers(
-            invitation_status,
-            invitation_sent_at,
-            invitation_expires_at,
-            account_completed_at,
-            auth_provider,
-            class_teachers(
-              class_id,
-              classes(class_name, grade_level)
-            )
-          )
-        `)
-        .eq('school_id', schoolId);
-
-      console.log('Staff query result:', { staffData, staffError });
-
-      // Process staff with unified query results
-      if (staffData) {
-        for (const profile of staffData) {
-          const userRole = (profile.user_roles as any)?.[0]?.role;
-          
-          // Only include school_admin and teacher roles
-          if (userRole && (userRole === 'school_admin' || userRole === 'teacher')) {
-            const teacher = (profile.teachers as any)?.[0];
-            const teacherClasses = teacher?.class_teachers?.map((ct: any) => ct.classes?.class_name).filter(Boolean) || [];
-            const teacherClassIds = teacher?.class_teachers?.map((ct: any) => ct.class_id).filter(Boolean) || [];
-            const teacherGrade = teacher?.class_teachers?.[0]?.classes?.grade_level;
-            
-            // Compute invitation status if teacher data exists
-            let invitationStatus: 'completed' | 'expired' | 'pending' | undefined;
-            let daysUntilExpiry: number | undefined;
-            
-            if (teacher) {
-              const now = new Date();
-              const expiresAt = teacher.invitation_expires_at ? new Date(teacher.invitation_expires_at) : null;
-              const isExpired = expiresAt && expiresAt < now;
-              invitationStatus = teacher.account_completed_at 
-                ? 'completed' 
-                : isExpired 
-                  ? 'expired' 
-                  : 'pending';
-
-              daysUntilExpiry = expiresAt 
-                ? Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
-                : undefined;
-            }
-            
-            allPeople.push({
-              id: profile.id,
-              firstName: profile.first_name || '',
-              lastName: profile.last_name || '',
-              email: profile.email || '',
-              role: userRole === 'school_admin' ? 'School Admin' : 'Teacher',
-              grade: teacherGrade,
-              classes: teacherClasses,
-              classIds: teacherClassIds,
-              invitationStatus,
-              invitationSentAt: teacher?.invitation_sent_at,
-              invitationExpiresAt: teacher?.invitation_expires_at,
-              accountCompletedAt: teacher?.account_completed_at,
-              authProvider: teacher?.auth_provider,
-              daysUntilExpiry,
-            });
-          }
-        }
-      }
-
-      // First fetch students without the after school assignments to test
-      const { data: studentsData, error: studentsError, count } = await supabase
-        .from('students')
-        .select(`
-          id, 
-          student_id, 
-          first_name, 
-          last_name, 
-          grade_level,
-          class_rosters(
-            classes(class_name)
-          ),
-          student_bus_assignments(bus_id),
-          student_walker_assignments(walker_location_id),
-          student_car_assignments(car_line_id)
-        `, { count: 'exact' })
-        .eq('school_id', schoolId)
-        .order('created_at', { ascending: false })
-        .limit(2000); // Increase limit to ensure we get all students
-
-      console.log('Students query result:', { studentsData, studentsError, schoolId, count });
-
-      // Fetch after school assignments separately to avoid JOIN issues
-      let afterSchoolAssignments: any[] = [];
-      if (studentsData && studentsData.length > 0) {
-        const studentIds = studentsData.map(s => s.id);
-        const { data: afterSchoolData, error: afterSchoolError } = await supabase
-          .from('student_after_school_assignments')
-          .select('student_id, after_school_activity_id')
-          .in('student_id', studentIds);
-        
-        console.log('After school assignments query result:', { afterSchoolData, afterSchoolError });
-        afterSchoolAssignments = afterSchoolData || [];
-      }
-      
-      // Specifically check for Terri Tester
-      const terriInData = studentsData?.find(s => s.first_name === 'Terri' && s.last_name === 'Tester');
-      console.log('Terri Tester in students data:', terriInData);
-
-      if (studentsData) {
-        console.log('Processing students:', studentsData.length);
-        
-        for (const student of studentsData) {
-          const studentClasses = student.class_rosters?.map(cr => cr.classes?.class_name).filter(Boolean) || [];
-
-          const hasBus = (student.student_bus_assignments?.length || 0) > 0;
-          const hasWalker = (student.student_walker_assignments?.length || 0) > 0;
-          const hasCar = (student.student_car_assignments?.length || 0) > 0;
-          const hasActivity = afterSchoolAssignments.some(asa => asa.student_id === student.id);
-          const transportation = hasBus ? 'Bus' : hasWalker ? 'Walker' : hasCar ? 'Car Rider' : hasActivity ? 'After School' : undefined;
-          
-          console.log(`Processing student: ${student.first_name} ${student.last_name}`, {
-            id: student.id,
-            grade: student.grade_level,
-            classes: studentClasses,
-            transportation,
-          });
-          
-          allPeople.push({
-            id: student.id,
-            firstName: student.first_name,
-            lastName: student.last_name,
-            studentId: student.student_id,
-            role: 'Student',
-            grade: student.grade_level,
-            classes: studentClasses,
-            transportation,
-          });
-        }
-      }
-
-      console.log('Fetched people data:', allPeople);
-      setPeople(allPeople);
-    } catch (error) {
-      console.error('Error fetching people:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load people data",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDeletePerson = async () => {
     if (!personToDelete) return;
@@ -339,16 +161,8 @@ const People = () => {
         description: `${personToDelete.role} deleted successfully`,
       });
 
-      // Refresh the people list
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user?.id)
-        .single();
-
-      if (profile?.school_id) {
-        await fetchPeople(profile.school_id);
-      }
+      // Refresh the people list by invalidating the query
+      queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
     } catch (error) {
       console.error('Error deleting person:', error);
       toast({
@@ -374,8 +188,6 @@ const People = () => {
 
   const handleResendInvitation = async (person: PersonData) => {
     try {
-      setIsLoading(true);
-      
       const { data, error } = await supabase.functions.invoke('invite-teacher-unified', {
         body: {
           teachers: [{
@@ -394,10 +206,8 @@ const People = () => {
         description: `Invitation resent to ${person.email}`,
       });
 
-      // Refresh the data
-      if (schoolId) {
-        await fetchPeople(schoolId);
-      }
+      // Refresh the data by invalidating the query
+      queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
     } catch (error) {
       console.error('Error resending invitation:', error);
       toast({
@@ -405,8 +215,6 @@ const People = () => {
         description: "Failed to resend invitation",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -464,74 +272,24 @@ const People = () => {
     }
   };
 
-  // Get unique grades for filter dropdown
-  const uniqueGrades = [...new Set(people.filter(p => p.grade).map(p => p.grade!))].sort();
-  
-  // Get unique classes for filter dropdown (filtered by grade if selected)
-  const uniqueClasses = [...new Set(
-    people
-      .filter(p => filterGrade === 'all' || p.grade === filterGrade)
-      .flatMap(p => p.classes)
-      .filter(Boolean)
-  )].sort();
-
-  // Apply filters and sorting
-  const filteredAndSortedPeople = people
-    .filter(person => {
-      if (userRole === 'teacher') {
-        const inMyClasses = person.classes?.some((c) => teacherClasses.includes(c));
-        if (person.role === 'Student') return inMyClasses;
-        if (person.role === 'Teacher') {
-          const isMe = person.email && user?.email && person.email === user.email;
-          return isMe || inMyClasses;
-        }
-        return false;
-      }
-      if (filterRole !== 'all' && person.role !== filterRole) return false;
-      if (filterGrade !== 'all' && person.grade !== filterGrade) return false;
-      if (filterClass !== 'all' && !person.classes.includes(filterClass)) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      let aValue: string;
-      let bValue: string;
-
-      switch (sortBy) {
-        case 'name':
-          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
-          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
-          break;
-        case 'role':
-          aValue = a.role.toLowerCase();
-          bValue = b.role.toLowerCase();
-          break;
-        case 'grade':
-          aValue = a.grade?.toLowerCase() || '';
-          bValue = b.grade?.toLowerCase() || '';
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue.localeCompare(bValue);
-      } else {
-        return bValue.localeCompare(aValue);
-      }
-    });
+  // Map display roles to filter roles
+  const mapRoleToFilter = (role: 'all' | 'School Admin' | 'Teacher' | 'Student'): 'all' | 'school_admin' | 'teacher' | 'student' => {
+    if (role === 'School Admin') return 'school_admin';
+    if (role === 'Teacher') return 'teacher';
+    if (role === 'Student') return 'student';
+    return 'all';
+  };
 
   // Reset page when filters change
-  const handleFilterChange = (newFilterRole?: typeof filterRole, newFilterGrade?: string, newFilterClass?: string) => {
+  const handleFilterChange = (newFilterRole?: 'all' | 'School Admin' | 'Teacher' | 'Student', newFilterGrade?: string) => {
     setCurrentPage(1);
-    if (newFilterRole !== undefined) setFilterRole(newFilterRole);
+    if (newFilterRole !== undefined) {
+      const mappedRole = mapRoleToFilter(newFilterRole);
+      setFilterRole(mappedRole);
+    }
     if (newFilterGrade !== undefined) {
       setFilterGrade(newFilterGrade);
-      // Reset class filter when grade changes
-      if (newFilterGrade !== filterGrade) {
-        setFilterClass('all');
-      }
     }
-    if (newFilterClass !== undefined) setFilterClass(newFilterClass);
   };
 
   const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
@@ -540,11 +298,10 @@ const People = () => {
     if (newSortOrder) setSortOrder(newSortOrder);
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedPeople.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentPeople = filteredAndSortedPeople.slice(startIndex, endIndex);
+  // Pagination logic - now using server-side totalCount
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalCount);
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -657,9 +414,7 @@ const People = () => {
                         schoolId={schoolId} 
                         onPersonAdded={() => {
                           console.log('Person added, refreshing data...');
-                          if (schoolId) {
-                            fetchPeople(schoolId);
-                          }
+                          queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
                         }} 
                       />
                      )}
@@ -677,7 +432,7 @@ const People = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8">
-                          Role: {filterRole === 'all' ? 'All' : filterRole}
+                          Role: {filterRole === 'all' ? 'All' : filterRole === 'school_admin' ? 'School Admin' : filterRole === 'teacher' ? 'Teacher' : 'Student'}
                           <ChevronDown className="h-3 w-3 ml-1" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -697,7 +452,7 @@ const People = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* Grade Filter */}
+                    {/* Grade Filter - Limited options for server-side filtering */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8">
@@ -709,29 +464,9 @@ const People = () => {
                         <DropdownMenuItem onClick={() => handleFilterChange(undefined, 'all')}>
                           All Grades
                         </DropdownMenuItem>
-                        {uniqueGrades.map((grade) => (
+                        {['K', '1st', '2nd', '3rd', '4th', '5th', '6th'].map((grade) => (
                           <DropdownMenuItem key={grade} onClick={() => handleFilterChange(undefined, grade)}>
                             {grade}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Class Filter */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
-                          Class: {filterClass === 'all' ? 'All' : filterClass}
-                          <ChevronDown className="h-3 w-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, 'all')}>
-                          All Classes
-                        </DropdownMenuItem>
-                        {uniqueClasses.map((className) => (
-                          <DropdownMenuItem key={className} onClick={() => handleFilterChange(undefined, undefined, className)}>
-                            {className}
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>
@@ -778,7 +513,7 @@ const People = () => {
                     
                     {/* Results count */}
                     <div className="text-sm text-muted-foreground">
-                      {filteredAndSortedPeople.length} of {people.length} people
+                      Showing {startIndex}-{endIndex} of {totalCount} people
                     </div>
                   </div>
                   <Table>
@@ -793,7 +528,7 @@ const People = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {currentPeople.map((person) => (
+                      {people.map((person) => (
                         <TableRow key={person.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
@@ -956,15 +691,15 @@ const People = () => {
 
                                 {person.role === 'Teacher' && person.classIds && person.classIds.length > 0 && (
                                   <AssignClassCoverageDialog
-                                    classId={person.classIds[0]}
-                                    className={person.classes[0] || 'Class'}
+                                    classId={person.classIds?.[0] || ''}
+                                    className={person.classes?.[0] || 'Class'}
                                     availableTeachers={people.filter(p => p.role === 'Teacher' && p.id !== person.id).map(t => ({
                                       id: t.id,
                                       first_name: t.firstName,
                                       last_name: t.lastName,
                                       email: t.email || ''
                                     }))}
-                                    onCoverageAssigned={() => schoolId && fetchPeople(schoolId)}
+                                    onCoverageAssigned={() => queryClient.invalidateQueries({ queryKey: ['people-paginated'] })}
                                   />
                                 )}
                                 
@@ -993,7 +728,7 @@ const People = () => {
                   {people.length > 0 && (
                     <div className="flex items-center justify-between mt-6">
                       <div className="text-sm text-muted-foreground">
-                        Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedPeople.length)} of {filteredAndSortedPeople.length} people
+                        Showing {startIndex} to {endIndex} of {totalCount} people
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
@@ -1069,9 +804,7 @@ const People = () => {
             schoolId={schoolId}
             onPersonUpdated={() => {
               console.log('Person updated, refreshing data...');
-              if (schoolId) {
-                fetchPeople(schoolId);
-              }
+              queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
             }}
           />
         )}
@@ -1231,7 +964,7 @@ const People = () => {
                 
                 {/* Results count */}
                 <div className="text-sm text-muted-foreground">
-                  {filteredAndSortedPeople.length} of {people.length} people
+                  Showing {startIndex}-{endIndex} of {totalCount} people
                 </div>
               </div>
 
@@ -1247,7 +980,7 @@ const People = () => {
                     </TableRow>
                   </TableHeader>
                 <TableBody>
-                  {currentPeople.map((person) => (
+                  {people.map((person) => (
                     <TableRow key={person.id}>
                       <TableCell className="font-medium">
                         {person.firstName} {person.lastName}
@@ -1314,7 +1047,7 @@ const People = () => {
               {people.length > 0 && (
                 <div className="flex items-center justify-between mt-6">
                   <div className="text-sm text-muted-foreground">
-                    Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedPeople.length)} of {filteredAndSortedPeople.length} people
+                    Showing {startIndex} to {endIndex} of {totalCount} people
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button

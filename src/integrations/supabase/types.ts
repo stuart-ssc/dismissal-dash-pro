@@ -1559,6 +1559,34 @@ export type Database = {
         Returns: string
       }
       get_current_user_school_id: { Args: never; Returns: number }
+      get_people_paginated: {
+        Args: {
+          p_grade_filter?: string
+          p_limit?: number
+          p_offset?: number
+          p_role_filter?: string
+          p_school_id: number
+          p_search_query?: string
+          p_sort_by?: string
+          p_sort_order?: string
+        }
+        Returns: {
+          account_completed_at: string
+          auth_provider: string
+          email: string
+          first_name: string
+          grade_level: string
+          id: string
+          invitation_expires_at: string
+          invitation_sent_at: string
+          invitation_status: string
+          last_name: string
+          person_type: string
+          role: string
+          student_id: string
+          total_count: number
+        }[]
+      }
       get_school_admins_for_current_user: {
         Args: never
         Returns: {
