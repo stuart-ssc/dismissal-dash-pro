@@ -23,7 +23,7 @@ export const MagicLinkEmail = ({
   tokenHash,
 }: MagicLinkEmailProps) => (
   <EmailLayout preview="Your secure sign-in link for Dismissal Pro">
-    <EmailHeader title="Sign In to Dismissal Pro" />
+    <EmailHeader title="Sign In to Dismissal Pro" showLogo={true} logoVariant="full" />
     
     <Text style={styles.text}>
       Click the button below to securely sign in to your Dismissal Pro account:

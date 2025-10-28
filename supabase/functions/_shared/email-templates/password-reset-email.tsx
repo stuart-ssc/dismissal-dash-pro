@@ -23,7 +23,7 @@ export const PasswordResetEmail = ({
   tokenHash,
 }: PasswordResetEmailProps) => (
   <EmailLayout preview="Reset your Dismissal Pro password">
-    <EmailHeader title="Reset Your Password" />
+    <EmailHeader title="Reset Your Password" showLogo={true} logoVariant="full" />
     
     <Text style={styles.text}>
       We received a request to reset the password for your Dismissal Pro account.

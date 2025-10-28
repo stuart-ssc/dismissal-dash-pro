@@ -1,4 +1,4 @@
-import { Text, Heading, Link } from 'npm:@react-email/components@0.0.22';
+import { Text, Heading, Link, Img } from 'npm:@react-email/components@0.0.22';
 import * as React from 'npm:react@18.3.1';
 import { EmailLayout } from '../email-components/EmailLayout.tsx';
 import { brandColors } from '../email-components/styles.ts';
@@ -60,6 +60,18 @@ export const AdminNotificationEmail = ({
         borderRadius: '8px 8px 0 0',
         marginBottom: '30px',
       }}>
+        <Img 
+          src={`${Deno.env.get('SUPABASE_URL') || 'https://lwbmtirzntexaxdlhgsk.supabase.co'}/storage/v1/object/public/school-logos/email-assets/dismissalpro-mark.png`}
+          alt="DismissalPro Logo"
+          style={{
+            maxWidth: '60px',
+            height: 'auto',
+            marginBottom: '15px',
+            display: 'block',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          }}
+        />
         <Heading style={{
           color: '#ffffff',
           fontSize: '28px',

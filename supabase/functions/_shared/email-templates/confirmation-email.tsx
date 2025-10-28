@@ -23,7 +23,7 @@ export const ConfirmationEmail = ({
   tokenHash,
 }: ConfirmationEmailProps) => (
   <EmailLayout preview="Welcome to Dismissal Pro - Confirm your email to get started">
-    <EmailHeader title="Welcome to Dismissal Pro!" />
+    <EmailHeader title="Welcome to Dismissal Pro!" showLogo={true} logoVariant="full" />
     
     <Text style={styles.text}>
       Thank you for signing up! We're excited to help you streamline your school's dismissal process.

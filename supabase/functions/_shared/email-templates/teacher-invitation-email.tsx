@@ -29,7 +29,7 @@ export const TeacherInvitationEmail = ({
 
   return (
     <EmailLayout preview={`Welcome to ${schoolName} - Complete your teacher account setup`}>
-      <EmailHeader title={`Welcome to ${schoolName}!`} />
+      <EmailHeader title={`Welcome to ${schoolName}!`} showLogo={true} logoVariant="full" />
       
       <Text style={styles.text}>
         Dear {firstName} {lastName},

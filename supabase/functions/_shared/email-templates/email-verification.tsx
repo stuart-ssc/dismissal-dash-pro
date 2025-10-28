@@ -16,7 +16,7 @@ export const EmailVerification = ({
   requestId,
 }: EmailVerificationProps) => (
   <EmailLayout preview="Verify your email address change">
-    <EmailHeader title="Verify Your Email Change" />
+    <EmailHeader title="Verify Your Email Change" showLogo={true} logoVariant="full" />
     
     <Text style={styles.text}>
       You requested to change your email address. To complete this change, please click the button below to verify your new email address:

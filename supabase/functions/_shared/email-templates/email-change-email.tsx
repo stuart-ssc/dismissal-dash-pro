@@ -25,7 +25,7 @@ export const EmailChangeEmail = ({
   tokenHash,
 }: EmailChangeEmailProps) => (
   <EmailLayout preview="Confirm your email address change for Dismissal Pro">
-    <EmailHeader title="Confirm Email Change" />
+    <EmailHeader title="Confirm Email Change" showLogo={true} logoVariant="full" />
     
     <Text style={styles.text}>
       You're receiving this email because you (or an administrator) requested to change the email address associated with your Dismissal Pro account.
