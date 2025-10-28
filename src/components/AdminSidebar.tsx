@@ -1,6 +1,8 @@
-import { Home, Users, GraduationCap, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays } from "lucide-react";
+import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import logo from "@/assets/logo.svg";
+import logoMark from "@/assets/logo-mark.svg";
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +18,7 @@ import {
 
 const adminNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Dismissal Plans", url: "/dashboard/dismissal-plans", icon: GraduationCap },
+  { title: "Dismissal Plans", url: "/dashboard/dismissal-plans", icon: ClipboardList },
   { title: "Classes", url: "/dashboard/classes", icon: Users },
   { title: "Coverage", url: "/dashboard/coverage", icon: CalendarDays },
   { title: "People", url: "/dashboard/people", icon: UserCog },
@@ -57,12 +59,20 @@ export function AdminSidebar() {
     >
       <SidebarContent>
         <SidebarGroup>
-          <div className={`flex items-center gap-2 font-bold text-lg px-4 py-3 ${state === 'collapsed' ? 'justify-center' : ''}`}>
-            <GraduationCap className="h-6 w-6 text-primary" />
-            {state !== 'collapsed' && (
-              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Dismissal Pro
-              </span>
+          <div className={`flex items-center px-4 py-3 ${state === 'collapsed' ? 'justify-center' : ''}`}>
+            {state === 'collapsed' ? (
+              <img 
+                src={logoMark}
+                alt="Dismissal Pro" 
+                className="h-8"
+                title="Dismissal Pro"
+              />
+            ) : (
+              <img 
+                src={logo}
+                alt="Dismissal Pro" 
+                className="h-8"
+              />
             )}
           </div>
 
