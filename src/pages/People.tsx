@@ -893,29 +893,9 @@ const People = () => {
                         <DropdownMenuItem onClick={() => handleFilterChange(undefined, 'all')}>
                           All Grades
                         </DropdownMenuItem>
-                        {uniqueGrades.map((grade) => (
+                        {['K', '1st', '2nd', '3rd', '4th', '5th', '6th'].map((grade) => (
                           <DropdownMenuItem key={grade} onClick={() => handleFilterChange(undefined, grade)}>
                             {grade}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Class Filter */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
-                          Class: {filterClass === 'all' ? 'All' : filterClass}
-                          <ChevronDown className="h-3 w-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                        <DropdownMenuItem onClick={() => handleFilterChange(undefined, undefined, 'all')}>
-                          All Classes
-                        </DropdownMenuItem>
-                        {uniqueClasses.map((className) => (
-                          <DropdownMenuItem key={className} onClick={() => handleFilterChange(undefined, undefined, className)}>
-                            {className}
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>
@@ -1103,9 +1083,7 @@ const People = () => {
             schoolId={schoolId}
             onPersonUpdated={() => {
               console.log('Person updated, refreshing data...');
-              if (schoolId) {
-                fetchPeople(schoolId);
-              }
+              queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
             }}
           />
         )}
