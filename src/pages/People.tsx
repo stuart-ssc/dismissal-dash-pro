@@ -1272,7 +1272,7 @@ const People = () => {
                       <TableHead>Role</TableHead>
                       <TableHead>Grade</TableHead>
                       <TableHead>Transportation</TableHead>
-                      <TableHead>Classes</TableHead>
+                      {userRole !== 'teacher' && <TableHead>Classes</TableHead>}
                       {userRole === 'school_admin' && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -1290,19 +1290,21 @@ const People = () => {
                       </TableCell>
                       <TableCell>{person.grade || '-'}</TableCell>
                       <TableCell>{person.transportation || '-'}</TableCell>
-                      <TableCell>
-                        {person.classes.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {person.classes.map((className, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {className}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
+                      {userRole !== 'teacher' && (
+                        <TableCell>
+                          {person.classes.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {person.classes.map((className, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {className}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                      )}
                       {userRole === 'school_admin' && (
                         <TableCell className="text-right">
                           <DropdownMenu>
