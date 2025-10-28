@@ -115,7 +115,7 @@ export const usePaginatedPeople = ({
         studentIds.length > 0
           ? supabase
               .from('student_after_school_assignments')
-              .select('student_id, after_school_activities(activity_name)')
+              .select('student_id')
               .in('student_id', studentIds)
           : Promise.resolve({ data: null, error: null }),
       ]);

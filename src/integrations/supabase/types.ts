@@ -1699,6 +1699,10 @@ export type Database = {
           state: string
         }[]
       }
+      student_in_user_school: {
+        Args: { _student_id: string }
+        Returns: boolean
+      }
       update_dismissal_run_times: {
         Args: {
           new_dismissal_time: string
