@@ -682,7 +682,8 @@ const Settings = () => {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              {/* Notifications Card - Hidden until functionality is built */}
+              {/* <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Bell className="h-5 w-5 text-orange-500" />
@@ -763,9 +764,10 @@ const Settings = () => {
                     </form>
                   </Form>
                 </CardContent>
-              </Card>
+              </Card> */}
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              {/* Security & Privacy Card - Hidden until functionality is built */}
+              {/* <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-red-500" />
@@ -830,7 +832,7 @@ const Settings = () => {
                     </form>
                   </Form>
                 </CardContent>
-              </Card>
+              </Card> */}
             </div>
           </div>
     </>
