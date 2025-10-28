@@ -434,17 +434,21 @@ export default function WalkerMode() {
         const status = pickup?.status || "waiting";
         return status === statusFilter;
       });
-    } else {
-      // When filter is "all", exclude left_building students (show only waiting)
-      out = out.filter((s) => {
-        const pickup = pickups[s.id];
-        const status = pickup?.status || "waiting";
-        return status !== "left_building";
-      });
     }
     
-    // Sort alphabetically
+    // Sort by status first (waiting before left_building), then alphabetically
     out.sort((a: any, b: any) => {
+      const aPickup = pickups[a.id];
+      const bPickup = pickups[b.id];
+      const aStatus = aPickup?.status || "waiting";
+      const bStatus = bPickup?.status || "waiting";
+      
+      // Sort waiting students first, left_building students last
+      if (aStatus !== bStatus) {
+        return aStatus === "waiting" ? -1 : 1;
+      }
+      
+      // Within same status, sort alphabetically
       const aName = `${a.last_name} ${a.first_name}`;
       const bName = `${b.last_name} ${b.first_name}`;
       return aName.localeCompare(bName);
