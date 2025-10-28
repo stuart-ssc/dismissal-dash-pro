@@ -46,7 +46,6 @@ export const EmailChangeEmail = ({
           ...styles.button,
           border: 'none',
           cursor: 'pointer',
-          width: '100%',
         }}
       >
         Confirm Email Change
