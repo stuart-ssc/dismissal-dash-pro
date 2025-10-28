@@ -61,6 +61,10 @@ export const styles = {
     textAlign: 'center' as const,
     margin: '20px 0',
     fontFamily,
+    width: 'auto',
+    maxWidth: '100%',
+    whiteSpace: 'normal' as const,
+    wordBreak: 'break-word' as const,
   },
   code: {
     display: 'inline-block',

@@ -38,7 +38,7 @@ export const EmailChangeEmail = ({
     <form 
       action={`${supabaseUrl}/functions/v1/secure-email-change/verify`}
       method="POST"
-      style={{ margin: '20px 0' }}
+      style={{ margin: '20px 0', textAlign: 'center' as const }}
     >
       <input type="hidden" name="token" value={token} />
       <Button 
@@ -46,6 +46,7 @@ export const EmailChangeEmail = ({
           ...styles.button,
           border: 'none',
           cursor: 'pointer',
+          padding: '12px 24px',
         }}
       >
         Confirm Email Change
