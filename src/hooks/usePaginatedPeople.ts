@@ -93,32 +93,48 @@ export const usePaginatedPeople = ({
               .from('class_rosters')
               .select('student_id, class_id, classes(class_name, grade_level)')
               .in('student_id', studentIds)
-          : Promise.resolve({ data: null }),
+          : Promise.resolve({ data: null, error: null }),
         studentIds.length > 0
           ? supabase
               .from('student_bus_assignments')
               .select('student_id')
               .in('student_id', studentIds)
-          : Promise.resolve({ data: null }),
+          : Promise.resolve({ data: null, error: null }),
         studentIds.length > 0
           ? supabase
               .from('student_walker_assignments')
               .select('student_id')
               .in('student_id', studentIds)
-          : Promise.resolve({ data: null }),
+          : Promise.resolve({ data: null, error: null }),
         studentIds.length > 0
           ? supabase
               .from('student_car_assignments')
               .select('student_id')
               .in('student_id', studentIds)
-          : Promise.resolve({ data: null }),
+          : Promise.resolve({ data: null, error: null }),
         studentIds.length > 0
           ? supabase
               .from('student_after_school_assignments')
               .select('student_id, after_school_activities(activity_name)')
               .in('student_id', studentIds)
-          : Promise.resolve({ data: null }),
+          : Promise.resolve({ data: null, error: null }),
       ]);
+
+      // Log errors for debugging
+      if (rosterData.error) console.error('Error fetching class rosters:', rosterData.error);
+      if (busData.error) console.error('Error fetching bus assignments:', busData.error);
+      if (walkerData.error) console.error('Error fetching walker assignments:', walkerData.error);
+      if (carData.error) console.error('Error fetching car assignments:', carData.error);
+      if (activityData.error) console.error('Error fetching activity assignments:', activityData.error);
+
+      // Log counts for debugging
+      console.log('Transportation data:', {
+        students: studentIds.length,
+        buses: busData.data?.length ?? 0,
+        walkers: walkerData.data?.length ?? 0,
+        cars: carData.data?.length ?? 0,
+        activities: activityData.data?.length ?? 0,
+      });
 
       // Build lookup maps
       const classesByStudent = new Map<string, Array<{ name: string; grade?: string; id: string }>>();
