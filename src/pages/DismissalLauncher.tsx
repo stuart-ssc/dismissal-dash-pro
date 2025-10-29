@@ -14,7 +14,7 @@ import { ModeCompletionButton } from "@/components/ModeCompletionButton";
 import { TeacherUsageCard } from "@/components/TeacherUsageCard";
 
 export default function DismissalLauncher() {
-  const { signOut, user, userRole } = useAuth();
+  const { signOut, user, userRole, loading } = useAuth();
   const { run, schoolId, planTimeFallback, isLoading, refetch } = useTodayDismissalRun({ allowCreate: true });
 
   const [schoolName, setSchoolName] = useState<string>('');
@@ -26,6 +26,12 @@ export default function DismissalLauncher() {
   useEffect(() => {
     document.title = "Launch Dismissal | Dashboard";
   }, []);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
 
   useEffect(() => {
     const fetchSchoolName = async () => {
