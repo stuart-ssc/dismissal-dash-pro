@@ -51,9 +51,9 @@ export function TransportationColumnsLayout({ groups, currentTime, className }: 
   const columns = useMemo(() => {
     const transportationMap: Record<string, TransportationColumn> = {
       bus: { type: 'bus', title: 'Bus Riders', icon: Bus, destinations: [], totalCount: 0 },
-      car_line: { type: 'car', title: 'Car Riders', icon: Car, destinations: [], totalCount: 0 },
+      car: { type: 'car', title: 'Car Riders', icon: Car, destinations: [], totalCount: 0 },
       walker: { type: 'walker', title: 'Walkers', icon: Footprints, destinations: [], totalCount: 0 },
-      after_school: { type: 'activity', title: 'Activities', icon: GraduationCap, destinations: [], totalCount: 0 },
+      activity: { type: 'activity', title: 'Activities', icon: GraduationCap, destinations: [], totalCount: 0 },
     };
 
     groups.forEach((group) => {
