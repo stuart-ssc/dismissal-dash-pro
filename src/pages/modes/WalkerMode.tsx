@@ -225,6 +225,16 @@ export default function WalkerMode() {
           .from("walker_pickups")
           .update(updateData)
           .eq("id", currentPickup.id);
+
+        // Optimistically update local state immediately
+        setPickups(prev => ({
+          ...prev,
+          [studentId]: {
+            ...currentPickup,
+            status: newStatus,
+            left_at: newStatus === "left_building" ? new Date().toISOString() : null
+          }
+        }));
       } else {
         // Create new pickup
         const insertData: any = {
@@ -241,6 +251,21 @@ export default function WalkerMode() {
         await supabase
           .from("walker_pickups")
           .insert(insertData);
+
+        // Optimistically update local state immediately
+        setPickups(prev => ({
+          ...prev,
+          [studentId]: {
+            id: 'temp-id', // Will be replaced by real-time update
+            walker_session_id: session.id,
+            student_id: studentId,
+            status: newStatus,
+            left_at: newStatus === "left_building" ? new Date().toISOString() : undefined,
+            managed_by: user.data.user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        }));
       }
 
       // Show success toast
