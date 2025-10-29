@@ -100,7 +100,8 @@ export function TransportationColumnsLayout({ groups, currentTime, className }: 
       column.totalCount += students.length;
     });
 
-    return Object.values(transportationMap).filter(col => col.totalCount > 0);
+    // Always show all 4 transportation columns, even if empty
+    return Object.values(transportationMap);
   }, [groups, currentTime]);
 
   const getStatusBadge = (status: 'dismissed' | 'ready-soon' | 'waiting') => {
@@ -168,7 +169,12 @@ export function TransportationColumnsLayout({ groups, currentTime, className }: 
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {column.destinations.map((destination) => (
+                {column.destinations.length === 0 ? (
+                  <p className="text-center text-muted-foreground text-sm py-8">
+                    No students in this category
+                  </p>
+                ) : (
+                  column.destinations.map((destination) => (
                   <div
                     key={destination.name}
                     className={cn(
@@ -196,7 +202,8 @@ export function TransportationColumnsLayout({ groups, currentTime, className }: 
                       ))}
                     </ul>
                   </div>
-                ))}
+                  ))
+                )}
               </CardContent>
             </Card>
           );

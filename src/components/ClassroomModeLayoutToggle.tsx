@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, Users } from "lucide-react";
+import { LayoutGrid, Users, Columns } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface ClassroomModeLayoutToggleProps {
-  currentLayout: 'group-view' | 'transportation-columns';
-  onLayoutChange: (layout: 'group-view' | 'transportation-columns') => void;
+  currentLayout: 'group-view' | 'student-view' | 'transportation-view';
+  onLayoutChange: (layout: 'group-view' | 'student-view' | 'transportation-view') => void;
 }
 
 export function ClassroomModeLayoutToggle({ 
@@ -25,25 +25,20 @@ export function ClassroomModeLayoutToggle({
               <LayoutGrid className="h-4 w-4" />
               Group View
             </>
-          ) : (
+          ) : currentLayout === 'student-view' ? (
             <>
               <Users className="h-4 w-4" />
               Student View
+            </>
+          ) : (
+            <>
+              <Columns className="h-4 w-4" />
+              Transportation View
             </>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          onClick={() => onLayoutChange('transportation-columns')}
-          className="gap-2"
-        >
-          <Users className="h-4 w-4" />
-          Student View
-          {currentLayout === 'transportation-columns' && (
-            <span className="ml-auto text-primary">✓</span>
-          )}
-        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => onLayoutChange('group-view')}
           className="gap-2"
@@ -51,6 +46,26 @@ export function ClassroomModeLayoutToggle({
           <LayoutGrid className="h-4 w-4" />
           Group View
           {currentLayout === 'group-view' && (
+            <span className="ml-auto text-primary">✓</span>
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => onLayoutChange('student-view')}
+          className="gap-2"
+        >
+          <Users className="h-4 w-4" />
+          Student View
+          {currentLayout === 'student-view' && (
+            <span className="ml-auto text-primary">✓</span>
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => onLayoutChange('transportation-view')}
+          className="gap-2"
+        >
+          <Columns className="h-4 w-4" />
+          Transportation View
+          {currentLayout === 'transportation-view' && (
             <span className="ml-auto text-primary">✓</span>
           )}
         </DropdownMenuItem>

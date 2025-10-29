@@ -45,7 +45,12 @@ export default function ClassroomMode() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { user } = useAuth();
   const [teacherClassName, setTeacherClassName] = useState<string | null>(null);
-  const [layout, setLayout] = useState<'group-view' | 'transportation-columns'>('transportation-columns');
+  const [layout, setLayout] = useState<'group-view' | 'student-view' | 'transportation-view'>(() => {
+    const saved = localStorage.getItem('classroom-layout');
+    return (saved === 'transportation-view' || saved === 'student-view' || saved === 'group-view') 
+      ? saved as 'group-view' | 'student-view' | 'transportation-view'
+      : 'transportation-view';
+  });
   
   // NEW: Add state for class selection
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -63,14 +68,6 @@ export default function ClassroomMode() {
     schoolId,
     dismissalRunId: run?.id,
   });
-
-  // Load layout preference from localStorage
-  useEffect(() => {
-    const savedLayout = localStorage.getItem('classroom-layout') as 'group-view' | 'transportation-columns' | null;
-    if (savedLayout) {
-      setLayout(savedLayout);
-    }
-  }, []);
 
   // Update current time every 30 seconds
   useEffect(() => {
@@ -196,12 +193,15 @@ export default function ClassroomMode() {
         // In testing mode, bypass time filters and show all groups
         const inTestingMode = run?.testing_mode === true;
         
-        // Check if this group should be shown
+        // Check if this group should be shown based on time window
+        // For Transportation View, show ALL groups from dismissal start
+        // For other layouts, keep the time window filter (5 min before, 60 min after)
         const timeDiff = scheduledReleaseTime.getTime() - now.getTime();
         const isWithinTimeWindow = timeDiff <= 5 * 60000 && timeDiff >= -60 * 60000;
-        
-        // Show groups if: testing mode, within time window, or already started (keep visible even after 60min)
-        const shouldShowGroup = inTestingMode || isWithinTimeWindow || scheduledReleaseTime <= now;
+        const shouldShowGroup = inTestingMode || 
+                                layout === 'transportation-view' || 
+                                isWithinTimeWindow || 
+                                scheduledReleaseTime <= now;
 
         if (!shouldShowGroup) continue;
 
@@ -608,7 +608,7 @@ export default function ClassroomMode() {
     };
   }, [runId, fetchTimeBasedGroups]);
 
-  const handleLayoutChange = (newLayout: 'group-view' | 'transportation-columns') => {
+  const handleLayoutChange = (newLayout: 'group-view' | 'student-view' | 'transportation-view') => {
     setLayout(newLayout);
     localStorage.setItem('classroom-layout', newLayout);
   };
@@ -700,16 +700,16 @@ export default function ClassroomMode() {
             <Loader2 className="animate-spin" />
             Loading dismissal groups...
           </div>
-        ) : layout === 'group-view' ? (
+        ) : layout === 'transportation-view' ? (
+          <TransportationColumnsLayout
+            groups={groups}
+            currentTime={currentTime}
+          />
+        ) : (
           <GroupViewLayout
             groups={groups}
             currentTime={currentTime}
             dismissalPlanName={planName || undefined}
-          />
-        ) : (
-          <TransportationColumnsLayout
-            groups={groups}
-            currentTime={currentTime}
           />
         )}
 
