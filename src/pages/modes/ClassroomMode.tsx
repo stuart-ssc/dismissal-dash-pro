@@ -321,7 +321,14 @@ export default function ClassroomMode() {
               .select("car_line_id")
               .eq("dismissal_group_id", group.id);
 
-            console.log('[ClassroomMode] Car group:', group.name, 'groupCarLines:', groupCarLines, 'group.id:', group.id);
+            // Get dismissal group capacity settings
+            const { data: groupDetails } = await supabase
+              .from("dismissal_groups")
+              .select("car_rider_capacity, car_rider_type")
+              .eq("id", group.id)
+              .single();
+
+            console.log('[ClassroomMode] Car group:', group.name, 'groupCarLines:', groupCarLines, 'group.id:', group.id, 'capacity:', groupDetails?.car_rider_capacity, 'type:', groupDetails?.car_rider_type);
 
             if (groupCarLines && groupCarLines.length > 0) {
               const carLineIds = groupCarLines.map(gc => gc.car_line_id);
@@ -335,6 +342,31 @@ export default function ClassroomMode() {
 
               console.log('[ClassroomMode] Car assignments:', carAssignments?.length || 0, 'for teacherStudentIds:', teacherStudentIds.length, 'carLineIds:', carLineIds);
 
+              // Get active car line sessions for this run
+              const { data: activeSessions } = await supabase
+                .from("car_line_sessions")
+                .select("id, car_line_id")
+                .eq("dismissal_run_id", runId)
+                .in("car_line_id", carLineIds)
+                .is("finished_at", null);
+
+              // Get pickup statuses for teacher's students
+              let carLinePickups: any[] = [];
+              if (activeSessions && activeSessions.length > 0) {
+                const sessionIds = activeSessions.map(s => s.id);
+                const { data: pickups } = await supabase
+                  .from("car_line_pickups")
+                  .select("student_id, status, parent_arrived_at, picked_up_at")
+                  .in("car_line_session_id", sessionIds)
+                  .in("student_id", teacherStudentIds);
+                
+                carLinePickups = pickups || [];
+              }
+
+              const pickupStatusMap = new Map(
+                carLinePickups.map(p => [p.student_id, p])
+              );
+
               // Get car line names
               const { data: carLineDetails } = await supabase
                 .from("car_lines")
@@ -343,20 +375,38 @@ export default function ClassroomMode() {
 
               const carLineNameMap = new Map((carLineDetails || []).map(cl => [cl.id, cl.line_name]));
 
-              students = (carAssignments || [])
+              // Filter students based on car_rider_type
+              const allCarStudents = (carAssignments || [])
                 .map(ca => {
                   const student = studentMap.get(ca.student_id);
+                  const pickupStatus = pickupStatusMap.get(ca.student_id);
                   if (!student) return null;
                   return {
                     id: student.id,
                     first_name: student.first_name,
                     last_name: student.last_name,
-                    destination: carLineNameMap.get(ca.car_line_id) || 'Car Line'
+                    destination: carLineNameMap.get(ca.car_line_id) || 'Car Line',
+                    pickupStatus: pickupStatus?.status || 'waiting',
+                    hasParentArrived: pickupStatus && (pickupStatus.status === 'parent_arrived' || pickupStatus.status === 'picked_up')
                   };
                 })
                 .filter((s): s is NonNullable<typeof s> => s !== null);
+
+              // Apply capacity filtering based on car_rider_type
+              if (groupDetails?.car_rider_type === 'count' && groupDetails?.car_rider_capacity) {
+                // Only show students marked "Parent Here" up to capacity
+                students = allCarStudents
+                  .filter(s => s.hasParentArrived)
+                  .slice(0, groupDetails.car_rider_capacity);
+              } else if (groupDetails?.car_rider_type === 'all_remaining') {
+                // Show all students (overflow or remaining)
+                students = allCarStudents;
+              } else {
+                // Default: show all assigned students
+                students = allCarStudents;
+              }
               
-              console.log('[ClassroomMode] Car students found:', students.length, 'for group:', group.name);
+              console.log('[ClassroomMode] Car students found:', students.length, 'for group:', group.name, '(filtered by type:', groupDetails?.car_rider_type, ')');
             }
           } else if (group.group_type?.toLowerCase().includes("walker") && group.walker_location_id) {
             // Get walker assignments for teacher's students
@@ -510,14 +560,45 @@ export default function ClassroomMode() {
       .eq("dismissal_group_id", groupId);
 
     if (groupCarLines && groupCarLines.length > 0) {
-      const { data: carLineSessions } = await supabase
-        .from("car_line_sessions")
-        .select("finished_at")
-        .eq("dismissal_run_id", runId)
-        .in("car_line_id", groupCarLines.map(gc => gc.car_line_id));
+      // Get group capacity settings to determine completion logic
+      const { data: groupDetails } = await supabase
+        .from("dismissal_groups")
+        .select("car_rider_capacity, car_rider_type")
+        .eq("id", groupId)
+        .single();
 
-      const allFinished = (carLineSessions || []).every(session => session.finished_at);
-      if (allFinished) return true;
+      if (groupDetails?.car_rider_type === 'count' && groupDetails?.car_rider_capacity) {
+        // For capacity groups, check if capacity number of students have been picked up
+        const { data: carLineSessions } = await supabase
+          .from("car_line_sessions")
+          .select("id")
+          .eq("dismissal_run_id", runId)
+          .in("car_line_id", groupCarLines.map(gc => gc.car_line_id))
+          .is("finished_at", null);
+
+        if (carLineSessions && carLineSessions.length > 0) {
+          const sessionIds = carLineSessions.map(s => s.id);
+          const { data: pickups, count } = await supabase
+            .from("car_line_pickups")
+            .select("*", { count: 'exact' })
+            .in("car_line_session_id", sessionIds)
+            .eq("status", "picked_up");
+
+          if ((count || 0) >= groupDetails.car_rider_capacity) {
+            return true;
+          }
+        }
+      } else {
+        // For "all_remaining" groups, check if sessions are finished
+        const { data: carLineSessions } = await supabase
+          .from("car_line_sessions")
+          .select("finished_at")
+          .eq("dismissal_run_id", runId)
+          .in("car_line_id", groupCarLines.map(gc => gc.car_line_id));
+
+        const allFinished = (carLineSessions || []).every(session => session.finished_at);
+        if (allFinished) return true;
+      }
     }
 
     // Check walker completion
@@ -591,6 +672,13 @@ export default function ClassroomMode() {
         event: "*",
         schema: "public",
         table: "student_walker_assignments",
+      }, () => {
+        fetchTimeBasedGroups();
+      })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "car_line_pickups",
       }, () => {
         fetchTimeBasedGroups();
       })
