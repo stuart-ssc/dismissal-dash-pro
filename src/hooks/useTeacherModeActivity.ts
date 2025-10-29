@@ -42,18 +42,9 @@ export function useTeacherModeActivity(schoolId: number | null) {
           )
         `)
         .eq('school_id', schoolId)
-        .eq('mode_sessions.ended_at', null); // Only active sessions
+        .is('mode_sessions.ended_at', null); // Only active sessions
 
       if (error) throw error;
-
-      // Also get all teachers without active sessions
-      const { data: allTeachers, error: allError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .eq('school_id', schoolId)
-        .in('id', data?.map(t => t.id) || []);
-
-      if (allError) throw allError;
 
       // Get all school users (teachers and admins)
       const { data: allUsers, error: usersError } = await supabase
