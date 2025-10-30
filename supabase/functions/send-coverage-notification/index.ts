@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { render } from "https://esm.sh/@react-email/render@0.0.22";
+import React from 'npm:react@18.3.1';
+import { renderAsync } from 'npm:@react-email/components@0.0.22';
 import { CoverageNotificationEmail } from "../_shared/email-templates/coverage-notification-email.tsx";
 import { createErrorResponse } from "../_shared/errorHandler.ts";
 
@@ -122,8 +123,8 @@ serve(async (req) => {
       : coverageDates;
 
     // Render email using React template with sanitized inputs
-    const emailHtml = await render(
-      CoverageNotificationEmail({
+    const emailHtml = await renderAsync(
+      React.createElement(CoverageNotificationEmail, {
         teacherFirstName: teacher.first_name,
         className,
         coverageDates: datesString,
