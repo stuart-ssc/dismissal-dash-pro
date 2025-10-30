@@ -6,7 +6,7 @@ import { useImpersonation } from "@/hooks/useImpersonation";
 interface School { id: number; school_name: string | null }
 
 export default function SystemAdminSchoolSwitcher() {
-  const { impersonatedSchoolId, setImpersonatedSchoolId } = useImpersonation();
+  const { impersonatedSchoolId, setImpersonatedSchoolId, isLoadingImpersonation } = useImpersonation();
   const [schools, setSchools] = useState<School[]>([]);
 
   useEffect(() => {
@@ -26,13 +26,17 @@ export default function SystemAdminSchoolSwitcher() {
       <Select
         value={value}
         onValueChange={(v) => {
-          if (v === '__none__') { setImpersonatedSchoolId(null); return; }
+          if (v === '__none__') { 
+            setImpersonatedSchoolId(null); 
+            return; 
+          }
           const id = Number(v);
           setImpersonatedSchoolId(Number.isNaN(id) ? null : id);
         }}
+        disabled={isLoadingImpersonation}
       >
         <SelectTrigger aria-label="Impersonate a school" className="bg-background/80">
-          <SelectValue placeholder="Impersonate school" />
+          <SelectValue placeholder={isLoadingImpersonation ? "Loading..." : "Impersonate school"} />
         </SelectTrigger>
         <SelectContent className="z-[60] bg-background">
           <SelectItem key="none" value="__none__">Stop impersonating</SelectItem>

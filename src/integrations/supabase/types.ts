@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_impersonation_sessions: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          impersonated_school_id: number
+          ip_address: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          impersonated_school_id: number
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          impersonated_school_id?: number
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_impersonation_sessions_impersonated_school_id_fkey"
+            columns: ["impersonated_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       after_school_activities: {
         Row: {
           activity_name: string
@@ -1598,12 +1636,14 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_email_requests: { Args: never; Returns: number }
+      cleanup_expired_impersonation_sessions: { Args: never; Returns: number }
       cleanup_expired_oauth_signups: { Args: never; Returns: number }
       create_scheduled_dismissal_run: {
         Args: { target_date?: string; target_school_id: number }
         Returns: string
       }
       get_current_user_school_id: { Args: never; Returns: number }
+      get_impersonated_school_id: { Args: never; Returns: number }
       get_people_paginated: {
         Args: {
           p_grade_filter?: string
