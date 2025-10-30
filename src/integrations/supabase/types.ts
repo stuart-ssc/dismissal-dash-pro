@@ -953,6 +953,50 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_pending_signups: {
+        Row: {
+          completed: boolean
+          created_at: string
+          email: string | null
+          expires_at: string
+          id: string
+          invitation_token: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          school_id: number | null
+          state_token: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          invitation_token?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          school_id?: number | null
+          state_token: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          invitation_token?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          school_id?: number | null
+          state_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_pending_signups_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           auth_provider: string | null
@@ -1554,6 +1598,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_email_requests: { Args: never; Returns: number }
+      cleanup_expired_oauth_signups: { Args: never; Returns: number }
       create_scheduled_dismissal_run: {
         Args: { target_date?: string; target_school_id: number }
         Returns: string

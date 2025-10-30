@@ -265,8 +265,8 @@ const prefetchSchools = useCallback(async () => {
     if (invitationToken) {
       setIsLoading(true);
       try {
-        // Store invitation token for post-OAuth processing
-        localStorage.setItem('pendingInvitation', invitationToken);
+        // Store invitation token temporarily in sessionStorage (more secure than localStorage)
+        sessionStorage.setItem('pendingInvitation', invitationToken);
         await signInWithGoogle();
       } catch (error) {
         toast.error('Failed to sign in with Google');
@@ -284,17 +284,27 @@ const prefetchSchools = useCallback(async () => {
 
     setIsLoading(true);
     try {
-      // Store school and role data before OAuth redirect
-      const pendingData = {
-        schoolId: selectedSchool.id,
-        role: selectedRole,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('pending_oauth_signup', JSON.stringify(pendingData));
+      // Create secure server-side OAuth state
+      const { data, error } = await supabase.functions.invoke('prepare-oauth-signup', {
+        body: {
+          schoolId: selectedSchool.id,
+          role: selectedRole,
+          email: null
+        }
+      });
+
+      if (error || !data?.stateToken) {
+        throw new Error('Failed to prepare OAuth signup');
+      }
+
+      // Store state token temporarily for OAuth callback
+      sessionStorage.setItem('oauth_state_token', data.stateToken);
+      sessionStorage.setItem('oauth_state_expires', data.expiresAt);
       
       await signInWithGoogle();
     } catch (error) {
-      toast.error('Failed to sign in with Google');
+      console.error('OAuth Google error:', error);
+      toast.error('Failed to prepare sign in with Google');
     } finally {
       setIsLoading(false);
     }
@@ -305,8 +315,8 @@ const prefetchSchools = useCallback(async () => {
     if (invitationToken) {
       setIsLoading(true);
       try {
-        // Store invitation token for post-OAuth processing
-        localStorage.setItem('pendingInvitation', invitationToken);
+        // Store invitation token temporarily in sessionStorage (more secure than localStorage)
+        sessionStorage.setItem('pendingInvitation', invitationToken);
         await signInWithMicrosoft();
       } catch (error) {
         toast.error('Failed to sign in with Microsoft');
@@ -324,29 +334,39 @@ const prefetchSchools = useCallback(async () => {
 
     setIsLoading(true);
     try {
-      // Store school and role data before OAuth redirect
-      const pendingData = {
-        schoolId: selectedSchool.id,
-        role: selectedRole,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('pending_oauth_signup', JSON.stringify(pendingData));
+      // Create secure server-side OAuth state
+      const { data, error } = await supabase.functions.invoke('prepare-oauth-signup', {
+        body: {
+          schoolId: selectedSchool.id,
+          role: selectedRole,
+          email: null
+        }
+      });
+
+      if (error || !data?.stateToken) {
+        throw new Error('Failed to prepare OAuth signup');
+      }
+
+      // Store state token temporarily for OAuth callback
+      sessionStorage.setItem('oauth_state_token', data.stateToken);
+      sessionStorage.setItem('oauth_state_expires', data.expiresAt);
       
       await signInWithMicrosoft();
     } catch (error) {
-      toast.error('Failed to sign in with Microsoft');
+      console.error('OAuth Microsoft error:', error);
+      toast.error('Failed to prepare sign in with Microsoft');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Check for pending invitation after OAuth redirect
+  // Check for pending invitation or OAuth state after OAuth redirect
   useEffect(() => {
-    const pendingInvitation = localStorage.getItem('pendingInvitation');
+    const pendingInvitation = sessionStorage.getItem('pendingInvitation');
     if (pendingInvitation && user && !userRole) {
       // User just completed OAuth and has a pending invitation
       linkOAuthToInvitation(pendingInvitation).then(() => {
-        localStorage.removeItem('pendingInvitation');
+        sessionStorage.removeItem('pendingInvitation');
       });
     }
   }, [user, userRole, linkOAuthToInvitation]);

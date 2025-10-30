@@ -6,8 +6,9 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 interface CompleteProfileRequest {
-  schoolId: number;
-  role: 'school_admin' | 'teacher';
+  stateToken?: string; // New secure approach
+  schoolId?: number; // Legacy fallback
+  role?: 'school_admin' | 'teacher'; // Legacy fallback
 }
 
 Deno.serve(async (req) => {
@@ -46,20 +47,69 @@ Deno.serve(async (req) => {
     }
 
     const body: CompleteProfileRequest = await req.json();
-    const { schoolId, role } = body;
+    let schoolId: number;
+    let role: 'school_admin' | 'teacher';
 
-    console.log(`[${requestId}] Completing OAuth profile for user ${user.id}, school ${schoolId}, role ${role}`);
+    // New secure approach: Use state token to retrieve school/role
+    if (body.stateToken) {
+      console.log(`[${requestId}] Using secure state token approach`);
+      
+      const { data: pendingSignup, error: lookupError } = await supabase
+        .from('oauth_pending_signups')
+        .select('*')
+        .eq('state_token', body.stateToken)
+        .eq('completed', false)
+        .single();
 
-    // Validate inputs
-    if (!schoolId || !role) {
+      if (lookupError || !pendingSignup) {
+        console.error(`[${requestId}] Invalid or expired state token:`, lookupError);
+        return createErrorResponse(
+          new Error('Invalid or expired OAuth state. Please try signing up again.'),
+          'complete-oauth-profile',
+          400,
+          corsHeaders
+        );
+      }
+
+      // Check if token is expired
+      if (new Date(pendingSignup.expires_at) < new Date()) {
+        console.error(`[${requestId}] State token expired`);
+        return createErrorResponse(
+          new Error('OAuth state expired. Please try signing up again.'),
+          'complete-oauth-profile',
+          400,
+          corsHeaders
+        );
+      }
+
+      schoolId = pendingSignup.school_id;
+      role = pendingSignup.role as 'school_admin' | 'teacher';
+
+      console.log(`[${requestId}] Retrieved OAuth state for user ${user.id}, school ${schoolId}, role ${role}`);
+
+      // Mark as completed
+      await supabase
+        .from('oauth_pending_signups')
+        .update({ completed: true })
+        .eq('id', pendingSignup.id);
+
+    } else if (body.schoolId && body.role) {
+      // Legacy fallback for backward compatibility
+      console.warn(`[${requestId}] Using legacy direct school/role parameters (insecure)`);
+      schoolId = body.schoolId;
+      role = body.role;
+    } else {
       return createErrorResponse(
-        new Error('Missing required fields'),
+        new Error('Missing required parameters'),
         'complete-oauth-profile',
         400,
         corsHeaders
       );
     }
 
+    console.log(`[${requestId}] Completing OAuth profile for user ${user.id}, school ${schoolId}, role ${role}`);
+
+    // Validate role
     if (role !== 'school_admin' && role !== 'teacher') {
       return createErrorResponse(
         new Error('Invalid role'),
