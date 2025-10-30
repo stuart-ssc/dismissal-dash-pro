@@ -26,14 +26,54 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { user_id, first_name, last_name, email, school_id }: NotificationRequest = await req.json();
-
-    console.log("Checking if this is the first user for school:", school_id);
-
     // Create Supabase client with service role key
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.warn('Unauthenticated notify-first-school-user attempt');
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !authUser) {
+      console.warn('Invalid authentication for notify-first-school-user');
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { user_id, first_name, last_name, email, school_id }: NotificationRequest = await req.json();
+
+    // Verify caller is either the user being notified about OR a system admin
+    const { data: userRoles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', authUser.id)
+      .eq('role', 'system_admin')
+      .single();
+
+    const isSystemAdmin = !!userRoles;
+    const isOwnProfile = authUser.id === user_id;
+
+    if (!isSystemAdmin && !isOwnProfile) {
+      console.warn(`Unauthorized notify-first-school-user attempt by ${authUser.id} for user ${user_id}`);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized. Can only notify about your own profile.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log("Checking if this is the first user for school:", school_id);
 
     // Check how many users this school has
     const { count, error: countError } = await supabase
