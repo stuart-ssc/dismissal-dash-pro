@@ -393,7 +393,7 @@ const prefetchSchools = useCallback(async () => {
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
               <div className="flex justify-center mb-4">
-                <div className="p-3 rounded-full bg-gradient-to-r from-primary to-secondary">
+                <div className="p-3 rounded-full bg-white">
                   <img src={logoMark} alt="Dismissal Pro" className="h-8 w-8" />
                 </div>
               </div>
