@@ -834,7 +834,7 @@ export default function AdminSchools() {
                           <Badge variant="warning">Unverified</Badge>
                         )}
                         {s.verification_status === 'deactivated' && (
-                          <Badge variant="secondary">Deactivated</Badge>
+                          <Badge variant="inactive">Deactivated</Badge>
                         )}
                         {!s.verification_status && (
                           <Badge variant="outline">Unknown</Badge>
