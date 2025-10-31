@@ -11,9 +11,10 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown, Loader2, Info } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import logoMark from "@/assets/logo-mark.svg";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +53,20 @@ const [allSchools, setAllSchools] = useState<{ id: number; school_name: string; 
   // Password reset dialog state
   const [showPasswordResetDialog, setShowPasswordResetDialog] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+
+  // School creation dialog state
+  const [showCreateSchoolDialog, setShowCreateSchoolDialog] = useState(false);
+  const [isCreatingSchool, setIsCreatingSchool] = useState(false);
+  const [newSchoolData, setNewSchoolData] = useState({
+    schoolName: '',
+    streetAddress: '',
+    city: '',
+    state: '',
+    zipcode: '',
+    county: '',
+    schoolDistrict: '',
+    phoneNumber: ''
+  });
 
   const signInForm = useForm<SignInForm>({
     resolver: zodResolver(signInSchema)
@@ -263,6 +278,78 @@ const prefetchSchools = useCallback(async () => {
       toast.error(error.message || 'Failed to send password reset email');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCreateSchool = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newSchoolData.schoolName || !newSchoolData.city || !newSchoolData.state) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsCreatingSchool(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('create-school', {
+        body: {
+          schoolName: newSchoolData.schoolName.trim(),
+          streetAddress: newSchoolData.streetAddress.trim(),
+          city: newSchoolData.city.trim(),
+          state: newSchoolData.state,
+          zipcode: newSchoolData.zipcode.trim(),
+          county: newSchoolData.county.trim(),
+          schoolDistrict: newSchoolData.schoolDistrict.trim(),
+          phoneNumber: newSchoolData.phoneNumber.trim(),
+          creatorEmail: signUpForm.getValues('email') || '',
+        }
+      });
+
+      if (error) throw error;
+
+      // Success! Auto-select the newly created school
+      setSelectedSchool({
+        id: data.schoolId,
+        school_name: data.schoolName,
+        city: newSchoolData.city,
+        state: newSchoolData.state
+      });
+      
+      signUpForm.setValue('schoolId', data.schoolId);
+      
+      toast.success(
+        data.flagged 
+          ? `${data.schoolName} has been added! Note: This school will be reviewed by our team.`
+          : `${data.schoolName} has been added! You can now continue with signup.`
+      );
+      
+      setShowCreateSchoolDialog(false);
+      
+      // Reset form
+      setNewSchoolData({
+        schoolName: '',
+        streetAddress: '',
+        city: '',
+        state: '',
+        zipcode: '',
+        county: '',
+        schoolDistrict: '',
+        phoneNumber: ''
+      });
+      
+    } catch (error: any) {
+      console.error('Create school error:', error);
+      
+      if (error.message?.includes('rate limit')) {
+        toast.error('Too many school creation attempts. Please try again later.');
+      } else if (error.message?.includes('duplicate')) {
+        toast.error('A school with this name already exists in this location.');
+      } else {
+        toast.error('Failed to create school. Please try again.');
+      }
+    } finally {
+      setIsCreatingSchool(false);
     }
   };
 
@@ -643,7 +730,24 @@ const prefetchSchools = useCallback(async () => {
                                     </div>
                                   )}
                                   {!isSearching && searchQuery.length >= 2 && schools.length === 0 && (
-                                    <CommandEmpty>No schools found.</CommandEmpty>
+                                    <CommandEmpty>
+                                      <div className="py-6 text-center text-sm space-y-2">
+                                        <p>No schools found matching "{searchQuery}"</p>
+                                        <Button
+                                          variant="link"
+                                          size="sm"
+                                          onClick={() => {
+                                            setShowCreateSchoolDialog(true);
+                                            setNewSchoolData(prev => ({
+                                              ...prev,
+                                              schoolName: searchQuery
+                                            }));
+                                          }}
+                                        >
+                                          Can't find your school? Click here to add it →
+                                        </Button>
+                                      </div>
+                                    </CommandEmpty>
                                   )}
                                   {!isSearching && searchQuery.length < 2 && (
                                     <div className="p-4 text-center text-sm text-muted-foreground">
@@ -836,6 +940,229 @@ const prefetchSchools = useCallback(async () => {
             </div>
           </div>
         </div>
+        
+        {/* Create School Dialog */}
+        <Dialog open={showCreateSchoolDialog} onOpenChange={setShowCreateSchoolDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add Your School</DialogTitle>
+              <DialogDescription>
+                Can't find your school? Add it here and you'll be able to sign up immediately.
+                Our team will verify the details within 24 hours.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <form onSubmit={handleCreateSchool} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-school-name">
+                  School Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="new-school-name"
+                  value={newSchoolData.schoolName}
+                  onChange={(e) => setNewSchoolData(prev => ({
+                    ...prev,
+                    schoolName: e.target.value
+                  }))}
+                  placeholder="Lincoln Elementary School"
+                  required
+                  minLength={3}
+                  maxLength={100}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-school-address">Street Address</Label>
+                <Input
+                  id="new-school-address"
+                  value={newSchoolData.streetAddress}
+                  onChange={(e) => setNewSchoolData(prev => ({
+                    ...prev,
+                    streetAddress: e.target.value
+                  }))}
+                  placeholder="123 Main Street"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-school-city">
+                    City <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="new-school-city"
+                    value={newSchoolData.city}
+                    onChange={(e) => setNewSchoolData(prev => ({
+                      ...prev,
+                      city: e.target.value
+                    }))}
+                    placeholder="Springfield"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-school-state">
+                    State <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={newSchoolData.state}
+                    onValueChange={(value) => setNewSchoolData(prev => ({
+                      ...prev,
+                      state: value
+                    }))}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AL">Alabama</SelectItem>
+                      <SelectItem value="AK">Alaska</SelectItem>
+                      <SelectItem value="AZ">Arizona</SelectItem>
+                      <SelectItem value="AR">Arkansas</SelectItem>
+                      <SelectItem value="CA">California</SelectItem>
+                      <SelectItem value="CO">Colorado</SelectItem>
+                      <SelectItem value="CT">Connecticut</SelectItem>
+                      <SelectItem value="DE">Delaware</SelectItem>
+                      <SelectItem value="FL">Florida</SelectItem>
+                      <SelectItem value="GA">Georgia</SelectItem>
+                      <SelectItem value="HI">Hawaii</SelectItem>
+                      <SelectItem value="ID">Idaho</SelectItem>
+                      <SelectItem value="IL">Illinois</SelectItem>
+                      <SelectItem value="IN">Indiana</SelectItem>
+                      <SelectItem value="IA">Iowa</SelectItem>
+                      <SelectItem value="KS">Kansas</SelectItem>
+                      <SelectItem value="KY">Kentucky</SelectItem>
+                      <SelectItem value="LA">Louisiana</SelectItem>
+                      <SelectItem value="ME">Maine</SelectItem>
+                      <SelectItem value="MD">Maryland</SelectItem>
+                      <SelectItem value="MA">Massachusetts</SelectItem>
+                      <SelectItem value="MI">Michigan</SelectItem>
+                      <SelectItem value="MN">Minnesota</SelectItem>
+                      <SelectItem value="MS">Mississippi</SelectItem>
+                      <SelectItem value="MO">Missouri</SelectItem>
+                      <SelectItem value="MT">Montana</SelectItem>
+                      <SelectItem value="NE">Nebraska</SelectItem>
+                      <SelectItem value="NV">Nevada</SelectItem>
+                      <SelectItem value="NH">New Hampshire</SelectItem>
+                      <SelectItem value="NJ">New Jersey</SelectItem>
+                      <SelectItem value="NM">New Mexico</SelectItem>
+                      <SelectItem value="NY">New York</SelectItem>
+                      <SelectItem value="NC">North Carolina</SelectItem>
+                      <SelectItem value="ND">North Dakota</SelectItem>
+                      <SelectItem value="OH">Ohio</SelectItem>
+                      <SelectItem value="OK">Oklahoma</SelectItem>
+                      <SelectItem value="OR">Oregon</SelectItem>
+                      <SelectItem value="PA">Pennsylvania</SelectItem>
+                      <SelectItem value="RI">Rhode Island</SelectItem>
+                      <SelectItem value="SC">South Carolina</SelectItem>
+                      <SelectItem value="SD">South Dakota</SelectItem>
+                      <SelectItem value="TN">Tennessee</SelectItem>
+                      <SelectItem value="TX">Texas</SelectItem>
+                      <SelectItem value="UT">Utah</SelectItem>
+                      <SelectItem value="VT">Vermont</SelectItem>
+                      <SelectItem value="VA">Virginia</SelectItem>
+                      <SelectItem value="WA">Washington</SelectItem>
+                      <SelectItem value="WV">West Virginia</SelectItem>
+                      <SelectItem value="WI">Wisconsin</SelectItem>
+                      <SelectItem value="WY">Wyoming</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-school-zipcode">Zipcode</Label>
+                  <Input
+                    id="new-school-zipcode"
+                    value={newSchoolData.zipcode}
+                    onChange={(e) => setNewSchoolData(prev => ({
+                      ...prev,
+                      zipcode: e.target.value
+                    }))}
+                    placeholder="12345"
+                    pattern="[0-9]{5}"
+                    maxLength={5}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-school-county">County</Label>
+                  <Input
+                    id="new-school-county"
+                    value={newSchoolData.county}
+                    onChange={(e) => setNewSchoolData(prev => ({
+                      ...prev,
+                      county: e.target.value
+                    }))}
+                    placeholder="Sangamon County"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-school-district">School District</Label>
+                <Input
+                  id="new-school-district"
+                  value={newSchoolData.schoolDistrict}
+                  onChange={(e) => setNewSchoolData(prev => ({
+                    ...prev,
+                    schoolDistrict: e.target.value
+                  }))}
+                  placeholder="Springfield Public Schools"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-school-phone">Phone Number</Label>
+                <Input
+                  id="new-school-phone"
+                  type="tel"
+                  value={newSchoolData.phoneNumber}
+                  onChange={(e) => setNewSchoolData(prev => ({
+                    ...prev,
+                    phoneNumber: e.target.value
+                  }))}
+                  placeholder="(555) 123-4567"
+                />
+              </div>
+
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Your school will be available immediately after creation. 
+                  Our team will verify the details within 24 hours.
+                </AlertDescription>
+              </Alert>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateSchoolDialog(false)}
+                  disabled={isCreatingSchool}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isCreatingSchool || !newSchoolData.schoolName || !newSchoolData.city || !newSchoolData.state}
+                >
+                  {isCreatingSchool ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating School...
+                    </>
+                  ) : (
+                    "Create School & Continue"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
         
         {/* Password Reset Dialog */}
         <Dialog open={showPasswordResetDialog} onOpenChange={setShowPasswordResetDialog}>

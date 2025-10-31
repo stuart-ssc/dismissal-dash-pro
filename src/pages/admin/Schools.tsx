@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search, Filter } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search, Filter, CheckCircle, Clock, AlertTriangle, XCircle, FileText, Edit, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 
@@ -53,6 +55,8 @@ interface School {
   two_factor_required: boolean | null;
   session_timeout_enabled: boolean | null;
   audit_logs_enabled: boolean | null;
+  verification_status?: string | null;
+  flagged_reason?: string | null;
   created_at?: string;
 }
 const schema = z.object({
@@ -389,6 +393,7 @@ export default function AdminSchools() {
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string>("all");
+  const [verificationFilter, setVerificationFilter] = useState<string>("all");
   
   // Server-side paginated query with filtering
   const {
@@ -396,13 +401,14 @@ export default function AdminSchools() {
     isLoading,
     error
   } = useQuery<{ data: School[], count: number }>({
-    queryKey: ["schools", searchQuery, selectedState, currentPage, itemsPerPage],
+    queryKey: ["schools", searchQuery, selectedState, verificationFilter, currentPage, itemsPerPage],
     queryFn: async () => {
-      // Only fetch if there's a search query (min 3 chars) or state filter
+      // Only fetch if there's a search query (min 3 chars) or state filter or verification filter
       const hasSearch = searchQuery.trim().length >= 3;
       const hasStateFilter = selectedState !== "all";
+      const hasVerificationFilter = verificationFilter !== "all";
       
-      if (!hasSearch && !hasStateFilter) {
+      if (!hasSearch && !hasStateFilter && !hasVerificationFilter) {
         return { data: [], count: 0 };
       }
 
@@ -414,6 +420,12 @@ export default function AdminSchools() {
       if (hasStateFilter) {
         dataQuery = dataQuery.eq("state", selectedState);
         countQuery = countQuery.eq("state", selectedState);
+      }
+      
+      // Apply verification status filter
+      if (hasVerificationFilter) {
+        dataQuery = dataQuery.eq("verification_status", verificationFilter);
+        countQuery = countQuery.eq("verification_status", verificationFilter);
       }
       
       // Apply search filter (min 3 characters)
@@ -438,7 +450,7 @@ export default function AdminSchools() {
       
       return { data: data as School[], count: count || 0 };
     },
-    enabled: searchQuery.trim().length >= 3 || selectedState !== "all"
+    enabled: searchQuery.trim().length >= 3 || selectedState !== "all" || verificationFilter !== "all"
   });
 
   const data = queryResult?.data || [];
@@ -450,12 +462,12 @@ export default function AdminSchools() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   
   // Check if search/filter is active
-  const isFilterActive = searchQuery.trim().length >= 3 || selectedState !== "all";
+  const isFilterActive = searchQuery.trim().length >= 3 || selectedState !== "all" || verificationFilter !== "all";
 
-  // Reset to page 1 when search query or state filter changes
+  // Reset to page 1 when search query or state filter or verification filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedState]);
+  }, [searchQuery, selectedState, verificationFilter]);
 
   // Reset to page 1 when changing items per page
   const handleItemsPerPageChange = (value: string) => {
@@ -499,6 +511,65 @@ export default function AdminSchools() {
 
     return pages;
   };
+  const handleVerifySchool = async (schoolId: number) => {
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          verification_status: 'verified',
+          verified_at: new Date().toISOString()
+        })
+        .eq('id', schoolId);
+
+      if (error) throw error;
+      
+      toast({ title: 'School verified', description: 'School has been marked as verified.' });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    } catch (error: any) {
+      toast({ title: 'Error', description: 'Failed to verify school.', variant: 'destructive' });
+    }
+  };
+
+  const handleDeactivateSchool = async (schoolId: number) => {
+    const reason = window.prompt('Enter reason for deactivation (optional):');
+    
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          verification_status: 'deactivated',
+          flagged_reason: reason || 'Deactivated by admin'
+        })
+        .eq('id', schoolId);
+
+      if (error) throw error;
+      
+      toast({ title: 'School deactivated', description: 'School has been deactivated.' });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    } catch (error: any) {
+      toast({ title: 'Error', description: 'Failed to deactivate school.', variant: 'destructive' });
+    }
+  };
+
+  const handleReactivateSchool = async (schoolId: number) => {
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          verification_status: 'unverified',
+          flagged_reason: null
+        })
+        .eq('id', schoolId);
+
+      if (error) throw error;
+      
+      toast({ title: 'School reactivated', description: 'School has been reactivated.' });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    } catch (error: any) {
+      toast({ title: 'Error', description: 'Failed to reactivate school.', variant: 'destructive' });
+    }
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const {

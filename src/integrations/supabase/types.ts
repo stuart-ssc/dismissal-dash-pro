@@ -1082,6 +1082,50 @@ export type Database = {
           },
         ]
       }
+      school_creation_logs: {
+        Row: {
+          created_at: string | null
+          created_by_email: string
+          created_by_ip: string | null
+          flag_reasons: string[] | null
+          flagged: boolean | null
+          id: string
+          school_data: Json
+          school_id: number | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by_email: string
+          created_by_ip?: string | null
+          flag_reasons?: string[] | null
+          flagged?: boolean | null
+          id?: string
+          school_data: Json
+          school_id?: number | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by_email?: string
+          created_by_ip?: string | null
+          flag_reasons?: string[] | null
+          flagged?: boolean | null
+          id?: string
+          school_data?: Json
+          school_id?: number | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_creation_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           address: string | null
@@ -1093,9 +1137,12 @@ export type Database = {
           classroom_mode_layout: string | null
           county: string | null
           created_at: string
+          created_at_ip: string | null
+          created_by: string | null
           dismissal_time: string | null
           email_notifications_enabled: boolean | null
           emergency_alerts_enabled: boolean | null
+          flagged_reason: string | null
           id: number
           parent_notifications_enabled: boolean | null
           phone_number: string | null
@@ -1112,6 +1159,9 @@ export type Database = {
           timezone: string | null
           two_factor_required: boolean | null
           updated_at: string
+          verification_status: string | null
+          verified_at: string | null
+          verified_by: string | null
           walkers_enabled: boolean | null
           zipcode: string | null
           zipcode_4_digit: string | null
@@ -1126,9 +1176,12 @@ export type Database = {
           classroom_mode_layout?: string | null
           county?: string | null
           created_at?: string
+          created_at_ip?: string | null
+          created_by?: string | null
           dismissal_time?: string | null
           email_notifications_enabled?: boolean | null
           emergency_alerts_enabled?: boolean | null
+          flagged_reason?: string | null
           id?: number
           parent_notifications_enabled?: boolean | null
           phone_number?: string | null
@@ -1145,6 +1198,9 @@ export type Database = {
           timezone?: string | null
           two_factor_required?: boolean | null
           updated_at?: string
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           walkers_enabled?: boolean | null
           zipcode?: string | null
           zipcode_4_digit?: string | null
@@ -1159,9 +1215,12 @@ export type Database = {
           classroom_mode_layout?: string | null
           county?: string | null
           created_at?: string
+          created_at_ip?: string | null
+          created_by?: string | null
           dismissal_time?: string | null
           email_notifications_enabled?: boolean | null
           emergency_alerts_enabled?: boolean | null
+          flagged_reason?: string | null
           id?: number
           parent_notifications_enabled?: boolean | null
           phone_number?: string | null
@@ -1178,11 +1237,29 @@ export type Database = {
           timezone?: string | null
           two_factor_required?: boolean | null
           updated_at?: string
+          verification_status?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           walkers_enabled?: boolean | null
           zipcode?: string | null
           zipcode_4_digit?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schools_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schools_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_after_school_assignments: {
         Row: {
@@ -1634,6 +1711,10 @@ export type Database = {
       can_view_school_data: {
         Args: { target_school_id: number }
         Returns: boolean
+      }
+      check_suspicious_school: {
+        Args: { email: string; ip_address: string; school_name: string }
+        Returns: string[]
       }
       cleanup_expired_email_requests: { Args: never; Returns: number }
       cleanup_expired_impersonation_sessions: { Args: never; Returns: number }
