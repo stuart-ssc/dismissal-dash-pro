@@ -172,7 +172,7 @@ export const SchoolCreationNotification = ({
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
         <EmailButton 
-          href={`${Deno.env.get('APP_URL') || 'https://dismissalpro.io'}/admin/schools?id=${schoolId}`}
+          href={`${Deno.env.get('APP_URL') || 'https://dismissalpro.io'}/admin/schools?id=${schoolId}&action=approve`}
           backgroundColor="#10B981"
         >
           ✓ Approve

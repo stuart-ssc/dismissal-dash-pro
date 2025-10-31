@@ -399,9 +399,22 @@ export default function AdminSchools() {
     if (schoolId) {
       const id = parseInt(schoolId);
       
-      // Handle edit action (open edit form)
-      if (action !== 'deactivate') {
-        // Fetch the school and open edit form
+      // Handle approve action (auto-verify)
+      if (action === 'approve') {
+        handleVerifySchool(id);
+        setHighlightedSchoolId(id);
+        setTimeout(() => setHighlightedSchoolId(null), 5000);
+        setSearchParams({});
+        setTimeout(() => {
+          const row = document.querySelector(`[data-school-id="${id}"]`);
+          if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      } else if (action === 'deactivate') {
+        // Handle deactivate action
+        handleDeactivateSchool(id);
+        setSearchParams({});
+      } else {
+        // No action - just open edit form
         supabase
           .from('schools')
           .select('*')
@@ -419,13 +432,8 @@ export default function AdminSchools() {
               });
             }
           });
-      } else {
-        // Handle deactivate action
-        handleDeactivateSchool(id);
+        setSearchParams({});
       }
-      
-      // Clear params
-      setSearchParams({});
     } else if (highlightId) {
       const id = parseInt(highlightId);
       setHighlightedSchoolId(id);
@@ -732,6 +740,21 @@ export default function AdminSchools() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={verificationFilter} onValueChange={setVerificationFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4" />
+                    <SelectValue placeholder="All Statuses" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="z-[60] bg-background">
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
+                  <SelectItem value="unverified">Unverified</SelectItem>
+                  <SelectItem value="flagged">Flagged</SelectItem>
+                  <SelectItem value="deactivated">Deactivated</SelectItem>
+                </SelectContent>
+              </Select>
               <Button onClick={openCreate} className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Add School
@@ -768,6 +791,7 @@ export default function AdminSchools() {
                   <TableRow>
                     
                     <TableHead className="min-w-[200px]">Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">Status</TableHead>
                     <TableHead className="hidden md:table-cell">City</TableHead>
                     <TableHead className="hidden md:table-cell">State</TableHead>
                     <TableHead className="hidden lg:table-cell">Phone</TableHead>
@@ -790,6 +814,23 @@ export default function AdminSchools() {
                           </span>
                         </div>
                       </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {s.verification_status === 'verified' && (
+                          <Badge variant="success">Verified</Badge>
+                        )}
+                        {s.verification_status === 'flagged' && (
+                          <Badge variant="destructive">Flagged</Badge>
+                        )}
+                        {s.verification_status === 'unverified' && (
+                          <Badge variant="warning">Unverified</Badge>
+                        )}
+                        {s.verification_status === 'deactivated' && (
+                          <Badge variant="secondary">Deactivated</Badge>
+                        )}
+                        {!s.verification_status && (
+                          <Badge variant="outline">Unknown</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">{s.city || '—'}</TableCell>
                       <TableCell className="hidden md:table-cell">{s.state || '—'}</TableCell>
                       <TableCell className="hidden lg:table-cell">{s.phone_number || '—'}</TableCell>
@@ -799,6 +840,24 @@ export default function AdminSchools() {
                           <Button variant="secondary" size="sm" onClick={() => openEdit(s)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
+                          {s.verification_status === 'deactivated' ? (
+                            <Button variant="outline" size="sm" onClick={() => handleReactivateSchool(s.id)}>
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          ) : s.verification_status === 'verified' ? (
+                            <Button variant="softDestructive" size="sm" onClick={() => handleDeactivateSchool(s.id)}>
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <>
+                              <Button variant="success" size="sm" onClick={() => handleVerifySchool(s.id)}>
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                              <Button variant="softDestructive" size="sm" onClick={() => handleDeactivateSchool(s.id)}>
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                           <Button variant="softDestructive" size="sm" onClick={() => deleteMutation.mutate(s.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -814,6 +873,24 @@ export default function AdminSchools() {
                               <DropdownMenuItem onClick={() => openEdit(s)}>
                                 <Pencil className="mr-2 h-4 w-4" /> Edit
                               </DropdownMenuItem>
+                              {s.verification_status === 'deactivated' ? (
+                                <DropdownMenuItem onClick={() => handleReactivateSchool(s.id)}>
+                                  <RefreshCw className="mr-2 h-4 w-4" /> Reactivate
+                                </DropdownMenuItem>
+                              ) : s.verification_status === 'verified' ? (
+                                <DropdownMenuItem onClick={() => handleDeactivateSchool(s.id)}>
+                                  <XCircle className="mr-2 h-4 w-4" /> Deactivate
+                                </DropdownMenuItem>
+                              ) : (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleVerifySchool(s.id)}>
+                                    <CheckCircle className="mr-2 h-4 w-4" /> Verify School
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDeactivateSchool(s.id)}>
+                                    <XCircle className="mr-2 h-4 w-4" /> Deactivate
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                               <DropdownMenuItem onClick={() => deleteMutation.mutate(s.id)} className="text-destructive">
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
                               </DropdownMenuItem>
