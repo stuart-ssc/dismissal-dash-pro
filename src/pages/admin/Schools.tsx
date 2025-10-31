@@ -585,19 +585,26 @@ export default function AdminSchools() {
   };
   const handleVerifySchool = async (schoolId: number) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from('schools')
         .update({
           verification_status: 'verified',
-          verified_at: new Date().toISOString()
+          verified_at: new Date().toISOString(),
+          verified_by: user?.id
         })
         .eq('id', schoolId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Verification error:', error);
+        throw error;
+      }
       
       toast({ title: 'School verified', description: 'School has been marked as verified.' });
       await refetch();
     } catch (error: any) {
+      console.error('Verification error:', error);
       toast({ title: 'Error', description: 'Failed to verify school.', variant: 'destructive' });
     }
   };
