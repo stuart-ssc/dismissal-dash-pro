@@ -12,8 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { GraduationCap, Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import logoMark from "@/assets/logo-mark.svg";
 import { useAuth } from "@/hooks/useAuth";
 import { OAuthButtons } from "@/components/OAuthButtons";
 import { supabase } from "@/integrations/supabase/client";
@@ -393,7 +394,7 @@ const prefetchSchools = useCallback(async () => {
             <div className="text-center mb-8">
               <div className="flex justify-center mb-4">
                 <div className="p-3 rounded-full bg-gradient-to-r from-primary to-secondary">
-                  <GraduationCap className="h-8 w-8 text-white" />
+                  <img src={logoMark} alt="Dismissal Pro" className="h-8 w-8" />
                 </div>
               </div>
               <h1 className="text-3xl font-bold mb-2">Welcome to Dismissal Pro</h1>
