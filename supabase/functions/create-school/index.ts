@@ -15,6 +15,9 @@ interface CreateSchoolRequest {
   schoolDistrict?: string;
   phoneNumber?: string;
   creatorEmail: string;
+  creatorFirstName: string;
+  creatorLastName: string;
+  creatorRole: 'school_admin' | 'teacher';
 }
 
 serve(async (req) => {
@@ -55,9 +58,30 @@ serve(async (req) => {
       );
     }
 
-    if (!body.creatorEmail || !body.creatorEmail.includes('@')) {
+    if (!body.creatorEmail || !body.creatorEmail.includes('@') || body.creatorEmail.length > 255) {
       return new Response(
-        JSON.stringify({ error: 'Valid email is required' }),
+        JSON.stringify({ error: 'Valid creator email is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!body.creatorFirstName || body.creatorFirstName.length < 1 || body.creatorFirstName.length > 50) {
+      return new Response(
+        JSON.stringify({ error: 'First name is required and must be less than 50 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!body.creatorLastName || body.creatorLastName.length < 1 || body.creatorLastName.length > 50) {
+      return new Response(
+        JSON.stringify({ error: 'Last name is required and must be less than 50 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!body.creatorRole || !['school_admin', 'teacher'].includes(body.creatorRole)) {
+      return new Response(
+        JSON.stringify({ error: 'Valid role (school_admin or teacher) is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -158,20 +182,23 @@ serve(async (req) => {
     }
 
     // Send admin notification email (async, don't block response)
-    supabaseAdmin.functions.invoke('send-school-creation-notification', {
-      body: {
-        schoolId: newSchool.id,
-        schoolName: newSchool.school_name,
-        schoolData: body,
-        creatorEmail: body.creatorEmail,
-        creatorIp: ipAddress,
-        userAgent: userAgent,
-        flagged: isFlagged,
-        flagReasons: flags,
-      }
-    }).catch(err => {
-      console.error('Failed to send admin notification:', err);
-    });
+      supabaseAdmin.functions.invoke('send-school-creation-notification', {
+        body: {
+          schoolId: newSchool.id,
+          schoolName: newSchool.school_name,
+          schoolData: body,
+          creatorEmail: body.creatorEmail,
+          creatorFirstName: body.creatorFirstName,
+          creatorLastName: body.creatorLastName,
+          creatorRole: body.creatorRole,
+          creatorIp: ipAddress,
+          userAgent: userAgent,
+          flagged: isFlagged,
+          flagReasons: flags,
+        }
+      }).catch(err => {
+        console.error('Failed to send admin notification:', err);
+      });
 
     return new Response(
       JSON.stringify({

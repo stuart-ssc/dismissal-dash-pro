@@ -14,6 +14,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown, Loader2, Info } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import logoMark from "@/assets/logo-mark.svg";
@@ -54,9 +55,11 @@ const [allSchools, setAllSchools] = useState<{ id: number; school_name: string; 
   const [showPasswordResetDialog, setShowPasswordResetDialog] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
 
-  // School creation dialog state
+  // School creation state
   const [showCreateSchoolDialog, setShowCreateSchoolDialog] = useState(false);
   const [isCreatingSchool, setIsCreatingSchool] = useState(false);
+  const [isInCreateSchoolMode, setIsInCreateSchoolMode] = useState(false);
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [newSchoolData, setNewSchoolData] = useState({
     schoolName: '',
     streetAddress: '',
@@ -65,7 +68,11 @@ const [allSchools, setAllSchools] = useState<{ id: number; school_name: string; 
     zipcode: '',
     county: '',
     schoolDistrict: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    creatorFirstName: '',
+    creatorLastName: '',
+    creatorEmail: '',
+    creatorRole: null as 'school_admin' | 'teacher' | null
   });
 
   const signInForm = useForm<SignInForm>({
@@ -284,8 +291,16 @@ const prefetchSchools = useCallback(async () => {
   const handleCreateSchool = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate school fields
     if (!newSchoolData.schoolName || !newSchoolData.city || !newSchoolData.state) {
-      toast.error('Please fill in all required fields');
+      toast.error('Please fill in all required school fields');
+      return;
+    }
+    
+    // Validate user fields
+    if (!newSchoolData.creatorFirstName || !newSchoolData.creatorLastName || 
+        !newSchoolData.creatorEmail || !newSchoolData.creatorRole) {
+      toast.error('Please fill in all required personal information');
       return;
     }
 
@@ -294,6 +309,7 @@ const prefetchSchools = useCallback(async () => {
     try {
       const { data, error } = await supabase.functions.invoke('create-school', {
         body: {
+          // School data
           schoolName: newSchoolData.schoolName.trim(),
           streetAddress: newSchoolData.streetAddress.trim(),
           city: newSchoolData.city.trim(),
@@ -302,13 +318,18 @@ const prefetchSchools = useCallback(async () => {
           county: newSchoolData.county.trim(),
           schoolDistrict: newSchoolData.schoolDistrict.trim(),
           phoneNumber: newSchoolData.phoneNumber.trim(),
-          creatorEmail: signUpForm.getValues('email') || '',
+          
+          // User data
+          creatorEmail: newSchoolData.creatorEmail.trim(),
+          creatorFirstName: newSchoolData.creatorFirstName.trim(),
+          creatorLastName: newSchoolData.creatorLastName.trim(),
+          creatorRole: newSchoolData.creatorRole
         }
       });
 
       if (error) throw error;
 
-      // Success! Auto-select the newly created school
+      // Success! Pre-fill the signup form and exit create mode
       setSelectedSchool({
         id: data.schoolId,
         school_name: data.schoolName,
@@ -316,37 +337,45 @@ const prefetchSchools = useCallback(async () => {
         state: newSchoolData.state
       });
       
-      signUpForm.setValue('schoolId', data.schoolId);
+      setSelectedRole(newSchoolData.creatorRole!);
+      
+      // Pre-fill the signup form
+      signUpForm.setValue('schoolId', data.schoolId.toString());
+      signUpForm.setValue('role', newSchoolData.creatorRole!);
+      signUpForm.setValue('firstName', newSchoolData.creatorFirstName);
+      signUpForm.setValue('lastName', newSchoolData.creatorLastName);
+      signUpForm.setValue('email', newSchoolData.creatorEmail);
+      
+      // Exit create school mode
+      setIsInCreateSchoolMode(false);
+      setShowSuccessBanner(true);
+      
+      // Auto-hide success banner after 5 seconds
+      setTimeout(() => setShowSuccessBanner(false), 5000);
       
       toast.success(
         data.flagged 
-          ? `${data.schoolName} has been added! Note: This school will be reviewed by our team.`
-          : `${data.schoolName} has been added! You can now continue with signup.`
+          ? `${data.schoolName} has been added! Note: This school will be reviewed by our team. Now set your password to complete signup.`
+          : `${data.schoolName} has been added! Now set your password to complete signup.`
       );
-      
-      setShowCreateSchoolDialog(false);
-      
-      // Reset form
-      setNewSchoolData({
-        schoolName: '',
-        streetAddress: '',
-        city: '',
-        state: '',
-        zipcode: '',
-        county: '',
-        schoolDistrict: '',
-        phoneNumber: ''
-      });
       
     } catch (error: any) {
       console.error('Create school error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       
-      if (error.message?.includes('rate limit')) {
-        toast.error('Too many school creation attempts. Please try again later.');
-      } else if (error.message?.includes('duplicate')) {
-        toast.error('A school with this name already exists in this location.');
+      // Extract actual error message
+      const errorMessage = error?.context?.body?.error || 
+                           error?.message || 
+                           'Failed to create school';
+      
+      if (errorMessage.includes('rate limit') || errorMessage.includes('Rate limit')) {
+        toast.error(errorMessage);
+      } else if (errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
+        toast.error(errorMessage);
+      } else if (errorMessage.includes('required') || errorMessage.includes('must be')) {
+        toast.error(errorMessage);
       } else {
-        toast.error('Failed to create school. Please try again.');
+        toast.error(errorMessage);
       }
     } finally {
       setIsCreatingSchool(false);
@@ -493,7 +522,333 @@ const prefetchSchools = useCallback(async () => {
               <p className="text-muted-foreground">Streamline your school's dismissal process</p>
             </div>
 
-            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+            {/* Success Banner */}
+            {showSuccessBanner && (
+              <Alert className="mb-4 border-green-500 bg-green-50 dark:bg-green-950">
+                <Check className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800 dark:text-green-200">
+                  ✓ <strong>{selectedSchool?.school_name}</strong> has been added! 
+                  Complete your signup below by setting a password.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {isInCreateSchoolMode ? (
+              // Full-page "Add Your School" form
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <CardHeader>
+                  <div className="flex items-center justify-between mb-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm('Are you sure? Your information will be lost.')) {
+                          setIsInCreateSchoolMode(false);
+                          setNewSchoolData({
+                            schoolName: '',
+                            streetAddress: '',
+                            city: '',
+                            state: '',
+                            zipcode: '',
+                            county: '',
+                            schoolDistrict: '',
+                            phoneNumber: '',
+                            creatorFirstName: '',
+                            creatorLastName: '',
+                            creatorEmail: '',
+                            creatorRole: null
+                          });
+                        }
+                      }}
+                    >
+                      ← Back to School Search
+                    </Button>
+                    <Badge variant="outline">Step 1 of 2</Badge>
+                  </div>
+                  
+                  <CardTitle className="text-2xl">Add Your School to DismissalPro</CardTitle>
+                  <CardDescription>
+                    We'll add your school immediately so you can start using DismissalPro. 
+                    Our team will verify the details within 24 hours.
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent>
+                  <form onSubmit={handleCreateSchool} className="space-y-6">
+                    {/* SECTION 1: School Information */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-5 w-5 text-primary" />
+                        <h3 className="text-lg font-semibold">School Information</h3>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="create-school-name">
+                          School Name <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="create-school-name"
+                          value={newSchoolData.schoolName}
+                          onChange={(e) => setNewSchoolData(prev => ({ ...prev, schoolName: e.target.value }))}
+                          placeholder="Lincoln Elementary School"
+                          required
+                          minLength={3}
+                          maxLength={100}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="create-school-address">Street Address</Label>
+                        <Input
+                          id="create-school-address"
+                          value={newSchoolData.streetAddress}
+                          onChange={(e) => setNewSchoolData(prev => ({ ...prev, streetAddress: e.target.value }))}
+                          placeholder="123 Main Street"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="create-school-city">
+                            City <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            id="create-school-city"
+                            value={newSchoolData.city}
+                            onChange={(e) => setNewSchoolData(prev => ({ ...prev, city: e.target.value }))}
+                            placeholder="Springfield"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="create-school-state">
+                            State <span className="text-destructive">*</span>
+                          </Label>
+                          <Select
+                            value={newSchoolData.state}
+                            onValueChange={(value) => setNewSchoolData(prev => ({ ...prev, state: value }))}
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select state" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="AL">Alabama</SelectItem>
+                              <SelectItem value="AK">Alaska</SelectItem>
+                              <SelectItem value="AZ">Arizona</SelectItem>
+                              <SelectItem value="AR">Arkansas</SelectItem>
+                              <SelectItem value="CA">California</SelectItem>
+                              <SelectItem value="CO">Colorado</SelectItem>
+                              <SelectItem value="CT">Connecticut</SelectItem>
+                              <SelectItem value="DE">Delaware</SelectItem>
+                              <SelectItem value="FL">Florida</SelectItem>
+                              <SelectItem value="GA">Georgia</SelectItem>
+                              <SelectItem value="HI">Hawaii</SelectItem>
+                              <SelectItem value="ID">Idaho</SelectItem>
+                              <SelectItem value="IL">Illinois</SelectItem>
+                              <SelectItem value="IN">Indiana</SelectItem>
+                              <SelectItem value="IA">Iowa</SelectItem>
+                              <SelectItem value="KS">Kansas</SelectItem>
+                              <SelectItem value="KY">Kentucky</SelectItem>
+                              <SelectItem value="LA">Louisiana</SelectItem>
+                              <SelectItem value="ME">Maine</SelectItem>
+                              <SelectItem value="MD">Maryland</SelectItem>
+                              <SelectItem value="MA">Massachusetts</SelectItem>
+                              <SelectItem value="MI">Michigan</SelectItem>
+                              <SelectItem value="MN">Minnesota</SelectItem>
+                              <SelectItem value="MS">Mississippi</SelectItem>
+                              <SelectItem value="MO">Missouri</SelectItem>
+                              <SelectItem value="MT">Montana</SelectItem>
+                              <SelectItem value="NE">Nebraska</SelectItem>
+                              <SelectItem value="NV">Nevada</SelectItem>
+                              <SelectItem value="NH">New Hampshire</SelectItem>
+                              <SelectItem value="NJ">New Jersey</SelectItem>
+                              <SelectItem value="NM">New Mexico</SelectItem>
+                              <SelectItem value="NY">New York</SelectItem>
+                              <SelectItem value="NC">North Carolina</SelectItem>
+                              <SelectItem value="ND">North Dakota</SelectItem>
+                              <SelectItem value="OH">Ohio</SelectItem>
+                              <SelectItem value="OK">Oklahoma</SelectItem>
+                              <SelectItem value="OR">Oregon</SelectItem>
+                              <SelectItem value="PA">Pennsylvania</SelectItem>
+                              <SelectItem value="RI">Rhode Island</SelectItem>
+                              <SelectItem value="SC">South Carolina</SelectItem>
+                              <SelectItem value="SD">South Dakota</SelectItem>
+                              <SelectItem value="TN">Tennessee</SelectItem>
+                              <SelectItem value="TX">Texas</SelectItem>
+                              <SelectItem value="UT">Utah</SelectItem>
+                              <SelectItem value="VT">Vermont</SelectItem>
+                              <SelectItem value="VA">Virginia</SelectItem>
+                              <SelectItem value="WA">Washington</SelectItem>
+                              <SelectItem value="WV">West Virginia</SelectItem>
+                              <SelectItem value="WI">Wisconsin</SelectItem>
+                              <SelectItem value="WY">Wyoming</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="create-school-zipcode">Zipcode</Label>
+                          <Input
+                            id="create-school-zipcode"
+                            value={newSchoolData.zipcode}
+                            onChange={(e) => setNewSchoolData(prev => ({ ...prev, zipcode: e.target.value }))}
+                            placeholder="12345"
+                            pattern="[0-9]{5}"
+                            maxLength={5}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="create-school-county">County</Label>
+                          <Input
+                            id="create-school-county"
+                            value={newSchoolData.county}
+                            onChange={(e) => setNewSchoolData(prev => ({ ...prev, county: e.target.value }))}
+                            placeholder="Sangamon County"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="create-school-district">School District</Label>
+                        <Input
+                          id="create-school-district"
+                          value={newSchoolData.schoolDistrict}
+                          onChange={(e) => setNewSchoolData(prev => ({ ...prev, schoolDistrict: e.target.value }))}
+                          placeholder="Springfield Public Schools"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="create-school-phone">Phone Number</Label>
+                        <Input
+                          id="create-school-phone"
+                          type="tel"
+                          value={newSchoolData.phoneNumber}
+                          onChange={(e) => setNewSchoolData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* SECTION 2: Your Information */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <User className="h-5 w-5 text-primary" />
+                        <h3 className="text-lg font-semibold">Your Information</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="creator-first-name">
+                            First Name <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            id="creator-first-name"
+                            value={newSchoolData.creatorFirstName}
+                            onChange={(e) => setNewSchoolData(prev => ({ ...prev, creatorFirstName: e.target.value }))}
+                            placeholder="John"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="creator-last-name">
+                            Last Name <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            id="creator-last-name"
+                            value={newSchoolData.creatorLastName}
+                            onChange={(e) => setNewSchoolData(prev => ({ ...prev, creatorLastName: e.target.value }))}
+                            placeholder="Doe"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="creator-email">
+                          Email <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="creator-email"
+                            type="email"
+                            value={newSchoolData.creatorEmail}
+                            onChange={(e) => setNewSchoolData(prev => ({ ...prev, creatorEmail: e.target.value }))}
+                            placeholder="john@school.edu"
+                            className="pl-9"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="creator-role">
+                          Your Role <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={newSchoolData.creatorRole || ''}
+                          onValueChange={(value) => setNewSchoolData(prev => ({ 
+                            ...prev, 
+                            creatorRole: value as 'school_admin' | 'teacher' 
+                          }))}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="school_admin">School Administrator</SelectItem>
+                            <SelectItem value="teacher">Teacher</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        Your school will be available <strong>immediately</strong> after creation. 
+                        Our team will verify the details within 24 hours and you'll receive an email confirmation.
+                      </AlertDescription>
+                    </Alert>
+
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      variant="hero" 
+                      size="lg"
+                      disabled={isCreatingSchool || 
+                                !newSchoolData.schoolName || 
+                                !newSchoolData.city || 
+                                !newSchoolData.state ||
+                                !newSchoolData.creatorFirstName ||
+                                !newSchoolData.creatorLastName ||
+                                !newSchoolData.creatorEmail ||
+                                !newSchoolData.creatorRole}
+                    >
+                      {isCreatingSchool ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating School...
+                        </>
+                      ) : (
+                        "Create School & Continue to Set Password"
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               {invitationToken && teacherData ? (
                 // Teacher invitation completion form with OAuth
                 <div>
@@ -698,7 +1053,22 @@ const prefetchSchools = useCallback(async () => {
                     
                     <TabsContent value="signup">
                       <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
-                        {/* STEP 1: School Selection (Required First) */}
+                        {/* Show pre-filled details after school creation */}
+                        {selectedSchool && selectedRole && signUpForm.watch('firstName') && (
+                          <div className="mb-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                            <h4 className="font-semibold text-primary mb-2">Your Details</h4>
+                            <div className="text-sm space-y-1">
+                              <p><strong>School:</strong> {selectedSchool.school_name}</p>
+                              <p><strong>Role:</strong> {selectedRole === 'school_admin' ? 'School Administrator' : 'Teacher'}</p>
+                              <p><strong>Name:</strong> {signUpForm.watch('firstName')} {signUpForm.watch('lastName')}</p>
+                              <p><strong>Email:</strong> {signUpForm.watch('email')}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* STEP 1: School Selection (Required First) - Hide if pre-filled */}
+                        {!signUpForm.watch('firstName') && (
+                          <>
                         <div className="space-y-2">
                           <Label htmlFor="schoolId">School *</Label>
                           <Popover open={schoolSearchOpen} onOpenChange={(open) => { setSchoolSearchOpen(open); if (open) prefetchSchools(); }}>
@@ -737,11 +1107,22 @@ const prefetchSchools = useCallback(async () => {
                                           variant="link"
                                           size="sm"
                                           onClick={() => {
-                                            setShowCreateSchoolDialog(true);
-                                            setNewSchoolData(prev => ({
-                                              ...prev,
-                                              schoolName: searchQuery
-                                            }));
+                                            setIsInCreateSchoolMode(true);
+                                            setSchoolSearchOpen(false);
+                                            setNewSchoolData({
+                                              schoolName: searchQuery,
+                                              streetAddress: '',
+                                              city: '',
+                                              state: '',
+                                              zipcode: '',
+                                              county: '',
+                                              schoolDistrict: '',
+                                              phoneNumber: '',
+                                              creatorFirstName: '',
+                                              creatorLastName: '',
+                                              creatorEmail: '',
+                                              creatorRole: null
+                                            });
                                           }}
                                         >
                                           Can't find your school? Click here to add it →
@@ -841,7 +1222,8 @@ const prefetchSchools = useCallback(async () => {
                             </div>
                           </div>
 
-                          {/* Name Fields - For email signup */}
+                          {/* Name Fields - For email signup (hide if pre-filled) */}
+                          {!signUpForm.watch('firstName') && (
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor="firstName">First Name *</Label>
@@ -875,6 +1257,9 @@ const prefetchSchools = useCallback(async () => {
                             </div>
                           </div>
 
+                          )}
+
+                          {!signUpForm.watch('email') && (
                           <div className="space-y-2">
                             <Label htmlFor="signupEmail">Email *</Label>
                             <div className="relative">
@@ -894,6 +1279,9 @@ const prefetchSchools = useCallback(async () => {
                             </div>
                           </div>
                           
+                          )}
+                          
+                          {/* Always show password field */}
                           <div className="space-y-2">
                             <Label htmlFor="signupPassword">Password *</Label>
                             <div className="relative">
@@ -904,6 +1292,7 @@ const prefetchSchools = useCallback(async () => {
                                 placeholder="Create a strong password"
                                 className="pl-9"
                                 {...signUpForm.register("password")}
+                                 autoFocus={!!signUpForm.watch('firstName')}
                               />
                               {signUpForm.formState.errors.password && (
                                 <p className="text-sm text-destructive mt-1">
@@ -913,6 +1302,9 @@ const prefetchSchools = useCallback(async () => {
                             </div>
                           </div>
                         </div>
+                        
+                        </>
+                        )}
                         
                         <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
                           {isLoading ? "Creating account..." : "Create Account"}
@@ -933,7 +1325,8 @@ const prefetchSchools = useCallback(async () => {
                   </CardContent>
                 </Tabs>
               )}
-            </Card>
+              </Card>
+            )}
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Trusted by 500+ schools nationwide
@@ -941,228 +1334,6 @@ const prefetchSchools = useCallback(async () => {
           </div>
         </div>
         
-        {/* Create School Dialog */}
-        <Dialog open={showCreateSchoolDialog} onOpenChange={setShowCreateSchoolDialog}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Your School</DialogTitle>
-              <DialogDescription>
-                Can't find your school? Add it here and you'll be able to sign up immediately.
-                Our team will verify the details within 24 hours.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <form onSubmit={handleCreateSchool} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-school-name">
-                  School Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="new-school-name"
-                  value={newSchoolData.schoolName}
-                  onChange={(e) => setNewSchoolData(prev => ({
-                    ...prev,
-                    schoolName: e.target.value
-                  }))}
-                  placeholder="Lincoln Elementary School"
-                  required
-                  minLength={3}
-                  maxLength={100}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new-school-address">Street Address</Label>
-                <Input
-                  id="new-school-address"
-                  value={newSchoolData.streetAddress}
-                  onChange={(e) => setNewSchoolData(prev => ({
-                    ...prev,
-                    streetAddress: e.target.value
-                  }))}
-                  placeholder="123 Main Street"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-school-city">
-                    City <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="new-school-city"
-                    value={newSchoolData.city}
-                    onChange={(e) => setNewSchoolData(prev => ({
-                      ...prev,
-                      city: e.target.value
-                    }))}
-                    placeholder="Springfield"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="new-school-state">
-                    State <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={newSchoolData.state}
-                    onValueChange={(value) => setNewSchoolData(prev => ({
-                      ...prev,
-                      state: value
-                    }))}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AL">Alabama</SelectItem>
-                      <SelectItem value="AK">Alaska</SelectItem>
-                      <SelectItem value="AZ">Arizona</SelectItem>
-                      <SelectItem value="AR">Arkansas</SelectItem>
-                      <SelectItem value="CA">California</SelectItem>
-                      <SelectItem value="CO">Colorado</SelectItem>
-                      <SelectItem value="CT">Connecticut</SelectItem>
-                      <SelectItem value="DE">Delaware</SelectItem>
-                      <SelectItem value="FL">Florida</SelectItem>
-                      <SelectItem value="GA">Georgia</SelectItem>
-                      <SelectItem value="HI">Hawaii</SelectItem>
-                      <SelectItem value="ID">Idaho</SelectItem>
-                      <SelectItem value="IL">Illinois</SelectItem>
-                      <SelectItem value="IN">Indiana</SelectItem>
-                      <SelectItem value="IA">Iowa</SelectItem>
-                      <SelectItem value="KS">Kansas</SelectItem>
-                      <SelectItem value="KY">Kentucky</SelectItem>
-                      <SelectItem value="LA">Louisiana</SelectItem>
-                      <SelectItem value="ME">Maine</SelectItem>
-                      <SelectItem value="MD">Maryland</SelectItem>
-                      <SelectItem value="MA">Massachusetts</SelectItem>
-                      <SelectItem value="MI">Michigan</SelectItem>
-                      <SelectItem value="MN">Minnesota</SelectItem>
-                      <SelectItem value="MS">Mississippi</SelectItem>
-                      <SelectItem value="MO">Missouri</SelectItem>
-                      <SelectItem value="MT">Montana</SelectItem>
-                      <SelectItem value="NE">Nebraska</SelectItem>
-                      <SelectItem value="NV">Nevada</SelectItem>
-                      <SelectItem value="NH">New Hampshire</SelectItem>
-                      <SelectItem value="NJ">New Jersey</SelectItem>
-                      <SelectItem value="NM">New Mexico</SelectItem>
-                      <SelectItem value="NY">New York</SelectItem>
-                      <SelectItem value="NC">North Carolina</SelectItem>
-                      <SelectItem value="ND">North Dakota</SelectItem>
-                      <SelectItem value="OH">Ohio</SelectItem>
-                      <SelectItem value="OK">Oklahoma</SelectItem>
-                      <SelectItem value="OR">Oregon</SelectItem>
-                      <SelectItem value="PA">Pennsylvania</SelectItem>
-                      <SelectItem value="RI">Rhode Island</SelectItem>
-                      <SelectItem value="SC">South Carolina</SelectItem>
-                      <SelectItem value="SD">South Dakota</SelectItem>
-                      <SelectItem value="TN">Tennessee</SelectItem>
-                      <SelectItem value="TX">Texas</SelectItem>
-                      <SelectItem value="UT">Utah</SelectItem>
-                      <SelectItem value="VT">Vermont</SelectItem>
-                      <SelectItem value="VA">Virginia</SelectItem>
-                      <SelectItem value="WA">Washington</SelectItem>
-                      <SelectItem value="WV">West Virginia</SelectItem>
-                      <SelectItem value="WI">Wisconsin</SelectItem>
-                      <SelectItem value="WY">Wyoming</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-school-zipcode">Zipcode</Label>
-                  <Input
-                    id="new-school-zipcode"
-                    value={newSchoolData.zipcode}
-                    onChange={(e) => setNewSchoolData(prev => ({
-                      ...prev,
-                      zipcode: e.target.value
-                    }))}
-                    placeholder="12345"
-                    pattern="[0-9]{5}"
-                    maxLength={5}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="new-school-county">County</Label>
-                  <Input
-                    id="new-school-county"
-                    value={newSchoolData.county}
-                    onChange={(e) => setNewSchoolData(prev => ({
-                      ...prev,
-                      county: e.target.value
-                    }))}
-                    placeholder="Sangamon County"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new-school-district">School District</Label>
-                <Input
-                  id="new-school-district"
-                  value={newSchoolData.schoolDistrict}
-                  onChange={(e) => setNewSchoolData(prev => ({
-                    ...prev,
-                    schoolDistrict: e.target.value
-                  }))}
-                  placeholder="Springfield Public Schools"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new-school-phone">Phone Number</Label>
-                <Input
-                  id="new-school-phone"
-                  type="tel"
-                  value={newSchoolData.phoneNumber}
-                  onChange={(e) => setNewSchoolData(prev => ({
-                    ...prev,
-                    phoneNumber: e.target.value
-                  }))}
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  Your school will be available immediately after creation. 
-                  Our team will verify the details within 24 hours.
-                </AlertDescription>
-              </Alert>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCreateSchoolDialog(false)}
-                  disabled={isCreatingSchool}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isCreatingSchool || !newSchoolData.schoolName || !newSchoolData.city || !newSchoolData.state}
-                >
-                  {isCreatingSchool ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating School...
-                    </>
-                  ) : (
-                    "Create School & Continue"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
         
         {/* Password Reset Dialog */}
         <Dialog open={showPasswordResetDialog} onOpenChange={setShowPasswordResetDialog}>

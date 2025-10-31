@@ -16,6 +16,9 @@ interface SchoolCreationNotificationProps {
   schoolDistrict?: string;
   phoneNumber?: string;
   creatorEmail: string;
+  creatorFirstName: string;
+  creatorLastName: string;
+  creatorRole: string;
   creatorIp: string;
   userAgent: string;
   createdAt: string;
@@ -34,6 +37,9 @@ export const SchoolCreationNotification = ({
   schoolDistrict,
   phoneNumber,
   creatorEmail,
+  creatorFirstName,
+  creatorLastName,
+  creatorRole,
   creatorIp,
   userAgent,
   createdAt,
@@ -100,20 +106,26 @@ export const SchoolCreationNotification = ({
       <Text style={{ ...styles.text, margin: '0 0 15px 0', fontWeight: 'bold', fontSize: '16px' }}>
         👤 CREATOR INFO
       </Text>
-      <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
-        <p style={{ margin: '5px 0' }}>
-          <strong>Email:</strong> {creatorEmail}
-        </p>
-        <p style={{ margin: '5px 0' }}>
-          <strong>IP Address:</strong> {creatorIp}
-        </p>
-        <p style={{ margin: '5px 0' }}>
-          <strong>User Agent:</strong> {userAgent}
-        </p>
-        <p style={{ margin: '5px 0' }}>
-          <strong>Created:</strong> {createdAt}
-        </p>
-      </div>
+        <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+          <p style={{ margin: '5px 0' }}>
+            <strong>Name:</strong> {creatorFirstName} {creatorLastName}
+          </p>
+          <p style={{ margin: '5px 0' }}>
+            <strong>Email:</strong> {creatorEmail}
+          </p>
+          <p style={{ margin: '5px 0' }}>
+            <strong>Role:</strong> {creatorRole === 'school_admin' ? 'School Administrator' : 'Teacher'}
+          </p>
+          <p style={{ margin: '5px 0' }}>
+            <strong>IP Address:</strong> {creatorIp}
+          </p>
+          <p style={{ margin: '5px 0' }}>
+            <strong>User Agent:</strong> {userAgent}
+          </p>
+          <p style={{ margin: '5px 0' }}>
+            <strong>Created:</strong> {createdAt}
+          </p>
+        </div>
     </div>
 
     {/* Flagged Indicators */}
