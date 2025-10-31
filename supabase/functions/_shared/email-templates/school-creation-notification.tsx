@@ -175,21 +175,21 @@ export const SchoolCreationNotification = ({
           href={`${Deno.env.get('SUPABASE_URL') || 'https://lwbmtirzntexaxdlhgsk.supabase.co'}/admin/schools?id=${schoolId}`}
           backgroundColor="#10B981"
         >
-          ✓ Approve School
+          ✓ Approve
         </EmailButton>
         
         <EmailButton 
           href={`${Deno.env.get('SUPABASE_URL') || 'https://lwbmtirzntexaxdlhgsk.supabase.co'}/admin/schools?id=${schoolId}&action=deactivate`}
           backgroundColor="#EF4444"
         >
-          ✕ Deactivate School
+          ✕ Deactivate
         </EmailButton>
         
         <EmailButton 
           href={`${Deno.env.get('SUPABASE_URL') || 'https://lwbmtirzntexaxdlhgsk.supabase.co'}/admin/schools?highlight=${schoolId}`}
           backgroundColor="#3B82F6"
         >
-          👁 Review in Dashboard
+          👁 Review
         </EmailButton>
       </div>
     </div>
