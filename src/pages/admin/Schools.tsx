@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -372,6 +372,7 @@ export default function AdminSchools() {
     loading
   } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     toast
   } = useToast();
@@ -387,6 +388,66 @@ export default function AdminSchools() {
     }
   }, [loading, userRole, navigate]);
   
+  // Handle URL query parameters (for email links)
+  useEffect(() => {
+    if (loading || userRole !== "system_admin") return;
+    
+    const schoolId = searchParams.get('id');
+    const action = searchParams.get('action');
+    const highlightId = searchParams.get('highlight');
+    
+    if (schoolId) {
+      const id = parseInt(schoolId);
+      
+      // Handle edit action (open edit form)
+      if (action !== 'deactivate') {
+        // Fetch the school and open edit form
+        supabase
+          .from('schools')
+          .select('*')
+          .eq('id', id)
+          .single()
+          .then(({ data, error }) => {
+            if (!error && data) {
+              setEditing(data as School);
+              setShowForm(true);
+            } else {
+              toast({
+                title: 'School not found',
+                description: 'Could not find the requested school.',
+                variant: 'destructive'
+              });
+            }
+          });
+      } else {
+        // Handle deactivate action
+        handleDeactivateSchool(id);
+      }
+      
+      // Clear params
+      setSearchParams({});
+    } else if (highlightId) {
+      const id = parseInt(highlightId);
+      setHighlightedSchoolId(id);
+      
+      // Clear highlight after 5 seconds
+      setTimeout(() => {
+        setHighlightedSchoolId(null);
+      }, 5000);
+      
+      // Clear params
+      setSearchParams({});
+      
+      // Scroll to the highlighted row (with a delay to allow render)
+      setTimeout(() => {
+        const row = document.querySelector(`[data-school-id="${id}"]`);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [loading, userRole, searchParams, setSearchParams, toast]);
+  
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -394,6 +455,7 @@ export default function AdminSchools() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string>("all");
   const [verificationFilter, setVerificationFilter] = useState<string>("all");
+  const [highlightedSchoolId, setHighlightedSchoolId] = useState<number | null>(null);
   
   // Server-side paginated query with filtering
   const {
@@ -715,7 +777,11 @@ export default function AdminSchools() {
                 </TableHeader>
                 <TableBody>
                   {data.map((s) => (
-                    <TableRow key={s.id}>
+                    <TableRow 
+                      key={s.id}
+                      data-school-id={s.id}
+                      className={highlightedSchoolId === s.id ? "bg-yellow-100 dark:bg-yellow-900/20 transition-colors duration-300" : ""}
+                    >
                       <TableCell>
                         <div className="flex flex-col">
                           <span>{s.school_name || '—'}</span>

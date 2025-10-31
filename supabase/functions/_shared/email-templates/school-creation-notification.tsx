@@ -172,21 +172,21 @@ export const SchoolCreationNotification = ({
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
         <EmailButton 
-          href={`${Deno.env.get('SUPABASE_URL') || 'https://lwbmtirzntexaxdlhgsk.supabase.co'}/admin/schools?id=${schoolId}`}
+          href={`${Deno.env.get('APP_URL') || 'https://dismissalpro.io'}/admin/schools?id=${schoolId}`}
           backgroundColor="#10B981"
         >
           ✓ Approve
         </EmailButton>
         
         <EmailButton 
-          href={`${Deno.env.get('SUPABASE_URL') || 'https://lwbmtirzntexaxdlhgsk.supabase.co'}/admin/schools?id=${schoolId}&action=deactivate`}
+          href={`${Deno.env.get('APP_URL') || 'https://dismissalpro.io'}/admin/schools?id=${schoolId}&action=deactivate`}
           backgroundColor="#EF4444"
         >
           ✕ Deactivate
         </EmailButton>
         
         <EmailButton 
-          href={`${Deno.env.get('SUPABASE_URL') || 'https://lwbmtirzntexaxdlhgsk.supabase.co'}/admin/schools?highlight=${schoolId}`}
+          href={`${Deno.env.get('APP_URL') || 'https://dismissalpro.io'}/admin/schools?highlight=${schoolId}`}
           backgroundColor="#3B82F6"
         >
           👁 Review
