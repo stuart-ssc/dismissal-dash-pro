@@ -470,7 +470,8 @@ export default function AdminSchools() {
   const {
     data: queryResult,
     isLoading,
-    error
+    error,
+    refetch
   } = useQuery<{ data: School[], count: number }>({
     queryKey: ["schools", searchQuery, selectedState, verificationFilter, currentPage, itemsPerPage],
     queryFn: async () => {
@@ -595,7 +596,7 @@ export default function AdminSchools() {
       if (error) throw error;
       
       toast({ title: 'School verified', description: 'School has been marked as verified.' });
-      qc.invalidateQueries({ queryKey: ["schools"] });
+      await refetch();
     } catch (error: any) {
       toast({ title: 'Error', description: 'Failed to verify school.', variant: 'destructive' });
     }
@@ -616,7 +617,7 @@ export default function AdminSchools() {
       if (error) throw error;
       
       toast({ title: 'School deactivated', description: 'School has been deactivated.' });
-      qc.invalidateQueries({ queryKey: ["schools"] });
+      await refetch();
     } catch (error: any) {
       toast({ title: 'Error', description: 'Failed to deactivate school.', variant: 'destructive' });
     }
@@ -635,7 +636,7 @@ export default function AdminSchools() {
       if (error) throw error;
       
       toast({ title: 'School reactivated', description: 'School has been reactivated.' });
-      qc.invalidateQueries({ queryKey: ["schools"] });
+      await refetch();
     } catch (error: any) {
       toast({ title: 'Error', description: 'Failed to reactivate school.', variant: 'destructive' });
     }
@@ -839,6 +840,7 @@ export default function AdminSchools() {
                       <TableCell className="text-right">
                         <TooltipProvider>
                           <div className="hidden lg:flex justify-end gap-2">
+                            {/* Edit Button - Always enabled */}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button variant="secondary" size="sm" onClick={() => openEdit(s)}>
@@ -849,52 +851,42 @@ export default function AdminSchools() {
                                 <p>Edit school</p>
                               </TooltipContent>
                             </Tooltip>
-                            {s.verification_status === 'deactivated' ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="outline" size="sm" onClick={() => handleReactivateSchool(s.id)}>
-                                    <RefreshCw className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Reactivate school</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : s.verification_status === 'verified' ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="softDestructive" size="sm" onClick={() => handleDeactivateSchool(s.id)}>
-                                    <XCircle className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Deactivate school</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="success" size="sm" onClick={() => handleVerifySchool(s.id)}>
-                                      <CheckCircle className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Verify school</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="softDestructive" size="sm" onClick={() => handleDeactivateSchool(s.id)}>
-                                      <XCircle className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Deactivate school</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </>
-                            )}
+
+                            {/* Verify Button - Disabled if verified or deactivated */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="success" 
+                                  size="sm" 
+                                  onClick={() => handleVerifySchool(s.id)}
+                                  disabled={s.verification_status === 'verified' || s.verification_status === 'deactivated'}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{s.verification_status === 'verified' ? 'School already verified' : s.verification_status === 'deactivated' ? 'Cannot verify deactivated school' : 'Verify school'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+
+                            {/* Deactivate Button - Disabled if already deactivated */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="softDestructive" 
+                                  size="sm" 
+                                  onClick={() => handleDeactivateSchool(s.id)}
+                                  disabled={s.verification_status === 'deactivated'}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{s.verification_status === 'deactivated' ? 'School already deactivated' : 'Deactivate school'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+
+                            {/* Delete Button - Always enabled */}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button variant="softDestructive" size="sm" onClick={() => deleteMutation.mutate(s.id)}>
