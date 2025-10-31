@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Mail, Lock, User, Building, UserCheck, Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import logoMark from "@/assets/logo-mark.svg";
@@ -47,6 +48,10 @@ const [allSchools, setAllSchools] = useState<{ id: number; school_name: string; 
   const [invitationType, setInvitationType] = useState<string | null>(null);
   const [teacherData, setTeacherData] = useState<any>(null);
   const [isValidatingInvitation, setIsValidatingInvitation] = useState(false);
+  
+  // Password reset dialog state
+  const [showPasswordResetDialog, setShowPasswordResetDialog] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   const signInForm = useForm<SignInForm>({
     resolver: zodResolver(signInSchema)
@@ -237,22 +242,22 @@ const prefetchSchools = useCallback(async () => {
   };
 
   const handlePasswordReset = async () => {
-    const email = signInForm.getValues('email');
-    
-    if (!email) {
-      toast.error('Please enter your email address first');
+    if (!resetEmail) {
+      toast.error('Please enter your email address');
       return;
     }
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
         redirectTo: `${window.location.origin}/`,
       });
 
       if (error) throw error;
 
       toast.success('Password reset email sent! Check your inbox.');
+      setShowPasswordResetDialog(false);
+      setResetEmail("");
     } catch (error: any) {
       console.error('Password reset error:', error);
       toast.error(error.message || 'Failed to send password reset email');
@@ -596,8 +601,7 @@ const prefetchSchools = useCallback(async () => {
                             type="button" 
                             variant="link" 
                             size="sm"
-                            onClick={handlePasswordReset}
-                            disabled={isLoading}
+                            onClick={() => setShowPasswordResetDialog(true)}
                           >
                             Forgot your password?
                           </Button>
@@ -832,6 +836,62 @@ const prefetchSchools = useCallback(async () => {
             </div>
           </div>
         </div>
+        
+        {/* Password Reset Dialog */}
+        <Dialog open={showPasswordResetDialog} onOpenChange={setShowPasswordResetDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Your Password</DialogTitle>
+              <DialogDescription>
+                Enter your email address and we'll send you a link to reset your password.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="you@school.edu"
+                    className="pl-9"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowPasswordResetDialog(false);
+                  setResetEmail("");
+                }}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handlePasswordReset}
+                disabled={isLoading || !resetEmail}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Reset Link"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
