@@ -84,7 +84,7 @@ serve(async (req) => {
     }
 
     const { data, error } = await resend.emails.send({
-      from: 'Dismissal Pro <noreply@dismissalpro.lovable.app>',
+      from: 'Dismissal Pro <noreply@dismissalpro.io>',
       to: adminEmails,
       subject: `🏫 New School Created: ${schoolName}${flagged ? ' [FLAGGED]' : ''}`,
       html: emailHtml,
