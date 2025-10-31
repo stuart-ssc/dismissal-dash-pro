@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -836,32 +837,76 @@ export default function AdminSchools() {
                       <TableCell className="hidden lg:table-cell">{s.phone_number || '—'}</TableCell>
                       <TableCell className="hidden lg:table-cell">{s.dismissal_time ? format(new Date(`1970-01-01T${s.dismissal_time}`), "hh:mm a") : ''}</TableCell>
                       <TableCell className="text-right">
-                        <div className="hidden lg:flex justify-end gap-2">
-                          <Button variant="secondary" size="sm" onClick={() => openEdit(s)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          {s.verification_status === 'deactivated' ? (
-                            <Button variant="outline" size="sm" onClick={() => handleReactivateSchool(s.id)}>
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                          ) : s.verification_status === 'verified' ? (
-                            <Button variant="softDestructive" size="sm" onClick={() => handleDeactivateSchool(s.id)}>
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          ) : (
-                            <>
-                              <Button variant="success" size="sm" onClick={() => handleVerifySchool(s.id)}>
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                              <Button variant="softDestructive" size="sm" onClick={() => handleDeactivateSchool(s.id)}>
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          <Button variant="softDestructive" size="sm" onClick={() => deleteMutation.mutate(s.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <TooltipProvider>
+                          <div className="hidden lg:flex justify-end gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="secondary" size="sm" onClick={() => openEdit(s)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Edit school</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            {s.verification_status === 'deactivated' ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="outline" size="sm" onClick={() => handleReactivateSchool(s.id)}>
+                                    <RefreshCw className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Reactivate school</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : s.verification_status === 'verified' ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="softDestructive" size="sm" onClick={() => handleDeactivateSchool(s.id)}>
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Deactivate school</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="success" size="sm" onClick={() => handleVerifySchool(s.id)}>
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Verify school</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="softDestructive" size="sm" onClick={() => handleDeactivateSchool(s.id)}>
+                                      <XCircle className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Deactivate school</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </>
+                            )}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="softDestructive" size="sm" onClick={() => deleteMutation.mutate(s.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Delete school</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TooltipProvider>
                         <div className="lg:hidden flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
