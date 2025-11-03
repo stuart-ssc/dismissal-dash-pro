@@ -324,30 +324,21 @@ export default function CarLineMode() {
         .select("id,first_name,last_name,grade_level")
         .in("id", allCarStudentIds);
 
-      // map students to class via class_rosters
-      const { data: rosters } = await supabase
-        .from("class_rosters")
-        .select("student_id,class_id")
-        .in("student_id", allCarStudentIds);
+      // Load ALL classes from the school for the filter dropdown
+      const { data: allClasses } = await supabase.rpc('get_school_classes', { p_school_id: schoolId });
+      const classList = (allClasses || []).map((c: any) => ({ id: c.id, class_name: c.class_name }));
+      setClasses(classList);
 
-      const classIds = Array.from(new Set((rosters || []).map((r) => r.class_id)));
-      let classMap: Record<string, string> = {};
-      if (classIds.length) {
-        const { data: cls } = await supabase.from("classes").select("id,class_name").in("id", classIds);
-        const list = (cls || []) as any as ClassItem[];
-        setClasses(list);
-        list.forEach((c) => {
-          classMap[c.id] = c.class_name;
-        });
-      } else {
-        setClasses([]);
-      }
+      // Get student-to-class mappings
+      const { data: rosterMap } = await supabase.rpc('get_student_class_map', { p_student_ids: allCarStudentIds });
+      const classMap: Record<string, string> = {};
+      (rosterMap || []).forEach((r: any) => {
+        classMap[r.student_id] = r.class_name;
+      });
 
       const list = (studs || []).map((s: any) => ({
         ...s,
-        class_name: (rosters || []).find((r) => r.student_id === s.id)?.class_id
-          ? classMap[(rosters || []).find((r) => r.student_id === s.id)!.class_id]
-          : undefined,
+        class_name: classMap[s.id],
         isTemporaryOverride: tempStudentIds.includes(s.id)
       }));
 

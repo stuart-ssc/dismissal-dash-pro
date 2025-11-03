@@ -1982,6 +1982,13 @@ export type Database = {
           last_name: string
         }[]
       }
+      get_school_classes: {
+        Args: { p_school_id: number }
+        Returns: {
+          class_name: string
+          id: string
+        }[]
+      }
       get_school_setup_status: {
         Args: { target_school_id?: number }
         Returns: {
@@ -1999,6 +2006,14 @@ export type Database = {
           id: number
           school_name: string
           state: string
+        }[]
+      }
+      get_student_class_map: {
+        Args: { p_student_ids: string[] }
+        Returns: {
+          class_id: string
+          class_name: string
+          student_id: string
         }[]
       }
       get_student_safe_view: {
