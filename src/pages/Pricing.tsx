@@ -53,7 +53,7 @@ const Pricing = () => {
     },
     {
       question: "Can I cancel anytime?",
-      answer: "Yes! You can cancel your subscription at any time. We'll prorate any remaining time on your annual plan.",
+      answer: "Yes! You can cancel your subscription at any time.",
     },
     {
       question: "Is there a setup fee?",
