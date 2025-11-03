@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSEO } from "@/hooks/useSEO";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -738,26 +739,26 @@ const People = () => {
                           <TableCell>{person.grade || '-'}</TableCell>
                           <TableCell>
                             {person.role === 'Student' ? (
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  variant="outline"
-                                  className="cursor-pointer hover:bg-accent"
-                                  onClick={() => {
-                                    if (getTransportationDisplay(person).hasTemp) {
-                                      openViewTempTransportDialog(person);
-                                    } else {
-                                      openTempTransportDialog(person);
-                                    }
-                                  }}
-                                >
-                                  {getTransportationDisplay(person).display}
-                                </Badge>
-                                {getTransportationDisplay(person).hasTemp && (
-                                  <TemporaryTransportationBadge 
-                                    onClick={() => openViewTempTransportDialog(person)}
-                                  />
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "cursor-pointer hover:bg-accent",
+                                  getTransportationDisplay(person).hasTemp && 
+                                  "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700"
                                 )}
-                              </div>
+                                onClick={() => {
+                                  if (getTransportationDisplay(person).hasTemp) {
+                                    openViewTempTransportDialog(person);
+                                  } else {
+                                    openTempTransportDialog(person);
+                                  }
+                                }}
+                              >
+                                {getTransportationDisplay(person).display}
+                                {getTransportationDisplay(person).hasTemp && (
+                                  <span className="text-amber-600 dark:text-amber-400 ml-1">*</span>
+                                )}
+                              </Badge>
                             ) : (
                               person.transportation || '-'
                             )}
@@ -1121,26 +1122,26 @@ const People = () => {
                       <TableCell>{person.grade || '-'}</TableCell>
                       <TableCell>
                         {person.role === 'Student' ? (
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className="cursor-pointer hover:bg-accent"
-                              onClick={() => {
-                                if (getTransportationDisplay(person).hasTemp) {
-                                  openViewTempTransportDialog(person);
-                                } else {
-                                  openTempTransportDialog(person);
-                                }
-                              }}
-                            >
-                              {getTransportationDisplay(person).display}
-                            </Badge>
-                            {getTransportationDisplay(person).hasTemp && (
-                              <TemporaryTransportationBadge 
-                                onClick={() => openViewTempTransportDialog(person)}
-                              />
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "cursor-pointer hover:bg-accent",
+                              getTransportationDisplay(person).hasTemp && 
+                              "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700"
                             )}
-                          </div>
+                            onClick={() => {
+                              if (getTransportationDisplay(person).hasTemp) {
+                                openViewTempTransportDialog(person);
+                              } else {
+                                openTempTransportDialog(person);
+                              }
+                            }}
+                          >
+                            {getTransportationDisplay(person).display}
+                            {getTransportationDisplay(person).hasTemp && (
+                              <span className="text-amber-600 dark:text-amber-400 ml-1">*</span>
+                            )}
+                          </Badge>
                         ) : (
                           person.transportation || '-'
                         )}
