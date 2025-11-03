@@ -688,7 +688,7 @@ export default function CarLineMode() {
                   </div>
                 )}
               </div>
-              {session && !locationCompleted && (
+              {session && !locationCompleted && run?.status === 'active' && (
                 <Button variant="secondary" onClick={finishLocation}>
                   Complete Car Line Location
                 </Button>

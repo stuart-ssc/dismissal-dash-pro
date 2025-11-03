@@ -363,7 +363,7 @@ export default function BusMode() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <CardTitle>Today&apos;s Buses</CardTitle>
-                {!isCompleted && !isLoading && (
+                {!isCompleted && !isLoading && run?.status === 'active' && (
                   <Button
                     onClick={() => setShowCompletionDialog(true)}
                     variant="secondary"
