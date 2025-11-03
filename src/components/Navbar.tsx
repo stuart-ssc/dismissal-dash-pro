@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Menu } from "lucide-react";
 import logo from "@/assets/logo.svg";
 import SystemAdminSchoolSwitcher from "@/components/SystemAdminSchoolSwitcher";
 
@@ -45,7 +47,8 @@ const Navbar = () => {
           </div>
         )}
         
-        <div className="flex items-center gap-4 ml-auto">
+        {/* Desktop CTA Buttons */}
+        <div className={`flex items-center gap-4 ml-auto ${showNavLinks ? 'hidden md:flex' : ''}`}>
           {isAuthPage ? (
             <Link to="/">
               <Button variant="ghost">← Back to Home</Button>
@@ -73,6 +76,46 @@ const Navbar = () => {
             </Link>
           )}
         </div>
+
+        {/* Mobile Menu - Hamburger */}
+        {showNavLinks && (
+          <Sheet>
+            <SheetTrigger asChild className="md:hidden ml-auto">
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+              <nav className="flex flex-col gap-4 mt-8">
+                <Link to="/how-it-works">
+                  <Button variant="ghost" className="w-full justify-start text-lg">
+                    How It Works
+                  </Button>
+                </Link>
+                <Link to="/pricing">
+                  <Button variant="ghost" className="w-full justify-start text-lg">
+                    Pricing
+                  </Button>
+                </Link>
+                <div className="mt-6 pt-6 border-t">
+                  {user && userRole ? (
+                    <Link to="/dashboard" className="w-full">
+                      <Button variant="hero" className="w-full">
+                        Dashboard
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link to="/auth" className="w-full">
+                      <Button variant="hero" className="w-full">
+                        Get Started
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </nav>
   );
