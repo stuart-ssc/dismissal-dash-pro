@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle2, AlertCircle, Bus, Users } from "lucide-react";
+import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 
 interface ActiveGroup {
   id: string;
@@ -23,6 +24,7 @@ interface ActiveGroup {
     first_name: string;
     last_name: string;
     destination?: string;
+    hasTemporaryOverride?: boolean;
   }>;
 }
 
@@ -158,12 +160,17 @@ export function GroupViewLayout({ groups, currentTime, dismissalPlanName, classN
                     </h4>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
                       {group.students.map((student) => (
-                        <div key={student.id} className="text-sm py-1 px-2 rounded hover:bg-accent/50">
-                          {student.first_name} {student.last_name}
-                          {student.destination && (
-                            <span className="text-muted-foreground text-xs ml-2">
-                              → {student.destination}
-                            </span>
+                        <div key={student.id} className="text-sm py-1 px-2 rounded hover:bg-accent/50 flex items-center justify-between">
+                          <span>
+                            {student.first_name} {student.last_name}
+                            {student.destination && (
+                              <span className="text-muted-foreground text-xs ml-2">
+                                → {student.destination}
+                              </span>
+                            )}
+                          </span>
+                          {student.hasTemporaryOverride && (
+                            <TemporaryTransportationBadge tooltipText="Temporary transportation override active" />
                           )}
                         </div>
                       ))}

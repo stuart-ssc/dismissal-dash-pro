@@ -12,9 +12,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Clock, UserCheck, Car } from "lucide-react";
 import { toast } from "sonner";
+import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 
 type CarLine = { id: string; line_name: string };
-type Student = { id: string; first_name: string; last_name: string; grade_level: string };
+type Student = { id: string; first_name: string; last_name: string; grade_level: string; isTemporaryOverride?: boolean };
 type ClassItem = { id: string; class_name: string };
 type Session = { id: string; finished_at: string | null };
 type PickupStatus = "waiting" | "parent_arrived" | "picked_up";
@@ -277,13 +278,41 @@ export default function CarLineMode() {
       if (!schoolId) return;
       setLoading(true);
 
-      // Get assignments (optionally by selected line)
+      // Get permanent assignments (optionally by selected line)
       let query = supabase.from("student_car_assignments").select("student_id,car_line_id");
       if (selectedLine) query = query.eq("car_line_id", selectedLine);
       const { data: assigns } = await query;
 
-      const studentIds = (assigns || []).map((a) => a.student_id);
-      if (studentIds.length === 0) {
+      const permanentStudentIds = (assigns || []).map((a) => a.student_id);
+      
+      // Get all students in school to check for temp overrides
+      const { data: allSchoolStudents } = await supabase
+        .from("students")
+        .select("id")
+        .eq("school_id", schoolId);
+      
+      const allStudentIds = (allSchoolStudents || []).map(s => s.id);
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch temp overrides
+      const { data: tempOverrides } = await supabase.rpc('get_active_temp_transportation_batch', {
+        p_student_ids: allStudentIds,
+        p_date: today
+      });
+      
+      const tempStudentIds = (tempOverrides || [])
+        .filter((override: any) => {
+          if (selectedLine) {
+            return override.car_line_id === selectedLine;
+          }
+          return override.car_line_id !== null;
+        })
+        .map((override: any) => override.student_id);
+      
+      // Combine both lists (remove duplicates)
+      const allCarStudentIds = [...new Set([...permanentStudentIds, ...tempStudentIds])];
+      
+      if (allCarStudentIds.length === 0) {
         setStudents([]);
         setClasses([]);
         setLoading(false);
@@ -293,13 +322,13 @@ export default function CarLineMode() {
       const { data: studs } = await supabase
         .from("students")
         .select("id,first_name,last_name,grade_level")
-        .in("id", studentIds);
+        .in("id", allCarStudentIds);
 
       // map students to class via class_rosters
       const { data: rosters } = await supabase
         .from("class_rosters")
         .select("student_id,class_id")
-        .in("student_id", studentIds);
+        .in("student_id", allCarStudentIds);
 
       const classIds = Array.from(new Set((rosters || []).map((r) => r.class_id)));
       let classMap: Record<string, string> = {};
@@ -319,6 +348,7 @@ export default function CarLineMode() {
         class_name: (rosters || []).find((r) => r.student_id === s.id)?.class_id
           ? classMap[(rosters || []).find((r) => r.student_id === s.id)!.class_id]
           : undefined,
+        isTemporaryOverride: tempStudentIds.includes(s.id)
       }));
 
       setStudents(list as any);
@@ -801,8 +831,11 @@ export default function CarLineMode() {
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="font-semibold">
+                          <div className="font-semibold flex items-center gap-2">
                             {s.last_name}, {s.first_name}
+                            {s.isTemporaryOverride && (
+                              <TemporaryTransportationBadge tooltipText="Temporary car line assignment for today" />
+                            )}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             Grade {s.grade_level}

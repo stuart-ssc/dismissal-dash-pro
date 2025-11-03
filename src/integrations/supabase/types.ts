@@ -1929,6 +1929,20 @@ export type Database = {
           walker_location_id: string
         }[]
       }
+      get_active_temp_transportation_batch: {
+        Args: { p_date?: string; p_student_ids: string[] }
+        Returns: {
+          after_school_activity_id: string
+          bus_id: string
+          car_line_id: string
+          end_date: string
+          notes: string
+          override_type: string
+          start_date: string
+          student_id: string
+          walker_location_id: string
+        }[]
+      }
       get_current_user_school_id: { Args: never; Returns: number }
       get_impersonated_school_id: { Args: never; Returns: number }
       get_people_paginated: {

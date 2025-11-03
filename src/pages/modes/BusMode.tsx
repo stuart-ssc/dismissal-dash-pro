@@ -12,6 +12,7 @@ import ExitModeButton from "@/components/ExitModeButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 import { useNavigate } from "react-router-dom";
 import { useModeLogger } from "@/hooks/useModeLogger";
 
@@ -41,7 +42,7 @@ export default function BusMode() {
   const [events, setEvents] = useState<Record<string, BusEvent>>({});
   const [loadingData, setLoadingData] = useState(false);
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
-  const [busStudents, setBusStudents] = useState<{ id: string; first_name: string; last_name: string; grade_level: string }[]>([]);
+  const [busStudents, setBusStudents] = useState<{ id: string; first_name: string; last_name: string; grade_level: string; isTemporaryOverride?: boolean }[]>([]);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [completingDismissal, setCompletingDismissal] = useState(false);
   const runId = run?.id;
@@ -163,14 +164,38 @@ export default function BusMode() {
 
   const openStudents = async (bus: Bus) => {
     setSelectedBus(bus);
-    // Fetch students assigned to this bus
+    
+    // Fetch students with permanent assignments
     const { data: assignments } = await supabase
       .from("student_bus_assignments")
       .select("student_id")
       .eq("bus_id", bus.id);
 
-    const ids = (assignments || []).map((a) => a.student_id);
-    if (ids.length === 0) {
+    const permanentStudentIds = (assignments || []).map((a) => a.student_id);
+    
+    // Get all students in school to check for temp overrides
+    const { data: allSchoolStudents } = await supabase
+      .from("students")
+      .select("id")
+      .eq("school_id", schoolId);
+    
+    const allStudentIds = (allSchoolStudents || []).map(s => s.id);
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Fetch temp overrides for this bus
+    const { data: tempOverrides } = await supabase.rpc('get_active_temp_transportation_batch', {
+      p_student_ids: allStudentIds,
+      p_date: today
+    });
+    
+    const tempStudentIds = (tempOverrides || [])
+      .filter((override: any) => override.bus_id === bus.id)
+      .map((override: any) => override.student_id);
+    
+    // Combine both lists (remove duplicates)
+    const allBusStudentIds = [...new Set([...permanentStudentIds, ...tempStudentIds])];
+    
+    if (allBusStudentIds.length === 0) {
       setBusStudents([]);
       return;
     }
@@ -178,10 +203,16 @@ export default function BusMode() {
     const { data: students } = await supabase
       .from("students")
       .select("id,first_name,last_name,grade_level")
-      .in("id", ids)
+      .in("id", allBusStudentIds)
       .order("last_name", { ascending: true });
 
-    setBusStudents((students || []) as any);
+    // Mark which students have temp overrides
+    const studentsWithFlags = (students || []).map(s => ({
+      ...s,
+      isTemporaryOverride: tempStudentIds.includes(s.id)
+    }));
+    
+    setBusStudents(studentsWithFlags as any);
   };
 
   const sortedBuses = useMemo(() => {
@@ -390,9 +421,14 @@ export default function BusMode() {
                                   ) : (
                                     <ul className="space-y-2">
                                       {busStudents.map((s) => (
-                                        <li key={s.id} className="flex justify-between">
+                                        <li key={s.id} className="flex justify-between items-center">
                                           <span>
                                             {s.last_name}, {s.first_name}
+                                            {s.isTemporaryOverride && (
+                                              <span className="ml-2">
+                                                <TemporaryTransportationBadge tooltipText="Temporary bus assignment for today" />
+                                              </span>
+                                            )}
                                           </span>
                                           <span className="text-muted-foreground">{s.grade_level}</span>
                                         </li>

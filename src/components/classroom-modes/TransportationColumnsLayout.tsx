@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bus, Car, Footprints, GraduationCap, LucideIcon, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 
 interface Student {
   id: string;
@@ -12,6 +13,7 @@ interface Student {
   status: 'dismissed' | 'ready-soon' | 'waiting';
   dismissal_time: Date | null;
   group_name: string;
+  hasTemporaryOverride?: boolean;
 }
 
 interface Destination {
@@ -36,12 +38,13 @@ interface TransportationColumnsLayoutProps {
     scheduled_release_time: Date;
     actual_release_time?: Date | null;
     status: 'active' | 'delayed' | 'completed' | 'pending';
-    students: Array<{
-      id: string;
-      first_name: string;
-      last_name: string;
-      destination?: string;
-    }>;
+  students: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    destination?: string;
+    hasTemporaryOverride?: boolean;
+  }>;
   }>;
   currentTime: Date;
   className?: string;
@@ -82,6 +85,7 @@ export function TransportationColumnsLayout({ groups, currentTime, className }: 
         status: groupStatus,
         dismissal_time: group.actual_release_time || group.scheduled_release_time,
         group_name: group.name,
+        hasTemporaryOverride: s.hasTemporaryOverride
       }));
 
       // Find or create destination
@@ -191,13 +195,16 @@ export function TransportationColumnsLayout({ groups, currentTime, className }: 
                         <li
                           key={student.id}
                           className={cn(
-                            "text-sm py-1 px-2 rounded transition-colors",
+                            "text-sm py-1 px-2 rounded transition-colors flex items-center justify-between",
                             student.status === 'dismissed' && "font-semibold text-green-900",
                             student.status === 'ready-soon' && "font-medium text-yellow-900",
                             student.status === 'waiting' && "text-gray-700"
                           )}
                         >
-                          {student.last_name}, {student.first_name}
+                          <span>{student.last_name}, {student.first_name}</span>
+                          {student.hasTemporaryOverride && (
+                            <TemporaryTransportationBadge tooltipText="Temporary transportation override active" />
+                          )}
                         </li>
                       ))}
                     </ul>

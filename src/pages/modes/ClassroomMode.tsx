@@ -33,6 +33,7 @@ type ActiveGroup = {
     first_name: string;
     last_name: string;
     destination: string;
+    hasTemporaryOverride?: boolean;
   }[];
 };
 
@@ -266,15 +267,29 @@ export default function ClassroomMode() {
           }
         }
 
-        // Fetch students for this group based on type
-        if (teacherStudentIds.length > 0) {
-          // Get all students in the teacher's class
-          const { data: allStudents } = await supabase
-            .from("students")
-            .select("id, first_name, last_name")
-            .in("id", teacherStudentIds);
+      // Fetch students for this group based on type
+      if (teacherStudentIds.length > 0) {
+        // Get all students in the teacher's class
+        const { data: allStudents } = await supabase
+          .from("students")
+          .select("id, first_name, last_name")
+          .in("id", teacherStudentIds);
 
-          const studentMap = new Map((allStudents || []).map(s => [s.id, s]));
+        const studentMap = new Map((allStudents || []).map(s => [s.id, s]));
+
+        // Fetch temporary transportation overrides for today
+        const today = run?.date || new Date().toISOString().split('T')[0];
+        const { data: tempOverrides } = await supabase.rpc(
+          'get_active_temp_transportation_batch',
+          { 
+            p_student_ids: teacherStudentIds,
+            p_date: today
+          }
+        );
+
+        const tempOverrideMap = new Map(
+          (tempOverrides || []).map((override: any) => [override.student_id, override])
+        );
 
           if (group.group_type?.toLowerCase().includes("bus")) {
             // Get buses for this group
@@ -283,37 +298,62 @@ export default function ClassroomMode() {
               .select("bus_id")
               .eq("dismissal_group_id", group.id);
 
-            if (groupBuses && groupBuses.length > 0) {
-              const busIds = groupBuses.map(gb => gb.bus_id);
-              
-              // Get bus assignments for teacher's students
-              const { data: busAssignments } = await supabase
-                .from("student_bus_assignments")
-                .select("student_id, bus_id")
-                .in("student_id", teacherStudentIds)
-                .in("bus_id", busIds);
+          if (groupBuses && groupBuses.length > 0) {
+            const busIds = groupBuses.map(gb => gb.bus_id);
+            
+            // Get bus assignments for teacher's students
+            const { data: busAssignments } = await supabase
+              .from("student_bus_assignments")
+              .select("student_id, bus_id")
+              .in("student_id", teacherStudentIds)
+              .in("bus_id", busIds);
 
-              // Get bus numbers
-              const { data: busDetails } = await supabase
-                .from("buses")
-                .select("id, bus_number")
-                .in("id", busIds);
+            // Get bus numbers
+            const { data: busDetails } = await supabase
+              .from("buses")
+              .select("id, bus_number")
+              .in("id", busIds);
 
-              const busNumberMap = new Map((busDetails || []).map(b => [b.id, b.bus_number]));
+            const busNumberMap = new Map((busDetails || []).map(b => [b.id, b.bus_number]));
 
-              students = (busAssignments || [])
-                .map(ba => {
-                  const student = studentMap.get(ba.student_id);
-                  if (!student) return null;
-                  return {
-                    id: student.id,
-                    first_name: student.first_name,
-                    last_name: student.last_name,
-                    destination: `Bus ${busNumberMap.get(ba.bus_id) || 'Unknown'}`
-                  };
-                })
-                .filter((s): s is NonNullable<typeof s> => s !== null);
-            }
+            // Map students considering temp overrides first
+            const studentIdsInGroup = new Set<string>();
+            
+            // Check for students with temp overrides to these buses
+            teacherStudentIds.forEach(studentId => {
+              const tempOverride = tempOverrideMap.get(studentId);
+              if (tempOverride?.bus_id && busIds.includes(tempOverride.bus_id)) {
+                studentIdsInGroup.add(studentId);
+              }
+            });
+
+            // Add students with permanent assignments (if no temp override)
+            (busAssignments || []).forEach(ba => {
+              const tempOverride = tempOverrideMap.get(ba.student_id);
+              if (!tempOverride) {
+                studentIdsInGroup.add(ba.student_id);
+              }
+            });
+
+            students = Array.from(studentIdsInGroup)
+              .map(studentId => {
+                const student = studentMap.get(studentId);
+                if (!student) return null;
+                
+                const tempOverride = tempOverrideMap.get(studentId);
+                const busId = tempOverride?.bus_id || 
+                  (busAssignments || []).find(ba => ba.student_id === studentId)?.bus_id;
+                
+                return {
+                  id: student.id,
+                  first_name: student.first_name,
+                  last_name: student.last_name,
+                  destination: `Bus ${busNumberMap.get(busId) || 'Unknown'}`,
+                  hasTemporaryOverride: !!tempOverride
+                };
+              })
+              .filter((s): s is NonNullable<typeof s> => s !== null);
+          }
           } else if (group.group_type?.toLowerCase().includes("car")) {
             // Get car lines for this group
             const { data: groupCarLines } = await supabase
@@ -333,14 +373,23 @@ export default function ClassroomMode() {
             if (groupCarLines && groupCarLines.length > 0) {
               const carLineIds = groupCarLines.map(gc => gc.car_line_id);
               
-              // Get car line assignments for teacher's students
+              // Check for temp overrides to these car lines
+              const studentIdsWithTempOverride = new Set<string>();
+              teacherStudentIds.forEach(studentId => {
+                const tempOverride = tempOverrideMap.get(studentId);
+                if (tempOverride?.car_line_id && carLineIds.includes(tempOverride.car_line_id)) {
+                  studentIdsWithTempOverride.add(studentId);
+                }
+              });
+              
+              // Get car line assignments for teacher's students (excluding those with temp overrides)
               const { data: carAssignments } = await supabase
                 .from("student_car_assignments")
                 .select("student_id, car_line_id")
                 .in("student_id", teacherStudentIds)
                 .in("car_line_id", carLineIds);
 
-              console.log('[ClassroomMode] Car assignments:', carAssignments?.length || 0, 'for teacherStudentIds:', teacherStudentIds.length, 'carLineIds:', carLineIds);
+              console.log('[ClassroomMode] Car assignments:', carAssignments?.length || 0, 'for teacherStudentIds:', teacherStudentIds.length, 'carLineIds:', carLineIds, 'tempOverrides:', studentIdsWithTempOverride.size);
 
               // Get active car line sessions for this run
               const { data: activeSessions } = await supabase
@@ -375,19 +424,38 @@ export default function ClassroomMode() {
 
               const carLineNameMap = new Map((carLineDetails || []).map(cl => [cl.id, cl.line_name]));
 
+              // Combine permanent assignments and temp overrides
+              const allCarStudentIds = new Set<string>();
+              
+              // Add students with temp overrides
+              studentIdsWithTempOverride.forEach(id => allCarStudentIds.add(id));
+              
+              // Add students with permanent assignments (if no temp override)
+              (carAssignments || []).forEach(ca => {
+                if (!tempOverrideMap.has(ca.student_id)) {
+                  allCarStudentIds.add(ca.student_id);
+                }
+              });
+
               // Filter students based on car_rider_type
-              const allCarStudents = (carAssignments || [])
-                .map(ca => {
-                  const student = studentMap.get(ca.student_id);
-                  const pickupStatus = pickupStatusMap.get(ca.student_id);
+              const allCarStudents = Array.from(allCarStudentIds)
+                .map(studentId => {
+                  const student = studentMap.get(studentId);
+                  const pickupStatus = pickupStatusMap.get(studentId);
                   if (!student) return null;
+                  
+                  const tempOverride = tempOverrideMap.get(studentId);
+                  const carLineId = tempOverride?.car_line_id || 
+                    (carAssignments || []).find(ca => ca.student_id === studentId)?.car_line_id;
+                  
                   return {
                     id: student.id,
                     first_name: student.first_name,
                     last_name: student.last_name,
-                    destination: carLineNameMap.get(ca.car_line_id) || 'Car Line',
+                    destination: carLineNameMap.get(carLineId) || 'Car Line',
                     pickupStatus: pickupStatus?.status || 'waiting',
-                    hasParentArrived: pickupStatus && (pickupStatus.status === 'parent_arrived' || pickupStatus.status === 'picked_up')
+                    hasParentArrived: pickupStatus && (pickupStatus.status === 'parent_arrived' || pickupStatus.status === 'picked_up'),
+                    hasTemporaryOverride: !!tempOverride
                   };
                 })
                 .filter((s): s is NonNullable<typeof s> => s !== null);
