@@ -28,6 +28,9 @@ export function useSEO(props?: UseSEOProps) {
   // Format title with brand prefix
   const fullTitle = config.title === 'Dismissal Pro' ? config.title : `Dismissal Pro | ${config.title}`;
   
+  // Determine if current page is a content page (not dashboard/admin)
+  const isContentPage = ['/', '/how-it-works', '/auth'].includes(location.pathname);
+  
   // Return the SEO component
   const SEOComponent = () => (
     <Helmet>
@@ -47,6 +50,11 @@ export function useSEO(props?: UseSEOProps) {
       <meta name="twitter:card" content="summary" />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={config.description} />
+      
+      {/* HubSpot - Only on content pages */}
+      {isContentPage && (
+        <script type="text/javascript" id="hs-script-loader" async defer src="//js-na2.hs-scripts.com/244162050.js"></script>
+      )}
     </Helmet>
   );
 
