@@ -71,9 +71,6 @@ const Index = () => {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Watch Demo
-              </Button>
             </div>
             
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
