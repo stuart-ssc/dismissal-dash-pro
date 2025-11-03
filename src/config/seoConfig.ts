@@ -134,7 +134,7 @@ export const seoConfig: Record<string, SEOConfig> = {
 
   // Public Pages
   '/': {
-    title: 'School Dismissal Management System',
+    title: 'Dismissal Pro - School Dismissal Management System',
     description: 'Streamline your school\'s dismissal process with Dismissal Pro. Efficient student pickup management, real-time tracking, and seamless coordination.',
     keywords: 'school dismissal, student pickup, dismissal management, school safety, parent coordination, student transportation'
   },
