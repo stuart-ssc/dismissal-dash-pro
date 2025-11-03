@@ -946,6 +946,59 @@ export type Database = {
         }
         Relationships: []
       }
+      help_requests: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          request_type: string
+          school_id: number | null
+          school_name: string | null
+          status: string | null
+          subject: string
+          updated_at: string | null
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          request_type: string
+          school_id?: number | null
+          school_name?: string | null
+          status?: string | null
+          subject: string
+          updated_at?: string | null
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          request_type?: string
+          school_id?: number | null
+          school_name?: string | null
+          status?: string | null
+          subject?: string
+          updated_at?: string | null
+          user_email?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_requests_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mode_sessions: {
         Row: {
           created_at: string

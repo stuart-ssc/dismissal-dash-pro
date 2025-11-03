@@ -40,6 +40,7 @@ import CarLineMode from "./pages/modes/CarLineMode";
 import WalkerMode from "./pages/modes/WalkerMode";
 import { RouteGuard } from "./components/RouteGuard";
 import TeacherCoverage from "./pages/TeacherCoverage";
+import Help from "./pages/Help";
 
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const AppContent = () => {
             <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
             <Route path="/dashboard/dismissal-plans/:planId/groups" element={<DismissalGroups />} />
             <Route path="/dashboard/settings" element={<Settings />} />
+            <Route path="/dashboard/help" element={<Help />} />
             <Route path="/dashboard/car-lines" element={<CarLines />} />
             <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
             <Route path="/dashboard/reports" element={<Reports />} />
