@@ -81,7 +81,7 @@ const Navbar = () => {
         {showNavLinks && (
           <Sheet>
             <SheetTrigger asChild className="md:hidden ml-auto">
-              <Button variant="ghost" size="icon">
+              <Button variant="hero" size="icon">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
