@@ -742,7 +742,13 @@ const People = () => {
                                 <Badge
                                   variant="outline"
                                   className="cursor-pointer hover:bg-accent"
-                                  onClick={() => openTempTransportDialog(person)}
+                                  onClick={() => {
+                                    if (getTransportationDisplay(person).hasTemp) {
+                                      openViewTempTransportDialog(person);
+                                    } else {
+                                      openTempTransportDialog(person);
+                                    }
+                                  }}
                                 >
                                   {getTransportationDisplay(person).display}
                                 </Badge>
@@ -1119,7 +1125,13 @@ const People = () => {
                             <Badge
                               variant="outline"
                               className="cursor-pointer hover:bg-accent"
-                              onClick={() => openTempTransportDialog(person)}
+                              onClick={() => {
+                                if (getTransportationDisplay(person).hasTemp) {
+                                  openViewTempTransportDialog(person);
+                                } else {
+                                  openTempTransportDialog(person);
+                                }
+                              }}
                             >
                               {getTransportationDisplay(person).display}
                             </Badge>
