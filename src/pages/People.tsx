@@ -51,6 +51,7 @@ const People = () => {
   const [viewTempTransportDialogOpen, setViewTempTransportDialogOpen] = useState(false);
   const [studentForTempTransport, setStudentForTempTransport] = useState<any>(null);
   const [tempTransportData, setTempTransportData] = useState<Record<string, any>>({});
+  const [anyOverrideData, setAnyOverrideData] = useState<Record<string, boolean>>({});
 
   // Use the paginated people hook
   const { data: paginatedData, isLoading: isPeopleLoading, error: peopleError } = usePaginatedPeople({
@@ -131,7 +132,7 @@ const People = () => {
     })();
   }, [userRole, user?.id]);
 
-  // Fetch temporary transportation overrides for students
+  // Fetch temporary transportation overrides for students (active today)
   useEffect(() => {
     const fetchTempTransportation = async () => {
       if (!schoolId || people.length === 0) return;
@@ -171,6 +172,38 @@ const People = () => {
     };
 
     fetchTempTransportation();
+  }, [schoolId, people]);
+
+  // Fetch if ANY override exists for students (past, present, or future)
+  useEffect(() => {
+    const fetchAnyOverrides = async () => {
+      if (!schoolId || people.length === 0) return;
+
+      const studentIds = people.filter(p => p.role === 'Student').map(p => p.id);
+      if (studentIds.length === 0) return;
+
+      try {
+        // Query the table directly to check for ANY overrides
+        const { data, error } = await supabase
+          .from('student_temporary_transportation')
+          .select('student_id')
+          .in('student_id', studentIds);
+
+        if (error) throw error;
+
+        // Create a map of student IDs that have ANY override configured
+        const overrideMap: Record<string, boolean> = {};
+        data?.forEach(record => {
+          overrideMap[record.student_id] = true;
+        });
+
+        setAnyOverrideData(overrideMap);
+      } catch (error) {
+        console.error('Error fetching override existence:', error);
+      }
+    };
+
+    fetchAnyOverrides();
   }, [schoolId, people]);
 
   const handleDeletePerson = async () => {
@@ -257,23 +290,25 @@ const People = () => {
 
   const getTransportationDisplay = (person: PersonData) => {
     const tempOverride = tempTransportData[person.id];
+    const hasAnyOverride = anyOverrideData[person.id] || false;
+    const isActiveToday = !!tempOverride;
     
     if (tempOverride) {
       // Get the temporary transportation description
       let tempTransport = '';
       if (tempOverride.bus_id) {
-        tempTransport = `Bus (Temp)`;
+        tempTransport = `Bus`;
       } else if (tempOverride.car_line_id) {
-        tempTransport = `Car Rider (Temp)`;
+        tempTransport = `Car Rider`;
       } else if (tempOverride.walker_location_id) {
-        tempTransport = `Walker (Temp)`;
+        tempTransport = `Walker`;
       } else if (tempOverride.after_school_activity_id) {
-        tempTransport = `Activity (Temp)`;
+        tempTransport = `Activity`;
       }
-      return { display: tempTransport, hasTemp: true };
+      return { display: tempTransport, hasTemp: isActiveToday, hasAnyOverride };
     }
 
-    return { display: person.transportation || '-', hasTemp: false };
+    return { display: person.transportation || '-', hasTemp: false, hasAnyOverride };
   };
 
   const handleResendInvitation = async (person: PersonData) => {
@@ -743,11 +778,11 @@ const People = () => {
                                 variant="outline"
                                 className={cn(
                                   "cursor-pointer hover:bg-accent",
-                                  getTransportationDisplay(person).hasTemp && 
+                                  getTransportationDisplay(person).hasAnyOverride && 
                                   "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700"
                                 )}
                                 onClick={() => {
-                                  if (getTransportationDisplay(person).hasTemp) {
+                                  if (getTransportationDisplay(person).hasAnyOverride) {
                                     openViewTempTransportDialog(person);
                                   } else {
                                     openTempTransportDialog(person);
@@ -756,6 +791,9 @@ const People = () => {
                               >
                                 {getTransportationDisplay(person).display}
                                 {getTransportationDisplay(person).hasTemp && (
+                                  <span className="text-amber-600 dark:text-amber-400 ml-1"> (Temp)</span>
+                                )}
+                                {getTransportationDisplay(person).hasAnyOverride && (
                                   <span className="text-amber-600 dark:text-amber-400 ml-1">*</span>
                                 )}
                               </Badge>
@@ -1126,11 +1164,11 @@ const People = () => {
                             variant="outline"
                             className={cn(
                               "cursor-pointer hover:bg-accent",
-                              getTransportationDisplay(person).hasTemp && 
+                              getTransportationDisplay(person).hasAnyOverride && 
                               "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700"
                             )}
                             onClick={() => {
-                              if (getTransportationDisplay(person).hasTemp) {
+                              if (getTransportationDisplay(person).hasAnyOverride) {
                                 openViewTempTransportDialog(person);
                               } else {
                                 openTempTransportDialog(person);
@@ -1139,6 +1177,9 @@ const People = () => {
                           >
                             {getTransportationDisplay(person).display}
                             {getTransportationDisplay(person).hasTemp && (
+                              <span className="text-amber-600 dark:text-amber-400 ml-1"> (Temp)</span>
+                            )}
+                            {getTransportationDisplay(person).hasAnyOverride && (
                               <span className="text-amber-600 dark:text-amber-400 ml-1">*</span>
                             )}
                           </Badge>
