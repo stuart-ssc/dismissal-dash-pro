@@ -11,6 +11,10 @@ const Navbar = () => {
   const { user, userRole, signOut } = useAuth();
   const isSystemAdmin = userRole === "system_admin";
   const isTeacher = user && userRole && userRole !== "system_admin";
+  
+  // Show navigation links on content pages for non-authenticated users
+  const isContentPage = ['/', '/how-it-works', '/pricing', '/auth'].includes(location.pathname);
+  const showNavLinks = isContentPage && !isTeacher && !isSystemAdmin;
 
   return (
     <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -23,6 +27,22 @@ const Navbar = () => {
               className="h-10"
             />
           </Link>
+        )}
+        
+        {/* Navigation Links - Center */}
+        {showNavLinks && (
+          <div className="hidden md:flex items-center gap-6 mx-auto">
+            <Link to="/how-it-works">
+              <Button variant="ghost" className="text-foreground hover:text-primary">
+                How It Works
+              </Button>
+            </Link>
+            <Link to="/pricing">
+              <Button variant="ghost" className="text-foreground hover:text-primary">
+                Pricing
+              </Button>
+            </Link>
+          </div>
         )}
         
         <div className="flex items-center gap-4 ml-auto">
