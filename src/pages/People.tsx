@@ -923,6 +923,32 @@ const People = () => {
             }}
           />
         )}
+
+        {studentForTempTransport && schoolId && (
+          <>
+            <TemporaryTransportationDialog
+              student={studentForTempTransport}
+              open={tempTransportDialogOpen}
+              onOpenChange={setTempTransportDialogOpen}
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
+                // Refresh temp transport data
+                setTempTransportData({});
+              }}
+              schoolId={schoolId}
+            />
+
+            <ViewTemporaryTransportationDialog
+              student={studentForTempTransport}
+              open={viewTempTransportDialogOpen}
+              onOpenChange={setViewTempTransportDialogOpen}
+              onEdit={() => {
+                setViewTempTransportDialogOpen(false);
+                setTempTransportDialogOpen(true);
+              }}
+            />
+          </>
+        )}
       </>
     );
   }
