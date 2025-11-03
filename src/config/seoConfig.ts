@@ -143,6 +143,11 @@ export const seoConfig: Record<string, SEOConfig> = {
     description: 'Learn how DismissalPro helps schools manage dismissal plans, class rosters, classroom mode, and transportation with our comprehensive guide.',
     keywords: 'dismissal management, classroom mode, transportation tracking, school dismissal system, dismissal plans'
   },
+  '/pricing': {
+    title: 'Pricing - Affordable School Dismissal Management',
+    description: 'Simple, transparent pricing at $500/year per school. Unlimited teachers, students, and features. Start your 30-day free trial today with no credit card required.',
+    keywords: 'school dismissal pricing, dismissal management cost, school software pricing, affordable dismissal system, free trial'
+  },
   '/auth': {
     title: 'Sign In',
     description: 'Sign in to Dismissal Pro to access your school\'s dismissal management system. Secure authentication for teachers and administrators.',

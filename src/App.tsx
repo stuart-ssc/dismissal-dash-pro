@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
+import Pricing from "./pages/Pricing";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Transportation from "./pages/Transportation";
@@ -52,6 +53,7 @@ const AppContent = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/verify-email-change" element={<VerifyEmailChange />} />
 

@@ -29,7 +29,7 @@ export function useSEO(props?: UseSEOProps) {
   const fullTitle = config.title === 'Dismissal Pro' ? config.title : `Dismissal Pro | ${config.title}`;
   
   // Determine if current page is a content page (not dashboard/admin)
-  const isContentPage = ['/', '/how-it-works', '/auth'].includes(location.pathname);
+  const isContentPage = ['/', '/how-it-works', '/pricing', '/auth'].includes(location.pathname);
   
   // Return the SEO component
   const SEOComponent = () => (
