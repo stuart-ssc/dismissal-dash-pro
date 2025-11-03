@@ -138,6 +138,11 @@ export const seoConfig: Record<string, SEOConfig> = {
     description: 'Streamline your school\'s dismissal process with Dismissal Pro. Efficient student pickup management, real-time tracking, and seamless coordination.',
     keywords: 'school dismissal, student pickup, dismissal management, school safety, parent coordination, student transportation'
   },
+  '/how-it-works': {
+    title: 'How It Works - Features Explained',
+    description: 'Learn how DismissalPro helps schools manage dismissal plans, class rosters, classroom mode, and transportation with our comprehensive guide.',
+    keywords: 'dismissal management, classroom mode, transportation tracking, school dismissal system, dismissal plans'
+  },
   '/auth': {
     title: 'Sign In',
     description: 'Sign in to Dismissal Pro to access your school\'s dismissal management system. Secure authentication for teachers and administrators.',
