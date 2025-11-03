@@ -154,10 +154,6 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0 space-y-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-primary mb-1">500+</div>
-                <div className="text-sm text-muted-foreground">Schools Trust Us</div>
-              </div>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-secondary">15min</div>
