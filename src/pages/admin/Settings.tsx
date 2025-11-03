@@ -52,6 +52,11 @@ const Settings = () => {
   const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [classroomLayout, setClassroomLayout] = useState<string>('transportation-columns');
+  const [dismissalSettings, setDismissalSettings] = useState({
+    dismissalTime: '15:30',
+    preparationMinutes: 30,
+    autoDismissalEnabled: false
+  });
 
   const form = useForm<z.infer<typeof schoolFormSchema>>({
     resolver: zodResolver(schoolFormSchema),
@@ -106,6 +111,11 @@ const Settings = () => {
         if (school) {
           setSchoolData(school as SchoolData);
           setClassroomLayout(school.classroom_mode_layout || 'transportation-columns');
+          setDismissalSettings({
+            dismissalTime: school.dismissal_time || '15:30',
+            preparationMinutes: school.preparation_time_minutes || 30,
+            autoDismissalEnabled: school.auto_dismissal_enabled || false
+          });
           form.reset({
             school_name: school.school_name || "",
             address: school.address || "",
@@ -172,6 +182,34 @@ const Settings = () => {
     } catch (error) {
       console.error('Error updating classroom layout:', error);
       toast.error('Failed to update classroom layout');
+    }
+  };
+
+  const handleSaveDismissalSettings = async () => {
+    if (!schoolData) return;
+
+    try {
+      const { error } = await supabase
+        .from('schools')
+        .update({
+          dismissal_time: dismissalSettings.dismissalTime,
+          preparation_time_minutes: dismissalSettings.preparationMinutes,
+          auto_dismissal_enabled: dismissalSettings.autoDismissalEnabled,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', schoolData.id);
+
+      if (error) {
+        console.error('Error updating dismissal settings:', error);
+        toast.error('Failed to update dismissal settings');
+        return;
+      }
+
+      toast.success('Dismissal settings updated successfully');
+      await fetchSchoolData();
+    } catch (error) {
+      console.error('Error updating dismissal settings:', error);
+      toast.error('Failed to update dismissal settings');
     }
   };
 
@@ -311,22 +349,36 @@ const Settings = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="dismissal-time">Default Dismissal Time</Label>
-              <Input id="dismissal-time" type="time" defaultValue="15:30" />
+              <Input 
+                id="dismissal-time" 
+                type="time" 
+                value={dismissalSettings.dismissalTime}
+                onChange={(e) => setDismissalSettings({...dismissalSettings, dismissalTime: e.target.value})}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="prep-time">Preparation Time (minutes)</Label>
-              <Input id="prep-time" type="number" placeholder="15" defaultValue="15" />
+              <Input 
+                id="prep-time" 
+                type="number" 
+                placeholder="30" 
+                value={dismissalSettings.preparationMinutes}
+                onChange={(e) => setDismissalSettings({...dismissalSettings, preparationMinutes: parseInt(e.target.value) || 0})}
+              />
+              <p className="text-xs text-muted-foreground">
+                How many minutes before dismissal should preparation mode start
+              </p>
             </div>
             <div className="flex items-center space-x-2">
-              <Switch id="auto-dismissal" defaultChecked />
+              <Switch 
+                id="auto-dismissal" 
+                checked={dismissalSettings.autoDismissalEnabled}
+                onCheckedChange={(checked) => setDismissalSettings({...dismissalSettings, autoDismissalEnabled: checked})}
+              />
               <Label htmlFor="auto-dismissal">Enable automatic dismissal announcements</Label>
             </div>
             
-            <div className="border-t pt-4 space-y-4">
-              <h4 className="font-medium">Transportation Options</h4>
-            </div>
-            
-            <Button>Save Settings</Button>
+            <Button onClick={handleSaveDismissalSettings} className="w-full">Save Settings</Button>
           </CardContent>
         </Card>
 

@@ -127,64 +127,15 @@ export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
           dismissal_time: dismissalTime
         } as DismissalRun;
 
-        // Check if status needs updating based on current time
-        const now = new Date();
-        let needsUpdate = false;
-        
-        if (existing.status === 'scheduled' && existing.preparation_start_time) {
-          const prepTime = new Date(existing.preparation_start_time);
-          if (now >= prepTime) needsUpdate = true;
-        }
-        
-        if (existing.status === 'preparation' && existing.scheduled_start_time) {
-          const startTime = new Date(existing.scheduled_start_time);
-          if (now >= startTime) needsUpdate = true;
-        }
-        
-        // Trigger status update if needed
-        if (needsUpdate) {
-          await supabase
-            .from("dismissal_runs")
-            .update({ updated_at: new Date().toISOString() })
-            .eq("id", existing.id);
-          
-          // Fetch updated run without embedded join
-          const { data: updatedRun, error: updateErr } = await supabase
-            .from("dismissal_runs")
-            .select("*")
-            .eq("id", existing.id)
-            .maybeSingle();
-          
-          if (updateErr) {
-            console.error("Error fetching updated dismissal run:", updateErr);
-          }
-            
-          if (updatedRun) {
-            // Fetch plan separately if needed
-            let updatedDismissalTime = null;
-            if (updatedRun.plan_id) {
-              const { data: plan, error: planError } = await supabase
-                .from("dismissal_plans")
-                .select("dismissal_time")
-                .eq("id", updatedRun.plan_id)
-                .maybeSingle();
-              
-              if (planError) {
-                console.error("Error fetching dismissal plan:", planError);
-              }
-              
-              if (plan) {
-                updatedDismissalTime = plan.dismissal_time;
-              }
-            }
-            
-            const updatedRunWithDismissalTime = {
-              ...updatedRun,
-              dismissal_time: updatedDismissalTime
-            } as DismissalRun;
-            return { run: updatedRunWithDismissalTime, schoolId };
-          }
-        }
+        // Status transitions are handled by the dismissal-scheduler edge function
+        // and the database trigger - no manual updates needed here
+        console.log('[useTodayDismissalRun] Current run:', {
+          id: runWithDismissalTime.id,
+          status: runWithDismissalTime.status,
+          scheduled_start_time: runWithDismissalTime.scheduled_start_time,
+          preparation_start_time: runWithDismissalTime.preparation_start_time,
+          current_time: new Date().toISOString()
+        });
         
         return { run: runWithDismissalTime, schoolId };
       }
