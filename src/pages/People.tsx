@@ -20,6 +20,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AddPersonDialog } from "@/components/AddPersonDialog";
 import { EditPersonDialog } from "@/components/EditPersonDialog";
 import { AssignClassCoverageDialog } from "@/components/AssignClassCoverageDialog";
+import { TemporaryTransportationDialog } from "@/components/TemporaryTransportationDialog";
+import { ViewTemporaryTransportationDialog } from "@/components/ViewTemporaryTransportationDialog";
+import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 
 const People = () => {
   const { user, userRole, signOut, loading, session } = useAuth();
@@ -43,6 +46,10 @@ const People = () => {
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
+  const [tempTransportDialogOpen, setTempTransportDialogOpen] = useState(false);
+  const [viewTempTransportDialogOpen, setViewTempTransportDialogOpen] = useState(false);
+  const [studentForTempTransport, setStudentForTempTransport] = useState<any>(null);
+  const [tempTransportData, setTempTransportData] = useState<Record<string, any>>({});
 
   // Use the paginated people hook
   const { data: paginatedData, isLoading: isPeopleLoading, error: peopleError } = usePaginatedPeople({
@@ -123,6 +130,48 @@ const People = () => {
     })();
   }, [userRole, user?.id]);
 
+  // Fetch temporary transportation overrides for students
+  useEffect(() => {
+    const fetchTempTransportation = async () => {
+      if (!schoolId || people.length === 0) return;
+
+      const studentIds = people.filter(p => p.role === 'Student').map(p => p.id);
+      if (studentIds.length === 0) return;
+
+      try {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const { data, error } = await supabase
+          .rpc('get_active_temp_transportation', {
+            p_student_id: studentIds[0], // We'll call this for each student
+            p_date: today
+          });
+
+        // Fetch for all students in parallel
+        const promises = studentIds.map(studentId =>
+          supabase.rpc('get_active_temp_transportation', {
+            p_student_id: studentId,
+            p_date: today
+          })
+        );
+
+        const results = await Promise.all(promises);
+        const tempData: Record<string, any> = {};
+
+        results.forEach((result, index) => {
+          if (result.data && result.data.length > 0) {
+            tempData[studentIds[index]] = result.data[0];
+          }
+        });
+
+        setTempTransportData(tempData);
+      } catch (error) {
+        console.error('Error fetching temporary transportation:', error);
+      }
+    };
+
+    fetchTempTransportation();
+  }, [schoolId, people]);
+
   const handleDeletePerson = async () => {
     if (!personToDelete) return;
 
@@ -184,6 +233,46 @@ const People = () => {
   const openEditDialog = (person: PersonData) => {
     setPersonToEdit(person);
     setEditDialogOpen(true);
+  };
+
+  const openTempTransportDialog = (person: PersonData) => {
+    setStudentForTempTransport({
+      id: person.id,
+      first_name: person.firstName,
+      last_name: person.lastName,
+      current_transportation: person.transportation
+    });
+    setTempTransportDialogOpen(true);
+  };
+
+  const openViewTempTransportDialog = (person: PersonData) => {
+    setStudentForTempTransport({
+      id: person.id,
+      first_name: person.firstName,
+      last_name: person.lastName,
+    });
+    setViewTempTransportDialogOpen(true);
+  };
+
+  const getTransportationDisplay = (person: PersonData) => {
+    const tempOverride = tempTransportData[person.id];
+    
+    if (tempOverride) {
+      // Get the temporary transportation description
+      let tempTransport = '';
+      if (tempOverride.bus_id) {
+        tempTransport = `Bus (Temp)`;
+      } else if (tempOverride.car_line_id) {
+        tempTransport = `Car Rider (Temp)`;
+      } else if (tempOverride.walker_location_id) {
+        tempTransport = `Walker (Temp)`;
+      } else if (tempOverride.after_school_activity_id) {
+        tempTransport = `Activity (Temp)`;
+      }
+      return { display: tempTransport, hasTemp: true };
+    }
+
+    return { display: person.transportation || '-', hasTemp: false };
   };
 
   const handleResendInvitation = async (person: PersonData) => {
@@ -647,7 +736,26 @@ const People = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>{person.grade || '-'}</TableCell>
-                          <TableCell>{person.transportation || '-'}</TableCell>
+                          <TableCell>
+                            {person.role === 'Student' ? (
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className="cursor-pointer hover:bg-accent"
+                                  onClick={() => openTempTransportDialog(person)}
+                                >
+                                  {getTransportationDisplay(person).display}
+                                </Badge>
+                                {getTransportationDisplay(person).hasTemp && (
+                                  <TemporaryTransportationBadge 
+                                    onClick={() => openViewTempTransportDialog(person)}
+                                  />
+                                )}
+                              </div>
+                            ) : (
+                              person.transportation || '-'
+                            )}
+                          </TableCell>
                           <TableCell>
                             {person.classes.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
@@ -701,6 +809,13 @@ const People = () => {
                                     }))}
                                     onCoverageAssigned={() => queryClient.invalidateQueries({ queryKey: ['people-paginated'] })}
                                   />
+                                )}
+
+                                {person.role === 'Student' && (
+                                  <DropdownMenuItem onClick={() => openViewTempTransportDialog(person)} className="flex items-center gap-2">
+                                    <CalendarIcon className="h-4 w-4" />
+                                    Manage Temporary Transportation
+                                  </DropdownMenuItem>
                                 )}
                                 
                                 <DropdownMenuItem
@@ -972,7 +1087,26 @@ const People = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>{person.grade || '-'}</TableCell>
-                      <TableCell>{person.transportation || '-'}</TableCell>
+                      <TableCell>
+                        {person.role === 'Student' ? (
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className="cursor-pointer hover:bg-accent"
+                              onClick={() => openTempTransportDialog(person)}
+                            >
+                              {getTransportationDisplay(person).display}
+                            </Badge>
+                            {getTransportationDisplay(person).hasTemp && (
+                              <TemporaryTransportationBadge 
+                                onClick={() => openViewTempTransportDialog(person)}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          person.transportation || '-'
+                        )}
+                      </TableCell>
                       {userRole !== 'teacher' && (
                         <TableCell>
                           {person.classes.length > 0 ? (
@@ -1001,7 +1135,15 @@ const People = () => {
                                 <Edit className="h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+
+                              {person.role === 'Student' && (
+                                <DropdownMenuItem onClick={() => openViewTempTransportDialog(person)} className="flex items-center gap-2">
+                                  <CalendarIcon className="h-4 w-4" />
+                                  Manage Temporary Transportation
+                                </DropdownMenuItem>
+                              )}
+
+                              <DropdownMenuItem
                                 onClick={() => openDeleteDialog(person)} 
                                 className="flex items-center gap-2 text-destructive focus:text-destructive"
                               >
@@ -1076,16 +1218,44 @@ const People = () => {
 
         {/* Add edit dialog for non-admin users too */}
         {schoolId && (
-          <EditPersonDialog
-            person={personToEdit}
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            schoolId={schoolId}
-            onPersonUpdated={() => {
-              console.log('Person updated, refreshing data...');
-              queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
-            }}
-          />
+          <>
+            <EditPersonDialog
+              person={personToEdit}
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+              schoolId={schoolId}
+              onPersonUpdated={() => {
+                console.log('Person updated, refreshing data...');
+                queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
+              }}
+            />
+
+            {studentForTempTransport && (
+              <>
+                <TemporaryTransportationDialog
+                  student={studentForTempTransport}
+                  open={tempTransportDialogOpen}
+                  onOpenChange={setTempTransportDialogOpen}
+                  onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
+                    // Refresh temp transport data
+                    setTempTransportData({});
+                  }}
+                  schoolId={schoolId}
+                />
+
+                <ViewTemporaryTransportationDialog
+                  student={studentForTempTransport}
+                  open={viewTempTransportDialogOpen}
+                  onOpenChange={setViewTempTransportDialogOpen}
+                  onEdit={() => {
+                    setViewTempTransportDialogOpen(false);
+                    setTempTransportDialogOpen(true);
+                  }}
+                />
+              </>
+            )}
+          </>
         )}
     </main>
     </>

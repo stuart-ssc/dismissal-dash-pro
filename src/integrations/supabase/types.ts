@@ -1354,6 +1354,102 @@ export type Database = {
           },
         ]
       }
+      student_temporary_transportation: {
+        Row: {
+          after_school_activity_id: string | null
+          bus_id: string | null
+          car_line_id: string | null
+          created_at: string
+          created_by: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          notification_sent: boolean | null
+          notification_sent_at: string | null
+          override_type: string
+          specific_dates: string[] | null
+          start_date: string
+          student_id: string
+          updated_at: string
+          walker_location_id: string | null
+          weekday_pattern: number[] | null
+        }
+        Insert: {
+          after_school_activity_id?: string | null
+          bus_id?: string | null
+          car_line_id?: string | null
+          created_at?: string
+          created_by: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          override_type: string
+          specific_dates?: string[] | null
+          start_date: string
+          student_id: string
+          updated_at?: string
+          walker_location_id?: string | null
+          weekday_pattern?: number[] | null
+        }
+        Update: {
+          after_school_activity_id?: string | null
+          bus_id?: string | null
+          car_line_id?: string | null
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          override_type?: string
+          specific_dates?: string[] | null
+          start_date?: string
+          student_id?: string
+          updated_at?: string
+          walker_location_id?: string | null
+          weekday_pattern?: number[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_temporary_transportation_after_school_activity_id_fkey"
+            columns: ["after_school_activity_id"]
+            isOneToOne: false
+            referencedRelation: "after_school_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_temporary_transportation_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_temporary_transportation_car_line_id_fkey"
+            columns: ["car_line_id"]
+            isOneToOne: false
+            referencedRelation: "car_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_temporary_transportation_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_temporary_transportation_walker_location_id_fkey"
+            columns: ["walker_location_id"]
+            isOneToOne: false
+            referencedRelation: "walker_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_walker_assignments: {
         Row: {
           assigned_at: string
@@ -1661,7 +1757,102 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      active_temp_transportation: {
+        Row: {
+          after_school_activity_id: string | null
+          bus_id: string | null
+          car_line_id: string | null
+          created_at: string | null
+          created_by: string | null
+          end_date: string | null
+          id: string | null
+          notes: string | null
+          notification_sent: boolean | null
+          notification_sent_at: string | null
+          override_type: string | null
+          specific_dates: string[] | null
+          start_date: string | null
+          student_id: string | null
+          updated_at: string | null
+          walker_location_id: string | null
+          weekday_pattern: number[] | null
+        }
+        Insert: {
+          after_school_activity_id?: string | null
+          bus_id?: string | null
+          car_line_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string | null
+          id?: string | null
+          notes?: string | null
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          override_type?: string | null
+          specific_dates?: string[] | null
+          start_date?: string | null
+          student_id?: string | null
+          updated_at?: string | null
+          walker_location_id?: string | null
+          weekday_pattern?: number[] | null
+        }
+        Update: {
+          after_school_activity_id?: string | null
+          bus_id?: string | null
+          car_line_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string | null
+          id?: string | null
+          notes?: string | null
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          override_type?: string | null
+          specific_dates?: string[] | null
+          start_date?: string | null
+          student_id?: string | null
+          updated_at?: string | null
+          walker_location_id?: string | null
+          weekday_pattern?: number[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_temporary_transportation_after_school_activity_id_fkey"
+            columns: ["after_school_activity_id"]
+            isOneToOne: false
+            referencedRelation: "after_school_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_temporary_transportation_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_temporary_transportation_car_line_id_fkey"
+            columns: ["car_line_id"]
+            isOneToOne: false
+            referencedRelation: "car_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_temporary_transportation_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_temporary_transportation_walker_location_id_fkey"
+            columns: ["walker_location_id"]
+            isOneToOne: false
+            referencedRelation: "walker_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_dismissal_times:
@@ -1722,6 +1913,21 @@ export type Database = {
       create_scheduled_dismissal_run: {
         Args: { target_date?: string; target_school_id: number }
         Returns: string
+      }
+      get_active_temp_transportation: {
+        Args: { p_date?: string; p_student_id: string }
+        Returns: {
+          after_school_activity_id: string
+          bus_id: string
+          car_line_id: string
+          created_by: string
+          end_date: string
+          id: string
+          notes: string
+          override_type: string
+          start_date: string
+          walker_location_id: string
+        }[]
       }
       get_current_user_school_id: { Args: never; Returns: number }
       get_impersonated_school_id: { Args: never; Returns: number }
