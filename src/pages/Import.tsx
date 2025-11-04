@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,7 @@ const Import = () => {
   const [parsedData, setParsedData] = useState<RosterRow[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
   const [sendInvitations, setSendInvitations] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -375,17 +376,19 @@ const Import = () => {
                       or click to browse and select a file
                     </p>
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept=".csv"
                       onChange={handleFileSelect}
                       className="hidden"
                       id="file-upload"
                     />
-                    <label htmlFor="file-upload">
-                      <Button variant="outline" className="cursor-pointer">
-                        Choose File
-                      </Button>
-                    </label>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Choose File
+                    </Button>
                     <p className="text-xs text-muted-foreground mt-4">
                       Supported formats: CSV only
                     </p>
@@ -717,17 +720,19 @@ const Import = () => {
                   or click to browse and select a file
                 </p>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept=".csv,.xlsx,.xls"
                   onChange={handleFileSelect}
                   className="hidden"
                   id="file-upload"
                 />
-                <label htmlFor="file-upload">
-                  <Button variant="outline" className="cursor-pointer">
-                    Choose File
-                  </Button>
-                </label>
+                <Button 
+                  variant="outline" 
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Choose File
+                </Button>
                 <p className="text-xs text-muted-foreground mt-4">
                   Supported formats: CSV, Excel (.xlsx, .xls)
                 </p>
