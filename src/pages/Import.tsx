@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Users, GraduationCap, UserCheck } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Users, GraduationCap, UserCheck, Mail } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Navbar from "@/components/Navbar";
 
@@ -44,6 +45,7 @@ interface ImportResults {
   transportationAssignments: number;
   errors: string[];
   details?: string;
+  invitationsSent?: boolean;
 }
 
 const Import = () => {
@@ -60,6 +62,7 @@ const Import = () => {
   const [importResults, setImportResults] = useState<ImportResults | null>(null);
   const [parsedData, setParsedData] = useState<RosterRow[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [sendInvitations, setSendInvitations] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -235,6 +238,7 @@ const Import = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('rosterData', JSON.stringify(parsedData));
+      formData.append('sendInvitations', sendInvitations.toString());
 
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90));
@@ -427,23 +431,44 @@ const Import = () => {
                   )}
 
                   {parsedData.length > 0 && (
-                    <Button 
-                      onClick={handleFileUpload} 
-                      disabled={isProcessing}
-                      className="w-full"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing Import...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Import {parsedData.length} Students
-                        </>
-                      )}
-                    </Button>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg">
+                        <Checkbox 
+                          id="send-invitations" 
+                          checked={sendInvitations}
+                          onCheckedChange={(checked) => setSendInvitations(checked as boolean)}
+                        />
+                        <label
+                          htmlFor="send-invitations"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          Send invitation emails to teachers immediately
+                        </label>
+                      </div>
+                      <p className="text-xs text-muted-foreground px-4">
+                        {sendInvitations 
+                          ? "✓ Teachers will receive invitation emails after import completes" 
+                          : "⚠️ Teachers will be created but NOT invited. You can invite them later from the People page."}
+                      </p>
+                      
+                      <Button 
+                        onClick={handleFileUpload} 
+                        disabled={isProcessing}
+                        className="w-full"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing Import...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import {parsedData.length} Students
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
 
                   {isProcessing && (
@@ -485,48 +510,68 @@ const Import = () => {
                   </CardHeader>
                   <CardContent>
                     {importResults.success ? (
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
-                        <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                          <Users className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-                          <div className="text-2xl font-bold text-blue-600">{importResults.studentsCreated}</div>
-                          <div className="text-xs text-muted-foreground">Students Created</div>
+                      <>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+                          <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                            <Users className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                            <div className="text-2xl font-bold text-blue-600">{importResults.studentsCreated}</div>
+                            <div className="text-xs text-muted-foreground">Students Created</div>
+                          </div>
+                          <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                            <UserCheck className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                            <div className="text-2xl font-bold text-green-600">{importResults.teachersCreated}</div>
+                            <div className="text-xs text-muted-foreground">Teachers Created</div>
+                          </div>
+                          <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                            <GraduationCap className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+                            <div className="text-2xl font-bold text-purple-600">{importResults.classesCreated}</div>
+                            <div className="text-xs text-muted-foreground">Classes Created</div>
+                          </div>
+                          <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+                            <Users className="h-6 w-6 mx-auto mb-2 text-orange-600" />
+                            <div className="text-2xl font-bold text-orange-600">{importResults.studentsEnrolled}</div>
+                            <div className="text-xs text-muted-foreground">Students Enrolled</div>
+                          </div>
+                          <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg">
+                            <UserCheck className="h-6 w-6 mx-auto mb-2 text-indigo-600" />
+                            <div className="text-2xl font-bold text-indigo-600">{importResults.teachersAssigned}</div>
+                            <div className="text-xs text-muted-foreground">Teacher Assignments</div>
+                          </div>
+                          <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+                            <Users className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
+                            <div className="text-2xl font-bold text-yellow-600">{importResults.busesCreated || 0}</div>
+                            <div className="text-xs text-muted-foreground">Buses Created</div>
+                          </div>
+                          <div className="text-center p-3 bg-teal-50 dark:bg-teal-950/20 rounded-lg">
+                            <Users className="h-6 w-6 mx-auto mb-2 text-teal-600" />
+                            <div className="text-2xl font-bold text-teal-600">{importResults.carLinesCreated || 0}</div>
+                            <div className="text-xs text-muted-foreground">Car Lines Created</div>
+                          </div>
+                          <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
+                            <Users className="h-6 w-6 mx-auto mb-2 text-emerald-600" />
+                            <div className="text-2xl font-bold text-emerald-600">{importResults.walkerLocationsCreated || 0}</div>
+                            <div className="text-xs text-muted-foreground">Walker Locations</div>
+                          </div>
                         </div>
-                        <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                          <UserCheck className="h-6 w-6 mx-auto mb-2 text-green-600" />
-                          <div className="text-2xl font-bold text-green-600">{importResults.teachersCreated}</div>
-                          <div className="text-xs text-muted-foreground">Teachers Created</div>
-                        </div>
-                        <div className="text-center p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                          <GraduationCap className="h-6 w-6 mx-auto mb-2 text-purple-600" />
-                          <div className="text-2xl font-bold text-purple-600">{importResults.classesCreated}</div>
-                          <div className="text-xs text-muted-foreground">Classes Created</div>
-                        </div>
-                        <div className="text-center p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
-                          <Users className="h-6 w-6 mx-auto mb-2 text-orange-600" />
-                          <div className="text-2xl font-bold text-orange-600">{importResults.studentsEnrolled}</div>
-                          <div className="text-xs text-muted-foreground">Students Enrolled</div>
-                        </div>
-                        <div className="text-center p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg">
-                          <UserCheck className="h-6 w-6 mx-auto mb-2 text-indigo-600" />
-                          <div className="text-2xl font-bold text-indigo-600">{importResults.teachersAssigned}</div>
-                          <div className="text-xs text-muted-foreground">Teacher Assignments</div>
-                        </div>
-                        <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-                          <Users className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
-                          <div className="text-2xl font-bold text-yellow-600">{importResults.busesCreated || 0}</div>
-                          <div className="text-xs text-muted-foreground">Buses Created</div>
-                        </div>
-                        <div className="text-center p-3 bg-teal-50 dark:bg-teal-950/20 rounded-lg">
-                          <Users className="h-6 w-6 mx-auto mb-2 text-teal-600" />
-                          <div className="text-2xl font-bold text-teal-600">{importResults.carLinesCreated || 0}</div>
-                          <div className="text-xs text-muted-foreground">Car Lines Created</div>
-                        </div>
-                        <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
-                          <Users className="h-6 w-6 mx-auto mb-2 text-emerald-600" />
-                          <div className="text-2xl font-bold text-emerald-600">{importResults.walkerLocationsCreated || 0}</div>
-                          <div className="text-xs text-muted-foreground">Walker Locations</div>
-                        </div>
-                      </div>
+                        
+                        {importResults.invitationsSent !== undefined && (
+                          <Alert className={importResults.invitationsSent ? "bg-green-50 border-green-200 dark:bg-green-950/20" : "bg-amber-50 border-amber-200 dark:bg-amber-950/20"}>
+                            <AlertDescription className="flex items-center gap-2">
+                              {importResults.invitationsSent ? (
+                                <>
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  <span className="text-green-800 dark:text-green-200">Teacher invitations sent successfully</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="h-4 w-4 text-amber-600" />
+                                  <span className="text-amber-800 dark:text-amber-200">Teachers created but not invited. Go to People page to send invitations.</span>
+                                </>
+                              )}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </>
                     ) : (
                       <div className="p-4 bg-red-100 dark:bg-red-950/20 rounded-lg">
                         <div className="font-medium text-red-800 dark:text-red-200 mb-2">Error Details:</div>

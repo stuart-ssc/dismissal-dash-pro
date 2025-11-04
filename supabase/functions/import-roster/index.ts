@@ -148,6 +148,9 @@ serve(async (req) => {
     const file = formData.get('file') as File;
     const rosterData = JSON.parse(formData.get('rosterData') as string) as RosterRow[];
     const validateOnly = formData.get('validateOnly') === 'true';
+    const sendInvitations = formData.get('sendInvitations') !== 'false'; // Default true for backward compatibility
+    
+    console.log(`Import configuration: sendInvitations=${sendInvitations}`);
 
     if (!file || !rosterData || !Array.isArray(rosterData)) {
       return new Response(JSON.stringify({ error: 'Invalid file or roster data' }), {
@@ -391,31 +394,36 @@ serve(async (req) => {
           results.transportationAssignments++;
         }
         
-        // Send teacher invitation email if needed
-        const shouldSendInvitation = !processedTeachers.has(row.teacherEmail + '_invited');
-        if (shouldSendInvitation) {
-          try {
-            const invitationResponse = await supabase.functions.invoke('invite-teacher-unified', {
-              body: {
-                email: row.teacherEmail,
-                firstName: row.teacherFirstName,
-                lastName: row.teacherLastName,
-                schoolId: profile.school_id
+        // Send teacher invitation email if needed and if sendInvitations is true
+        if (sendInvitations) {
+          const shouldSendInvitation = !processedTeachers.has(row.teacherEmail + '_invited');
+          if (shouldSendInvitation) {
+            try {
+              console.log(`Sending invitation to ${row.teacherEmail}...`);
+              const invitationResponse = await supabase.functions.invoke('invite-teacher-unified', {
+                body: {
+                  email: row.teacherEmail,
+                  firstName: row.teacherFirstName,
+                  lastName: row.teacherLastName,
+                  schoolId: profile.school_id
+                }
+              });
+              
+              if (invitationResponse.error) {
+                console.error('Failed to send teacher invitation:', invitationResponse.error);
+                results.errors.push(`Failed to send invitation to ${row.teacherEmail}: ${invitationResponse.error.message}`);
+              } else {
+                console.log(`Successfully invited ${row.teacherEmail}`);
               }
-            });
-            
-            if (invitationResponse.error) {
-              console.error('Failed to send teacher invitation:', invitationResponse.error);
-              results.errors.push(`Failed to send invitation to ${row.teacherEmail}: ${invitationResponse.error.message}`);
-            } else {
-              console.log(`Teacher invitation sent to ${row.teacherEmail}`);
+              
+              processedTeachers.set(row.teacherEmail + '_invited', 'sent');
+            } catch (inviteError) {
+              console.error('Error sending teacher invitation:', inviteError);
+              results.errors.push(`Failed to send invitation to ${row.teacherEmail}: ${inviteError instanceof Error ? inviteError.message : 'Unknown error'}`);
             }
-            
-            processedTeachers.set(row.teacherEmail + '_invited', 'sent');
-          } catch (inviteError) {
-            console.error('Error sending teacher invitation:', inviteError);
-            results.errors.push(`Failed to send invitation to ${row.teacherEmail}: ${inviteError instanceof Error ? inviteError.message : 'Unknown error'}`);
           }
+        } else {
+          console.log(`Skipping invitation for ${row.teacherEmail} (sendInvitations=false)`);
         }
 
             } else if (transportationType === 'car') {
@@ -517,8 +525,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      results,
-      message: `Successfully processed ${rosterData.length} rows. Created ${results.studentsCreated} students, ${results.teachersCreated} teachers, ${results.classesCreated} classes, ${results.busesCreated} buses, ${results.carLinesCreated} car lines, ${results.walkerLocationsCreated} walker locations with ${results.transportationAssignments} transportation assignments.`
+      results: {
+        ...results,
+        invitationsSent: sendInvitations,
+      },
+      message: sendInvitations 
+        ? `Successfully imported roster. Invitations sent to new teachers.`
+        : `Successfully imported roster. Teachers created but not invited yet. Visit People page to send invitations.`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

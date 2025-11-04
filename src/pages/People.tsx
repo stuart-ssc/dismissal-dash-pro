@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { usePaginatedPeople, type PersonData } from "@/hooks/usePaginatedPeople";
 import { useQueryClient } from "@tanstack/react-query";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -52,6 +52,7 @@ const People = () => {
   const [studentForTempTransport, setStudentForTempTransport] = useState<any>(null);
   const [tempTransportData, setTempTransportData] = useState<Record<string, any>>({});
   const [anyOverrideData, setAnyOverrideData] = useState<Record<string, boolean>>({});
+  const [isBulkInviting, setIsBulkInviting] = useState(false);
 
   // Use the paginated people hook
   const { data: paginatedData, isLoading: isPeopleLoading, error: peopleError } = usePaginatedPeople({
@@ -371,6 +372,63 @@ const People = () => {
     }
   };
 
+  const handleBulkInviteTeachers = async () => {
+    try {
+      setIsBulkInviting(true);
+      
+      // Filter for teachers with pending invitations
+      const pendingTeachers = people.filter(p => 
+        p.role === 'Teacher' && 
+        (!p.invitationStatus || p.invitationStatus === 'pending')
+      );
+      
+      if (pendingTeachers.length === 0) {
+        toast({
+          title: "No Pending Invitations",
+          description: "All teachers have already been invited.",
+        });
+        return;
+      }
+      
+      // Prepare bulk invitation request
+      const teachersToInvite = pendingTeachers.map(t => ({
+        email: t.email!,
+        firstName: t.firstName,
+        lastName: t.lastName,
+      }));
+      
+      const { data, error } = await supabase.functions.invoke('invite-teacher-unified', {
+        body: {
+          teachers: teachersToInvite,
+          schoolId: schoolId,
+        },
+      });
+      
+      if (error) throw error;
+      
+      const successCount = data?.success || 0;
+      const errorCount = data?.errors?.length || 0;
+      
+      toast({
+        title: "Invitations Sent",
+        description: `Successfully sent ${successCount} invitation(s). ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
+      });
+      
+      // Refresh the people list
+      queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
+      
+    } catch (error) {
+      console.error('Error sending bulk invitations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send invitations. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkInviting(false);
+    }
+  };
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'School Admin':
@@ -521,6 +579,44 @@ const People = () => {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Bulk Invitation Card */}
+              {people.filter(p => p.role === 'Teacher' && (!p.invitationStatus || p.invitationStatus === 'pending')).length > 0 && (
+                <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Pending Teacher Invitations
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {people.filter(p => p.role === 'Teacher' && (!p.invitationStatus || p.invitationStatus === 'pending')).length}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Teachers without invitations
+                    </p>
+                    <Button 
+                      onClick={handleBulkInviteTeachers}
+                      disabled={isBulkInviting}
+                      className="w-full"
+                      size="sm"
+                    >
+                      {isBulkInviting ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          Sending Invitations...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-3 w-3" />
+                          Send All Invitations
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
