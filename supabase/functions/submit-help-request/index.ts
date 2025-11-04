@@ -13,6 +13,7 @@ interface HelpRequest {
   request_type: 'bug' | 'support' | 'suggestion';
   subject: string;
   description: string;
+  attachments?: string[];
 }
 
 serve(async (req) => {
@@ -41,7 +42,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { request_type, subject, description }: HelpRequest = await req.json();
+    const { request_type, subject, description, attachments }: HelpRequest = await req.json();
 
     // Validate input
     if (!request_type || !['bug', 'support', 'suggestion'].includes(request_type)) {
@@ -63,6 +64,16 @@ serve(async (req) => {
         JSON.stringify({ error: 'Description must be between 10 and 2000 characters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Validate attachments if provided
+    if (attachments && Array.isArray(attachments)) {
+      if (attachments.length > 3) {
+        return new Response(
+          JSON.stringify({ error: 'Maximum 3 attachments allowed' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Get user profile and school info
@@ -91,6 +102,7 @@ serve(async (req) => {
         user_email: userEmail,
         user_name: userName,
         school_name: schoolName,
+        attachments: attachments || [],
       })
       .select()
       .single();
@@ -177,6 +189,22 @@ serve(async (req) => {
                 <div class="label">Request ID</div>
                 <div class="value" style="font-family: monospace; font-size: 12px;">${helpRequest.id}</div>
               </div>
+              
+              ${attachments && attachments.length > 0 ? `
+                <div class="divider"></div>
+                <div class="section">
+                  <div class="label">Attachments (${attachments.length})</div>
+                  <div class="value">
+                    ${attachments.map((url, i) => `
+                      <div style="margin-bottom: 8px;">
+                        <a href="${url}" style="color: #3b82f6; text-decoration: none;">
+                          📎 Screenshot ${i + 1}
+                        </a>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
             </div>
             <div class="footer">
               <p style="margin: 0;">Dismissal Pro - Help Request System</p>

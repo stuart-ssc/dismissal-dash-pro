@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Bug, LifeBuoy, Lightbulb, Loader2 } from "lucide-react";
+import { Bug, LifeBuoy, Lightbulb, Loader2, ImageIcon, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -26,6 +26,9 @@ type HelpRequestForm = z.infer<typeof helpRequestSchema>;
 const Help = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bugFiles, setBugFiles] = useState<File[]>([]);
+  const [supportFiles, setSupportFiles] = useState<File[]>([]);
+  const [suggestionFiles, setSuggestionFiles] = useState<File[]>([]);
 
   const bugForm = useForm<HelpRequestForm>({
     resolver: zodResolver(helpRequestSchema),
@@ -45,15 +48,61 @@ const Help = () => {
   const handleSubmit = async (
     data: HelpRequestForm,
     requestType: 'bug' | 'support' | 'suggestion',
-    form: typeof bugForm
+    form: typeof bugForm,
+    files: File[]
   ) => {
     setIsSubmitting(true);
     try {
+      let attachmentUrls: string[] = [];
+
+      // Upload files if any
+      if (files.length > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const tempRequestId = crypto.randomUUID();
+        
+        for (const file of files) {
+          // Validate file size
+          if (file.size > 5 * 1024 * 1024) {
+            toast({
+              title: "File too large",
+              description: `${file.name} exceeds 5MB limit`,
+              variant: "destructive",
+            });
+            continue;
+          }
+
+          const fileName = `${user.id}/${tempRequestId}/${Date.now()}-${file.name}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('help-attachments')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false,
+            });
+
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            throw new Error(`Failed to upload ${file.name}`);
+          }
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('help-attachments')
+            .getPublicUrl(fileName);
+
+          attachmentUrls.push(publicUrl);
+        }
+      }
+
+      // Submit help request with attachments
       const { error } = await supabase.functions.invoke('submit-help-request', {
         body: {
           request_type: requestType,
           subject: data.subject,
           description: data.description,
+          attachments: attachmentUrls,
         },
       });
 
@@ -65,11 +114,16 @@ const Help = () => {
       });
 
       form.reset();
+      // Clear files based on request type
+      if (requestType === 'bug') setBugFiles([]);
+      if (requestType === 'support') setSupportFiles([]);
+      if (requestType === 'suggestion') setSuggestionFiles([]);
+
     } catch (error) {
       console.error('Error submitting help request:', error);
       toast({
         title: "Submission failed",
-        description: "Please try again or contact support directly.",
+        description: error instanceof Error ? error.message : "Please try again or contact support directly.",
         variant: "destructive",
       });
     } finally {
@@ -113,7 +167,7 @@ const Help = () => {
             {/* Bug Report Tab */}
             <TabsContent value="bug" className="space-y-4 mt-6">
               <Form {...bugForm}>
-                <form onSubmit={bugForm.handleSubmit((data) => handleSubmit(data, 'bug', bugForm))} className="space-y-4">
+                <form onSubmit={bugForm.handleSubmit((data) => handleSubmit(data, 'bug', bugForm, bugFiles))} className="space-y-4">
                   <FormField
                     control={bugForm.control}
                     name="subject"
@@ -152,6 +206,62 @@ const Help = () => {
                       </FormItem>
                     )}
                   />
+                  <FormItem>
+                    <FormLabel>Screenshots (Optional)</FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <Input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                          multiple
+                          disabled={isSubmitting || bugFiles.length >= 3}
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (bugFiles.length + files.length > 3) {
+                              toast({
+                                title: "Too many files",
+                                description: "Maximum 3 screenshots allowed",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setBugFiles([...bugFiles, ...files]);
+                            e.target.value = '';
+                          }}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          PNG, JPG, GIF, or WebP. Max 5MB per file. Up to 3 files.
+                        </p>
+                        
+                        {bugFiles.length > 0 && (
+                          <div className="space-y-2">
+                            {bugFiles.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                                <div className="flex items-center gap-2">
+                                  <ImageIcon className="h-4 w-4" />
+                                  <span className="text-sm truncate max-w-[200px]">{file.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({(file.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setBugFiles(bugFiles.filter((_, i) => i !== index));
+                                  }}
+                                  disabled={isSubmitting}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                  </FormItem>
                   <Button type="submit" disabled={isSubmitting} className="w-full">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit Bug Report
@@ -163,7 +273,7 @@ const Help = () => {
             {/* Support Request Tab */}
             <TabsContent value="support" className="space-y-4 mt-6">
               <Form {...supportForm}>
-                <form onSubmit={supportForm.handleSubmit((data) => handleSubmit(data, 'support', supportForm))} className="space-y-4">
+                <form onSubmit={supportForm.handleSubmit((data) => handleSubmit(data, 'support', supportForm, supportFiles))} className="space-y-4">
                   <FormField
                     control={supportForm.control}
                     name="subject"
@@ -202,6 +312,62 @@ const Help = () => {
                       </FormItem>
                     )}
                   />
+                  <FormItem>
+                    <FormLabel>Screenshots (Optional)</FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <Input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                          multiple
+                          disabled={isSubmitting || supportFiles.length >= 3}
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (supportFiles.length + files.length > 3) {
+                              toast({
+                                title: "Too many files",
+                                description: "Maximum 3 screenshots allowed",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setSupportFiles([...supportFiles, ...files]);
+                            e.target.value = '';
+                          }}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          PNG, JPG, GIF, or WebP. Max 5MB per file. Up to 3 files.
+                        </p>
+                        
+                        {supportFiles.length > 0 && (
+                          <div className="space-y-2">
+                            {supportFiles.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                                <div className="flex items-center gap-2">
+                                  <ImageIcon className="h-4 w-4" />
+                                  <span className="text-sm truncate max-w-[200px]">{file.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({(file.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSupportFiles(supportFiles.filter((_, i) => i !== index));
+                                  }}
+                                  disabled={isSubmitting}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                  </FormItem>
                   <Button type="submit" disabled={isSubmitting} className="w-full">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit Support Request
@@ -213,7 +379,7 @@ const Help = () => {
             {/* Suggestion Tab */}
             <TabsContent value="suggestion" className="space-y-4 mt-6">
               <Form {...suggestionForm}>
-                <form onSubmit={suggestionForm.handleSubmit((data) => handleSubmit(data, 'suggestion', suggestionForm))} className="space-y-4">
+                <form onSubmit={suggestionForm.handleSubmit((data) => handleSubmit(data, 'suggestion', suggestionForm, suggestionFiles))} className="space-y-4">
                   <FormField
                     control={suggestionForm.control}
                     name="subject"
@@ -252,6 +418,62 @@ const Help = () => {
                       </FormItem>
                     )}
                   />
+                  <FormItem>
+                    <FormLabel>Screenshots (Optional)</FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <Input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                          multiple
+                          disabled={isSubmitting || suggestionFiles.length >= 3}
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (suggestionFiles.length + files.length > 3) {
+                              toast({
+                                title: "Too many files",
+                                description: "Maximum 3 screenshots allowed",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setSuggestionFiles([...suggestionFiles, ...files]);
+                            e.target.value = '';
+                          }}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          PNG, JPG, GIF, or WebP. Max 5MB per file. Up to 3 files.
+                        </p>
+                        
+                        {suggestionFiles.length > 0 && (
+                          <div className="space-y-2">
+                            {suggestionFiles.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                                <div className="flex items-center gap-2">
+                                  <ImageIcon className="h-4 w-4" />
+                                  <span className="text-sm truncate max-w-[200px]">{file.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({(file.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSuggestionFiles(suggestionFiles.filter((_, i) => i !== index));
+                                  }}
+                                  disabled={isSubmitting}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                  </FormItem>
                   <Button type="submit" disabled={isSubmitting} className="w-full">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit Suggestion

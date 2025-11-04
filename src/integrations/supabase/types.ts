@@ -948,6 +948,7 @@ export type Database = {
       }
       help_requests: {
         Row: {
+          attachments: string[] | null
           created_at: string | null
           description: string
           id: string
@@ -962,6 +963,7 @@ export type Database = {
           user_name: string
         }
         Insert: {
+          attachments?: string[] | null
           created_at?: string | null
           description: string
           id?: string
@@ -976,6 +978,7 @@ export type Database = {
           user_name: string
         }
         Update: {
+          attachments?: string[] | null
           created_at?: string | null
           description?: string
           id?: string
