@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Users, GraduationCap, UserCheck, Mail } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -739,6 +739,75 @@ const Import = () => {
               </div>
             </CardContent>
           </Card>
+
+          {parseErrors.length > 0 && (
+            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              <CardContent className="p-6">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Parsing Errors</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc list-inside space-y-1 mt-2">
+                      {parseErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          )}
+
+          {parsedData.length > 0 && (
+            <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              <CardContent className="p-6 space-y-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Ready to Import</AlertTitle>
+                  <AlertDescription>
+                    Found {parsedData.length} rows to import. Click the button below to start the import process.
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg">
+                  <Checkbox 
+                    id="send-invitations-default" 
+                    checked={sendInvitations}
+                    onCheckedChange={(checked) => setSendInvitations(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="send-invitations-default"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Send invitation emails to teachers immediately
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground px-4">
+                  {sendInvitations 
+                    ? "✓ Teachers will receive invitation emails after import completes" 
+                    : "⚠️ Teachers will be created but NOT invited. You can invite them later from the People page."}
+                </p>
+
+                <Button
+                  onClick={handleFileUpload}
+                  disabled={isProcessing}
+                  className="w-full"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Importing... {uploadProgress}%
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import Roster Data
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
             <CardHeader>
