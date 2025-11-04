@@ -616,14 +616,6 @@ const Dashboard = () => {
                         Launch Dismissal
                       </Link>
                     </Button>
-                    <Button className="w-full justify-start" variant="outline">
-                      <GraduationCap className="mr-2 h-4 w-4" />
-                      Dismissal Groups
-                    </Button>
-                    <Button className="w-full justify-start" variant="outline">
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      View Reports
-                    </Button>
                     <Button asChild className="w-full justify-start" variant="outline">
                       <Link to="/dashboard/import">
                         <Upload className="mr-2 h-4 w-4" />
