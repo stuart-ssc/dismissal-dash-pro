@@ -557,16 +557,48 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Pending Invites</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-orange-600">
-                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'pending').length}
-                    </div>
-                  </CardContent>
-                </Card>
+          <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4 text-blue-600" />
+                Pending Invites
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="text-2xl font-bold text-blue-600">
+                {people.filter(p => p.role === 'Teacher' && (!p.invitationStatus || p.invitationStatus === 'pending')).length}
+              </div>
+              {people.filter(p => p.role === 'Teacher' && (!p.invitationStatus || p.invitationStatus === 'pending')).length > 0 ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Teachers without invitations
+                  </p>
+                  <Button 
+                    onClick={handleBulkInviteTeachers}
+                    disabled={isBulkInviting}
+                    className="w-full mt-2"
+                    size="sm"
+                  >
+                    {isBulkInviting ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="mr-2 h-3 w-3" />
+                        Send All
+                      </>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  All teachers invited
+                </p>
+              )}
+            </CardContent>
+          </Card>
                 
                 <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                   <CardHeader className="pb-2">
@@ -580,43 +612,6 @@ const People = () => {
                 </Card>
               </div>
 
-              {/* Bulk Invitation Card */}
-              {people.filter(p => p.role === 'Teacher' && (!p.invitationStatus || p.invitationStatus === 'pending')).length > 0 && (
-                <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      Pending Teacher Invitations
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {people.filter(p => p.role === 'Teacher' && (!p.invitationStatus || p.invitationStatus === 'pending')).length}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Teachers without invitations
-                    </p>
-                    <Button 
-                      onClick={handleBulkInviteTeachers}
-                      disabled={isBulkInviting}
-                      className="w-full"
-                      size="sm"
-                    >
-                      {isBulkInviting ? (
-                        <>
-                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                          Sending Invitations...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="mr-2 h-3 w-3" />
-                          Send All Invitations
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
