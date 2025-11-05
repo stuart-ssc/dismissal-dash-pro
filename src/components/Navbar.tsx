@@ -21,7 +21,7 @@ const Navbar = () => {
   return (
     <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        {(!isTeacher || isIndexPage) && (
+        {isContentPage && (
           <Link to="/" className="flex items-center">
             <img 
               src={logo}
