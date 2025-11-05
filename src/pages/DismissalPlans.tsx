@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, MoreHorizontal, Edit, Trash2, Settings, CalendarDays, Users, Clock, CheckCircle } from "lucide-react";
+import { Plus, MoreHorizontal, Edit, Trash2, Settings, CalendarDays, Users, Clock, CheckCircle, Copy } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useImpersonation } from "@/hooks/useImpersonation";
 
@@ -399,6 +399,164 @@ export default function DismissalPlans() {
       end_date: plan.end_date || "",
     });
     setShowAddDialog(true);
+  };
+
+  const handleDuplicate = async (plan: DismissalPlan) => {
+    if (!user) return;
+    
+    try {
+      // Get the school ID
+      let schoolIdToUse: number | null = (userRole === 'system_admin' && impersonatedSchoolId) 
+        ? impersonatedSchoolId 
+        : null;
+        
+      if (!schoolIdToUse) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', user.id)
+          .single();
+        schoolIdToUse = profile?.school_id ?? null;
+      }
+      
+      if (!schoolIdToUse) return;
+      
+      // Step 1: Create the duplicated plan
+      const duplicatedPlanData = {
+        name: `${plan.name} (Copy)`,
+        description: plan.description,
+        dismissal_time: plan.dismissal_time,
+        is_default: false,
+        status: plan.status,
+        start_date: plan.start_date,
+        end_date: plan.end_date,
+        school_id: schoolIdToUse,
+      };
+      
+      const { data: newPlan, error: planError } = await supabase
+        .from('dismissal_plans')
+        .insert(duplicatedPlanData)
+        .select()
+        .single();
+        
+      if (planError) throw planError;
+      if (!newPlan) throw new Error('Failed to create duplicated plan');
+      
+      // Step 2: Fetch all groups from the original plan
+      const { data: originalGroups, error: groupsError } = await supabase
+        .from('dismissal_groups')
+        .select('*')
+        .eq('dismissal_plan_id', plan.id);
+        
+      if (groupsError) throw groupsError;
+      
+      if (originalGroups && originalGroups.length > 0) {
+        // Step 3: Duplicate each group and its associations
+        for (const originalGroup of originalGroups) {
+          // Create the new group
+          const { data: newGroup, error: newGroupError } = await supabase
+            .from('dismissal_groups')
+            .insert({
+              dismissal_plan_id: newPlan.id,
+              name: originalGroup.name,
+              group_type: originalGroup.group_type,
+              walker_location_id: originalGroup.walker_location_id,
+              car_rider_type: originalGroup.car_rider_type,
+              car_rider_capacity: originalGroup.car_rider_capacity,
+              release_offset_minutes: originalGroup.release_offset_minutes,
+            })
+            .select()
+            .single();
+            
+          if (newGroupError) throw newGroupError;
+          if (!newGroup) continue;
+          
+          // Copy dismissal_group_buses
+          const { data: buses } = await supabase
+            .from('dismissal_group_buses')
+            .select('bus_id')
+            .eq('dismissal_group_id', originalGroup.id);
+            
+          if (buses && buses.length > 0) {
+            const busInserts = buses.map(b => ({
+              dismissal_group_id: newGroup.id,
+              bus_id: b.bus_id,
+            }));
+            await supabase.from('dismissal_group_buses').insert(busInserts);
+          }
+          
+          // Copy dismissal_group_car_lines
+          const { data: carLines } = await supabase
+            .from('dismissal_group_car_lines')
+            .select('car_line_id')
+            .eq('dismissal_group_id', originalGroup.id);
+            
+          if (carLines && carLines.length > 0) {
+            const carLineInserts = carLines.map(cl => ({
+              dismissal_group_id: newGroup.id,
+              car_line_id: cl.car_line_id,
+            }));
+            await supabase.from('dismissal_group_car_lines').insert(carLineInserts);
+          }
+          
+          // Copy dismissal_group_classes
+          const { data: classes } = await supabase
+            .from('dismissal_group_classes')
+            .select('class_id')
+            .eq('dismissal_group_id', originalGroup.id);
+            
+          if (classes && classes.length > 0) {
+            const classInserts = classes.map(c => ({
+              dismissal_group_id: newGroup.id,
+              class_id: c.class_id,
+            }));
+            await supabase.from('dismissal_group_classes').insert(classInserts);
+          }
+          
+          // Copy dismissal_group_students
+          const { data: students } = await supabase
+            .from('dismissal_group_students')
+            .select('student_id')
+            .eq('dismissal_group_id', originalGroup.id);
+            
+          if (students && students.length > 0) {
+            const studentInserts = students.map(s => ({
+              dismissal_group_id: newGroup.id,
+              student_id: s.student_id,
+            }));
+            await supabase.from('dismissal_group_students').insert(studentInserts);
+          }
+          
+          // Copy dismissal_group_activities
+          const { data: activities } = await supabase
+            .from('dismissal_group_activities')
+            .select('after_school_activity_id')
+            .eq('dismissal_group_id', originalGroup.id);
+            
+          if (activities && activities.length > 0) {
+            const activityInserts = activities.map(a => ({
+              dismissal_group_id: newGroup.id,
+              after_school_activity_id: a.after_school_activity_id,
+            }));
+            await supabase.from('dismissal_group_activities').insert(activityInserts);
+          }
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: `Dismissal plan duplicated successfully${originalGroups?.length ? ` with ${originalGroups.length} group(s)` : ''}`,
+      });
+      
+      fetchPlans();
+    } catch (error) {
+      console.error('Error duplicating plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to duplicate dismissal plan",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = async (planId: string) => {
@@ -851,6 +1009,12 @@ export default function DismissalPlans() {
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDuplicate(plan)}
+                            >
+                              <Copy className="mr-2 h-4 w-4" />
+                              Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => navigate(`/dashboard/dismissal-plans/${plan.id}/groups`)}
