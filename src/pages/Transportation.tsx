@@ -38,7 +38,6 @@ const walkerLocationSchema = z.object({
 
 const carLineSchema = z.object({
   line_name: z.string().min(1, "Line name is required"),
-  color: z.string().min(1, "Color is required"),
   pickup_location: z.string().min(1, "Pickup location is required"),
   status: z.enum(["active", "inactive"]),
 });
@@ -675,7 +674,6 @@ const Transportation = () => {
     resolver: zodResolver(carLineSchema),
     defaultValues: {
       line_name: "",
-      color: "#EF4444",
       pickup_location: "",
       status: "active",
     },
@@ -731,14 +729,12 @@ const Transportation = () => {
     if (editingCarRecord) {
       carForm.reset({
         line_name: editingCarRecord.line_name,
-        color: editingCarRecord.color,
         pickup_location: editingCarRecord.pickup_location,
         status: editingCarRecord.status,
       });
     } else if (showAddCarDialog) {
       carForm.reset({
         line_name: "",
-        color: "#EF4444",
         pickup_location: "",
         status: "active",
       });
@@ -964,7 +960,6 @@ const Transportation = () => {
           .from('car_lines')
           .update({
             line_name: values.line_name,
-            color: values.color,
             pickup_location: values.pickup_location,
             status: values.status,
           })
@@ -984,7 +979,7 @@ const Transportation = () => {
           .insert({
             school_id: profile.school_id,
             line_name: values.line_name,
-            color: values.color,
+            color: '#000000', // Default color since field is removed from UI
             pickup_location: values.pickup_location,
             status: values.status,
           });
@@ -2727,19 +2722,6 @@ const Transportation = () => {
                     <FormLabel>Line Name</FormLabel>
                     <FormControl>
                       <Input placeholder="Primary Line" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={carForm.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Color</FormLabel>
-                    <FormControl>
-                      <Input type="color" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
