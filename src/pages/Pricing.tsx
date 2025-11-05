@@ -49,7 +49,7 @@ const Pricing = () => {
   const faqs = [
     {
       question: "What happens after the free trial?",
-      answer: "After 30 days, you can choose to continue with a paid subscription at $500/year. Your data is always yours and you can export it anytime.",
+      answer: "After 30 days, you can choose to continue with a paid subscription at $250/year. Your data is always yours and you can export it anytime.",
     },
     {
       question: "Can I cancel anytime?",
@@ -57,7 +57,7 @@ const Pricing = () => {
     },
     {
       question: "Is there a setup fee?",
-      answer: "No setup fees, no hidden costs. Just $500/year for unlimited access to all features.",
+      answer: "No setup fees, no hidden costs. Just $250/year for unlimited access to all features.",
     },
     {
       question: "What kind of support do you offer?",
@@ -96,13 +96,14 @@ const Pricing = () => {
           <div className="max-w-3xl mx-auto">
             <Card className="relative overflow-hidden border-2 shadow-elevated border-primary/20 bg-card/80 backdrop-blur">
               <div className="absolute top-0 right-0 px-4 py-1 text-sm font-semibold text-white rounded-bl-lg bg-gradient-to-r from-primary to-secondary">
-                Most Popular
+                Be an Early Adopter
               </div>
               <CardContent className="p-8 md:p-12">
                 <div className="mb-8 text-center">
                   <h2 className="mb-2 text-2xl font-bold">School Plan</h2>
                   <div className="flex items-baseline justify-center gap-2 mb-4">
-                    <span className="text-6xl font-bold">$500</span>
+                    <span className="text-3xl font-bold text-muted-foreground line-through">$500</span>
+                    <span className="text-6xl font-bold text-success">$250</span>
                     <span className="text-2xl text-muted-foreground">/year</span>
                   </div>
                   <p className="text-lg text-muted-foreground">
@@ -188,7 +189,7 @@ const Pricing = () => {
               <CardContent className="p-8 md:p-12">
                 <div className="text-center mb-8">
                   <h2 className="text-3xl font-bold mb-4">
-                    Less Than $1.40 Per Day
+                    Less Than $0.70 Per Day
                   </h2>
                   <p className="text-lg text-muted-foreground">
                     For complete dismissal management across your entire school
