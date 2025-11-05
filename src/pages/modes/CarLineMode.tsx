@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,11 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Clock, UserCheck, Car } from "lucide-react";
 import { toast } from "sonner";
 import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 
-type CarLine = { id: string; line_name: string };
+type CarLine = { id: string; line_name: string; has_lanes: boolean };
+type Lane = { id: string; lane_name: string; color: string; order_index: number };
 type Student = { id: string; first_name: string; last_name: string; grade_level: string; isTemporaryOverride?: boolean };
 type ClassItem = { id: string; class_name: string };
 type Session = { id: string; finished_at: string | null };
@@ -24,6 +25,7 @@ type StudentPickup = {
   status: PickupStatus;
   parent_arrived_at: string | null;
   picked_up_at: string | null;
+  lane_id: string | null;
 };
 
 export default function CarLineMode() {
@@ -31,6 +33,11 @@ export default function CarLineMode() {
   const navigate = useNavigate();
   const [carLines, setCarLines] = useState<CarLine[]>([]);
   const [selectedLine, setSelectedLine] = useState<string>("");
+  const [lanes, setLanes] = useState<Lane[]>([]);
+  const [hasLanes, setHasLanes] = useState(false);
+  const [showLaneSelectDialog, setShowLaneSelectDialog] = useState(false);
+  const [pendingStudentId, setPendingStudentId] = useState<string | null>(null);
+  const [selectedLaneId, setSelectedLaneId] = useState<string>("");
   const [session, setSession] = useState<Session | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
@@ -63,7 +70,7 @@ export default function CarLineMode() {
       if (!schoolId) return;
       const { data } = await supabase
         .from("car_lines")
-        .select("id,line_name")
+        .select("id,line_name,has_lanes")
         .eq("school_id", schoolId)
         .order("line_name", { ascending: true });
       const lines = (data || []) as any;
@@ -79,6 +86,10 @@ export default function CarLineMode() {
         const completions = await checkCompletedLocations();
         if (!completions.has(lines[0].id)) {
           setSelectedLine(lines[0].id);
+          setHasLanes(lines[0].has_lanes);
+          if (lines[0].has_lanes) {
+            loadLanes(lines[0].id);
+          }
           startSession(lines[0].id);
         }
       }
@@ -141,6 +152,15 @@ export default function CarLineMode() {
     }
   };
 
+  const loadLanes = async (carLineId: string) => {
+    const { data } = await supabase
+      .from("car_line_lanes")
+      .select("*")
+      .eq("car_line_id", carLineId)
+      .order("order_index");
+    setLanes(data || []);
+  };
+
   // Load existing pickup records for current location (all sessions)
   const loadPickups = async (sessionId?: string) => {
     if (!selectedLine || !runId) return;
@@ -157,7 +177,7 @@ export default function CarLineMode() {
     const sessionIds = sessions.map(s => s.id);
     const { data } = await supabase
       .from("car_line_pickups")
-      .select("student_id, status, parent_arrived_at, picked_up_at")
+      .select("student_id, status, parent_arrived_at, picked_up_at, lane_id")
       .in("car_line_session_id", sessionIds);
 
     if (data) {
@@ -182,6 +202,24 @@ export default function CarLineMode() {
       return;
     }
 
+    // If moving to parent_arrived and location has lanes, show lane selection
+    if (currentStatus === "waiting" && hasLanes && lanes.length > 0) {
+      setPendingStudentId(studentId);
+      setSelectedLaneId(lanes[0].id);
+      setShowLaneSelectDialog(true);
+      return;
+    }
+
+    // Continue with normal status update
+    await performStatusUpdate(studentId, currentStatus, null);
+  };
+
+  const performStatusUpdate = async (studentId: string, currentStatus: PickupStatus, laneId: string | null) => {
+    if (!session?.id) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     let newStatus: PickupStatus;
     let updateData: any = {};
 
@@ -190,7 +228,8 @@ export default function CarLineMode() {
         newStatus = "parent_arrived";
         updateData = {
           status: newStatus,
-          parent_arrived_at: new Date().toISOString()
+          parent_arrived_at: new Date().toISOString(),
+          lane_id: laneId,
         };
         break;
       case "parent_arrived":
@@ -206,7 +245,8 @@ export default function CarLineMode() {
         updateData = {
           status: newStatus,
           parent_arrived_at: null,
-          picked_up_at: null
+          picked_up_at: null,
+          lane_id: null,
         };
         break;
       default:
@@ -251,7 +291,8 @@ export default function CarLineMode() {
         student_id: studentId,
         status: newStatus,
         parent_arrived_at: updateData.parent_arrived_at || prev[studentId]?.parent_arrived_at || null,
-        picked_up_at: updateData.picked_up_at || prev[studentId]?.picked_up_at || null
+        picked_up_at: updateData.picked_up_at || prev[studentId]?.picked_up_at || null,
+        lane_id: updateData.lane_id !== undefined ? updateData.lane_id : (prev[studentId]?.lane_id || null),
       }
     }));
 
@@ -261,7 +302,9 @@ export default function CarLineMode() {
     
     switch (newStatus) {
       case "parent_arrived":
-        toast.success(`${studentName}'s parent has arrived`);
+        const selectedLane = lanes.find(l => l.id === laneId);
+        const laneInfo = selectedLane ? ` in ${selectedLane.lane_name}` : '';
+        toast.success(`${studentName}'s parent has arrived${laneInfo}`);
         break;
       case "picked_up":
         toast.success(`${studentName} has been picked up`);
@@ -654,14 +697,21 @@ export default function CarLineMode() {
                 <div className="w-full sm:w-80">
                   <label className="text-sm text-muted-foreground">Car line location</label>
                    <Select
-                     value={selectedLine}
-                     onValueChange={(v) => {
-                       if (!completedLocations.has(v)) {
-                         setSelectedLine(v);
-                         startSession(v);
-                       }
-                     }}
-                   >
+                      value={selectedLine}
+                      onValueChange={(v) => {
+                        if (!completedLocations.has(v)) {
+                          const line = carLines.find(l => l.id === v);
+                          setSelectedLine(v);
+                          setHasLanes(line?.has_lanes || false);
+                          if (line?.has_lanes) {
+                            loadLanes(v);
+                          } else {
+                            setLanes([]);
+                          }
+                          startSession(v);
+                        }
+                      }}
+                    >
                      <SelectTrigger>
                        <SelectValue placeholder="Select car line" />
                      </SelectTrigger>
@@ -817,7 +867,7 @@ export default function CarLineMode() {
                   const isSessionActive = session && !session.finished_at;
 
                   return (
-                    <li
+                     <li
                       key={s.id}
                       className={`p-4 rounded-lg transition-all duration-300 ${
                         isSessionActive 
@@ -842,6 +892,22 @@ export default function CarLineMode() {
                             Grade {s.grade_level}
                             {s.class_name ? ` • ${s.class_name}` : ""}
                           </div>
+                          
+                          {/* Show lane info if assigned */}
+                          {pickup?.lane_id && hasLanes && (
+                            (() => {
+                              const assignedLane = lanes.find(l => l.id === pickup.lane_id);
+                              return assignedLane ? (
+                                <div className="mt-2 flex items-center gap-2 text-sm font-medium">
+                                  <div
+                                    className="w-4 h-4 rounded border-2 border-background shadow-sm"
+                                    style={{ backgroundColor: assignedLane.color }}
+                                  />
+                                  <span>Lane: {assignedLane.lane_name}</span>
+                                </div>
+                              ) : null;
+                            })()
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge 
@@ -855,7 +921,7 @@ export default function CarLineMode() {
                       </div>
                       {isSessionActive && (
                         <div className="mt-2 text-xs text-muted-foreground">
-                          {status === "waiting" && "Click to mark parent arrived"}
+                          {status === "waiting" && (hasLanes ? "Click to mark parent arrived & select lane" : "Click to mark parent arrived")}
                           {status === "parent_arrived" && "Click to mark picked up"}
                           {status === "picked_up" && "Click to reset to waiting"}
                         </div>
@@ -868,6 +934,66 @@ export default function CarLineMode() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Lane Selection Dialog */}
+      <Dialog open={showLaneSelectDialog} onOpenChange={setShowLaneSelectDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Select Lane</DialogTitle>
+            <DialogDescription>
+              Which lane should this parent go to?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {lanes.map((lane) => (
+                <button
+                  key={lane.id}
+                  onClick={() => setSelectedLaneId(lane.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-md border-2 transition-all ${
+                    selectedLaneId === lane.id
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-primary/50 hover:bg-muted'
+                  }`}
+                >
+                  <div
+                    className="w-8 h-8 rounded border-2 border-background shadow-sm flex-shrink-0"
+                    style={{ backgroundColor: lane.color }}
+                  />
+                  <span className="font-medium text-left">{lane.lane_name}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowLaneSelectDialog(false);
+                  setPendingStudentId(null);
+                  setSelectedLaneId("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (pendingStudentId && selectedLaneId) {
+                    performStatusUpdate(pendingStudentId, "waiting", selectedLaneId);
+                    setShowLaneSelectDialog(false);
+                    setPendingStudentId(null);
+                    setSelectedLaneId("");
+                  }
+                }}
+                disabled={!selectedLaneId}
+              >
+                Confirm Lane
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

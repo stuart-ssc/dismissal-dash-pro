@@ -39,7 +39,13 @@ const walkerLocationSchema = z.object({
 const carLineSchema = z.object({
   line_name: z.string().min(1, "Line name is required"),
   pickup_location: z.string().min(1, "Pickup location is required"),
+  has_lanes: z.boolean(),
   status: z.enum(["active", "inactive"]),
+});
+
+const laneSchema = z.object({
+  lane_name: z.string().min(1, "Lane name is required"),
+  color: z.string().min(1, "Color is required"),
 });
 
 const afterSchoolActivitySchema = z.object({
@@ -99,10 +105,19 @@ interface CarLineRecord {
   line_name: string;
   color: string;
   pickup_location: string;
+  has_lanes: boolean;
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
   students_count: number;
+}
+
+interface CarLineLane {
+  id: string;
+  car_line_id: string;
+  lane_name: string;
+  color: string;
+  order_index: number;
 }
 
 interface AfterSchoolActivityRecord {
@@ -173,6 +188,11 @@ const Transportation = () => {
   const [carFilterStatus, setCarFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [showAddCarDialog, setShowAddCarDialog] = useState(false);
   const [editingCarRecord, setEditingCarRecord] = useState<CarLineRecord | null>(null);
+  
+  // Lane management state
+  const [lanes, setLanes] = useState<CarLineLane[]>([]);
+  const [showAddLaneDialog, setShowAddLaneDialog] = useState(false);
+  const [editingLane, setEditingLane] = useState<CarLineLane | null>(null);
   
   // Walker location student management state
   const [managingWalkerStudents, setManagingWalkerStudents] = useState<WalkerLocationRecord | null>(null);
@@ -405,6 +425,116 @@ const Transportation = () => {
       setFilteredCarLines(carLinesWithCounts);
     } catch (error) {
       console.error('Error fetching car lines data:', error);
+    }
+  };
+
+  const fetchLanes = async (carLineId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('car_line_lanes')
+        .select('*')
+        .eq('car_line_id', carLineId)
+        .order('order_index');
+
+      if (error) {
+        console.error('Error fetching lanes:', error);
+        return;
+      }
+
+      setLanes(data || []);
+    } catch (error) {
+      console.error('Error fetching lanes:', error);
+    }
+  };
+
+  const handleAddLane = async (values: z.infer<typeof laneSchema>) => {
+    if (!editingCarRecord) {
+      toast.error('Please save the car line first before adding lanes');
+      return;
+    }
+
+    try {
+      const maxOrder = lanes.length > 0 ? Math.max(...lanes.map(l => l.order_index)) : -1;
+      
+      const { error } = await supabase
+        .from('car_line_lanes')
+        .insert({
+          car_line_id: editingCarRecord.id,
+          lane_name: values.lane_name,
+          color: values.color,
+          order_index: maxOrder + 1,
+        });
+
+      if (error) {
+        console.error('Error adding lane:', error);
+        toast.error('Failed to add lane');
+        return;
+      }
+
+      toast.success('Lane added successfully');
+      await fetchLanes(editingCarRecord.id);
+      setShowAddLaneDialog(false);
+      laneForm.reset();
+    } catch (error) {
+      console.error('Error adding lane:', error);
+      toast.error('Failed to add lane');
+    }
+  };
+
+  const handleEditLane = async (values: z.infer<typeof laneSchema>) => {
+    if (!editingLane) return;
+
+    try {
+      const { error } = await supabase
+        .from('car_line_lanes')
+        .update({
+          lane_name: values.lane_name,
+          color: values.color,
+        })
+        .eq('id', editingLane.id);
+
+      if (error) {
+        console.error('Error updating lane:', error);
+        toast.error('Failed to update lane');
+        return;
+      }
+
+      toast.success('Lane updated successfully');
+      if (editingCarRecord) {
+        await fetchLanes(editingCarRecord.id);
+      }
+      setEditingLane(null);
+      laneForm.reset();
+    } catch (error) {
+      console.error('Error updating lane:', error);
+      toast.error('Failed to update lane');
+    }
+  };
+
+  const handleDeleteLane = async (lane: CarLineLane) => {
+    if (!confirm(`Are you sure you want to delete ${lane.lane_name}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('car_line_lanes')
+        .delete()
+        .eq('id', lane.id);
+
+      if (error) {
+        console.error('Error deleting lane:', error);
+        toast.error('Failed to delete lane');
+        return;
+      }
+
+      toast.success('Lane deleted successfully');
+      if (editingCarRecord) {
+        await fetchLanes(editingCarRecord.id);
+      }
+    } catch (error) {
+      console.error('Error deleting lane:', error);
+      toast.error('Failed to delete lane');
     }
   };
 
@@ -675,7 +805,16 @@ const Transportation = () => {
     defaultValues: {
       line_name: "",
       pickup_location: "",
+      has_lanes: false,
       status: "active",
+    },
+  });
+
+  const laneForm = useForm<z.infer<typeof laneSchema>>({
+    resolver: zodResolver(laneSchema),
+    defaultValues: {
+      lane_name: "",
+      color: "#3B82F6",
     },
   });
 
@@ -730,14 +869,21 @@ const Transportation = () => {
       carForm.reset({
         line_name: editingCarRecord.line_name,
         pickup_location: editingCarRecord.pickup_location,
+        has_lanes: editingCarRecord.has_lanes,
         status: editingCarRecord.status,
       });
+      // Load lanes if editing and has_lanes is true
+      if (editingCarRecord.has_lanes) {
+        fetchLanes(editingCarRecord.id);
+      }
     } else if (showAddCarDialog) {
       carForm.reset({
         line_name: "",
         pickup_location: "",
+        has_lanes: false,
         status: "active",
       });
+      setLanes([]);
     }
   }, [editingCarRecord, showAddCarDialog, carForm]);
 
@@ -961,6 +1107,7 @@ const Transportation = () => {
           .update({
             line_name: values.line_name,
             pickup_location: values.pickup_location,
+            has_lanes: values.has_lanes,
             status: values.status,
           })
           .eq('id', editingCarRecord.id);
@@ -974,15 +1121,18 @@ const Transportation = () => {
         toast.success('Car line updated successfully');
         setEditingCarRecord(null);
       } else {
-        const { error } = await supabase
+        const { data: insertedCarLine, error } = await supabase
           .from('car_lines')
           .insert({
             school_id: profile.school_id,
             line_name: values.line_name,
             color: '#000000', // Default color since field is removed from UI
             pickup_location: values.pickup_location,
+            has_lanes: values.has_lanes,
             status: values.status,
-          });
+          })
+          .select()
+          .single();
 
         if (error) {
           console.error('Error creating car line:', error);
@@ -992,6 +1142,13 @@ const Transportation = () => {
 
         toast.success('Car line created successfully');
         setShowAddCarDialog(false);
+        
+        // If has_lanes is true, open the edit dialog to add lanes
+        if (values.has_lanes && insertedCarLine) {
+          await fetchCarLines();
+          setEditingCarRecord({ ...insertedCarLine, students_count: 0 } as CarLineRecord);
+          return;
+        }
       }
       
       await fetchCarLines();
@@ -2761,16 +2918,171 @@ const Transportation = () => {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={carForm.control}
+                name="has_lanes"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        Multiple Lanes
+                      </FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        Enable if this location has multiple pickup lanes
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              {/* Lane Management Section - Only show when editing and has_lanes is true */}
+              {editingCarRecord && carForm.watch('has_lanes') && (
+                <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Lanes</h4>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setShowAddLaneDialog(true);
+                        laneForm.reset({ lane_name: "", color: "#3B82F6" });
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Lane
+                    </Button>
+                  </div>
+                  
+                  {lanes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No lanes added yet. Click "Add Lane" to create lanes for this location.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {lanes.map((lane) => (
+                        <div key={lane.id} className="flex items-center justify-between p-3 rounded-md border bg-background">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-6 h-6 rounded border"
+                              style={{ backgroundColor: lane.color }}
+                            />
+                            <span className="font-medium">{lane.lane_name}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingLane(lane);
+                                laneForm.reset({
+                                  lane_name: lane.lane_name,
+                                  color: lane.color,
+                                });
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteLane(lane)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {!editingCarRecord && carForm.watch('has_lanes') && (
+                <p className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded-md border border-blue-200 dark:border-blue-800">
+                  After creating this car line, you'll be able to add and manage lanes.
+                </p>
+              )}
+              
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => {
                   setShowAddCarDialog(false);
                   setEditingCarRecord(null);
                   carForm.reset();
+                  setLanes([]);
                 }}>
                   Cancel
                 </Button>
                 <Button type="submit">
                   {editingCarRecord ? 'Update Car Line' : 'Add Car Line'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Lane Dialog */}
+      <Dialog open={showAddLaneDialog || !!editingLane} onOpenChange={() => {
+        setShowAddLaneDialog(false);
+        setEditingLane(null);
+        laneForm.reset();
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingLane ? 'Edit Lane' : 'Add New Lane'}</DialogTitle>
+            <DialogDescription>
+              {editingLane ? 'Update the lane information below.' : 'Enter the details for the new lane.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...laneForm}>
+            <form onSubmit={laneForm.handleSubmit(editingLane ? handleEditLane : handleAddLane)} className="space-y-4">
+              <FormField
+                control={laneForm.control}
+                name="lane_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lane Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Lane A" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={laneForm.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lane Color</FormLabel>
+                    <FormControl>
+                      <div className="flex gap-2 items-center">
+                        <Input type="color" {...field} className="w-20 h-10" />
+                        <span className="text-sm text-muted-foreground">{field.value}</span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowAddLaneDialog(false);
+                  setEditingLane(null);
+                  laneForm.reset();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingLane ? 'Update Lane' : 'Add Lane'}
                 </Button>
               </div>
             </form>

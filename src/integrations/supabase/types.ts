@@ -234,11 +234,50 @@ export type Database = {
         }
         Relationships: []
       }
+      car_line_lanes: {
+        Row: {
+          car_line_id: string
+          color: string
+          created_at: string
+          id: string
+          lane_name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          car_line_id: string
+          color: string
+          created_at?: string
+          id?: string
+          lane_name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          car_line_id?: string
+          color?: string
+          created_at?: string
+          id?: string
+          lane_name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_line_lanes_car_line_id_fkey"
+            columns: ["car_line_id"]
+            isOneToOne: false
+            referencedRelation: "car_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       car_line_pickups: {
         Row: {
           car_line_session_id: string
           created_at: string
           id: string
+          lane_id: string | null
           managed_by: string
           parent_arrived_at: string | null
           picked_up_at: string | null
@@ -250,6 +289,7 @@ export type Database = {
           car_line_session_id: string
           created_at?: string
           id?: string
+          lane_id?: string | null
           managed_by: string
           parent_arrived_at?: string | null
           picked_up_at?: string | null
@@ -261,6 +301,7 @@ export type Database = {
           car_line_session_id?: string
           created_at?: string
           id?: string
+          lane_id?: string | null
           managed_by?: string
           parent_arrived_at?: string | null
           picked_up_at?: string | null
@@ -268,7 +309,15 @@ export type Database = {
           student_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "car_line_pickups_lane_id_fkey"
+            columns: ["lane_id"]
+            isOneToOne: false
+            referencedRelation: "car_line_lanes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       car_line_sessions: {
         Row: {
@@ -315,6 +364,7 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          has_lanes: boolean | null
           id: string
           line_name: string
           pickup_location: string
@@ -325,6 +375,7 @@ export type Database = {
         Insert: {
           color: string
           created_at?: string
+          has_lanes?: boolean | null
           id?: string
           line_name: string
           pickup_location: string
@@ -335,6 +386,7 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          has_lanes?: boolean | null
           id?: string
           line_name?: string
           pickup_location?: string
