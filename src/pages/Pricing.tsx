@@ -67,6 +67,10 @@ const Pricing = () => {
       question: "Do you offer discounts for multiple schools?",
       answer: "Yes! Contact us for district-wide pricing if you're managing multiple schools.",
     },
+    {
+      question: "Can our PTO/PTA cover the cost?",
+      answer: "Absolutely! At just $250/year, many schools have their PTO/PTA cover DismissalPro as part of their student safety initiatives. It's less than the cost of a single fundraiser and ensures safe, organized dismissal for every student, every day. PTOs love that it's a one-time annual expense that benefits the entire school community.",
+    },
   ];
 
   return (
