@@ -16,7 +16,7 @@ const Navbar = () => {
   
   // Show navigation links on content pages for non-authenticated users
   const isContentPage = ['/', '/how-it-works', '/pricing', '/auth'].includes(location.pathname);
-  const showNavLinks = isContentPage && !isTeacher && !isSystemAdmin;
+  const showNavLinks = isContentPage;
 
   return (
     <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
