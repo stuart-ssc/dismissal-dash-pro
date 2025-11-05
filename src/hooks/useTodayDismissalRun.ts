@@ -144,21 +144,24 @@ export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
       console.log(`[useTodayDismissalRun] No existing run, fetching applicable plan for today`);
       let planTimeFallback: string | null = null;
       
-      const { data: applicablePlan, error: planErr } = await supabase
+      // PRIORITY 1: Try to find a date-specific plan for today
+      // Date-specific plans have start_date NOT NULL
+      const { data: dateSpecificPlan, error: dateSpecificErr } = await supabase
         .from("dismissal_plans")
         .select("dismissal_time")
         .eq("school_id", schoolId)
         .eq("status", "active")
-        .or(`and(start_date.lte.${today},end_date.gte.${today}),and(start_date.lte.${today},end_date.is.null),and(start_date.is.null,end_date.gte.${today}),and(start_date.is.null,end_date.is.null)`)
-        .order("updated_at", { ascending: false })
+        .not("start_date", "is", null) // Must have a start date (date-specific)
+        .or(`and(start_date.lte.${today},end_date.gte.${today}),and(start_date.lte.${today},end_date.is.null)`)
+        .order("start_date", { ascending: false }) // Most recent date-specific plan first
         .limit(1)
         .maybeSingle();
 
-      if (!planErr && applicablePlan) {
-        planTimeFallback = applicablePlan.dismissal_time;
-        console.log(`[useTodayDismissalRun] Found applicable plan with time:`, planTimeFallback);
+      if (!dateSpecificErr && dateSpecificPlan) {
+        planTimeFallback = dateSpecificPlan.dismissal_time;
+        console.log(`[useTodayDismissalRun] Found date-specific plan with time:`, planTimeFallback);
       } else {
-        // Fallback to default plan
+        // PRIORITY 2: Fallback to default plan if no date-specific plan found
         const { data: defaultPlan, error: defaultErr } = await supabase
           .from("dismissal_plans")
           .select("dismissal_time")
