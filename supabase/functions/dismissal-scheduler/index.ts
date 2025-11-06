@@ -13,19 +13,21 @@ serve(async (req) => {
   }
 
   try {
-    // Verify secret token for cron job authentication
+    // Verify authentication for cron job
+    // Accept either custom scheduler secret OR service role key for flexibility
     const authHeader = req.headers.get('authorization');
-    const expectedSecret = Deno.env.get('DISMISSAL_SCHEDULER_SECRET');
+    const apiKey = req.headers.get('apikey');
     
-    if (!expectedSecret) {
-      console.error('DISMISSAL_SCHEDULER_SECRET not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Server configuration error' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
-    }
+    const schedulerSecret = Deno.env.get('DISMISSAL_SCHEDULER_SECRET');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+    const isValidSchedulerSecret = schedulerSecret && authHeader === `Bearer ${schedulerSecret}`;
+    const isValidServiceKey = serviceRoleKey && (
+      authHeader === `Bearer ${serviceRoleKey}` || 
+      apiKey === serviceRoleKey
+    );
+    
+    if (!isValidSchedulerSecret && !isValidServiceKey) {
       console.warn('Unauthorized dismissal scheduler attempt');
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
