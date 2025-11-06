@@ -174,6 +174,58 @@ export type Database = {
           },
         ]
       }
+      bus_student_loading_events: {
+        Row: {
+          bus_id: string
+          created_at: string
+          dismissal_run_id: string
+          id: string
+          loaded_at: string
+          loaded_by: string
+          student_id: string
+        }
+        Insert: {
+          bus_id: string
+          created_at?: string
+          dismissal_run_id: string
+          id?: string
+          loaded_at?: string
+          loaded_by: string
+          student_id: string
+        }
+        Update: {
+          bus_id?: string
+          created_at?: string
+          dismissal_run_id?: string
+          id?: string
+          loaded_at?: string
+          loaded_by?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bus_student_loading_events_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bus_student_loading_events_dismissal_run_id_fkey"
+            columns: ["dismissal_run_id"]
+            isOneToOne: false
+            referencedRelation: "dismissal_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bus_student_loading_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buses: {
         Row: {
           bus_number: string

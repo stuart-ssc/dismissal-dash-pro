@@ -24,6 +24,12 @@ type BusEvent = {
   order_index: number | null;
   departed_at: string | null;
 };
+type LoadingEvent = {
+  id: string;
+  student_id: string;
+  loaded_at: string;
+  loaded_by: string;
+};
 
 export default function BusMode() {
   const { user } = useAuth();
@@ -45,6 +51,8 @@ export default function BusMode() {
   const [busStudents, setBusStudents] = useState<{ id: string; first_name: string; last_name: string; grade_level: string; isTemporaryOverride?: boolean }[]>([]);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [completingDismissal, setCompletingDismissal] = useState(false);
+  const [loadingEvents, setLoadingEvents] = useState<Record<string, LoadingEvent[]>>({});
+  const [loadingStudent, setLoadingStudent] = useState<string | null>(null);
   const runId = run?.id;
   const isCompleted = !!run?.ended_at;
 
@@ -119,6 +127,17 @@ export default function BusMode() {
         { event: "*", schema: "public", table: "bus_run_events", filter: `dismissal_run_id=eq.${runId}` },
         () => fetchData()
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "bus_student_loading_events", filter: `dismissal_run_id=eq.${runId}` },
+        (payload) => {
+          const newEvent = payload.new as LoadingEvent;
+          setLoadingEvents(prev => ({
+            ...prev,
+            [newEvent.student_id]: [...(prev[newEvent.student_id] || []), newEvent]
+          }));
+        }
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -164,6 +183,27 @@ export default function BusMode() {
 
   const openStudents = async (bus: Bus) => {
     setSelectedBus(bus);
+    
+    // Fetch loading events for this bus today
+    if (runId) {
+      const { data: events } = await supabase
+        .from("bus_student_loading_events")
+        .select("id, student_id, loaded_at, loaded_by")
+        .eq("bus_id", bus.id)
+        .eq("dismissal_run_id", runId)
+        .order("loaded_at", { ascending: false });
+      
+      if (events) {
+        const eventsByStudent: Record<string, LoadingEvent[]> = {};
+        events.forEach(event => {
+          if (!eventsByStudent[event.student_id]) {
+            eventsByStudent[event.student_id] = [];
+          }
+          eventsByStudent[event.student_id].push(event as LoadingEvent);
+        });
+        setLoadingEvents(eventsByStudent);
+      }
+    }
     
     // Fetch students with permanent assignments
     const { data: assignments } = await supabase
@@ -213,6 +253,38 @@ export default function BusMode() {
     }));
     
     setBusStudents(studentsWithFlags as any);
+  };
+
+  const markStudentLoaded = async (studentId: string) => {
+    if (!runId || !user || !selectedBus) return;
+    
+    setLoadingStudent(studentId);
+    try {
+      const { error } = await supabase
+        .from("bus_student_loading_events")
+        .insert({
+          bus_id: selectedBus.id,
+          student_id: studentId,
+          dismissal_run_id: runId,
+          loaded_by: user.id,
+        });
+
+      if (error) {
+        console.error(error);
+        toast({
+          title: "Error",
+          description: "Failed to mark student as loaded.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Student Loaded",
+          description: "Student has been marked as loaded on the bus.",
+        });
+      }
+    } finally {
+      setLoadingStudent(null);
+    }
   };
 
   const sortedBuses = useMemo(() => {
@@ -419,21 +491,46 @@ export default function BusMode() {
                                   {busStudents.length === 0 ? (
                                     <p className="text-muted-foreground">No students assigned.</p>
                                   ) : (
-                                    <ul className="space-y-2">
-                                      {busStudents.map((s) => (
-                                        <li key={s.id} className="flex justify-between items-center">
-                                          <span>
-                                            {s.last_name}, {s.first_name}
-                                            {s.isTemporaryOverride && (
-                                              <span className="ml-2">
-                                                <TemporaryTransportationBadge tooltipText="Temporary bus assignment for today" />
+                                    <div className="space-y-3">
+                                      {busStudents.map((s) => {
+                                        const studentEvents = loadingEvents[s.id] || [];
+                                        const isLoaded = studentEvents.length > 0;
+                                        const isLoadingThis = loadingStudent === s.id;
+                                        
+                                        return (
+                                          <div key={s.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card">
+                                            <div className="flex-1 min-w-0">
+                                              <div className="font-medium">
+                                                {s.last_name}, {s.first_name}
+                                                {s.isTemporaryOverride && (
+                                                  <span className="ml-2">
+                                                    <TemporaryTransportationBadge tooltipText="Temporary bus assignment for today" />
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="text-sm text-muted-foreground">{s.grade_level}</div>
+                                            </div>
+                                            {!isCompleted && (
+                                              <Button
+                                                size="sm"
+                                                variant={isLoaded ? "secondary" : "default"}
+                                                onClick={() => markStudentLoaded(s.id)}
+                                                disabled={isLoadingThis || isCompleted}
+                                                className="shrink-0"
+                                              >
+                                                {isLoadingThis && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                {isLoaded ? `Loaded ✓ (${studentEvents.length})` : "Mark Loaded"}
+                                              </Button>
+                                            )}
+                                            {isCompleted && isLoaded && (
+                                              <span className="text-sm text-muted-foreground shrink-0">
+                                                Loaded ✓
                                               </span>
                                             )}
-                                          </span>
-                                          <span className="text-muted-foreground">{s.grade_level}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   )}
                                 </div>
                               </DialogContent>
