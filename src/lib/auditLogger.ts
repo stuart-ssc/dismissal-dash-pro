@@ -27,7 +27,10 @@ export type AuditAction =
   | 'SCHOOL_IMPERSONATION'
   | 'SETTINGS_CHANGED'
   | 'DATA_EXPORT'
-  | 'BULK_IMPORT';
+  | 'BULK_IMPORT'
+  | 'ABSENCE_MARKED'
+  | 'ABSENCE_RETURNED'
+  | 'ABSENCE_DELETED';
 
 interface AuditLogEntry {
   action: AuditAction;
@@ -194,6 +197,23 @@ class AuditLogger {
 
     logger.security(`Bulk ${action.toLowerCase()}`, undefined, { tableName, recordCount, ...details });
   }
+
+  /**
+   * Log absence tracking events
+   */
+  async logAbsence(action: 'MARKED' | 'RETURNED' | 'DELETED', absenceId: string, studentId: string, details?: Record<string, any>): Promise<void> {
+    await this.logEvent({
+      action: `ABSENCE_${action}` as AuditAction,
+      tableName: 'student_absences',
+      recordId: absenceId,
+      details: {
+        studentId,
+        ...details
+      }
+    });
+
+    logger.security(`Absence ${action.toLowerCase()}`, undefined, { absenceId, studentId, ...details });
+  }
 }
 
 export const auditLogger = new AuditLogger();
@@ -211,3 +231,7 @@ export const logTeacherDeleted = (teacherId: string) => auditLogger.logTeacherAc
 
 export const logUserLogin = (userId: string) => auditLogger.logAuth('LOGIN', userId);
 export const logUserLogout = (userId: string) => auditLogger.logAuth('LOGOUT', userId);
+
+export const logAbsenceMarked = (absenceId: string, studentId: string, details?: Record<string, any>) => auditLogger.logAbsence('MARKED', absenceId, studentId, details);
+export const logAbsenceReturned = (absenceId: string, studentId: string, details?: Record<string, any>) => auditLogger.logAbsence('RETURNED', absenceId, studentId, details);
+export const logAbsenceDeleted = (absenceId: string, studentId: string) => auditLogger.logAbsence('DELETED', absenceId, studentId);

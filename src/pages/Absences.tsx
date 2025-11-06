@@ -20,6 +20,7 @@ import { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSEO } from "@/hooks/useSEO";
+import { logAbsenceMarked, logAbsenceReturned, logAbsenceDeleted } from "@/lib/auditLogger";
 
 type Student = {
   id: string;
@@ -190,7 +191,7 @@ export default function Absences() {
     try {
       const isSingleDate = !dateRange.to || dateRange.from.getTime() === dateRange.to.getTime();
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('student_absences')
         .insert({
           student_id: selectedStudent.id,
@@ -201,13 +202,24 @@ export default function Absences() {
           reason: reason.trim() || null,
           notes: null,
           marked_by: user.id
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       const dateStr = isSingleDate
         ? format(dateRange.from, 'MMM d, yyyy')
         : `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to!, 'MMM d, yyyy')}`;
+      
+      // Log to audit trail
+      await logAbsenceMarked(data.id, selectedStudent.id, {
+        studentName: `${selectedStudent.first_name} ${selectedStudent.last_name}`,
+        absenceType: data.absence_type,
+        startDate: data.start_date,
+        endDate: data.end_date,
+        reason: data.reason
+      });
       
       toast.success(`${selectedStudent.first_name} ${selectedStudent.last_name} marked absent for ${dateStr}`);
       
@@ -229,6 +241,8 @@ export default function Absences() {
     if (!user) return;
 
     try {
+      const absence = absences.find(a => a.id === absenceId);
+      
       const { error } = await supabase
         .from('student_absences')
         .update({
@@ -238,6 +252,13 @@ export default function Absences() {
         .eq('id', absenceId);
 
       if (error) throw error;
+
+      // Log to audit trail
+      if (absence) {
+        await logAbsenceReturned(absenceId, absence.student_id, {
+          studentName: absence.student ? `${absence.student.first_name} ${absence.student.last_name}` : undefined
+        });
+      }
 
       toast.success('Student marked as returned to school');
     } catch (error) {
@@ -251,12 +272,19 @@ export default function Absences() {
     if (!absenceToDelete) return;
 
     try {
+      const absence = absences.find(a => a.id === absenceToDelete);
+      
       const { error } = await supabase
         .from('student_absences')
         .delete()
         .eq('id', absenceToDelete);
 
       if (error) throw error;
+
+      // Log to audit trail
+      if (absence) {
+        await logAbsenceDeleted(absenceToDelete, absence.student_id);
+      }
 
       toast.success('Absence record deleted');
       setDeleteDialogOpen(false);
