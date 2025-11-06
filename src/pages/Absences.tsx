@@ -373,25 +373,43 @@ export default function Absences() {
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Click a date for single day absence, or select two dates for a range
+                  Click a date for single day, or select two dates for a range
                 </p>
-                <div className="border rounded-md p-3">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    className={cn("pointer-events-auto")}
-                    numberOfMonths={1}
-                  />
-                </div>
-                {dateRange?.from && (
-                  <div className="text-sm font-medium text-primary">
-                    {dateRange.to && dateRange.from.getTime() !== dateRange.to.getTime()
-                      ? `Range: ${format(dateRange.from, 'MMM d, yyyy')} - ${format(dateRange.to, 'MMM d, yyyy')}`
-                      : `Single day: ${format(dateRange.from, 'MMM d, yyyy')}`
-                    }
-                  </div>
-                )}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateRange?.from && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to && dateRange.from.getTime() !== dateRange.to.getTime() ? (
+                          <>
+                            {format(dateRange.from, "MMM d, yyyy")} - {format(dateRange.to, "MMM d, yyyy")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "MMM d, yyyy")
+                        )
+                      ) : (
+                        <span>Pick absence date(s)</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      initialFocus
+                      className={cn("pointer-events-auto")}
+                      numberOfMonths={1}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Reason */}
