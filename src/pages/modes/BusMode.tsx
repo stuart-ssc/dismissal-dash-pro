@@ -248,11 +248,13 @@ export default function BusMode() {
       .in("id", allBusStudentIds)
       .order("last_name", { ascending: true });
 
-    // Mark which students have temp overrides
-    const studentsWithFlags = (students || []).map(s => ({
-      ...s,
-      isTemporaryOverride: tempStudentIds.includes(s.id)
-    }));
+    // Mark which students have temp overrides and filter out absent students
+    const studentsWithFlags = (students || [])
+      .filter(s => !absentStudentIds.has(s.id))
+      .map(s => ({
+        ...s,
+        isTemporaryOverride: tempStudentIds.includes(s.id)
+      }));
     
     setBusStudents(studentsWithFlags as any);
   };
