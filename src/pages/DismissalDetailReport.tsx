@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Calendar, Download, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Download, Search, X, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +31,9 @@ export default function DismissalDetailReport() {
   });
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
+  const [activityTypes, setActivityTypes] = useState<ActivityType[]>(['dismissal', 'absence', 'coverage', 'mode_usage', 'system']);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const { events, isLoading, error } = useDetailedAuditData({
@@ -70,7 +72,7 @@ export default function DismissalDetailReport() {
   };
 
   const clearFilters = () => {
-    setActivityTypes([]);
+    setActivityTypes(['dismissal', 'absence', 'coverage', 'mode_usage', 'system']);
     setSearchQuery('');
   };
 
@@ -112,7 +114,8 @@ export default function DismissalDetailReport() {
     return option?.color || 'bg-muted text-muted-foreground';
   };
 
-  const hasActiveFilters = activityTypes.length > 0 || searchQuery.trim().length > 0;
+  const allTypes: ActivityType[] = ['dismissal', 'absence', 'coverage', 'mode_usage', 'system'];
+  const hasActiveFilters = activityTypes.length !== allTypes.length || searchQuery.trim().length > 0;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -131,12 +134,26 @@ export default function DismissalDetailReport() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-          <CardDescription>Filter and search through daily activities</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Filters</CardTitle>
+                <CardDescription>Filter and search through daily activities</CardDescription>
+              </div>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <ChevronDown className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    isFiltersOpen && "transform rotate-180"
+                  )} />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
           {/* Date Selection */}
           <div className="flex flex-col sm:flex-row gap-2">
             <Button variant="outline" size="sm" onClick={goToPreviousDay}>
@@ -215,8 +232,10 @@ export default function DismissalDetailReport() {
               Clear All Filters
             </Button>
           )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Results */}
       <Card>
