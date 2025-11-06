@@ -29,6 +29,7 @@ import CarLines from "./pages/CarLines";
 import WalkerLocations from "./pages/WalkerLocations";
 import Reports from "./pages/Reports";
 import ModeUsageReports from "./pages/ModeUsageReports";
+import DismissalDetailReport from "./pages/DismissalDetailReport";
 import VerifyEmailChange from "./pages/VerifyEmailChange";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useSessionTimeout } from "./hooks/useSessionTimeout";
@@ -76,6 +77,7 @@ const AppContent = () => {
             <Route path="/dashboard/car-lines" element={<CarLines />} />
             <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
             <Route path="/dashboard/reports" element={<Reports />} />
+            <Route path="/dashboard/reports/detail" element={<DismissalDetailReport />} />
             <Route path="/dashboard/reports/mode-usage" element={<ModeUsageReports />} />
             <Route path="/dashboard/import" element={<Import />} />
           </Route>

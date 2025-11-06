@@ -6,7 +6,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Download, Filter, Users, ArrowRight } from "lucide-react";
+import { Calendar, Download, Filter, Users, ArrowRight, TrendingUp, ClipboardList } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
@@ -80,17 +80,36 @@ const Reports = () => {
         <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur cursor-pointer transition-all hover:shadow-lg" onClick={() => navigate('/dashboard/reports/mode-usage')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+              <TrendingUp className="h-5 w-5" />
               Mode Usage Reports
               <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
             </CardTitle>
             <CardDescription>
-              Track teacher usage of dismissal mode interfaces (classroom, bus, car line, walker)
+              Detailed analytics on teacher mode usage patterns
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              View detailed analytics on which teachers are using the system, session durations, and mode adoption rates.
+              View comprehensive reports on how teachers are using different dismissal modes.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Dismissal Detail Report Card */}
+        <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur cursor-pointer transition-all hover:shadow-lg" onClick={() => navigate('/dashboard/reports/detail')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Dismissal Detail Report
+              <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
+            </CardTitle>
+            <CardDescription>
+              View every logged interaction for a day with filtering and search
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              See exactly how each student left the building, who marked absences, and all activities.
             </p>
           </CardContent>
         </Card>
