@@ -47,6 +47,7 @@ export default function CarLineMode() {
   const [loading, setLoading] = useState(false);
   const [pickups, setPickups] = useState<Record<string, StudentPickup>>({});
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [laneFilter, setLaneFilter] = useState<string>("all");
   
   // Check if location is completed
   const [locationCompleted, setLocationCompleted] = useState(false);
@@ -508,6 +509,12 @@ export default function CarLineMode() {
         return status !== "picked_up";
       });
     }
+    if (laneFilter !== "all") {
+      out = out.filter((s) => {
+        const pickup = pickups[s.id];
+        return pickup?.lane_id === laneFilter;
+      });
+    }
     // sort alpha by last, first
     out.sort((a: any, b: any) => {
       const aName = `${a.last_name} ${a.first_name}`;
@@ -515,7 +522,7 @@ export default function CarLineMode() {
       return aName.localeCompare(bName);
     });
     return out;
-  }, [students, search, gradeFilter, classFilter, statusFilter, pickups]);
+  }, [students, search, gradeFilter, classFilter, statusFilter, laneFilter, pickups]);
 
   // Get status counts
   const statusCounts = useMemo(() => {
@@ -703,6 +710,7 @@ export default function CarLineMode() {
                           const line = carLines.find(l => l.id === v);
                           setSelectedLine(v);
                           setHasLanes(line?.has_lanes || false);
+                          setLaneFilter("all"); // Reset lane filter when changing car line
                           if (line?.has_lanes) {
                             loadLanes(v);
                           } else {
@@ -851,6 +859,27 @@ export default function CarLineMode() {
                   <SelectItem value="picked_up">Picked Up</SelectItem>
                 </SelectContent>
               </Select>
+              {hasLanes && lanes.length > 0 && (
+                <Select value={laneFilter} onValueChange={setLaneFilter}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Filter by lane" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All lanes</SelectItem>
+                    {lanes.map((lane) => (
+                      <SelectItem key={lane.id} value={lane.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full border border-border"
+                            style={{ backgroundColor: lane.color }}
+                          />
+                          {lane.lane_name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {isLoading || loading ? (
