@@ -1242,6 +1242,42 @@ export type Database = {
           },
         ]
       }
+      scheduler_execution_logs: {
+        Row: {
+          created_at: string
+          errors: Json | null
+          execution_duration_ms: number
+          execution_time: string
+          failed_schools: number
+          id: string
+          status: string
+          successful_schools: number
+          total_schools_processed: number
+        }
+        Insert: {
+          created_at?: string
+          errors?: Json | null
+          execution_duration_ms: number
+          execution_time?: string
+          failed_schools?: number
+          id?: string
+          status: string
+          successful_schools?: number
+          total_schools_processed?: number
+        }
+        Update: {
+          created_at?: string
+          errors?: Json | null
+          execution_duration_ms?: number
+          execution_time?: string
+          failed_schools?: number
+          id?: string
+          status?: string
+          successful_schools?: number
+          total_schools_processed?: number
+        }
+        Relationships: []
+      }
       school_creation_logs: {
         Row: {
           created_at: string | null

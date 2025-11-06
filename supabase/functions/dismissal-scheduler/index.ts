@@ -6,11 +6,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to log execution results
+async function logExecutionResult(
+  supabaseClient: any,
+  params: {
+    totalSchools: number;
+    successfulSchools: number;
+    failedSchools: number;
+    errors: Array<{ school_id: number; error_message: string }>;
+    duration: number;
+    status: string;
+  }
+) {
+  try {
+    await supabaseClient
+      .from('scheduler_execution_logs')
+      .insert({
+        total_schools_processed: params.totalSchools,
+        successful_schools: params.successfulSchools,
+        failed_schools: params.failedSchools,
+        execution_duration_ms: params.duration,
+        errors: params.errors,
+        status: params.status
+      });
+    console.log(`Logged execution: ${params.status} (${params.successfulSchools}/${params.totalSchools} schools successful)`);
+  } catch (err) {
+    console.error('Failed to log execution result:', err);
+    // Don't throw - logging failure shouldn't break scheduler
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const startTime = Date.now();
+  let totalSchools = 0;
+  let successfulSchools = 0;
+  let failedSchools = 0;
+  const errors: Array<{ school_id: number; error_message: string }> = [];
 
   try {
     // Verify authentication for cron job
@@ -49,11 +85,21 @@ serve(async (req) => {
 
     if (schoolsError) {
       console.error('Error fetching schools:', schoolsError);
+      const duration = Date.now() - startTime;
+      await logExecutionResult(supabaseClient, {
+        totalSchools: 0,
+        successfulSchools: 0,
+        failedSchools: 0,
+        errors: [{ school_id: 0, error_message: `Failed to fetch schools: ${schoolsError.message}` }],
+        duration,
+        status: 'complete_failure'
+      });
       throw schoolsError;
     }
 
     const results = [];
     const today = new Date().toISOString().split('T')[0];
+    totalSchools = schools?.length || 0;
 
     // Create scheduled runs for each school
     for (const school of schools || []) {
@@ -66,6 +112,11 @@ serve(async (req) => {
 
         if (createError) {
           console.error(`Error creating run for school ${school.id}:`, createError);
+          failedSchools++;
+          errors.push({
+            school_id: school.id,
+            error_message: `Create run failed: ${createError.message}`
+          });
           results.push({
             school_id: school.id,
             success: false,
@@ -73,6 +124,7 @@ serve(async (req) => {
           });
         } else {
           console.log(`Created/found dismissal run ${runId} for school ${school.id}`);
+          successfulSchools++;
           results.push({
             school_id: school.id,
             success: true,
@@ -81,10 +133,16 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error(`Exception for school ${school.id}:`, error);
+        failedSchools++;
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        errors.push({
+          school_id: school.id,
+          error_message: `Exception: ${errorMsg}`
+        });
         results.push({
           school_id: school.id,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: errorMsg
         });
       }
     }
@@ -201,12 +259,34 @@ serve(async (req) => {
 
     console.log('Dismissal scheduler completed');
 
+    // Log execution results
+    const duration = Date.now() - startTime;
+    const executionStatus = failedSchools === 0 ? 'success' : 
+                           failedSchools < totalSchools ? 'partial_failure' : 
+                           'complete_failure';
+    
+    await logExecutionResult(supabaseClient, {
+      totalSchools,
+      successfulSchools,
+      failedSchools,
+      errors,
+      duration,
+      status: executionStatus
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Dismissal scheduler completed',
+        execution: {
+          total_schools: totalSchools,
+          successful: successfulSchools,
+          failed: failedSchools,
+          duration_ms: duration,
+          status: executionStatus
+        },
         results,
-        processed_schools: schools?.length || 0
+        processed_schools: totalSchools
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -217,10 +297,28 @@ serve(async (req) => {
   } catch (error) {
     console.error('Dismissal scheduler error:', error);
     
+    const duration = Date.now() - startTime;
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    // Log catastrophic failure
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    await logExecutionResult(supabaseClient, {
+      totalSchools,
+      successfulSchools,
+      failedSchools,
+      errors: [...errors, { school_id: 0, error_message: `Catastrophic error: ${errorMsg}` }],
+      duration,
+      status: 'complete_failure'
+    });
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: errorMsg
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
