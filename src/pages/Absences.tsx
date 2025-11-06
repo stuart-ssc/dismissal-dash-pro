@@ -54,7 +54,6 @@ export default function Absences() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(), to: new Date() });
   const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   
   // Absences list state
@@ -200,7 +199,7 @@ export default function Absences() {
           start_date: format(dateRange.from, 'yyyy-MM-dd'),
           end_date: isSingleDate ? null : format(dateRange.to!, 'yyyy-MM-dd'),
           reason: reason.trim() || null,
-          notes: notes.trim() || null,
+          notes: null,
           marked_by: user.id
         });
 
@@ -217,7 +216,6 @@ export default function Absences() {
       setSearchTerm("");
       setDateRange({ from: new Date(), to: new Date() });
       setReason("");
-      setNotes("");
     } catch (error) {
       console.error('Error marking student absent:', error);
       toast.error('Failed to mark student absent');
@@ -420,18 +418,6 @@ export default function Absences() {
                   placeholder="e.g., Sick, Doctor's appointment..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                />
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Any additional information..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
                 />
               </div>
 
