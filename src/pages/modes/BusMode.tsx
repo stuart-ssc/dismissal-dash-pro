@@ -277,6 +277,19 @@ export default function BusMode() {
           variant: "destructive",
         });
       } else {
+        // Optimistic UI update - immediately update local state
+        const newLoadingEvent: LoadingEvent = {
+          id: crypto.randomUUID(),
+          student_id: studentId,
+          loaded_at: new Date().toISOString(),
+          loaded_by: user.id,
+        };
+        
+        setLoadingEvents(prev => ({
+          ...prev,
+          [studentId]: [...(prev[studentId] || []), newLoadingEvent]
+        }));
+        
         toast({
           title: "Student Loaded",
           description: "Student has been marked as loaded on the bus.",
