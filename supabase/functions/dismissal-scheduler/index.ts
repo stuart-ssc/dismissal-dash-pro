@@ -55,43 +55,15 @@ serve(async (req) => {
     const apiKey = req.headers.get('apikey');
     
     const schedulerSecret = Deno.env.get('DISMISSAL_SCHEDULER_SECRET');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    // DEBUG LOGGING - TEMPORARY
-    console.log('🔍 Auth Debug:', {
-      hasAuthHeader: !!authHeader,
-      hasApiKey: !!apiKey,
-      hasSchedulerSecret: !!schedulerSecret,
-      hasServiceRoleKey: !!serviceRoleKey,
-      apiKeyLength: apiKey?.length,
-      serviceRoleKeyLength: serviceRoleKey?.length,
-      apiKeyFirst10: apiKey?.substring(0, 10),
-      serviceRoleFirst10: serviceRoleKey?.substring(0, 10),
-      keysMatch: apiKey === serviceRoleKey,
-      keysTrimMatch: apiKey?.trim() === serviceRoleKey?.trim()
-    });
-    
-    const isValidSchedulerSecret = schedulerSecret && authHeader === `Bearer ${schedulerSecret}`;
-    const isValidServiceKey = serviceRoleKey && (
-      authHeader === `Bearer ${serviceRoleKey}` || 
-      apiKey === serviceRoleKey
-    );
-    
-    console.log('🔍 Auth Results:', {
-      isValidSchedulerSecret,
-      isValidServiceKey,
-      willPass: isValidSchedulerSecret || isValidServiceKey
-    });
-    
-    if (!isValidSchedulerSecret && !isValidServiceKey) {
-      console.warn('❌ Unauthorized dismissal scheduler attempt');
+    // Validate scheduler secret
+    if (!schedulerSecret || authHeader !== `Bearer ${schedulerSecret}`) {
+      console.warn('Unauthorized dismissal scheduler attempt');
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
       );
     }
-    
-    console.log('✅ Scheduler authenticated successfully');
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
