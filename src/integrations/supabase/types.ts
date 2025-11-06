@@ -1421,6 +1421,69 @@ export type Database = {
           },
         ]
       }
+      student_absences: {
+        Row: {
+          absence_type: string
+          created_at: string
+          end_date: string | null
+          id: string
+          marked_by: string
+          notes: string | null
+          reason: string | null
+          returned_at: string | null
+          returned_by: string | null
+          school_id: number
+          start_date: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          absence_type: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          marked_by: string
+          notes?: string | null
+          reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          school_id: number
+          start_date: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          absence_type?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          marked_by?: string
+          notes?: string | null
+          reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          school_id?: number
+          start_date?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_absences_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_absences_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_after_school_assignments: {
         Row: {
           after_school_activity_id: string
@@ -2245,6 +2308,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_student_absent: {
+        Args: { p_date?: string; p_student_id: string }
         Returns: boolean
       }
       promote_user_to_admin: {

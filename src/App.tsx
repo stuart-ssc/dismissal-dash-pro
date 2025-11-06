@@ -41,6 +41,7 @@ import WalkerMode from "./pages/modes/WalkerMode";
 import { RouteGuard } from "./components/RouteGuard";
 import TeacherCoverage from "./pages/TeacherCoverage";
 import Help from "./pages/Help";
+import Absences from "./pages/Absences";
 
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const AppContent = () => {
           <Route element={<AdminLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/coverage" element={<TeacherCoverage />} />
+            <Route path="/dashboard/absences" element={<Absences />} />
             <Route path="/dashboard/people" element={<PeopleManagement />} />
             <Route path="/dashboard/classes" element={<Classes />} />
             <Route path="/dashboard/transportation" element={<Transportation />} />

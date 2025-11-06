@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
+import { useAbsentStudents } from "@/hooks/useAbsentStudents";
 
 type WalkerLocation = { id: string; location_name: string };
 type Student = { id: string; first_name: string; last_name: string; grade_level: string; isTemporaryOverride?: boolean };
@@ -22,6 +23,7 @@ type PickupStatus = "waiting" | "left_building";
 
 export default function WalkerMode() {
   const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
+  const { absentStudentIds } = useAbsentStudents(run?.date);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [locations, setLocations] = useState<WalkerLocation[]>([]);
@@ -181,11 +183,13 @@ export default function WalkerMode() {
         classMap[r.student_id] = r.class_name;
       });
 
-      const list = (studs || []).map((s: any) => ({
-        ...s,
-        class_name: classMap[s.id],
-        isTemporaryOverride: tempStudentIds.includes(s.id)
-      }));
+      const list = (studs || [])
+        .filter((s: any) => !absentStudentIds.has(s.id)) // Filter out absent students
+        .map((s: any) => ({
+          ...s,
+          class_name: classMap[s.id],
+          isTemporaryOverride: tempStudentIds.includes(s.id)
+        }));
 
       setStudents(list as any);
       setLoading(false);

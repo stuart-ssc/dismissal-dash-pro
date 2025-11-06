@@ -1,4 +1,4 @@
-import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle } from "lucide-react";
+import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.svg";
@@ -22,6 +22,7 @@ const adminNavItems = [
   { title: "Dismissal Plans", url: "/dashboard/dismissal-plans", icon: ClipboardList },
   { title: "Classes", url: "/dashboard/classes", icon: Users },
   { title: "Coverage", url: "/dashboard/coverage", icon: CalendarDays },
+  { title: "Absences", url: "/dashboard/absences", icon: UserX },
   { title: "People", url: "/dashboard/people", icon: UserCog },
   { title: "Transportation", url: "/dashboard/transportation", icon: Bus },
   { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
@@ -31,6 +32,7 @@ const adminNavItems = [
 const teacherNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Coverage", url: "/dashboard/coverage", icon: CalendarDays },
+  { title: "Absences", url: "/dashboard/absences", icon: UserX },
   { title: "People", url: "/dashboard/people", icon: UserCog },
 ];
 

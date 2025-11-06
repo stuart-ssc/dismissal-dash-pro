@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock, RotateCcw, AlertCircle, CalendarDays } from "lucide-react";
+import { GraduationCap, Users, Calendar, BarChart3, Upload, Clock, RotateCcw, AlertCircle, CalendarDays, UserX } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -626,6 +626,12 @@ const Dashboard = () => {
                       <Link to="/dashboard/coverage">
                         <CalendarDays className="mr-2 h-4 w-4" />
                         Manage Coverage
+                      </Link>
+                    </Button>
+                    <Button asChild className="w-full justify-start" variant="outline">
+                      <Link to="/dashboard/absences">
+                        <UserX className="mr-2 h-4 w-4" />
+                        Mark Absences
                       </Link>
                     </Button>
                     <Button

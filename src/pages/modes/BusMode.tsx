@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react";
 import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 import { useNavigate } from "react-router-dom";
 import { useModeLogger } from "@/hooks/useModeLogger";
+import { useAbsentStudents } from "@/hooks/useAbsentStudents";
 
 type Bus = { id: string; bus_number: string; driver_first_name: string; driver_last_name: string };
 type BusEvent = {
@@ -37,6 +38,7 @@ export default function BusMode() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
+  const { absentStudentIds } = useAbsentStudents(run?.date);
   
   // Track mode usage for reporting
   useModeLogger({

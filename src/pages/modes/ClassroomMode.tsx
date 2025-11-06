@@ -13,6 +13,7 @@ import { GroupViewLayout } from "@/components/classroom-modes/GroupViewLayout";
 import { TransportationColumnsLayout } from "@/components/classroom-modes/TransportationColumnsLayout";
 import { ClassroomModeLayoutToggle } from "@/components/ClassroomModeLayoutToggle";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
+import { useAbsentStudents } from "@/hooks/useAbsentStudents";
 
 type ActiveGroup = {
   id: string;
@@ -39,6 +40,7 @@ type ActiveGroup = {
 
 export default function ClassroomMode() {
   const { run, schoolId, isLoading } = useTodayDismissalRun();
+  const { absentStudentIds } = useAbsentStudents(run?.date);
   const [groups, setGroups] = useState<ActiveGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [planName, setPlanName] = useState<string | null>(null);
@@ -336,6 +338,7 @@ export default function ClassroomMode() {
             });
 
             students = Array.from(studentIdsInGroup)
+              .filter(studentId => !absentStudentIds.has(studentId)) // Filter absent students
               .map(studentId => {
                 const student = studentMap.get(studentId);
                 if (!student) return null;

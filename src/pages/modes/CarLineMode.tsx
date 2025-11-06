@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Loader2, Clock, UserCheck, Car } from "lucide-react";
 import { toast } from "sonner";
 import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
+import { useAbsentStudents } from "@/hooks/useAbsentStudents";
 
 type CarLine = { id: string; line_name: string; has_lanes: boolean };
 type Lane = { id: string; lane_name: string; color: string; order_index: number };
@@ -30,6 +31,7 @@ type StudentPickup = {
 
 export default function CarLineMode() {
   const { run, schoolId, isLoading, refetch } = useTodayDismissalRun();
+  const { absentStudentIds } = useAbsentStudents(run?.date);
   const navigate = useNavigate();
   const [carLines, setCarLines] = useState<CarLine[]>([]);
   const [selectedLine, setSelectedLine] = useState<string>("");
@@ -380,11 +382,13 @@ export default function CarLineMode() {
         classMap[r.student_id] = r.class_name;
       });
 
-      const list = (studs || []).map((s: any) => ({
-        ...s,
-        class_name: classMap[s.id],
-        isTemporaryOverride: tempStudentIds.includes(s.id)
-      }));
+      const list = (studs || [])
+        .filter((s: any) => !absentStudentIds.has(s.id)) // Filter out absent students
+        .map((s: any) => ({
+          ...s,
+          class_name: classMap[s.id],
+          isTemporaryOverride: tempStudentIds.includes(s.id)
+        }));
 
       setStudents(list as any);
       setLoading(false);
