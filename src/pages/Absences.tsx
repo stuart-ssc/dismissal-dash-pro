@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { UserX, Calendar as CalendarIcon, Search, Loader2, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
+import { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSEO } from "@/hooks/useSEO";
@@ -52,9 +52,7 @@ export default function Absences() {
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [absenceType, setAbsenceType] = useState<'single_date' | 'date_range'>('single_date');
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(), to: new Date() });
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -184,50 +182,40 @@ export default function Absences() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedStudent || !startDate || !user || !schoolId) {
-      toast.error('Please select a student and date');
-      return;
-    }
-
-    if (absenceType === 'date_range' && !endDate) {
-      toast.error('Please select an end date');
-      return;
-    }
-
-    if (absenceType === 'date_range' && endDate && endDate < startDate) {
-      toast.error('End date must be after start date');
+    if (!selectedStudent || !dateRange?.from || !user || !schoolId) {
+      toast.error('Please select a student and at least one date');
       return;
     }
 
     setSubmitting(true);
     try {
+      const isSingleDate = !dateRange.to || dateRange.from.getTime() === dateRange.to.getTime();
+      
       const { error } = await supabase
         .from('student_absences')
         .insert({
           student_id: selectedStudent.id,
           school_id: schoolId,
-          absence_type: absenceType,
-          start_date: format(startDate, 'yyyy-MM-dd'),
-          end_date: absenceType === 'date_range' && endDate ? format(endDate, 'yyyy-MM-dd') : null,
-          reason: reason || null,
-          notes: notes || null,
+          absence_type: isSingleDate ? 'single_date' : 'date_range',
+          start_date: format(dateRange.from, 'yyyy-MM-dd'),
+          end_date: isSingleDate ? null : format(dateRange.to!, 'yyyy-MM-dd'),
+          reason: reason.trim() || null,
+          notes: notes.trim() || null,
           marked_by: user.id
         });
 
       if (error) throw error;
 
-      const dateStr = absenceType === 'single_date' 
-        ? format(startDate, 'MMM d, yyyy')
-        : `${format(startDate, 'MMM d')} - ${format(endDate!, 'MMM d, yyyy')}`;
+      const dateStr = isSingleDate
+        ? format(dateRange.from, 'MMM d, yyyy')
+        : `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to!, 'MMM d, yyyy')}`;
       
       toast.success(`${selectedStudent.first_name} ${selectedStudent.last_name} marked absent for ${dateStr}`);
       
       // Reset form
       setSelectedStudent(null);
       setSearchTerm("");
-      setAbsenceType('single_date');
-      setStartDate(new Date());
-      setEndDate(new Date());
+      setDateRange({ from: new Date(), to: new Date() });
       setReason("");
       setNotes("");
     } catch (error) {
@@ -371,83 +359,37 @@ export default function Absences() {
                 )}
               </div>
 
-              {/* Absence Type */}
-              <div className="space-y-2">
-                <Label>Absence Duration</Label>
-                <RadioGroup value={absenceType} onValueChange={(value: any) => setAbsenceType(value)}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="single_date" id="single" />
-                    <Label htmlFor="single" className="font-normal cursor-pointer">Single Date</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="date_range" id="range" />
-                    <Label htmlFor="range" className="font-normal cursor-pointer">Date Range</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
               {/* Date Selection */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{absenceType === 'single_date' ? 'Date' : 'Start Date'}</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !startDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={setStartDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <Button
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Absence Dates</Label>
+                  <Button 
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStartDate(new Date())}
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setDateRange({ from: new Date(), to: new Date() })}
                   >
-                    Today
+                    Just Today
                   </Button>
                 </div>
-
-                {absenceType === 'date_range' && (
-                  <div className="space-y-2">
-                    <Label>End Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !endDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={setEndDate}
-                          initialFocus
-                          disabled={(date) => startDate ? date < startDate : false}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                <p className="text-sm text-muted-foreground">
+                  Click a date for single day absence, or select two dates for a range
+                </p>
+                <div className="border rounded-md p-3">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    className={cn("pointer-events-auto")}
+                    numberOfMonths={1}
+                  />
+                </div>
+                {dateRange?.from && (
+                  <div className="text-sm font-medium text-primary">
+                    {dateRange.to && dateRange.from.getTime() !== dateRange.to.getTime()
+                      ? `Range: ${format(dateRange.from, 'MMM d, yyyy')} - ${format(dateRange.to, 'MMM d, yyyy')}`
+                      : `Single day: ${format(dateRange.from, 'MMM d, yyyy')}`
+                    }
                   </div>
                 )}
               </div>
