@@ -2220,6 +2220,28 @@ export type Database = {
           walker_location_id: string
         }[]
       }
+      get_active_temp_transportation_for_student: {
+        Args: { _check_date?: string; _student_id: string }
+        Returns: {
+          after_school_activity_id: string
+          bus_id: string
+          car_line_id: string
+          created_at: string
+          created_by: string
+          end_date: string
+          id: string
+          notes: string
+          notification_sent: boolean
+          notification_sent_at: string
+          override_type: string
+          specific_dates: string[]
+          start_date: string
+          student_id: string
+          updated_at: string
+          walker_location_id: string
+          weekday_pattern: string[]
+        }[]
+      }
       get_app_secret: { Args: { p_key: string }; Returns: string }
       get_current_user_school_id: { Args: never; Returns: number }
       get_impersonated_school_id: { Args: never; Returns: number }
