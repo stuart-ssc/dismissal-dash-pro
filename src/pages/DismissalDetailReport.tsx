@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar, Download, Search, X, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -282,43 +283,88 @@ export default function DismissalDetailReport() {
           )}
 
           {!isLoading && !error && events.length > 0 && (
-            <div className="space-y-4">
-              {events.map(event => (
-                <div
-                  key={event.id}
-                  className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  {/* Time */}
-                  <div className="text-sm font-medium text-muted-foreground min-w-[80px]">
-                    {format(new Date(event.timestamp), 'h:mm a')}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className={cn('text-xs', getActivityBadgeClass(event.activityType))}>
-                        {ACTIVITY_TYPE_OPTIONS.find(opt => opt.value === event.activityType)?.label}
-                      </Badge>
-                      <span className="text-sm font-medium">
-                        {event.action.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
-                      </span>
+            <>
+              {/* Mobile Card Layout */}
+              <div className="block md:hidden space-y-4">
+                {events.map(event => (
+                  <div
+                    key={event.id}
+                    className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                  >
+                    {/* Time */}
+                    <div className="text-sm font-medium text-muted-foreground min-w-[80px]">
+                      {format(new Date(event.timestamp), 'h:mm a')}
                     </div>
 
-                    {(event.studentName || event.teacherName) && (
-                      <div className="text-sm font-semibold text-foreground">
-                        {event.studentName || event.teacherName}
+                    {/* Content */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={cn('text-xs', getActivityBadgeClass(event.activityType))}>
+                          {ACTIVITY_TYPE_OPTIONS.find(opt => opt.value === event.activityType)?.label}
+                        </Badge>
+                        <span className="text-sm font-medium">
+                          {event.action.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
                       </div>
-                    )}
 
-                    <div className="text-sm text-muted-foreground">{event.details}</div>
+                      {(event.studentName || event.teacherName) && (
+                        <div className="text-sm font-semibold text-foreground">
+                          {event.studentName || event.teacherName}
+                        </div>
+                      )}
 
-                    <div className="text-xs text-muted-foreground">
-                      Performed by: {event.performedByName || 'System'}
+                      <div className="text-sm text-muted-foreground">{event.details}</div>
+
+                      <div className="text-xs text-muted-foreground">
+                        Performed by: {event.performedByName || 'System'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[80px]">Time</TableHead>
+                      <TableHead className="w-[120px]">Activity</TableHead>
+                      <TableHead className="w-[150px]">Action</TableHead>
+                      <TableHead className="w-[180px]">Student/Teacher</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead className="w-[150px]">Performed By</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {events.map(event => (
+                      <TableRow key={event.id}>
+                        <TableCell className="font-medium text-muted-foreground">
+                          {format(new Date(event.timestamp), 'h:mm a')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn('text-xs', getActivityBadgeClass(event.activityType))}>
+                            {ACTIVITY_TYPE_OPTIONS.find(opt => opt.value === event.activityType)?.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {event.action.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {event.studentName || event.teacherName || '-'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {event.details}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {event.performedByName || 'System'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
