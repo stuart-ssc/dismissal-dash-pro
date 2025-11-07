@@ -62,12 +62,12 @@ export function AdminSidebar() {
     >
       <SidebarContent>
         <SidebarGroup>
-          <div className={`flex items-center px-4 py-3 ${state === 'collapsed' ? 'justify-center' : ''}`}>
+          <div className={`flex items-center py-3 ${state === 'collapsed' ? 'justify-center px-2' : 'px-4'}`}>
             {state === 'collapsed' ? (
               <img 
                 src={logoMark}
                 alt="Dismissal Pro" 
-                className="h-8"
+                className="h-6 w-auto"
                 title="Dismissal Pro"
               />
             ) : (
