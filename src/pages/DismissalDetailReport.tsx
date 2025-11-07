@@ -339,9 +339,9 @@ export default function DismissalDetailReport() {
                   <TableBody>
                     {events.map(event => (
                       <TableRow key={event.id}>
-                        <TableCell className="font-medium text-muted-foreground">
-                          {format(new Date(event.timestamp), 'h:mm a')}
-                        </TableCell>
+                            <TableCell className="font-medium text-muted-foreground whitespace-nowrap">
+                              {format(new Date(event.timestamp), 'h:mm a')}
+                            </TableCell>
                         <TableCell>
                           <Badge className={cn('text-xs', getActivityBadgeClass(event.activityType))}>
                             {ACTIVITY_TYPE_OPTIONS.find(opt => opt.value === event.activityType)?.label}
