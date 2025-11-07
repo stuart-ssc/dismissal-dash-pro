@@ -576,18 +576,20 @@ export default function WalkerMode() {
 
       // Only mark walker mode as completed if ALL locations are done
       if (allLocationsDone) {
-        const { error: updateError } = await supabase
-          .from('dismissal_runs')
-          .update({
-            walker_completed: true,
-            walker_completed_at: now,
-            walker_completed_by: user.id,
-            updated_at: now
-          })
-          .eq('id', runId);
+        const { error: completionError } = await supabase.functions.invoke('complete-mode', {
+          body: { 
+            runId, 
+            mode: 'walker' 
+          }
+        });
 
-        if (updateError) {
-          console.error('Error updating dismissal_runs:', updateError);
+        if (completionError) {
+          console.error('Error completing walker mode:', completionError);
+          toast({
+            title: "Error",
+            description: "Failed to complete walker mode",
+            variant: "destructive",
+          });
         } else {
           successMessage = "All walker locations finished - Walker dismissal completed!";
         }

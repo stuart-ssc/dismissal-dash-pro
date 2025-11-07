@@ -652,18 +652,16 @@ export default function CarLineMode() {
 
       // Only mark car line mode as completed if ALL lines are done
       if (allLinesDone) {
-        const { error: updateError } = await supabase
-          .from('dismissal_runs')
-          .update({
-            car_line_completed: true,
-            car_line_completed_at: now,
-            car_line_completed_by: user.id,
-            updated_at: now
-          })
-          .eq('id', runId);
+        const { error: completionError } = await supabase.functions.invoke('complete-mode', {
+          body: { 
+            runId, 
+            mode: 'car_line' 
+          }
+        });
 
-        if (updateError) {
-          console.error('Error updating dismissal_runs:', updateError);
+        if (completionError) {
+          console.error('Error completing car line mode:', completionError);
+          toast.error("Failed to complete car line mode");
         } else {
           successMessage = "All car lines finished - Car line dismissal completed!";
         }

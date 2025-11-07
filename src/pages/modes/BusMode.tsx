@@ -365,20 +365,16 @@ export default function BusMode() {
       }
 
       // CRITICAL: Update the dismissal_runs table to mark bus mode as completed
-      const now = new Date().toISOString();
-      const { error: updateError } = await supabase
-        .from('dismissal_runs')
-        .update({
-          bus_completed: true,
-          bus_completed_at: now,
-          bus_completed_by: user.id,
-          updated_at: now
-        })
-        .eq('id', runId);
+      const { error: completionError } = await supabase.functions.invoke('complete-mode', {
+        body: { 
+          runId, 
+          mode: 'bus' 
+        }
+      });
 
-      if (updateError) {
-        console.error('Error updating dismissal_runs:', updateError);
-        throw updateError;
+      if (completionError) {
+        console.error('Error completing bus mode:', completionError);
+        throw new Error('Failed to complete bus mode');
       }
 
       // Refresh the dismissal run data to reflect completion
