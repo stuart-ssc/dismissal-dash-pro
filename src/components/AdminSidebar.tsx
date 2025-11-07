@@ -2,7 +2,7 @@ import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.svg";
-import logoMark from "@/assets/logo-mark.svg";
+import logoMark from "@/assets/logo-mark.png";
 import {
   Sidebar,
   SidebarContent,
