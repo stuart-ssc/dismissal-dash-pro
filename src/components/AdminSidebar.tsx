@@ -67,7 +67,7 @@ export function AdminSidebar() {
               <img 
                 src={logoMark}
                 alt="Dismissal Pro" 
-                className="h-7 w-auto"
+                className="w-9 h-auto"
                 title="Dismissal Pro"
               />
             ) : (
