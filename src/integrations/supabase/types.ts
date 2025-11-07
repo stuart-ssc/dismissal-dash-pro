@@ -386,10 +386,31 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "car_line_pickups_car_line_session_id_fkey"
+            columns: ["car_line_session_id"]
+            isOneToOne: false
+            referencedRelation: "car_line_sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "car_line_pickups_lane_id_fkey"
             columns: ["lane_id"]
             isOneToOne: false
             referencedRelation: "car_line_lanes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "car_line_pickups_managed_by_fkey"
+            columns: ["managed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "car_line_pickups_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -431,6 +452,13 @@ export type Database = {
             columns: ["dismissal_run_id"]
             isOneToOne: false
             referencedRelation: "dismissal_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "car_line_sessions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -2041,7 +2069,29 @@ export type Database = {
           updated_at?: string
           walker_session_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "walker_pickups_managed_by_fkey"
+            columns: ["managed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walker_pickups_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walker_pickups_walker_session_id_fkey"
+            columns: ["walker_session_id"]
+            isOneToOne: false
+            referencedRelation: "walker_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       walker_sessions: {
         Row: {
@@ -2080,6 +2130,27 @@ export type Database = {
             columns: ["dismissal_run_id"]
             isOneToOne: false
             referencedRelation: "dismissal_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walker_sessions_managed_by_fkey"
+            columns: ["managed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walker_sessions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walker_sessions_walker_location_id_fkey"
+            columns: ["walker_location_id"]
+            isOneToOne: false
+            referencedRelation: "walker_locations"
             referencedColumns: ["id"]
           },
         ]

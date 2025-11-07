@@ -40,11 +40,18 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
 
       try {
         // Get the user's school ID
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('school_id')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          setError('Failed to fetch profile data');
+          setIsLoading(false);
+          return;
+        }
 
         const effectiveSchoolId = impersonatedSchoolId || profile?.school_id;
 
@@ -72,9 +79,11 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
           `)
           .gte('timestamp', `${dateStr}T00:00:00`)
           .lte('timestamp', `${dateStr}T23:59:59`)
-          .order('timestamp', { ascending: false });
+      .order('timestamp', { ascending: false });
 
-        if (auditError) throw auditError;
+    if (auditError) {
+      console.error('Error fetching audit logs:', auditError);
+    }
 
         // Process audit logs
         if (auditLogs) {
@@ -139,9 +148,11 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
           .eq('school_id', effectiveSchoolId)
           .gte('started_at', `${dateStr}T00:00:00`)
           .lte('started_at', `${dateStr}T23:59:59`)
-          .order('started_at', { ascending: false });
+      .order('started_at', { ascending: false });
 
-        if (modeError) throw modeError;
+    if (modeError) {
+      console.error('Error fetching mode sessions:', modeError);
+    }
 
         if (modeSessions) {
           for (const session of modeSessions) {
@@ -183,9 +194,11 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
             returner:returned_by (first_name, last_name)
           `)
           .or(`start_date.eq.${dateStr},and(start_date.lte.${dateStr},end_date.gte.${dateStr})`)
-          .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
-        if (absenceError) throw absenceError;
+    if (absenceError) {
+      console.error('Error fetching absences:', absenceError);
+    }
 
         if (absences) {
           for (const absence of absences) {
@@ -237,9 +250,11 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
             assigner:assigned_by (first_name, last_name)
           `)
           .eq('coverage_date', dateStr)
-          .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
-        if (coverageError) throw coverageError;
+    if (coverageError) {
+      console.error('Error fetching class coverage:', coverageError);
+    }
 
         if (coverage) {
           for (const cov of coverage) {
@@ -271,7 +286,9 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
           .eq('school_id', effectiveSchoolId)
           .eq('date', dateStr);
 
-        if (runError) throw runError;
+        if (runError) {
+          console.error('Error fetching dismissal runs:', runError);
+        }
 
         if (dismissalRuns && dismissalRuns.length > 0) {
           for (const run of dismissalRuns) {
@@ -317,10 +334,12 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
           `)
           .eq('car_line_sessions.dismissal_runs.school_id', effectiveSchoolId)
           .eq('car_line_sessions.dismissal_runs.date', dateStr)
-          .not('picked_up_at', 'is', null)
-          .order('picked_up_at', { ascending: false });
+      .not('picked_up_at', 'is', null)
+      .order('picked_up_at', { ascending: false });
 
-        if (carLineError) throw carLineError;
+    if (carLineError) {
+      console.error('Error fetching car line pickups:', carLineError);
+    }
 
         if (carLinePickups) {
           for (const pickup of carLinePickups) {
@@ -357,7 +376,9 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
           .eq('dismissal_runs.date', dateStr)
           .order('loaded_at', { ascending: false });
 
-        if (busError) throw busError;
+        if (busError) {
+          console.error('Error fetching bus loading events:', busError);
+        }
 
         if (busLoadings) {
           for (const loading of busLoadings) {
@@ -398,10 +419,12 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
           `)
           .eq('walker_sessions.dismissal_runs.school_id', effectiveSchoolId)
           .eq('walker_sessions.dismissal_runs.date', dateStr)
-          .not('left_at', 'is', null)
-          .order('left_at', { ascending: false });
+      .not('left_at', 'is', null)
+      .order('left_at', { ascending: false });
 
-        if (walkerError) throw walkerError;
+    if (walkerError) {
+      console.error('Error fetching walker pickups:', walkerError);
+    }
 
         if (walkerPickups) {
           for (const pickup of walkerPickups) {
