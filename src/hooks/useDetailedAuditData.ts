@@ -302,6 +302,131 @@ export function useDetailedAuditData({ date, activityTypes, searchQuery }: UseDe
           }
         }
 
+        // Fetch car line pickup events
+        const { data: carLinePickups, error: carLineError } = await supabase
+          .from('car_line_pickups')
+          .select(`
+            id,
+            picked_up_at,
+            student:student_id (first_name, last_name),
+            manager:managed_by (first_name, last_name),
+            car_line_sessions!inner (
+              dismissal_run_id,
+              dismissal_runs!inner (date, school_id)
+            )
+          `)
+          .eq('car_line_sessions.dismissal_runs.school_id', effectiveSchoolId)
+          .eq('car_line_sessions.dismissal_runs.date', dateStr)
+          .not('picked_up_at', 'is', null)
+          .order('picked_up_at', { ascending: false });
+
+        if (carLineError) throw carLineError;
+
+        if (carLinePickups) {
+          for (const pickup of carLinePickups) {
+            const student = pickup.student as any;
+            const manager = pickup.manager as any;
+            const studentName = student ? `${student.first_name} ${student.last_name}` : 'Unknown';
+            const managerName = manager ? `${manager.first_name} ${manager.last_name}` : 'Unknown';
+
+            allEvents.push({
+              id: `car-line-${pickup.id}`,
+              timestamp: pickup.picked_up_at!,
+              activityType: 'dismissal',
+              action: 'CAR_LINE_PICKUP',
+              studentName,
+              details: 'Picked up in car line',
+              performedBy: manager?.id || 'system',
+              performedByName: managerName
+            });
+          }
+        }
+
+        // Fetch bus loading events
+        const { data: busLoadings, error: busError } = await supabase
+          .from('bus_student_loading_events')
+          .select(`
+            id,
+            loaded_at,
+            student:student_id (first_name, last_name),
+            loader:loaded_by (first_name, last_name),
+            bus:bus_id (bus_number),
+            dismissal_runs!inner (date, school_id)
+          `)
+          .eq('dismissal_runs.school_id', effectiveSchoolId)
+          .eq('dismissal_runs.date', dateStr)
+          .order('loaded_at', { ascending: false });
+
+        if (busError) throw busError;
+
+        if (busLoadings) {
+          for (const loading of busLoadings) {
+            const student = loading.student as any;
+            const loader = loading.loader as any;
+            const bus = loading.bus as any;
+            const studentName = student ? `${student.first_name} ${student.last_name}` : 'Unknown';
+            const loaderName = loader ? `${loader.first_name} ${loader.last_name}` : 'Unknown';
+            const busNumber = bus?.bus_number || 'Unknown';
+
+            allEvents.push({
+              id: `bus-loading-${loading.id}`,
+              timestamp: loading.loaded_at,
+              activityType: 'dismissal',
+              action: 'BUS_STUDENT_LOADED',
+              studentName,
+              details: `Loaded on Bus #${busNumber}`,
+              performedBy: loader?.id || 'system',
+              performedByName: loaderName,
+              metadata: { busNumber }
+            });
+          }
+        }
+
+        // Fetch walker dismissal events
+        const { data: walkerPickups, error: walkerError } = await supabase
+          .from('walker_pickups')
+          .select(`
+            id,
+            left_at,
+            student:student_id (first_name, last_name),
+            manager:managed_by (first_name, last_name),
+            walker_sessions!inner (
+              walker_location:walker_location_id (location_name),
+              dismissal_run_id,
+              dismissal_runs!inner (date, school_id)
+            )
+          `)
+          .eq('walker_sessions.dismissal_runs.school_id', effectiveSchoolId)
+          .eq('walker_sessions.dismissal_runs.date', dateStr)
+          .not('left_at', 'is', null)
+          .order('left_at', { ascending: false });
+
+        if (walkerError) throw walkerError;
+
+        if (walkerPickups) {
+          for (const pickup of walkerPickups) {
+            const student = pickup.student as any;
+            const manager = pickup.manager as any;
+            const walkerSessions = pickup.walker_sessions as any;
+            const location = walkerSessions?.walker_location as any;
+            const studentName = student ? `${student.first_name} ${student.last_name}` : 'Unknown';
+            const managerName = manager ? `${manager.first_name} ${manager.last_name}` : 'Unknown';
+            const locationName = location?.location_name || 'Unknown Location';
+
+            allEvents.push({
+              id: `walker-${pickup.id}`,
+              timestamp: pickup.left_at!,
+              activityType: 'dismissal',
+              action: 'WALKER_DISMISSED',
+              studentName,
+              details: `Dismissed from ${locationName}`,
+              performedBy: manager?.id || 'system',
+              performedByName: managerName,
+              metadata: { locationName }
+            });
+          }
+        }
+
         // Sort all events by timestamp (most recent first)
         allEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
