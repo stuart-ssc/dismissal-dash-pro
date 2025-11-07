@@ -10,6 +10,7 @@ const corsHeaders = {
 
 interface RosterRow {
   studentId?: string;
+  dismissalModeId?: string;
   firstName: string;
   lastName: string;
   gradeLevel: string;
@@ -46,7 +47,8 @@ const COLUMN_MAPPINGS = {
   'specialNotes': ['specialNotes', 'special_notes', 'Special_Notes', 'SpecialNotes', 'notes'],
   'dismissalGroup': ['dismissalGroup', 'dismissal_group', 'Dismissal_Group', 'DismissalGroup', 'group'],
   'transportation': ['transportation', 'Transportation', 'transport_type', 'Transport_Type'],
-  'transportationMethod': ['transportationMethod', 'transportation_method', 'Transportation_Method', 'TransportationMethod', 'transport_method', 'Transport_Method']
+  'transportationMethod': ['transportationMethod', 'transportation_method', 'Transportation_Method', 'TransportationMethod', 'transport_method', 'Transport_Method'],
+  'dismissalModeId': ['dismissalModeId', 'dismissal_mode_id', 'Dismissal_Mode_Id', 'DismissalModeId', 'dismissalId', 'dismissal_id', 'carTag', 'car_tag', 'tagNumber', 'tag_number']
 };
 
 function validateAndMapColumns(sampleRow: any): { mappedColumns: string[], unmappedColumns: string[], requiredMissing: string[] } {
@@ -311,11 +313,12 @@ serve(async (req) => {
           studentId = (existingStudentResult.rows[0] as any).id as string;
         } else {
           const newStudentResult = await client.queryObject(
-            `INSERT INTO students (student_id, first_name, last_name, grade_level, school_id, 
+            `INSERT INTO students (student_id, dismissal_mode_id, first_name, last_name, grade_level, school_id, 
                                  parent_guardian_name, contact_info, special_notes, dismissal_group) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
             [
               row.studentId || null,
+              sanitizeCSVValue(row.dismissalModeId),
               sanitizeCSVValue(row.firstName),
               sanitizeCSVValue(row.lastName),
               sanitizeCSVValue(row.gradeLevel),

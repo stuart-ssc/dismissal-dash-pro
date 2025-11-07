@@ -30,6 +30,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
     gradeLevel: '',
     classId: '',
     studentId: '',
+    dismissalModeId: '',
     transportMethod: '', // 'bus' | 'walker' | 'car' | 'activity'
     transportTargetId: '',
   });
@@ -82,6 +83,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
       gradeLevel: '',
       classId: '',
       studentId: '',
+      dismissalModeId: '',
       transportMethod: '',
       transportTargetId: '',
     });
@@ -102,6 +104,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
             last_name: formData.lastName,
             grade_level: formData.gradeLevel,
             student_id: formData.studentId || null,
+            dismissal_mode_id: formData.dismissalModeId || null,
             school_id: schoolId
           })
           .select()
@@ -293,6 +296,19 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
                   onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                   placeholder="Optional student ID"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dismissalModeId">Dismissal Mode ID</Label>
+                <Input
+                  id="dismissalModeId"
+                  value={formData.dismissalModeId || ''}
+                  onChange={(e) => setFormData({ ...formData, dismissalModeId: e.target.value })}
+                  placeholder="e.g., 247, A-42"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Quick lookup number for car tags/dismissal
+                </p>
               </div>
 
               <div className="space-y-2">

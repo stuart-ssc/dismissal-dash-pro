@@ -91,6 +91,21 @@ export type Database = {
         }
         Relationships: []
       }
+      app_secrets: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1750,6 +1765,7 @@ export type Database = {
           contact_info: string | null
           created_at: string
           dismissal_group: string | null
+          dismissal_mode_id: string | null
           first_name: string
           grade_level: string
           id: string
@@ -1764,6 +1780,7 @@ export type Database = {
           contact_info?: string | null
           created_at?: string
           dismissal_group?: string | null
+          dismissal_mode_id?: string | null
           first_name: string
           grade_level: string
           id?: string
@@ -1778,6 +1795,7 @@ export type Database = {
           contact_info?: string | null
           created_at?: string
           dismissal_group?: string | null
+          dismissal_mode_id?: string | null
           first_name?: string
           grade_level?: string
           id?: string
@@ -2202,6 +2220,7 @@ export type Database = {
           walker_location_id: string
         }[]
       }
+      get_app_secret: { Args: { p_key: string }; Returns: string }
       get_current_user_school_id: { Args: never; Returns: number }
       get_impersonated_school_id: { Args: never; Returns: number }
       get_people_paginated: {

@@ -153,6 +153,13 @@ const Import = () => {
       'transport': 'transportation',
       'transportationmethod': 'transportationMethod',
       'transportmethod': 'transportationMethod',
+      'dismissalmodeid': 'dismissalModeId',
+      'dismissal_mode_id': 'dismissalModeId',
+      'dismissalid': 'dismissalModeId',
+      'cartag': 'dismissalModeId',
+      'car_tag': 'dismissalModeId',
+      'tagnumber': 'dismissalModeId',
+      'tag_number': 'dismissalModeId',
     };
 
     for (let i = 1; i < lines.length; i++) {

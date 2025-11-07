@@ -17,7 +17,7 @@ import { useAbsentStudents } from "@/hooks/useAbsentStudents";
 
 type CarLine = { id: string; line_name: string; has_lanes: boolean };
 type Lane = { id: string; lane_name: string; color: string; order_index: number };
-type Student = { id: string; first_name: string; last_name: string; grade_level: string; isTemporaryOverride?: boolean };
+type Student = { id: string; first_name: string; last_name: string; grade_level: string; dismissal_mode_id?: string; isTemporaryOverride?: boolean };
 type ClassItem = { id: string; class_name: string };
 type Session = { id: string; finished_at: string | null };
 type PickupStatus = "waiting" | "parent_arrived" | "picked_up";
@@ -367,7 +367,7 @@ export default function CarLineMode() {
 
       const { data: studs } = await supabase
         .from("students")
-        .select("id,first_name,last_name,grade_level")
+        .select("id,first_name,last_name,grade_level,dismissal_mode_id")
         .in("id", allCarStudentIds);
 
       // Load ALL classes from the school for the filter dropdown
@@ -490,7 +490,8 @@ export default function CarLineMode() {
         (s: any) =>
           s.first_name.toLowerCase().includes(q) ||
           s.last_name.toLowerCase().includes(q) ||
-          `${s.last_name}, ${s.first_name}`.toLowerCase().includes(q)
+          `${s.last_name}, ${s.first_name}`.toLowerCase().includes(q) ||
+          (s.dismissal_mode_id && s.dismissal_mode_id.toLowerCase().includes(q))
       );
     }
     if (gradeFilter !== "all") {
@@ -821,7 +822,7 @@ export default function CarLineMode() {
           <CardContent>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 mb-4">
               <Input
-                placeholder="Search students..."
+                placeholder="Search by name or dismissal ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full sm:w-80"
@@ -913,9 +914,14 @@ export default function CarLineMode() {
                         }
                       }}
                     >
-                      <div className="flex items-start justify-between">
+                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="font-semibold flex items-center gap-2">
+                            {s.dismissal_mode_id && (
+                              <span className="inline-flex items-center px-2 py-1 rounded bg-primary/10 text-primary text-lg font-mono font-bold">
+                                #{s.dismissal_mode_id}
+                              </span>
+                            )}
                             {s.last_name}, {s.first_name}
                             {s.isTemporaryOverride && (
                               <TemporaryTransportationBadge tooltipText="Temporary car line assignment for today" />

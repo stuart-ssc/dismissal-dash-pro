@@ -9,6 +9,7 @@ export interface PersonData {
   role: 'School Admin' | 'Teacher' | 'Student';
   grade?: string;
   studentId?: string;
+  dismissalModeId?: string;
   classes: string[];
   classIds?: string[];
   transportation?: string;
@@ -197,6 +198,7 @@ export const usePaginatedPeople = ({
           role: mappedRole,
           grade: person.grade_level || undefined,
           studentId: person.student_id || undefined,
+          dismissalModeId: (person as any).dismissal_mode_id || undefined,
           classes,
           classIds,
           transportation,

@@ -18,6 +18,7 @@ interface PersonData {
   grade?: string;
   classes: string[];
   studentId?: string;
+  dismissalModeId?: string;
 }
 
 interface EditPersonDialogProps {
@@ -43,6 +44,7 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
     gradeLevel: '',
     classId: '',
     studentId: '',
+    dismissalModeId: '',
     transportMethod: '', // 'bus' | 'walker' | 'car' | 'activity'
     transportTargetId: '',
   });
@@ -58,7 +60,8 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
         email: person.email || '',
         gradeLevel: person.grade || '',
         classId: '', // Will be set after fetching current class
-        studentId: person.studentId || ''
+        studentId: person.studentId || '',
+        dismissalModeId: person.dismissalModeId || ''
       }));
     }
   }, [person]);
@@ -157,7 +160,8 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
             first_name: formData.firstName,
             last_name: formData.lastName,
             grade_level: formData.gradeLevel,
-            student_id: formData.studentId || null
+            student_id: formData.studentId || null,
+            dismissal_mode_id: formData.dismissalModeId || null
           })
           .eq('id', person.id);
 
@@ -361,6 +365,19 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
                   onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                   placeholder="Optional student ID"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dismissalModeId">Dismissal Mode ID</Label>
+                <Input
+                  id="dismissalModeId"
+                  value={formData.dismissalModeId || ''}
+                  onChange={(e) => setFormData({ ...formData, dismissalModeId: e.target.value })}
+                  placeholder="e.g., 247, A-42"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Quick lookup number for car tags/dismissal
+                </p>
               </div>
 
               <div className="space-y-2">
