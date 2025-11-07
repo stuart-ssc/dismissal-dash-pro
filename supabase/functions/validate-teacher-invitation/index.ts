@@ -99,16 +99,13 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Validate token - only return minimal necessary data
-    const { data: teacher, error } = await supabase
-      .from('teachers')
-      .select('first_name, schools(school_name)')
-      .eq('invitation_token', token)
-      .gte('invitation_expires_at', new Date().toISOString())
-      .eq('invitation_status', 'pending')
+    // Use secure RPC function instead of direct table access
+    // This prevents PII exposure via RLS bypass
+    const { data, error } = await supabase
+      .rpc('validate_teacher_invitation_token', { token_input: token })
       .single();
 
-    if (error || !teacher) {
+    if (error || !data || !data.valid) {
       console.info(`Invalid or expired invitation token attempted from ${clientIp}`);
       return new Response(
         JSON.stringify({ 
@@ -129,8 +126,8 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         valid: true,
-        firstName: teacher.first_name,
-        schoolName: teacher.schools?.school_name
+        firstName: data.first_name,
+        schoolName: data.school_name
       } as ValidationResponse),
       { 
         status: 200, 
@@ -155,3 +152,6 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
+
+// Note: This function now uses the secure validate_teacher_invitation_token() 
+// database function which prevents direct table access and PII exposure
