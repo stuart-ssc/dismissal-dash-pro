@@ -16,6 +16,7 @@ import { useDetailedAuditData, ActivityType } from '@/hooks/useDetailedAuditData
 import { useSEO } from '@/hooks/useSEO';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const ACTIVITY_TYPE_OPTIONS: { value: ActivityType; label: string; color: string }[] = [
   { value: 'dismissal', label: 'Dismissal', color: 'bg-primary text-primary-foreground' },
@@ -119,22 +120,25 @@ export default function DismissalDetailReport() {
   const hasActiveFilters = activityTypes.length !== allTypes.length || searchQuery.trim().length > 0;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dismissal Detail Report</h1>
-          <p className="text-muted-foreground mt-1">
-            View every logged interaction for {format(selectedDate, 'EEEE, MMMM d, yyyy')}
-          </p>
+    <>
+      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">Dismissal Detail Report</h1>
+            <p className="text-sm text-muted-foreground">
+              {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+            </p>
+          </div>
         </div>
         <Button onClick={exportToCSV} variant="outline" disabled={events.length === 0}>
           <Download className="h-4 w-4 mr-2" />
           Export CSV
         </Button>
-      </div>
+      </header>
 
-      {/* Filters */}
+      <main className="flex-1 p-6 space-y-6">
+        {/* Filters */}
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
         <Card>
           <CardHeader>
@@ -368,6 +372,7 @@ export default function DismissalDetailReport() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </main>
+    </>
   );
 }
