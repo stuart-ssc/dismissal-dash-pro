@@ -12,6 +12,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
 import { CancelRunDialog } from "@/components/CancelRunDialog";
 
+const formatTimeString = (timeString: string | null): string => {
+  if (!timeString) return "Not set";
+  
+  // Parse the time string (format: "HH:mm:ss" or "HH:mm")
+  const [hours, minutes] = timeString.split(':').map(Number);
+  
+  // Convert to 12-hour format
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12; // Convert 0 to 12 for midnight
+  
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
 export default function SpecialUseRunDetail() {
   const { runId } = useParams();
   const navigate = useNavigate();
@@ -255,7 +268,7 @@ export default function SpecialUseRunDetail() {
                 {run.cancelled_at && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Cancelled At</p>
-                    <p className="mt-1">{format(new Date(run.cancelled_at), "PPp")}</p>
+                    <p className="mt-1">{format(new Date(run.cancelled_at), "MMM d, yyyy 'at' h:mm a")}</p>
                   </div>
                 )}
                 {run.cancelled_by_profile && (
@@ -299,11 +312,11 @@ export default function SpecialUseRunDetail() {
             <CardContent className="space-y-2">
               <div>
                 <p className="text-sm text-muted-foreground">Departure</p>
-                <p className="font-medium">{run.scheduled_departure_time || "Not set"}</p>
+                <p className="font-medium">{formatTimeString(run.scheduled_departure_time)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Return</p>
-                <p className="font-medium">{run.scheduled_return_time || "Not set"}</p>
+                <p className="font-medium">{formatTimeString(run.scheduled_return_time)}</p>
               </div>
             </CardContent>
           </Card>
