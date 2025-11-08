@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { SpecialUseGroupDialog } from "@/components/SpecialUseGroupDialog";
 import { ManageGroupStudentsDialog } from "@/components/ManageGroupStudentsDialog";
@@ -201,6 +201,16 @@ export default function SpecialUseGroups() {
                         }}
                       >
                         <Users className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedGroup(group);
+                          setManagersDialogOpen(true);
+                        }}
+                      >
+                        <UserCog className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"

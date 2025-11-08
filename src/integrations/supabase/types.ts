@@ -2819,6 +2819,7 @@ export type Database = {
           total_count: number
         }[]
       }
+      get_run_school_id: { Args: { p_run_id: string }; Returns: number }
       get_school_admins_for_current_user: {
         Args: never
         Returns: {
@@ -2951,6 +2952,10 @@ export type Database = {
       }
       is_group_manager: {
         Args: { p_group_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_run_manager: {
+        Args: { p_run_id: string; p_user_id: string }
         Returns: boolean
       }
       is_student_absent: {
