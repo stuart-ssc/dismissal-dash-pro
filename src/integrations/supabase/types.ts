@@ -2940,6 +2940,7 @@ export type Database = {
         Args: { teacher_uuid: string }
         Returns: string[]
       }
+      get_teacher_school_id: { Args: { p_teacher_id: string }; Returns: number }
       get_user_accessible_school_ids: { Args: never; Returns: number[] }
       get_user_school_id: { Args: { user_uuid: string }; Returns: number }
       get_user_taught_class_ids: { Args: never; Returns: string[] }
