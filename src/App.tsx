@@ -24,6 +24,9 @@ import EmailManagement from "./pages/admin/EmailManagement";
 import PeopleManagement from "./pages/People";
 import AdminSettings from "./pages/admin/Settings";
 import AdminSchools from "./pages/admin/Schools";
+import SpecialUseGroups from "./pages/admin/SpecialUseGroups";
+import SpecialUseRuns from "./pages/admin/SpecialUseRuns";
+import SpecialUseRunMode from "./pages/modes/SpecialUseRunMode";
 import Settings from "./pages/Settings";
 import CarLines from "./pages/CarLines";
 import WalkerLocations from "./pages/WalkerLocations";
@@ -99,6 +102,12 @@ const AppContent = () => {
           <Route path="/admin/email-management" element={<EmailManagement />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/schools" element={<AdminSchools />} />
+          <Route path="/admin/special-use-groups" element={<SpecialUseGroups />} />
+          <Route path="/admin/special-use-runs" element={<SpecialUseRuns />} />
+          
+          {/* Special Use Run Mode (fullscreen) */}
+          <Route path="/modes/special-use-run/:runId" element={<SpecialUseRunMode />} />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

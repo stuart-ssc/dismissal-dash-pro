@@ -1538,6 +1538,424 @@ export type Database = {
           },
         ]
       }
+      special_use_group_managers: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          group_id: string
+          id: string
+          manager_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          group_id: string
+          id?: string
+          manager_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          group_id?: string
+          id?: string
+          manager_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_use_group_managers_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_group_managers_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "special_use_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_group_managers_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_use_group_students: {
+        Row: {
+          added_at: string
+          added_by: string
+          group_id: string
+          id: string
+          notes: string | null
+          student_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by: string
+          group_id: string
+          id?: string
+          notes?: string | null
+          student_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string
+          group_id?: string
+          id?: string
+          notes?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_use_group_students_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_group_students_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "special_use_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_group_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_use_groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          group_type: string
+          id: string
+          is_active: boolean | null
+          name: string
+          school_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          group_type: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          school_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          group_type?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          school_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_use_groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_groups_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_use_run_buses: {
+        Row: {
+          assigned_at: string
+          bus_id: string
+          capacity: number | null
+          id: string
+          run_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          bus_id: string
+          capacity?: number | null
+          id?: string
+          run_id: string
+        }
+        Update: {
+          assigned_at?: string
+          bus_id?: string
+          capacity?: number | null
+          id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_use_run_buses_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_run_buses_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "special_use_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_use_run_managers: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          id: string
+          manager_id: string
+          run_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          id?: string
+          manager_id: string
+          run_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          id?: string
+          manager_id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_use_run_managers_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_run_managers_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_run_managers_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "special_use_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_use_runs: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_id: string
+          id: string
+          notes: string | null
+          outbound_completed_at: string | null
+          outbound_completed_by: string | null
+          outbound_started_at: string | null
+          outbound_started_by: string | null
+          return_completed_at: string | null
+          return_completed_by: string | null
+          return_started_at: string | null
+          return_started_by: string | null
+          run_date: string
+          run_name: string
+          scheduled_departure_time: string | null
+          scheduled_return_time: string | null
+          school_id: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          group_id: string
+          id?: string
+          notes?: string | null
+          outbound_completed_at?: string | null
+          outbound_completed_by?: string | null
+          outbound_started_at?: string | null
+          outbound_started_by?: string | null
+          return_completed_at?: string | null
+          return_completed_by?: string | null
+          return_started_at?: string | null
+          return_started_by?: string | null
+          run_date: string
+          run_name: string
+          scheduled_departure_time?: string | null
+          scheduled_return_time?: string | null
+          school_id: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          id?: string
+          notes?: string | null
+          outbound_completed_at?: string | null
+          outbound_completed_by?: string | null
+          outbound_started_at?: string | null
+          outbound_started_by?: string | null
+          return_completed_at?: string | null
+          return_completed_by?: string | null
+          return_started_at?: string | null
+          return_started_by?: string | null
+          run_date?: string
+          run_name?: string
+          scheduled_departure_time?: string | null
+          scheduled_return_time?: string | null
+          school_id?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_use_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_runs_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "special_use_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_runs_outbound_completed_by_fkey"
+            columns: ["outbound_completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_runs_outbound_started_by_fkey"
+            columns: ["outbound_started_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_runs_return_completed_by_fkey"
+            columns: ["return_completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_runs_return_started_by_fkey"
+            columns: ["return_started_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_runs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_use_student_events: {
+        Row: {
+          bus_id: string
+          created_at: string
+          event_time: string
+          event_type: string
+          id: string
+          notes: string | null
+          parent_name: string | null
+          recorded_by: string
+          run_id: string
+          student_id: string
+        }
+        Insert: {
+          bus_id: string
+          created_at?: string
+          event_time?: string
+          event_type: string
+          id?: string
+          notes?: string | null
+          parent_name?: string | null
+          recorded_by: string
+          run_id: string
+          student_id: string
+        }
+        Update: {
+          bus_id?: string
+          created_at?: string
+          event_time?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          parent_name?: string | null
+          recorded_by?: string
+          run_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_use_student_events_bus_id_fkey"
+            columns: ["bus_id"]
+            isOneToOne: false
+            referencedRelation: "buses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_student_events_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_student_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "special_use_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "special_use_student_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_absences: {
         Row: {
           absence_type: string
@@ -2290,6 +2708,10 @@ export type Database = {
         Args: { target_school_id: number }
         Returns: boolean
       }
+      can_manage_special_use_run: {
+        Args: { p_run_id: string }
+        Returns: boolean
+      }
       can_manage_student: { Args: { student_uuid: string }; Returns: boolean }
       can_manage_student_safe: {
         Args: { student_uuid: string }
@@ -2429,6 +2851,22 @@ export type Database = {
           id: number
           school_name: string
           state: string
+        }[]
+      }
+      get_special_use_run_students: {
+        Args: { p_bus_id: string; p_run_id: string }
+        Returns: {
+          first_name: string
+          grade_level: string
+          last_name: string
+          left_with_parent: boolean
+          outbound_checked: boolean
+          outbound_time: string
+          parent_name: string
+          return_checked: boolean
+          return_time: string
+          student_id: string
+          student_number: string
         }[]
       }
       get_student_class_map: {
