@@ -83,6 +83,8 @@ const AppContent = () => {
             <Route path="/dashboard/reports/detail" element={<DismissalDetailReport />} />
             <Route path="/dashboard/reports/mode-usage" element={<ModeUsageReports />} />
             <Route path="/dashboard/import" element={<Import />} />
+            <Route path="/dashboard/special-use-groups" element={<SpecialUseGroups />} />
+            <Route path="/dashboard/special-use-runs" element={<SpecialUseRuns />} />
           </Route>
 
           {/* Fullscreen dismissal modes (no left navigation) */}
@@ -102,8 +104,6 @@ const AppContent = () => {
           <Route path="/admin/email-management" element={<EmailManagement />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/schools" element={<AdminSchools />} />
-          <Route path="/dashboard/special-use-groups" element={<SpecialUseGroups />} />
-          <Route path="/dashboard/special-use-runs" element={<SpecialUseRuns />} />
           
           {/* Special Use Run Mode (fullscreen) */}
           <Route path="/modes/special-use-run/:runId" element={<SpecialUseRunMode />} />
