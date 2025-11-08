@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Play, Eye, Edit } from "lucide-react";
+import { Plus, Search, Play, Edit } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
@@ -156,7 +156,14 @@ export default function SpecialUseRuns() {
             <TableBody>
               {filteredRuns.map((run) => (
                 <TableRow key={run.id}>
-                  <TableCell className="font-medium">{run.run_name}</TableCell>
+                  <TableCell>
+                    <button
+                      onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}
+                      className="font-medium text-left hover:underline hover:text-primary transition-colors"
+                    >
+                      {run.run_name}
+                    </button>
+                  </TableCell>
                   <TableCell>{run.group.name}</TableCell>
                   <TableCell>{format(new Date(run.run_date), "MMM d, yyyy")}</TableCell>
                   <TableCell>
@@ -203,13 +210,6 @@ export default function SpecialUseRuns() {
                           Continue
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
