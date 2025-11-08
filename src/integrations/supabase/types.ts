@@ -2948,6 +2948,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_group_manager: {
+        Args: { p_group_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_student_absent: {
         Args: { p_date?: string; p_student_id: string }
         Returns: boolean
