@@ -1,4 +1,4 @@
-import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane } from "lucide-react";
+import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.svg";
@@ -25,7 +25,8 @@ const adminNavItems = [
   { title: "Absences", url: "/dashboard/absences", icon: UserX },
   { title: "People", url: "/dashboard/people", icon: UserCog },
   { title: "Transportation", url: "/dashboard/transportation", icon: Bus },
-  { title: "Special Use", url: "/admin/special-use-groups", icon: Plane, section: "special" },
+  { title: "Special Use Groups", url: "/dashboard/special-use-groups", icon: Plane },
+  { title: "Special Use Runs", url: "/dashboard/special-use-runs", icon: Calendar },
   { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];

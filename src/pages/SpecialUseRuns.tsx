@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Play, Eye } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
 import { toast } from "sonner";
@@ -88,21 +89,25 @@ export default function SpecialUseRuns() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Special Use Runs</h1>
-          <p className="text-muted-foreground">
-            Manage and track special transportation runs
-          </p>
+    <>
+      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">Special Use Runs</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage and track special transportation runs
+            </p>
+          </div>
         </div>
         <Button onClick={() => { setSelectedRun(null); setDialogOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Schedule Run
         </Button>
-      </div>
-
-      <div className="flex items-center gap-4">
+      </header>
+      
+      <main className="flex-1 p-6 space-y-6">
+        <div className="flex items-center gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -199,6 +204,7 @@ export default function SpecialUseRuns() {
           setSelectedRun(null);
         }}
       />
-    </div>
+      </main>
+    </>
   );
 }

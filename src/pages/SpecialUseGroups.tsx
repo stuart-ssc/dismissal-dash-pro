@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Users, Calendar, Edit, Trash2 } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { SpecialUseGroupDialog } from "@/components/SpecialUseGroupDialog";
 import { ManageGroupStudentsDialog } from "@/components/ManageGroupStudentsDialog";
 import { ManageGroupManagersDialog } from "@/components/ManageGroupManagersDialog";
@@ -126,21 +127,25 @@ export default function SpecialUseGroups() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Special Use Groups</h1>
-          <p className="text-muted-foreground">
-            Manage groups for field trips, athletics, and other special transportation needs
-          </p>
+    <>
+      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">Special Use Groups</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage groups for field trips, athletics, and other special transportation needs
+            </p>
+          </div>
         </div>
         <Button onClick={() => { setSelectedGroup(null); setDialogOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Create Group
         </Button>
-      </div>
-
-      <div className="flex items-center gap-4">
+      </header>
+      
+      <main className="flex-1 p-6 space-y-6">
+        <div className="flex items-center gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -285,6 +290,7 @@ export default function SpecialUseGroups() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </main>
+    </>
   );
 }
