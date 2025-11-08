@@ -20,6 +20,19 @@ import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
 import { toast } from "sonner";
 
+const formatTimeString = (timeString: string | null): string => {
+  if (!timeString) return "-";
+  
+  // Parse the time string (format: "HH:mm:ss" or "HH:mm")
+  const [hours, minutes] = timeString.split(':').map(Number);
+  
+  // Convert to 12-hour format
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12; // Convert 0 to 12 for midnight
+  
+  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
 type SpecialUseRun = {
   id: string;
   run_name: string;
@@ -147,10 +160,10 @@ export default function SpecialUseRuns() {
                   <TableCell>{run.group.name}</TableCell>
                   <TableCell>{format(new Date(run.run_date), "MMM d, yyyy")}</TableCell>
                   <TableCell>
-                    {run.scheduled_departure_time || "-"}
+                    {formatTimeString(run.scheduled_departure_time)}
                   </TableCell>
                   <TableCell>
-                    {run.scheduled_return_time || "-"}
+                    {formatTimeString(run.scheduled_return_time)}
                   </TableCell>
                   <TableCell>
                     {run.buses.map(b => b.bus_number).join(", ")}
