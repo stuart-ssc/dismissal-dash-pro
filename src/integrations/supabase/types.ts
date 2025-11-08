@@ -2789,6 +2789,7 @@ export type Database = {
       }
       get_app_secret: { Args: { p_key: string }; Returns: string }
       get_current_user_school_id: { Args: never; Returns: number }
+      get_group_school_id: { Args: { p_group_id: string }; Returns: number }
       get_impersonated_school_id: { Args: never; Returns: number }
       get_people_paginated: {
         Args: {
