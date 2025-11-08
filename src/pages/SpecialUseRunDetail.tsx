@@ -13,7 +13,7 @@ export default function SpecialUseRunDetail() {
   const { runId } = useParams();
   const navigate = useNavigate();
 
-  const { data: run, isLoading } = useQuery({
+  const { data: run, isLoading, error: queryError } = useQuery({
     queryKey: ["special-use-run-detail", runId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -62,9 +62,19 @@ export default function SpecialUseRunDetail() {
           )
         `)
         .eq("id", runId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      // Log error for debugging
+      if (error) {
+        console.error("Error loading run:", error);
+        throw error;
+      }
+
+      // If no data and no error, it's likely RLS blocking
+      if (!data) {
+        console.warn("No run data returned - likely RLS policy blocking access");
+        return null;
+      }
 
       // Fetch students from the group
       const { data: studentsData } = await supabase
@@ -145,7 +155,9 @@ export default function SpecialUseRunDetail() {
     );
   }
 
-  if (!run) {
+  if (!run && !isLoading) {
+    const isPermissionIssue = !queryError;
+    
     return (
       <>
         <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
@@ -154,13 +166,26 @@ export default function SpecialUseRunDetail() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <h1 className="text-2xl font-bold">Run Not Found</h1>
+            <h1 className="text-2xl font-bold">{isPermissionIssue ? "Access Denied" : "Run Not Found"}</h1>
           </div>
         </header>
         <main className="flex-1 p-6">
           <Card>
             <CardContent className="pt-6">
-              <p className="text-muted-foreground text-center">The requested run could not be found.</p>
+              {isPermissionIssue ? (
+                <div className="text-center space-y-2">
+                  <p className="text-muted-foreground">
+                    You don't have permission to view this run.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    You must be assigned as a manager for this run or be a school administrator.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center">
+                  The requested run could not be found.
+                </p>
+              )}
             </CardContent>
           </Card>
         </main>
