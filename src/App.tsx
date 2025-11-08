@@ -26,6 +26,7 @@ import AdminSettings from "./pages/admin/Settings";
 import AdminSchools from "./pages/admin/Schools";
 import SpecialUseGroups from "./pages/SpecialUseGroups";
 import SpecialUseRuns from "./pages/SpecialUseRuns";
+import SpecialUseRunDetail from "./pages/SpecialUseRunDetail";
 import SpecialUseRunMode from "./pages/modes/SpecialUseRunMode";
 import Settings from "./pages/Settings";
 import CarLines from "./pages/CarLines";
@@ -85,6 +86,7 @@ const AppContent = () => {
             <Route path="/dashboard/import" element={<Import />} />
             <Route path="/dashboard/special-use-groups" element={<SpecialUseGroups />} />
             <Route path="/dashboard/special-use-runs" element={<SpecialUseRuns />} />
+            <Route path="/dashboard/special-use-runs/:runId" element={<SpecialUseRunDetail />} />
           </Route>
 
           {/* Fullscreen dismissal modes (no left navigation) */}

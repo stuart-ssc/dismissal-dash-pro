@@ -181,7 +181,7 @@ export default function SpecialUseRuns() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/admin/special-use-runs/${run.id}`)}
+                        onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
