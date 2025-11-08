@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Play, Eye } from "lucide-react";
+import { Plus, Search, Play, Eye, Edit } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
@@ -159,14 +159,26 @@ export default function SpecialUseRuns() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       {run.status === "scheduled" && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleLaunch(run.id)}
-                        >
-                          <Play className="h-4 w-4 mr-1" />
-                          Launch
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedRun(run);
+                              setDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleLaunch(run.id)}
+                          >
+                            <Play className="h-4 w-4 mr-1" />
+                            Launch
+                          </Button>
+                        </>
                       )}
                       {(run.status === "outbound_active" || run.status === "at_destination" || run.status === "return_active") && (
                         <Button

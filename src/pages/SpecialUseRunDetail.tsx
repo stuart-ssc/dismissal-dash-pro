@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,15 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Bus, Users, Shield, Calendar, Clock, MapPin, FileText } from "lucide-react";
+import { ArrowLeft, Bus, Users, Shield, Calendar, Clock, MapPin, FileText, Edit, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
+import { CancelRunDialog } from "@/components/CancelRunDialog";
 
 export default function SpecialUseRunDetail() {
   const { runId } = useParams();
   const navigate = useNavigate();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
-  const { data: run, isLoading, error: queryError } = useQuery({
+  const { data: run, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ["special-use-run-detail", runId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -59,6 +64,12 @@ export default function SpecialUseRunDetail() {
               first_name,
               last_name
             )
+          ),
+          cancelled_by_profile:profiles!cancelled_by(
+            id,
+            first_name,
+            last_name,
+            email
           )
         `)
         .eq("id", runId)
@@ -208,10 +219,58 @@ export default function SpecialUseRunDetail() {
             </p>
           </div>
         </div>
-        <div>{getStatusBadge(run.status)}</div>
+        <div className="flex items-center gap-2">
+          <div>{getStatusBadge(run.status)}</div>
+          {run.status === "scheduled" && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setCancelDialogOpen(true)}>
+                <XCircle className="h-4 w-4 mr-2" />
+                Cancel Run
+              </Button>
+            </>
+          )}
+        </div>
       </header>
 
       <main className="flex-1 p-6 space-y-6">
+        {/* Cancellation Info Card */}
+        {run.status === "cancelled" && run.cancellation_reason && (
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive flex items-center gap-2">
+                <XCircle className="h-5 w-5" />
+                Run Cancelled
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Reason</p>
+                  <p className="mt-1">{run.cancellation_reason}</p>
+                </div>
+                {run.cancelled_at && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Cancelled At</p>
+                    <p className="mt-1">{format(new Date(run.cancelled_at), "PPp")}</p>
+                  </div>
+                )}
+                {run.cancelled_by_profile && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Cancelled By</p>
+                    <p className="mt-1">
+                      {run.cancelled_by_profile.first_name} {run.cancelled_by_profile.last_name}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Run Information */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card>
@@ -441,6 +500,28 @@ export default function SpecialUseRunDetail() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Edit Dialog */}
+      <SpecialUseRunDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        run={run}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
+
+      {/* Cancel Dialog */}
+      <CancelRunDialog
+        open={cancelDialogOpen}
+        onOpenChange={setCancelDialogOpen}
+        runId={run.id}
+        runName={run.run_name}
+        runDate={format(new Date(run.run_date), "EEEE, MMMM d, yyyy")}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
     </>
   );
 }
