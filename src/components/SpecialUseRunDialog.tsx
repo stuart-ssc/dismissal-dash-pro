@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TimePicker } from "@/components/ui/time-picker";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -283,20 +284,18 @@ export function SpecialUseRunDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="departure">Departure Time</Label>
-                <Input
-                  id="departure"
-                  type="time"
+                <TimePicker
                   value={formData.scheduled_departure_time}
-                  onChange={(e) => setFormData({ ...formData, scheduled_departure_time: e.target.value })}
+                  onChange={(time) => setFormData({ ...formData, scheduled_departure_time: time })}
+                  placeholder="Select departure time"
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="return">Return Time</Label>
-                <Input
-                  id="return"
-                  type="time"
+                <TimePicker
                   value={formData.scheduled_return_time}
-                  onChange={(e) => setFormData({ ...formData, scheduled_return_time: e.target.value })}
+                  onChange={(time) => setFormData({ ...formData, scheduled_return_time: time })}
+                  placeholder="Select return time"
                 />
               </div>
             </div>
