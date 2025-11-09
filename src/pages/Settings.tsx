@@ -17,6 +17,9 @@ import { ICConnectionForm } from "@/components/ICConnectionForm";
 import { ICConnectionStatus } from "@/components/ICConnectionStatus";
 import { DataQualityAlertSettings } from "@/components/DataQualityAlertSettings";
 import { DataQualityAlertHistory } from "@/components/DataQualityAlertHistory";
+import { ICSyncConfigurationForm } from "@/components/ICSyncConfigurationForm";
+import { ICSyncControlPanel } from "@/components/ICSyncControlPanel";
+import { SchoolHolidayManager } from "@/components/SchoolHolidayManager";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -731,6 +734,18 @@ const Settings = () => {
               {/* Data Quality Alert Settings - Only show if IC is connected */}
               {icConnection && (
                 <>
+                  <ICSyncControlPanel 
+                    schoolId={schoolData?.id || 0}
+                    onSyncTriggered={fetchICConnection}
+                  />
+                  
+                  <ICSyncConfigurationForm 
+                    schoolId={schoolData?.id || 0}
+                    onConfigUpdated={fetchICConnection}
+                  />
+                  
+                  <SchoolHolidayManager schoolId={schoolData?.id || 0} />
+                  
                   <DataQualityAlertSettings schoolId={schoolData?.id || 0} />
                   <DataQualityAlertHistory schoolId={schoolData?.id || 0} />
                 </>

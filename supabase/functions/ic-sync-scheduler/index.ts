@@ -104,31 +104,50 @@ serve(async (req) => {
       const schoolName = connection.schools?.school_name || `School ${schoolId}`;
       
       try {
-        // Check if sync needed (last sync > 20 hours ago)
-        const lastSyncAt = connection.last_sync_at ? new Date(connection.last_sync_at) : null;
+        // Check if school should sync now using new configuration-based logic
+        const { data: shouldSync, error: shouldSyncError } = await supabaseClient
+          .rpc('should_sync_now', { p_school_id: schoolId });
         
-        if (lastSyncAt && lastSyncAt > twentyHoursAgo) {
-          console.log(`Skipping school ${schoolId} (${schoolName}) - synced ${Math.round((now.getTime() - lastSyncAt.getTime()) / (60 * 60 * 1000))} hours ago`);
+        if (shouldSyncError) {
+          console.error(`Error checking sync status for school ${schoolId}:`, shouldSyncError);
+          failedSchools++;
+          errors.push({
+            school_id: schoolId,
+            error_message: `Failed to check sync status: ${shouldSyncError.message}`
+          });
+          continue;
+        }
+        
+        if (!shouldSync) {
+          console.log(`Skipping school ${schoolId} (${schoolName}) - not scheduled to sync now`);
           skippedSchools++;
           results.push({
             school_id: schoolId,
             school_name: schoolName,
             success: true,
             skipped: true,
-            reason: 'Recent sync within 20 hours'
+            reason: 'Not scheduled to sync at this time'
           });
           continue;
         }
+        
+        // Get sync configuration for this school
+        const { data: syncConfig } = await supabaseClient
+          .from('ic_sync_configuration')
+          .select('*')
+          .eq('school_id', schoolId)
+          .single();
 
         console.log(`Triggering sync for school ${schoolId} (${schoolName})...`);
 
-        // Call sync-infinite-campus edge function
+        // Call sync-infinite-campus edge function with configuration
         const { data: syncResult, error: syncError } = await supabaseClient.functions.invoke(
           'sync-infinite-campus',
           {
             body: {
               schoolId: schoolId,
-              syncType: 'scheduled'
+              syncType: 'scheduled',
+              syncConfig: syncConfig
             }
           }
         );
@@ -170,12 +189,31 @@ serve(async (req) => {
         } else {
           console.log(`Successfully triggered sync for school ${schoolId} (${schoolName})`);
           successfulSchools++;
+          
+          // Calculate and update next sync time
+          const { data: nextSyncTime } = await supabaseClient
+            .rpc('calculate_next_sync_time', { 
+              p_school_id: schoolId,
+              p_from_time: new Date().toISOString()
+            });
+          
+          if (nextSyncTime) {
+            await supabaseClient
+              .from('ic_sync_configuration')
+              .update({ 
+                next_scheduled_sync_at: nextSyncTime,
+                last_sync_at: new Date().toISOString()
+              })
+              .eq('school_id', schoolId);
+          }
+          
           results.push({
             school_id: schoolId,
             school_name: schoolName,
             success: true,
             skipped: false,
-            sync_details: syncResult
+            sync_details: syncResult,
+            next_sync_at: nextSyncTime
           });
           
           // Send success notification

@@ -9,6 +9,7 @@ interface SyncRequest {
   schoolId: number;
   syncType: 'manual' | 'scheduled';
   triggeredBy?: string;
+  syncConfig?: any; // Sync configuration from ic_sync_configuration table
 }
 
 interface SyncStats {
@@ -601,7 +602,23 @@ serve(async (req) => {
 
   try {
     const body: SyncRequest = await req.json();
-    const { schoolId, syncType, triggeredBy } = body;
+    const { schoolId, syncType, triggeredBy, syncConfig } = body;
+    
+    // Determine what data types to sync based on configuration
+    const shouldSyncStudents = syncConfig?.sync_students !== false;
+    const shouldSyncTeachers = syncConfig?.sync_teachers !== false;
+    const shouldSyncClasses = syncConfig?.sync_classes !== false;
+    const shouldSyncEnrollments = syncConfig?.sync_enrollments !== false;
+    const shouldSyncAcademicSessions = syncConfig?.sync_academic_sessions !== false;
+    const shouldSyncCourses = syncConfig?.sync_courses !== false;
+    
+    const skippedDataTypes: string[] = [];
+    if (!shouldSyncStudents) skippedDataTypes.push('students');
+    if (!shouldSyncTeachers) skippedDataTypes.push('teachers');
+    if (!shouldSyncClasses) skippedDataTypes.push('classes');
+    if (!shouldSyncEnrollments) skippedDataTypes.push('enrollments');
+    if (!shouldSyncAcademicSessions) skippedDataTypes.push('academic_sessions');
+    if (!shouldSyncCourses) skippedDataTypes.push('courses');
 
     // Check rate limiting for manual syncs
     const rateLimit = await checkRateLimit(supabaseAdmin, schoolId, syncType);
@@ -629,7 +646,7 @@ serve(async (req) => {
       });
     }
 
-    // Create sync log
+    // Create sync log with configuration snapshot
     const { data: syncLog, error: logError } = await supabaseAdmin
       .from('ic_sync_logs')
       .insert({
@@ -638,6 +655,9 @@ serve(async (req) => {
         sync_type: syncType,
         status: 'running',
         triggered_by: triggeredBy || null,
+        config_snapshot: syncConfig || null,
+        skipped_data_types: skippedDataTypes.length > 0 ? skippedDataTypes : null,
+        sync_reason: syncType === 'manual' ? 'manual' : 'scheduled',
       })
       .select()
       .single();
@@ -664,20 +684,36 @@ serve(async (req) => {
     // Authenticate
     await client.authenticate();
 
-    // Sync academic sessions first
-    await syncAcademicSessions(client, supabaseAdmin, schoolId);
+    // Conditionally sync based on configuration
+    let teacherStats = { created: 0, updated: 0, pending: 0 };
+    let studentStats = { created: 0, updated: 0, pending: 0 };
+    let classStats = { created: 0, updated: 0 };
+    let enrollmentStats = { created: 0, updated: 0 };
+    
+    // Sync academic sessions first if enabled
+    if (shouldSyncAcademicSessions) {
+      await syncAcademicSessions(client, supabaseAdmin, schoolId);
+    }
 
-    // Sync teachers
-    const teacherStats = await syncTeachers(client, supabaseAdmin, schoolId, syncLogId);
+    // Sync teachers if enabled
+    if (shouldSyncTeachers) {
+      teacherStats = await syncTeachers(client, supabaseAdmin, schoolId, syncLogId);
+    }
 
-    // Sync students
-    const studentStats = await syncStudents(client, supabaseAdmin, schoolId, syncLogId);
+    // Sync students if enabled
+    if (shouldSyncStudents) {
+      studentStats = await syncStudents(client, supabaseAdmin, schoolId, syncLogId);
+    }
 
-    // Sync classes
-    const classStats = await syncClasses(client, supabaseAdmin, schoolId);
+    // Sync classes if enabled
+    if (shouldSyncClasses) {
+      classStats = await syncClasses(client, supabaseAdmin, schoolId);
+    }
 
-    // Sync enrollments
-    const enrollmentStats = await syncEnrollments(client, supabaseAdmin, schoolId);
+    // Sync enrollments if enabled
+    if (shouldSyncEnrollments) {
+      enrollmentStats = await syncEnrollments(client, supabaseAdmin, schoolId);
+    }
 
     // Archive missing records
     const students = await client.getUsers('student');
