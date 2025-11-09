@@ -20,6 +20,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, MoreHorizontal, Edit, Trash2, Settings, CalendarDays, Users, Clock, CheckCircle, Copy } from "lucide-react";
+import { TimePicker } from "@/components/ui/time-picker";
 import { format, parseISO } from "date-fns";
 import { useImpersonation } from "@/hooks/useImpersonation";
 
@@ -806,23 +807,23 @@ export default function DismissalPlans() {
                         />
 
                         <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="dismissal_time"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Dismissal Time</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="time" 
-                                    placeholder={schoolDismissalTime || "15:00"}
-                                    {...field} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                        <FormField
+                          control={form.control}
+                          name="dismissal_time"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Dismissal Time</FormLabel>
+                              <FormControl>
+                                <TimePicker
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  placeholder={schoolDismissalTime || "Pick dismissal time"}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
                           <FormField
                             control={form.control}

@@ -14,6 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import * as z from "zod";
+import { TimePicker } from "@/components/ui/time-picker";
 
 const formatPhoneNumber = (value: string): string => {
   const digits = value.replace(/\D/g, '');
@@ -349,11 +350,10 @@ const Settings = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="dismissal-time">Default Dismissal Time</Label>
-              <Input 
-                id="dismissal-time" 
-                type="time" 
+              <TimePicker
                 value={dismissalSettings.dismissalTime}
-                onChange={(e) => setDismissalSettings({...dismissalSettings, dismissalTime: e.target.value})}
+                onChange={(value) => setDismissalSettings({...dismissalSettings, dismissalTime: value})}
+                placeholder="Pick dismissal time"
               />
             </div>
             <div className="space-y-2">

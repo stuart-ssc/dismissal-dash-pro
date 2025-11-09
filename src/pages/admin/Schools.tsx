@@ -18,8 +18,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TimePicker } from "@/components/ui/time-picker";
 import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search, Filter, CheckCircle, Clock, AlertTriangle, XCircle, FileText, Edit, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
@@ -303,7 +304,17 @@ function SchoolForm({
 
       <div className="space-y-2">
         <Label htmlFor="dismissal_time">Dismissal Time</Label>
-        <Input id="dismissal_time" type="time" step="60" {...form.register("dismissal_time")} />
+        <Controller
+          name="dismissal_time"
+          control={form.control}
+          render={({ field }) => (
+            <TimePicker
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Pick dismissal time"
+            />
+          )}
+        />
       </div>
 
       <div className="space-y-2">
