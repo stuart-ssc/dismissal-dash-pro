@@ -43,6 +43,7 @@ import ICPendingMerges from "./pages/admin/ICPendingMerges";
 import ICAutoMergeRules from "./pages/admin/ICAutoMergeRules";
 import ICMergeAudit from "./pages/admin/ICMergeAudit";
 import ICSyncDashboard from "./pages/admin/ICSyncDashboard";
+import ICDataQuality from "./pages/admin/ICDataQuality";
 import AcademicSessions from "./pages/admin/AcademicSessions";
 import ArchivedUsers from "./pages/admin/ArchivedUsers";
 import DismissalLauncher from "./pages/DismissalLauncher";
@@ -98,6 +99,7 @@ const AppContent = () => {
             <Route path="/dashboard/integrations/ic-sync" element={<ICSyncDashboard />} />
             <Route path="/dashboard/integrations/ic-sync-history" element={<ICSyncHistory />} />
             <Route path="/dashboard/integrations/ic-pending-merges" element={<ICPendingMerges />} />
+            <Route path="/dashboard/integrations/ic-data-quality" element={<ICDataQuality />} />
             <Route path="/dashboard/integrations/ic-auto-merge-rules" element={<ICAutoMergeRules />} />
             <Route path="/dashboard/integrations/ic-merge-audit" element={<ICMergeAudit />} />
             <Route path="/dashboard/academic-sessions" element={<AcademicSessions />} />

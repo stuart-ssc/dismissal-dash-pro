@@ -294,7 +294,7 @@ export default function ICSyncDashboard() {
           <CardDescription>Common tasks and management tools</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <Button
               variant="outline"
               className="h-auto flex-col py-4"
@@ -338,6 +338,15 @@ export default function ICSyncDashboard() {
             >
               <FileText className="h-5 w-5 mb-2" />
               <span className="text-sm">Audit Log</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col py-4"
+              onClick={() => navigate("/dashboard/integrations/ic-data-quality")}
+            >
+              <CheckCircle className="h-5 w-5 mb-2" />
+              <span className="text-sm">Data Quality</span>
             </Button>
           </div>
         </CardContent>

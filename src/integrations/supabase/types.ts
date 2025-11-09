@@ -1338,6 +1338,80 @@ export type Database = {
           },
         ]
       }
+      ic_data_quality_snapshots: {
+        Row: {
+          classes_without_students: number
+          classes_without_teachers: number
+          created_at: string
+          data_quality_grade: string | null
+          id: string
+          overall_completeness_score: number | null
+          school_id: number
+          snapshot_date: string
+          students_missing_contact_info: number
+          students_missing_ic_id: number
+          students_missing_parent_name: number
+          students_without_classes: number
+          teachers_missing_email: number
+          teachers_missing_ic_id: number
+          teachers_without_accounts: number
+          teachers_without_classes: number
+          total_classes: number
+          total_students: number
+          total_teachers: number
+        }
+        Insert: {
+          classes_without_students?: number
+          classes_without_teachers?: number
+          created_at?: string
+          data_quality_grade?: string | null
+          id?: string
+          overall_completeness_score?: number | null
+          school_id: number
+          snapshot_date?: string
+          students_missing_contact_info?: number
+          students_missing_ic_id?: number
+          students_missing_parent_name?: number
+          students_without_classes?: number
+          teachers_missing_email?: number
+          teachers_missing_ic_id?: number
+          teachers_without_accounts?: number
+          teachers_without_classes?: number
+          total_classes?: number
+          total_students?: number
+          total_teachers?: number
+        }
+        Update: {
+          classes_without_students?: number
+          classes_without_teachers?: number
+          created_at?: string
+          data_quality_grade?: string | null
+          id?: string
+          overall_completeness_score?: number | null
+          school_id?: number
+          snapshot_date?: string
+          students_missing_contact_info?: number
+          students_missing_ic_id?: number
+          students_missing_parent_name?: number
+          students_without_classes?: number
+          teachers_missing_email?: number
+          teachers_missing_ic_id?: number
+          teachers_without_accounts?: number
+          teachers_without_classes?: number
+          total_classes?: number
+          total_students?: number
+          total_teachers?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_data_quality_snapshots_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ic_merge_audit_log: {
         Row: {
           auto_approved: boolean
@@ -3370,6 +3444,26 @@ export type Database = {
               preparation_start_time: string
             }[]
           }
+      calculate_ic_data_quality: {
+        Args: { p_school_id: number }
+        Returns: {
+          classes_without_students: number
+          classes_without_teachers: number
+          data_quality_grade: string
+          overall_completeness_score: number
+          students_missing_contact_info: number
+          students_missing_ic_id: number
+          students_missing_parent_name: number
+          students_without_classes: number
+          teachers_missing_email: number
+          teachers_missing_ic_id: number
+          teachers_without_accounts: number
+          teachers_without_classes: number
+          total_classes: number
+          total_students: number
+          total_teachers: number
+        }[]
+      }
       can_manage_school_data: {
         Args: { target_school_id: number }
         Returns: boolean

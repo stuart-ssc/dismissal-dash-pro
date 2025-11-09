@@ -747,6 +747,25 @@ serve(async (req) => {
 
     const pendingMerges = studentStats.pending + teacherStats.pending;
 
+    // Capture data quality snapshot after successful sync
+    try {
+      const { data: qualityMetrics } = await supabaseAdmin
+        .rpc('calculate_ic_data_quality', { p_school_id: schoolId });
+
+      if (qualityMetrics && qualityMetrics.length > 0) {
+        await supabaseAdmin
+          .from('ic_data_quality_snapshots')
+          .upsert({
+            school_id: schoolId,
+            snapshot_date: new Date().toISOString().split('T')[0],
+            ...qualityMetrics[0]
+          });
+      }
+    } catch (qualityError) {
+      console.error('Error capturing quality snapshot:', qualityError);
+      // Don't fail the sync if quality capture fails
+    }
+
     return new Response(JSON.stringify({ 
       success: true,
       stats,
