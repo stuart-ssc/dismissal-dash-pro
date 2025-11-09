@@ -11,6 +11,14 @@ export const brandColors = {
   redBackground: '#FEF2F2',
   blueInfo: '#0184F7',
   blueInfoBackground: '#F0F9FF',
+  greenSuccess: '#10B981',
+  // Aliases for easier reference
+  primary: '#0184F7',
+  danger: '#DC2626',
+  success: '#10B981',
+  info: '#0184F7',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
 };
 
 export const fontFamily = "'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";

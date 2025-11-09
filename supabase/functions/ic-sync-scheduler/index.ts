@@ -146,6 +146,27 @@ serve(async (req) => {
             success: false,
             error: syncError.message
           });
+          
+          // Send failure notification
+          try {
+            await supabaseClient.functions.invoke('send-ic-sync-notification', {
+              body: {
+                schoolId: schoolId,
+                status: 'failure',
+                statistics: {
+                  totalStudents: 0,
+                  studentsAdded: 0,
+                  studentsUpdated: 0,
+                  errors: 1,
+                  duration: '0s',
+                },
+                errorDetails: [syncError.message],
+                syncedAt: new Date().toISOString(),
+              }
+            });
+          } catch (notifError) {
+            console.error(`Failed to send notification for school ${schoolId}:`, notifError);
+          }
         } else {
           console.log(`Successfully triggered sync for school ${schoolId} (${schoolName})`);
           successfulSchools++;
@@ -156,6 +177,28 @@ serve(async (req) => {
             skipped: false,
             sync_details: syncResult
           });
+          
+          // Send success notification
+          try {
+            const syncStats = syncResult || {};
+            await supabaseClient.functions.invoke('send-ic-sync-notification', {
+              body: {
+                schoolId: schoolId,
+                status: 'success',
+                statistics: {
+                  totalStudents: syncStats.studentsProcessed || 0,
+                  studentsAdded: syncStats.studentsAdded || 0,
+                  studentsUpdated: syncStats.studentsUpdated || 0,
+                  errors: syncStats.errors?.length || 0,
+                  duration: syncStats.duration || '0s',
+                },
+                errorDetails: syncStats.errors || [],
+                syncedAt: new Date().toISOString(),
+              }
+            });
+          } catch (notifError) {
+            console.error(`Failed to send notification for school ${schoolId}:`, notifError);
+          }
         }
       } catch (error) {
         console.error(`Exception for school ${schoolId}:`, error);
