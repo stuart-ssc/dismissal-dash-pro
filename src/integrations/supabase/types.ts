@@ -1351,6 +1351,42 @@ export type Database = {
           },
         ]
       }
+      ic_scheduler_execution_logs: {
+        Row: {
+          created_at: string
+          errors: Json | null
+          execution_duration_ms: number
+          failed_schools: number
+          id: string
+          skipped_schools: number
+          status: string
+          successful_schools: number
+          total_schools_processed: number
+        }
+        Insert: {
+          created_at?: string
+          errors?: Json | null
+          execution_duration_ms: number
+          failed_schools?: number
+          id?: string
+          skipped_schools?: number
+          status: string
+          successful_schools?: number
+          total_schools_processed?: number
+        }
+        Update: {
+          created_at?: string
+          errors?: Json | null
+          execution_duration_ms?: number
+          failed_schools?: number
+          id?: string
+          skipped_schools?: number
+          status?: string
+          successful_schools?: number
+          total_schools_processed?: number
+        }
+        Relationships: []
+      }
       ic_sync_logs: {
         Row: {
           classes_archived: number | null

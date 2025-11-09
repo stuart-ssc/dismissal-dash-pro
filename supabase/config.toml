@@ -57,6 +57,9 @@ verify_jwt = true
 [functions.dismissal-scheduler]
 verify_jwt = false
 
+[functions.ic-sync-scheduler]
+verify_jwt = false
+
 [functions.end-mode-session]
 verify_jwt = true
 
