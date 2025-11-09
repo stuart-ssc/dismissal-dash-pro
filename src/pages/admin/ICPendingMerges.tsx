@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,11 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckSquare, XSquare } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckSquare, XSquare, Search, Calendar, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 const ICPendingMerges = () => {
   const { user, userRole, loading } = useAuth();
@@ -23,6 +27,10 @@ const ICPendingMerges = () => {
   const [filterType, setFilterType] = useState('all');
   const [selectedMerges, setSelectedMerges] = useState<Set<string>>(new Set());
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [confidenceFilter, setConfidenceFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'very-low'>('all');
+  const [matchTypeFilter, setMatchTypeFilter] = useState<'all' | string>('all');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
 
   useEffect(() => {
     if (!loading && (!user || userRole !== 'school_admin')) {
@@ -107,9 +115,16 @@ const ICPendingMerges = () => {
     setExpandedRows(newExpanded);
   };
 
+  const getConfidenceLevel = (confidence: number): 'high' | 'medium' | 'low' | 'very-low' => {
+    if (confidence >= 90) return 'high';
+    if (confidence >= 70) return 'medium';
+    if (confidence >= 50) return 'low';
+    return 'very-low';
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedMerges(new Set(filteredMerges.map(m => m.id)));
+      setSelectedMerges(new Set(filteredAndSearchedMerges.map(m => m.id)));
     } else {
       setSelectedMerges(new Set());
     }
@@ -163,9 +178,55 @@ const ICPendingMerges = () => {
     }
   };
 
-  const filteredMerges = filterType === 'all' 
-    ? pendingMerges
-    : pendingMerges.filter(m => m.record_type === filterType);
+  const filteredAndSearchedMerges = useMemo(() => {
+    let results = pendingMerges;
+    
+    // Filter by record type (existing tabs)
+    if (filterType !== 'all') {
+      results = results.filter(m => m.record_type === filterType);
+    }
+    
+    // Filter by search query (name search)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      results = results.filter(m => {
+        const firstName = m.ic_data.firstName?.toLowerCase() || '';
+        const lastName = m.ic_data.lastName?.toLowerCase() || '';
+        const email = m.ic_data.email?.toLowerCase() || '';
+        const icId = m.ic_external_id?.toLowerCase() || '';
+        
+        return firstName.includes(query) || 
+               lastName.includes(query) || 
+               email.includes(query) ||
+               icId.includes(query);
+      });
+    }
+    
+    // Filter by confidence level
+    if (confidenceFilter !== 'all') {
+      results = results.filter(m => {
+        const level = getConfidenceLevel(m.match_confidence || 0);
+        return level === confidenceFilter;
+      });
+    }
+    
+    // Filter by match type
+    if (matchTypeFilter !== 'all') {
+      results = results.filter(m => m.match_criteria === matchTypeFilter);
+    }
+    
+    // Filter by date range
+    if (dateRange.from || dateRange.to) {
+      results = results.filter(m => {
+        const createdDate = new Date(m.created_at);
+        if (dateRange.from && createdDate < dateRange.from) return false;
+        if (dateRange.to && createdDate > dateRange.to) return false;
+        return true;
+      });
+    }
+    
+    return results;
+  }, [pendingMerges, filterType, searchQuery, confidenceFilter, matchTypeFilter, dateRange]);
 
   const studentCount = pendingMerges.filter(m => m.record_type === 'student').length;
   const teacherCount = pendingMerges.filter(m => m.record_type === 'teacher').length;
@@ -193,15 +254,178 @@ const ICPendingMerges = () => {
         </Button>
       </div>
 
-      {filteredMerges.length > 0 && (
+      {filteredAndSearchedMerges.length > 0 && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Action Required</AlertTitle>
           <AlertDescription>
-            {filteredMerges.length} record(s) require your review before they can be added to the system
+            {filteredAndSearchedMerges.length} record(s) require your review before they can be added to the system
           </AlertDescription>
         </Alert>
       )}
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or IC ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1 h-7 w-7 p-0"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Confidence Level Filter */}
+            <Select value={confidenceFilter} onValueChange={(value: any) => setConfidenceFilter(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Confidence Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Confidence Levels</SelectItem>
+                <SelectItem value="high">High (90-100%)</SelectItem>
+                <SelectItem value="medium">Medium (70-89%)</SelectItem>
+                <SelectItem value="low">Low (50-69%)</SelectItem>
+                <SelectItem value="very-low">Very Low (&lt;50%)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Match Type Filter */}
+            <Select value={matchTypeFilter} onValueChange={setMatchTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Match Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Match Types</SelectItem>
+                {Array.from(new Set(pendingMerges.map(m => m.match_criteria).filter(Boolean))).map(criteria => (
+                  <SelectItem key={criteria} value={criteria}>{criteria}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Date Range Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {dateRange.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "MMM d, yyyy")
+                    )
+                  ) : (
+                    <span>Pick date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="range"
+                  selected={dateRange as any}
+                  onSelect={setDateRange as any}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Active Filters Summary & Clear Button */}
+          {(searchQuery || confidenceFilter !== 'all' || matchTypeFilter !== 'all' || dateRange.from || dateRange.to) && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="flex gap-2 flex-wrap">
+                {searchQuery && (
+                  <Badge variant="secondary">
+                    Search: {searchQuery}
+                    <button onClick={() => setSearchQuery('')} className="ml-1">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {confidenceFilter !== 'all' && (
+                  <Badge variant="secondary">
+                    Confidence: {confidenceFilter}
+                    <button onClick={() => setConfidenceFilter('all')} className="ml-1">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {matchTypeFilter !== 'all' && (
+                  <Badge variant="secondary">
+                    Match: {matchTypeFilter}
+                    <button onClick={() => setMatchTypeFilter('all')} className="ml-1">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {(dateRange.from || dateRange.to) && (
+                  <Badge variant="secondary">
+                    Date Range
+                    <button onClick={() => setDateRange({})} className="ml-1">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setConfidenceFilter('all');
+                  setMatchTypeFilter('all');
+                  setDateRange({});
+                }}
+              >
+                Clear All Filters
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold">{filteredAndSearchedMerges.length}</div>
+              <div className="text-sm text-muted-foreground">Total Results</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {filteredAndSearchedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'high').length}
+              </div>
+              <div className="text-sm text-muted-foreground">High Confidence</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {filteredAndSearchedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'medium').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Medium Confidence</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-amber-600">
+                {filteredAndSearchedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'low').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Low Confidence</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs value={filterType} onValueChange={setFilterType}>
         <TabsList>
@@ -223,13 +447,37 @@ const ICPendingMerges = () => {
               <CardDescription>Review and approve or reject potential matches</CardDescription>
             </CardHeader>
             <CardContent>
-              {filteredMerges.length === 0 ? (
+              {filteredAndSearchedMerges.length === 0 ? (
                 <div className="text-center py-12">
-                  <GitMerge className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No pending merges</h3>
-                  <p className="text-sm text-muted-foreground">
-                    All Infinite Campus records have been processed
-                  </p>
+                  {pendingMerges.length === 0 ? (
+                    <>
+                      <GitMerge className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No pending merges</h3>
+                      <p className="text-sm text-muted-foreground">
+                        All Infinite Campus records have been processed
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No matches found</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Try adjusting your filters or search query
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setConfidenceFilter('all');
+                          setMatchTypeFilter('all');
+                          setDateRange({});
+                        }}
+                      >
+                        Clear All Filters
+                      </Button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <Table>
@@ -237,7 +485,7 @@ const ICPendingMerges = () => {
                     <TableRow>
                       <TableHead className="w-12">
                         <Checkbox
-                          checked={selectedMerges.size === filteredMerges.length && filteredMerges.length > 0}
+                          checked={selectedMerges.size === filteredAndSearchedMerges.length && filteredAndSearchedMerges.length > 0}
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
@@ -250,7 +498,7 @@ const ICPendingMerges = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMerges.map((merge) => {
+                    {filteredAndSearchedMerges.map((merge) => {
                       const isExpanded = expandedRows.has(merge.id);
                       const icData = merge.ic_data;
                       
@@ -281,15 +529,30 @@ const ICPendingMerges = () => {
                               {icData.firstName} {icData.lastName}
                             </TableCell>
                             <TableCell>
-                              {merge.record_type === 'student' ? icData.gradeLevel : icData.email}
+                              <div className="space-y-1">
+                                <div>{merge.record_type === 'student' ? icData.gradeLevel : icData.email}</div>
+                                {merge.match_criteria && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {merge.match_criteria}
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
-                              <div className="space-y-1">
-                                <Progress value={merge.match_confidence || 0} className="w-24" />
-                                <span className="text-xs text-muted-foreground">
-                                  {Math.round(merge.match_confidence || 0)}%
-                                </span>
-                              </div>
+                              {(() => {
+                                const level = getConfidenceLevel(merge.match_confidence || 0);
+                                const colors = {
+                                  'high': 'bg-green-100 text-green-800 border-green-200',
+                                  'medium': 'bg-blue-100 text-blue-800 border-blue-200',
+                                  'low': 'bg-amber-100 text-amber-800 border-amber-200',
+                                  'very-low': 'bg-red-100 text-red-800 border-red-200'
+                                };
+                                return (
+                                  <Badge variant="outline" className={colors[level]}>
+                                    {Math.round(merge.match_confidence || 0)}%
+                                  </Badge>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
