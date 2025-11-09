@@ -18,7 +18,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { SpecialUseGroupDialog } from "@/components/SpecialUseGroupDialog";
 import { ManageGroupStudentsDialog } from "@/components/ManageGroupStudentsDialog";
 import { ManageGroupManagersDialog } from "@/components/ManageGroupManagersDialog";
-import { ScheduleRunDialog } from "@/components/ScheduleRunDialog";
+import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -276,10 +276,11 @@ export default function SpecialUseGroups() {
         onSuccess={refetch}
       />
 
-      <ScheduleRunDialog
+      <SpecialUseRunDialog
         open={scheduleDialogOpen}
         onOpenChange={setScheduleDialogOpen}
-        group={selectedGroup}
+        run={null}
+        preselectedGroupId={selectedGroup?.id}
         onSuccess={() => {
           setScheduleDialogOpen(false);
           toast.success("Run scheduled successfully");

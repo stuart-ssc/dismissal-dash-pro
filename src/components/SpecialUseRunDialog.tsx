@@ -32,6 +32,7 @@ type SpecialUseRunDialogProps = {
   onOpenChange: (open: boolean) => void;
   run: any | null;
   onSuccess: () => void;
+  preselectedGroupId?: string;
 };
 
 type Group = {
@@ -49,6 +50,7 @@ export function SpecialUseRunDialog({
   onOpenChange,
   run,
   onSuccess,
+  preselectedGroupId,
 }: SpecialUseRunDialogProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -83,7 +85,7 @@ export function SpecialUseRunDialog({
     } else {
       setFormData({
         run_name: "",
-        group_id: "",
+        group_id: preselectedGroupId || "",
         run_date: new Date(),
         scheduled_departure_time: "",
         scheduled_return_time: "",
@@ -239,6 +241,7 @@ export function SpecialUseRunDialog({
               <Select
                 value={formData.group_id}
                 onValueChange={(value) => setFormData({ ...formData, group_id: value })}
+                disabled={!!preselectedGroupId && !run}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select group" />
