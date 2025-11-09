@@ -15,6 +15,7 @@ import { Settings as SettingsIcon, School, Bell, Shield, Clock, Upload, X, Datab
 import { toast } from "sonner";
 import { ICConnectionForm } from "@/components/ICConnectionForm";
 import { ICConnectionStatus } from "@/components/ICConnectionStatus";
+import { ICConnectionWizard } from "@/components/ICConnectionWizard";
 import { DataQualityAlertSettings } from "@/components/DataQualityAlertSettings";
 import { DataQualityAlertHistory } from "@/components/DataQualityAlertHistory";
 import { ICSyncConfigurationForm } from "@/components/ICSyncConfigurationForm";
@@ -724,7 +725,11 @@ const Settings = () => {
                 </CardHeader>
                 <CardContent>
                   {!icConnection ? (
-                    <ICConnectionForm schoolId={schoolData?.id || 0} onConnectionSuccess={fetchICConnection} />
+                    <ICConnectionWizard 
+                      schoolId={schoolData?.id || 0} 
+                      onComplete={fetchICConnection}
+                      onCancel={() => console.log('Wizard cancelled')}
+                    />
                   ) : (
                     <ICConnectionStatus connection={icConnection} onDisconnect={fetchICConnection} />
                   )}
