@@ -1338,6 +1338,94 @@ export type Database = {
           },
         ]
       }
+      ic_merge_audit_log: {
+        Row: {
+          auto_approved: boolean
+          auto_approved_by_rule_id: string | null
+          created_at: string
+          decided_at: string
+          decided_by: string | null
+          decision: string
+          id: string
+          merge_data: Json
+          merge_id: string
+          notes: string | null
+          school_id: number
+        }
+        Insert: {
+          auto_approved?: boolean
+          auto_approved_by_rule_id?: string | null
+          created_at?: string
+          decided_at?: string
+          decided_by?: string | null
+          decision: string
+          id?: string
+          merge_data: Json
+          merge_id: string
+          notes?: string | null
+          school_id: number
+        }
+        Update: {
+          auto_approved?: boolean
+          auto_approved_by_rule_id?: string | null
+          created_at?: string
+          decided_at?: string
+          decided_by?: string | null
+          decision?: string
+          id?: string
+          merge_data?: Json
+          merge_id?: string
+          notes?: string | null
+          school_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_merge_audit_log_auto_approved_by_rule_id_fkey"
+            columns: ["auto_approved_by_rule_id"]
+            isOneToOne: false
+            referencedRelation: "ic_auto_merge_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ic_merge_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          edited: boolean
+          id: string
+          merge_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          edited?: boolean
+          id?: string
+          merge_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          edited?: boolean
+          id?: string
+          merge_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_merge_comments_merge_id_fkey"
+            columns: ["merge_id"]
+            isOneToOne: false
+            referencedRelation: "ic_pending_merges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ic_pending_merges: {
         Row: {
           auto_approved_at: string | null

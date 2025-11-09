@@ -139,6 +139,18 @@ serve(async (req) => {
             })
             .eq('id', currentMergeId);
 
+          // Log to merge audit log
+          await supabaseAdmin.from('ic_merge_audit_log').insert({
+            merge_id: currentMergeId,
+            school_id: merge.school_id,
+            decision: 'approve',
+            decided_by: autoApprovedByRuleId ? null : user.id,
+            auto_approved: !!autoApprovedByRuleId,
+            auto_approved_by_rule_id: autoApprovedByRuleId || null,
+            notes: notes || null,
+            merge_data: merge,
+          });
+
           // Log audit event
           await supabaseAdmin.from('audit_logs').insert({
             school_id: merge.school_id,
@@ -199,6 +211,18 @@ serve(async (req) => {
               decision_notes: notes || 'Created as new record',
             })
             .eq('id', currentMergeId);
+
+          // Log to merge audit log
+          await supabaseAdmin.from('ic_merge_audit_log').insert({
+            merge_id: currentMergeId,
+            school_id: merge.school_id,
+            decision: 'reject',
+            decided_by: user.id,
+            auto_approved: false,
+            auto_approved_by_rule_id: null,
+            notes: notes || 'Created as new record',
+            merge_data: merge,
+          });
 
           // Log audit event
           await supabaseAdmin.from('audit_logs').insert({
