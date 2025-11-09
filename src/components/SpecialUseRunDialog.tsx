@@ -226,7 +226,7 @@ export function SpecialUseRunDialog({
               {run ? "Update run details" : "Create a new special use run"}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+          <div className="grid gap-4 py-4 px-1 max-h-[60vh] overflow-y-auto">
             <div className="grid gap-2">
               <Label htmlFor="run_name">Run Name</Label>
               <Input
