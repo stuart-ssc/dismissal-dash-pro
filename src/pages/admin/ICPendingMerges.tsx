@@ -35,6 +35,7 @@ const ICPendingMerges = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [expandedRecordDetails, setExpandedRecordDetails] = useState<Map<string, any>>(new Map());
 
   useEffect(() => {
     if (!loading && (!user || userRole !== 'school_admin')) {
@@ -109,14 +110,98 @@ const ICPendingMerges = () => {
     }
   };
 
-  const toggleRowExpansion = (id: string) => {
+  const toggleRowExpansion = async (merge: any) => {
     const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
+    if (newExpanded.has(merge.id)) {
+      newExpanded.delete(merge.id);
     } else {
-      newExpanded.add(id);
+      newExpanded.add(merge.id);
+      // Fetch existing record details if we have an existing_record_id
+      if (merge.existing_record_id && !expandedRecordDetails.has(merge.id)) {
+        await fetchExistingRecord(merge);
+      }
     }
     setExpandedRows(newExpanded);
+  };
+
+  const fetchExistingRecord = async (merge: any) => {
+    try {
+      const table = merge.record_type === 'student' ? 'students' : 'teachers';
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .eq('id', merge.existing_record_id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setExpandedRecordDetails(prev => new Map(prev).set(merge.id, data));
+      }
+    } catch (error) {
+      console.error('Error fetching existing record:', error);
+    }
+  };
+
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    if (!str1 || !str2) return 0;
+    const s1 = str1.toLowerCase();
+    const s2 = str2.toLowerCase();
+    if (s1 === s2) return 1;
+    
+    const longer = s1.length > s2.length ? s1 : s2;
+    const shorter = s1.length > s2.length ? s2 : s1;
+    
+    if (longer.length === 0) return 1;
+    
+    const editDistance = (s1: string, s2: string): number => {
+      const costs = [];
+      for (let i = 0; i <= s1.length; i++) {
+        let lastValue = i;
+        for (let j = 0; j <= s2.length; j++) {
+          if (i === 0) {
+            costs[j] = j;
+          } else if (j > 0) {
+            let newValue = costs[j - 1];
+            if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+              newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+            }
+            costs[j - 1] = lastValue;
+            lastValue = newValue;
+          }
+        }
+        if (i > 0) costs[s2.length] = lastValue;
+      }
+      return costs[s2.length];
+    };
+    
+    return (longer.length - editDistance(s1, s2)) / longer.length;
+  };
+
+  const compareFields = (icValue: any, existingValue: any): 'match' | 'different' | 'similar' => {
+    if (!existingValue && !icValue) return 'match';
+    if (!existingValue) return 'different';
+    if (!icValue) return 'match';
+    if (icValue === existingValue) return 'match';
+    
+    if (typeof icValue === 'string' && typeof existingValue === 'string') {
+      const similarity = calculateSimilarity(icValue, existingValue);
+      if (similarity === 1) return 'match';
+      if (similarity > 0.8) return 'similar';
+    }
+    
+    return 'different';
+  };
+
+  const getFieldClassName = (comparison: 'match' | 'different' | 'similar') => {
+    switch (comparison) {
+      case 'different':
+        return 'bg-green-50 dark:bg-green-950/20 border-l-2 border-green-500 pl-2';
+      case 'similar':
+        return 'bg-amber-50 dark:bg-amber-950/20 border-l-2 border-amber-500 pl-2';
+      default:
+        return '';
+    }
   };
 
   const getConfidenceLevel = (confidence: number): 'high' | 'medium' | 'low' | 'very-low' => {
@@ -644,7 +729,7 @@ const ICPendingMerges = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => toggleRowExpansion(merge.id)}
+                                onClick={() => toggleRowExpansion(merge)}
                               >
                                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </Button>
@@ -703,56 +788,230 @@ const ICPendingMerges = () => {
                           </TableRow>
                           {isExpanded && (
                             <TableRow>
-                              <TableCell colSpan={7}>
-                                <div className="p-4 space-y-4 bg-muted/20 rounded-lg">
-                                  <div className="grid grid-cols-2 gap-8">
-                                    <div>
-                                      <h4 className="font-medium mb-3">Infinite Campus Data</h4>
-                                      <dl className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                          <dt className="text-muted-foreground">First Name:</dt>
-                                          <dd className="font-medium">{icData.firstName}</dd>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <dt className="text-muted-foreground">Last Name:</dt>
-                                          <dd className="font-medium">{icData.lastName}</dd>
-                                        </div>
-                                        {icData.email && (
-                                          <div className="flex justify-between">
-                                            <dt className="text-muted-foreground">Email:</dt>
-                                            <dd className="font-medium">{icData.email}</dd>
-                                          </div>
-                                        )}
-                                        {icData.gradeLevel && (
-                                          <div className="flex justify-between">
-                                            <dt className="text-muted-foreground">Grade:</dt>
-                                            <dd className="font-medium">{icData.gradeLevel}</dd>
-                                          </div>
-                                        )}
-                                        <div className="flex justify-between">
-                                          <dt className="text-muted-foreground">IC ID:</dt>
-                                          <dd className="font-mono text-xs">{merge.ic_external_id}</dd>
-                                        </div>
-                                      </dl>
-                                    </div>
-                                    
-                                    {merge.existing_record_id && (
-                                      <div>
-                                        <h4 className="font-medium mb-3">Existing Record</h4>
-                                        <dl className="space-y-2 text-sm">
-                                          <div className="flex justify-between">
-                                            <dt className="text-muted-foreground">Match Criteria:</dt>
-                                            <dd>
-                                              <Badge variant="outline">{merge.match_criteria}</Badge>
-                                            </dd>
-                                          </div>
-                                          <div className="text-xs text-muted-foreground mt-2">
-                                            Existing record will be updated with IC data if approved
-                                          </div>
-                                        </dl>
+                              <TableCell colSpan={7} className="p-0">
+                                <div className="p-6 space-y-6 bg-muted/20">
+                                  {merge.existing_record_id ? (
+                                    <>
+                                      {/* Side-by-side comparison */}
+                                      <div className="grid grid-cols-2 gap-6">
+                                        {/* IC Data Column */}
+                                        <Card>
+                                          <CardHeader className="pb-3">
+                                            <div className="flex items-center justify-between">
+                                              <CardTitle className="text-base">Infinite Campus Data</CardTitle>
+                                              <Badge variant="secondary">New from IC</Badge>
+                                            </div>
+                                          </CardHeader>
+                                          <CardContent className="space-y-3">
+                                            <div className={getFieldClassName(compareFields(icData.firstName, expandedRecordDetails.get(merge.id)?.first_name))}>
+                                              <div className="text-xs text-muted-foreground">First Name</div>
+                                              <div className="font-medium">{icData.firstName || 'N/A'}</div>
+                                            </div>
+                                            <div className={getFieldClassName(compareFields(icData.lastName, expandedRecordDetails.get(merge.id)?.last_name))}>
+                                              <div className="text-xs text-muted-foreground">Last Name</div>
+                                              <div className="font-medium">{icData.lastName || 'N/A'}</div>
+                                            </div>
+                                            {merge.record_type === 'teacher' && (
+                                              <div className={getFieldClassName(compareFields(icData.email, expandedRecordDetails.get(merge.id)?.email))}>
+                                                <div className="text-xs text-muted-foreground">Email</div>
+                                                <div className="font-medium">{icData.email || 'N/A'}</div>
+                                              </div>
+                                            )}
+                                            {merge.record_type === 'student' && (
+                                              <>
+                                                <div className={getFieldClassName(compareFields(icData.studentId, expandedRecordDetails.get(merge.id)?.student_id))}>
+                                                  <div className="text-xs text-muted-foreground">Student ID</div>
+                                                  <div className="font-medium">{icData.studentId || 'N/A'}</div>
+                                                </div>
+                                                <div className={getFieldClassName(compareFields(icData.gradeLevel, expandedRecordDetails.get(merge.id)?.grade_level))}>
+                                                  <div className="text-xs text-muted-foreground">Grade Level</div>
+                                                  <div className="font-medium">{icData.gradeLevel || 'N/A'}</div>
+                                                </div>
+                                              </>
+                                            )}
+                                            <div>
+                                              <div className="text-xs text-muted-foreground">IC External ID</div>
+                                              <div className="font-mono text-xs">{merge.ic_external_id}</div>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+
+                                        {/* Existing Data Column */}
+                                        <Card>
+                                          <CardHeader className="pb-3">
+                                            <div className="flex items-center justify-between">
+                                              <CardTitle className="text-base">Current DismissalPro Record</CardTitle>
+                                              <Badge>Existing</Badge>
+                                            </div>
+                                          </CardHeader>
+                                          <CardContent className="space-y-3">
+                                            {expandedRecordDetails.get(merge.id) ? (
+                                              <>
+                                                <div>
+                                                  <div className="text-xs text-muted-foreground">First Name</div>
+                                                  <div className="font-medium">{expandedRecordDetails.get(merge.id).first_name || 'N/A'}</div>
+                                                </div>
+                                                <div>
+                                                  <div className="text-xs text-muted-foreground">Last Name</div>
+                                                  <div className="font-medium">{expandedRecordDetails.get(merge.id).last_name || 'N/A'}</div>
+                                                </div>
+                                                {merge.record_type === 'teacher' && (
+                                                  <div>
+                                                    <div className="text-xs text-muted-foreground">Email</div>
+                                                    <div className="font-medium">{expandedRecordDetails.get(merge.id).email || 'N/A'}</div>
+                                                  </div>
+                                                )}
+                                                {merge.record_type === 'student' && (
+                                                  <>
+                                                    <div>
+                                                      <div className="text-xs text-muted-foreground">Student ID</div>
+                                                      <div className="font-medium">{expandedRecordDetails.get(merge.id).student_id || 'N/A'}</div>
+                                                    </div>
+                                                    <div>
+                                                      <div className="text-xs text-muted-foreground">Grade Level</div>
+                                                      <div className="font-medium">{expandedRecordDetails.get(merge.id).grade_level || 'N/A'}</div>
+                                                    </div>
+                                                  </>
+                                                )}
+                                                <div>
+                                                  <div className="text-xs text-muted-foreground">IC External ID</div>
+                                                  <div className="font-mono text-xs">{expandedRecordDetails.get(merge.id).ic_external_id || 'Not linked'}</div>
+                                                </div>
+                                              </>
+                                            ) : (
+                                              <div className="flex items-center justify-center py-8">
+                                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                              </div>
+                                            )}
+                                          </CardContent>
+                                        </Card>
                                       </div>
-                                    )}
-                                  </div>
+
+                                      {/* Impact Summary */}
+                                      {expandedRecordDetails.get(merge.id) && (
+                                        <Alert>
+                                          <AlertCircle className="h-4 w-4" />
+                                          <AlertTitle>Changes Summary</AlertTitle>
+                                          <AlertDescription>
+                                            {(() => {
+                                              const existing = expandedRecordDetails.get(merge.id);
+                                              const changes: string[] = [];
+                                              
+                                              if (compareFields(icData.firstName, existing.first_name) !== 'match') {
+                                                changes.push(`First Name: ${existing.first_name} → ${icData.firstName}`);
+                                              }
+                                              if (compareFields(icData.lastName, existing.last_name) !== 'match') {
+                                                changes.push(`Last Name: ${existing.last_name} → ${icData.lastName}`);
+                                              }
+                                              if (merge.record_type === 'teacher' && compareFields(icData.email, existing.email) !== 'match') {
+                                                changes.push(`Email: ${existing.email} → ${icData.email}`);
+                                              }
+                                              if (merge.record_type === 'student') {
+                                                if (compareFields(icData.studentId, existing.student_id) !== 'match') {
+                                                  changes.push(`Student ID: ${existing.student_id} → ${icData.studentId}`);
+                                                }
+                                                if (compareFields(icData.gradeLevel, existing.grade_level) !== 'match') {
+                                                  changes.push(`Grade: ${existing.grade_level} → ${icData.gradeLevel}`);
+                                                }
+                                              }
+                                              
+                                              if (changes.length === 0) {
+                                                return 'No field changes detected. This merge will link the IC External ID.';
+                                              }
+                                              
+                                              return (
+                                                <div className="space-y-1 mt-2">
+                                                  <div className="font-medium">{changes.length} field(s) will be updated:</div>
+                                                  <ul className="list-disc list-inside space-y-1 text-sm">
+                                                    {changes.map((change, i) => (
+                                                      <li key={i}>{change}</li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              );
+                                            })()}
+                                          </AlertDescription>
+                                        </Alert>
+                                      )}
+
+                                      {/* Match Confidence Explanation */}
+                                      <Card>
+                                        <CardHeader className="pb-3">
+                                          <CardTitle className="text-sm">Why this match?</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-2 text-sm">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Match Criteria:</span>
+                                            <Badge variant="outline">{merge.match_criteria || 'N/A'}</Badge>
+                                          </div>
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Confidence Score:</span>
+                                            <span className="font-medium">{Math.round(merge.match_confidence || 0)}%</span>
+                                          </div>
+                                          <div className="text-xs text-muted-foreground pt-2 border-t">
+                                            {(() => {
+                                              const level = getConfidenceLevel(merge.match_confidence || 0);
+                                              if (level === 'high') return 'High confidence match - recommended to approve';
+                                              if (level === 'medium') return 'Medium confidence - please review carefully';
+                                              if (level === 'low') return 'Low confidence - verify before approving';
+                                              return 'Very low confidence - consider creating as new record';
+                                            })()}
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    </>
+                                  ) : (
+                                    /* New Record (no existing match) */
+                                    <Card>
+                                      <CardHeader className="pb-3">
+                                        <div className="flex items-center justify-between">
+                                          <CardTitle className="text-base">New Record from Infinite Campus</CardTitle>
+                                          <Badge variant="secondary">No Existing Match</Badge>
+                                        </div>
+                                      </CardHeader>
+                                      <CardContent className="space-y-3">
+                                        <Alert>
+                                          <AlertCircle className="h-4 w-4" />
+                                          <AlertTitle>Create New Record</AlertTitle>
+                                          <AlertDescription>
+                                            No existing record found. Selecting "Create New" will add this {merge.record_type} to DismissalPro.
+                                          </AlertDescription>
+                                        </Alert>
+                                        <div className="grid grid-cols-2 gap-4">
+                                          <div>
+                                            <div className="text-xs text-muted-foreground">First Name</div>
+                                            <div className="font-medium">{icData.firstName}</div>
+                                          </div>
+                                          <div>
+                                            <div className="text-xs text-muted-foreground">Last Name</div>
+                                            <div className="font-medium">{icData.lastName}</div>
+                                          </div>
+                                          {merge.record_type === 'teacher' && (
+                                            <div className="col-span-2">
+                                              <div className="text-xs text-muted-foreground">Email</div>
+                                              <div className="font-medium">{icData.email || 'N/A'}</div>
+                                            </div>
+                                          )}
+                                          {merge.record_type === 'student' && (
+                                            <>
+                                              <div>
+                                                <div className="text-xs text-muted-foreground">Student ID</div>
+                                                <div className="font-medium">{icData.studentId || 'N/A'}</div>
+                                              </div>
+                                              <div>
+                                                <div className="text-xs text-muted-foreground">Grade Level</div>
+                                                <div className="font-medium">{icData.gradeLevel || 'N/A'}</div>
+                                              </div>
+                                            </>
+                                          )}
+                                          <div className="col-span-2">
+                                            <div className="text-xs text-muted-foreground">IC External ID</div>
+                                            <div className="font-mono text-xs">{merge.ic_external_id}</div>
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  )}
                                 </div>
                               </TableCell>
                             </TableRow>
