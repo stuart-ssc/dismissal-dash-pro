@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckSquare, XSquare, Search, Calendar, X } from 'lucide-react';
+import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckSquare, XSquare, Search, Calendar, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -31,6 +31,8 @@ const ICPendingMerges = () => {
   const [confidenceFilter, setConfidenceFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'very-low'>('all');
   const [matchTypeFilter, setMatchTypeFilter] = useState<'all' | string>('all');
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [sortField, setSortField] = useState<'name' | 'confidence' | 'date' | 'matchType'>('confidence');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     if (!loading && (!user || userRole !== 'school_admin')) {
@@ -122,9 +124,27 @@ const ICPendingMerges = () => {
     return 'very-low';
   };
 
+  const handleSort = (field: 'name' | 'confidence' | 'date' | 'matchType') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'confidence' || field === 'date' ? 'desc' : 'asc');
+    }
+  };
+
+  const getSortIcon = (field: 'name' | 'confidence' | 'date' | 'matchType') => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1" />
+      : <ArrowDown className="h-4 w-4 ml-1" />;
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedMerges(new Set(filteredAndSearchedMerges.map(m => m.id)));
+      setSelectedMerges(new Set(sortedMerges.map(m => m.id)));
     } else {
       setSelectedMerges(new Set());
     }
@@ -228,6 +248,42 @@ const ICPendingMerges = () => {
     return results;
   }, [pendingMerges, filterType, searchQuery, confidenceFilter, matchTypeFilter, dateRange]);
 
+  const sortedMerges = useMemo(() => {
+    const sorted = [...filteredAndSearchedMerges];
+    
+    sorted.sort((a, b) => {
+      let compareValue = 0;
+      
+      switch (sortField) {
+        case 'name': {
+          const aName = `${a.ic_data.firstName} ${a.ic_data.lastName}`.toLowerCase();
+          const bName = `${b.ic_data.firstName} ${b.ic_data.lastName}`.toLowerCase();
+          compareValue = aName.localeCompare(bName);
+          break;
+        }
+        case 'confidence':
+          compareValue = (a.match_confidence || 0) - (b.match_confidence || 0);
+          break;
+        case 'date': {
+          const aDate = new Date(a.created_at).getTime();
+          const bDate = new Date(b.created_at).getTime();
+          compareValue = aDate - bDate;
+          break;
+        }
+        case 'matchType': {
+          const aType = a.match_criteria || '';
+          const bType = b.match_criteria || '';
+          compareValue = aType.localeCompare(bType);
+          break;
+        }
+      }
+      
+      return sortDirection === 'asc' ? compareValue : -compareValue;
+    });
+    
+    return sorted;
+  }, [filteredAndSearchedMerges, sortField, sortDirection]);
+
   const studentCount = pendingMerges.filter(m => m.record_type === 'student').length;
   const teacherCount = pendingMerges.filter(m => m.record_type === 'teacher').length;
 
@@ -254,12 +310,12 @@ const ICPendingMerges = () => {
         </Button>
       </div>
 
-      {filteredAndSearchedMerges.length > 0 && (
+      {sortedMerges.length > 0 && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Action Required</AlertTitle>
           <AlertDescription>
-            {filteredAndSearchedMerges.length} record(s) require your review before they can be added to the system
+            {sortedMerges.length} record(s) require your review before they can be added to the system
           </AlertDescription>
         </Alert>
       )}
@@ -402,24 +458,24 @@ const ICPendingMerges = () => {
         <CardContent className="pt-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold">{filteredAndSearchedMerges.length}</div>
+              <div className="text-2xl font-bold">{sortedMerges.length}</div>
               <div className="text-sm text-muted-foreground">Total Results</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {filteredAndSearchedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'high').length}
+                {sortedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'high').length}
               </div>
               <div className="text-sm text-muted-foreground">High Confidence</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {filteredAndSearchedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'medium').length}
+                {sortedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'medium').length}
               </div>
               <div className="text-sm text-muted-foreground">Medium Confidence</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-amber-600">
-                {filteredAndSearchedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'low').length}
+                {sortedMerges.filter(m => getConfidenceLevel(m.match_confidence || 0) === 'low').length}
               </div>
               <div className="text-sm text-muted-foreground">Low Confidence</div>
             </div>
@@ -447,7 +503,7 @@ const ICPendingMerges = () => {
               <CardDescription>Review and approve or reject potential matches</CardDescription>
             </CardHeader>
             <CardContent>
-              {filteredAndSearchedMerges.length === 0 ? (
+              {sortedMerges.length === 0 ? (
                 <div className="text-center py-12">
                   {pendingMerges.length === 0 ? (
                     <>
@@ -485,20 +541,50 @@ const ICPendingMerges = () => {
                     <TableRow>
                       <TableHead className="w-12">
                         <Checkbox
-                          checked={selectedMerges.size === filteredAndSearchedMerges.length && filteredAndSearchedMerges.length > 0}
+                          checked={selectedMerges.size === sortedMerges.length && sortedMerges.length > 0}
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
                       <TableHead></TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>IC Name</TableHead>
-                      <TableHead>IC Details</TableHead>
-                      <TableHead>Match Confidence</TableHead>
+                      <TableHead>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleSort('name')}
+                          className="h-8 px-2 flex items-center"
+                        >
+                          IC Name
+                          {getSortIcon('name')}
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleSort('matchType')}
+                          className="h-8 px-2 flex items-center"
+                        >
+                          IC Details
+                          {getSortIcon('matchType')}
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleSort('confidence')}
+                          className="h-8 px-2 flex items-center"
+                        >
+                          Match Confidence
+                          {getSortIcon('confidence')}
+                        </Button>
+                      </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredAndSearchedMerges.map((merge) => {
+                    {sortedMerges.map((merge) => {
                       const isExpanded = expandedRows.has(merge.id);
                       const icData = merge.ic_data;
                       
