@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMultiSchool } from "@/hooks/useMultiSchool";
 
 export type SchoolAdmin = {
   id: string;
@@ -11,6 +12,7 @@ export type SchoolAdmin = {
 
 export const useSchoolAdmins = () => {
   const { user } = useAuth();
+  const { activeSchoolId } = useMultiSchool();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [schoolAdmins, setSchoolAdmins] = useState<SchoolAdmin[]>([]);
@@ -41,7 +43,7 @@ export const useSchoolAdmins = () => {
     };
 
     fetchSchoolAdmins();
-  }, [user]);
+  }, [user, activeSchoolId]);
 
   return { loading, error, schoolAdmins, hasSchoolAdmin };
 };

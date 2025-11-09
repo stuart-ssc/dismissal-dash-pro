@@ -1,22 +1,31 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useMultiSchool } from "@/hooks/useMultiSchool";
 
 /**
  * Hook to fetch and monitor absent student IDs for a given date
  * Returns a Set of student IDs that are marked as absent (and not returned)
  */
 export function useAbsentStudents(date: string = new Date().toISOString().split('T')[0]) {
+  const { activeSchoolId } = useMultiSchool();
   const [absentStudentIds, setAbsentStudentIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAbsentStudents = async () => {
+      if (!activeSchoolId) {
+        setAbsentStudentIds(new Set());
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const { data, error } = await supabase
           .from('student_absences')
-          .select('student_id')
+          .select('student_id, students!inner(school_id)')
           .is('returned_at', null) // Only students who haven't returned
+          .eq('students.school_id', activeSchoolId)
           .or(`and(absence_type.eq.single_date,start_date.eq.${date}),and(absence_type.eq.date_range,start_date.lte.${date},end_date.gte.${date})`);
 
         if (error) {
@@ -56,7 +65,7 @@ export function useAbsentStudents(date: string = new Date().toISOString().split(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [date]);
+  }, [date, activeSchoolId]);
 
   return { absentStudentIds, loading };
 }

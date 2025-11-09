@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon, Loader2, Archive } from "lucide-react";
 import { usePaginatedPeople, type PersonData } from "@/hooks/usePaginatedPeople";
 import { useQueryClient } from "@tanstack/react-query";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -24,6 +24,7 @@ import { AssignClassCoverageDialog } from "@/components/AssignClassCoverageDialo
 import { TemporaryTransportationDialog } from "@/components/TemporaryTransportationDialog";
 import { ViewTemporaryTransportationDialog } from "@/components/ViewTemporaryTransportationDialog";
 import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
+import { TeachersWithoutClassesAlert } from "@/components/TeachersWithoutClassesAlert";
 
 const People = () => {
   const { user, userRole, signOut, loading, session } = useAuth();
@@ -533,7 +534,9 @@ const People = () => {
         </header>
 
         <main className="flex-1 p-6 space-y-6">
-              {/* Statistics Cards */}
+          {schoolId && <TeachersWithoutClassesAlert schoolId={schoolId} />}
+          
+          {/* Statistics Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                   <CardHeader className="pb-2">
@@ -625,15 +628,24 @@ const People = () => {
                         Manage students, teachers, and administrators
                       </CardDescription>
                     </div>
-                     {schoolId && (
-                      <AddPersonDialog 
-                        schoolId={schoolId} 
-                        onPersonAdded={() => {
-                          console.log('Person added, refreshing data...');
-                          queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
-                        }} 
-                      />
-                     )}
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline"
+                        onClick={() => navigate('/dashboard/people/archived')}
+                      >
+                        <Archive className="mr-2 h-4 w-4" />
+                        View Archived
+                      </Button>
+                      {schoolId && (
+                        <AddPersonDialog 
+                          schoolId={schoolId} 
+                          onPersonAdded={() => {
+                            console.log('Person added, refreshing data...');
+                            queryClient.invalidateQueries({ queryKey: ['people-paginated'] });
+                          }} 
+                        />
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

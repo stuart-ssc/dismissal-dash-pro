@@ -21,6 +21,7 @@ import logoMark from "@/assets/logo-mark.svg";
 import { useAuth } from "@/hooks/useAuth";
 import { OAuthButtons } from "@/components/OAuthButtons";
 import { supabase } from "@/integrations/supabase/client";
+import { SchoolSelectionModal } from "@/components/SchoolSelectionModal";
 import { signInSchema, signUpSchema, type SignInFormData, type SignUpFormData } from "@/lib/validation";
 import { handleError } from "@/lib/errorHandler";
 import { logger } from "@/lib/logger";
@@ -31,11 +32,12 @@ interface SignInForm extends SignInFormData {}
 interface SignUpForm extends SignUpFormData {}
 
 const Auth = () => {
-  const { signIn, signUp, user, userRole, loading, signInWithGoogle, signInWithMicrosoft, linkOAuthToInvitation } = useAuth();
+  const { signIn, signUp, user, userRole, loading, signInWithGoogle, signInWithMicrosoft, linkOAuthToInvitation, hasMultipleSchools, activeSchoolId } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const SEO = useSEO();
   const [isLoading, setIsLoading] = useState(false);
+  const [showSchoolSelection, setShowSchoolSelection] = useState(false);
 const [schools, setSchools] = useState<{ id: number; school_name: string; city: string; state: string }[]>([]);
 const [allSchools, setAllSchools] = useState<{ id: number; school_name: string; city: string; state: string }[]>([]);
   const [schoolSearchOpen, setSchoolSearchOpen] = useState(false);
@@ -217,6 +219,15 @@ const prefetchSchools = useCallback(async () => {
       }
     }
   }, [user, userRole, loading, navigate]);
+
+  // Check if school selection modal should be shown
+  useEffect(() => {
+    if (hasMultipleSchools && !activeSchoolId) {
+      setShowSchoolSelection(true);
+    } else {
+      setShowSchoolSelection(false);
+    }
+  }, [hasMultipleSchools, activeSchoolId]);
 
   const handleSignIn = async (data: SignInForm) => {
     setIsLoading(true);
@@ -1391,6 +1402,8 @@ const prefetchSchools = useCallback(async () => {
           </DialogContent>
         </Dialog>
       </div>
+      
+      <SchoolSelectionModal open={showSchoolSelection} />
     </>
   );
 };

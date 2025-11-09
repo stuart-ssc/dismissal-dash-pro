@@ -20,6 +20,8 @@ interface AuthContextType {
   needsSchoolAssociation: boolean;
   completeOAuthProfile: (schoolId: number, role: 'school_admin' | 'teacher') => Promise<{ error: any }>;
   loading: boolean;
+  hasMultipleSchools: boolean;
+  activeSchoolId: number | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +32,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [needsSchoolAssociation, setNeedsSchoolAssociation] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasMultipleSchools, setHasMultipleSchools] = useState(false);
+  const [activeSchoolId, setActiveSchoolId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const fetchAndSetUserRole = async (userId: string) => {
@@ -37,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // First check if user needs school association
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('needs_school_association')
+        .select('needs_school_association, school_id')
         .eq('id', userId)
         .single();
       
@@ -117,6 +121,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (profileError && profileError.code !== 'PGRST116') throw profileError;
+      
+      // Check if user has multiple schools
+      const { data: userSchools, error: schoolsError } = await supabase
+        .from('user_schools')
+        .select('school_id, is_primary')
+        .eq('user_id', userId);
+      
+      if (!schoolsError && userSchools && userSchools.length > 1) {
+        setHasMultipleSchools(true);
+        
+        // Check localStorage for saved activeSchoolId
+        const savedSchoolId = localStorage.getItem('active_school_id');
+        if (savedSchoolId) {
+          setActiveSchoolId(Number(savedSchoolId));
+        } else {
+          // Set to primary school or first school
+          const primarySchool = userSchools.find(s => s.is_primary);
+          const defaultId = primarySchool?.school_id || userSchools[0]?.school_id;
+          setActiveSchoolId(defaultId);
+          if (defaultId) {
+            localStorage.setItem('active_school_id', String(defaultId));
+          }
+        }
+      } else if (!schoolsError && userSchools && userSchools.length === 1) {
+        setHasMultipleSchools(false);
+        setActiveSchoolId(userSchools[0].school_id);
+        localStorage.setItem('active_school_id', String(userSchools[0].school_id));
+      } else {
+        // Fallback to profile.school_id
+        setHasMultipleSchools(false);
+        setActiveSchoolId(profileData?.school_id || null);
+        if (profileData?.school_id) {
+          localStorage.setItem('active_school_id', String(profileData.school_id));
+        }
+      }
       
       if (profileData?.needs_school_association) {
         // Check for secure state token in sessionStorage
@@ -412,6 +451,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(null);
       setUserRole(null);
       setNeedsSchoolAssociation(false);
+      setHasMultipleSchools(false);
+      setActiveSchoolId(null);
+      localStorage.removeItem('active_school_id');
       toast({
         title: "Signed out",
         description: "You have been signed out successfully.",
@@ -577,7 +619,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         linkOAuthToInvitation,
         needsSchoolAssociation,
         completeOAuthProfile,
-        loading 
+        loading,
+        hasMultipleSchools,
+        activeSchoolId
       }}
     >
       {children}

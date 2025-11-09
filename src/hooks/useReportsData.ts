@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { useMultiSchool } from "@/hooks/useMultiSchool";
 import { format, subDays } from "date-fns";
 
 interface DismissalRun {
@@ -28,6 +29,7 @@ interface DismissalLogsData {
 export function useReportsData(dateRangeDays: number, currentPage: number, itemsPerPage: number) {
   const { user } = useAuth();
   const { impersonatedSchoolId } = useImpersonation();
+  const { activeSchoolId } = useMultiSchool();
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [dismissalLogs, setDismissalLogs] = useState<DismissalLogsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,8 +43,15 @@ export function useReportsData(dateRangeDays: number, currentPage: number, items
       setError(null);
 
       try {
-        // Determine school ID
+        // Determine school ID with priority
         let schoolId = impersonatedSchoolId;
+        
+        // Priority 2: Use active school from multi-school context
+        if (!schoolId && activeSchoolId) {
+          schoolId = activeSchoolId;
+        }
+        
+        // Priority 3: Fallback to profile
         if (!schoolId) {
           const { data: profile } = await supabase
             .from('profiles')
@@ -129,7 +138,7 @@ export function useReportsData(dateRangeDays: number, currentPage: number, items
     };
 
     fetchData();
-  }, [user?.id, impersonatedSchoolId, dateRangeDays, currentPage, itemsPerPage]);
+  }, [user?.id, impersonatedSchoolId, activeSchoolId, dateRangeDays, currentPage, itemsPerPage]);
 
   return {
     chartData,

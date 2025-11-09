@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { useMultiSchool } from "@/hooks/useMultiSchool";
 
 type DismissalRun = {
   id: string;
@@ -31,21 +32,27 @@ type DismissalRun = {
 export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
   const { user } = useAuth();
   const { impersonatedSchoolId } = useImpersonation();
+  const { activeSchoolId } = useMultiSchool();
   const allowCreate = options?.allowCreate ?? false;
 
   const query = useQuery({
-    queryKey: ["today-dismissal-run", user?.id, impersonatedSchoolId, allowCreate],
+    queryKey: ["today-dismissal-run", user?.id, impersonatedSchoolId, activeSchoolId, allowCreate],
     enabled: !!user?.id,
     queryFn: async (): Promise<{ run: DismissalRun | null; schoolId: number; planTimeFallback?: string | null } | null> => {
       if (!user?.id) throw new Error("Not authenticated");
 
       let schoolId: number;
 
-      // Use impersonated school ID if available (for system admins)
+      // Priority 1: Impersonated school (for system admins)
       if (impersonatedSchoolId) {
         schoolId = impersonatedSchoolId;
-      } else {
-        // Get user's school
+      }
+      // Priority 2: Active school from multi-school context
+      else if (activeSchoolId) {
+        schoolId = activeSchoolId;
+      }
+      // Priority 3: Fallback to profile school_id
+      else {
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("school_id")
