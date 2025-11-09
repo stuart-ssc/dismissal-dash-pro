@@ -3,6 +3,20 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { encrypt } from '../_shared/encryption.ts';
 
+interface SyncConfig {
+  enabled: boolean;
+  interval_type: 'hourly' | 'daily' | 'weekly' | 'custom';
+  interval_value: number;
+  sync_window_start: string;
+  sync_window_end: string;
+  timezone: string;
+  sync_students: boolean;
+  sync_teachers: boolean;
+  sync_classes: boolean;
+  sync_enrollments: boolean;
+  skip_weekends: boolean;
+}
+
 interface ConnectRequest {
   hostUrl: string;
   clientKey: string;
@@ -10,6 +24,7 @@ interface ConnectRequest {
   tokenUrl: string;
   version: '1.1' | '1.2';
   schoolId: number;
+  syncConfig?: SyncConfig;
 }
 
 serve(async (req) => {
@@ -43,7 +58,7 @@ serve(async (req) => {
 
     // Parse request
     const body: ConnectRequest = await req.json();
-    const { hostUrl, clientKey, clientSecret, tokenUrl, version, schoolId } = body;
+    const { hostUrl, clientKey, clientSecret, tokenUrl, version, schoolId, syncConfig } = body;
 
     // Verify permissions
     const supabaseAdmin = createClient(
@@ -103,6 +118,47 @@ serve(async (req) => {
       });
     }
 
+    // Create sync configuration if provided
+    if (syncConfig) {
+      console.log('Creating sync configuration...');
+      
+      const { data: syncConfigRecord, error: syncConfigError } = await supabaseAdmin
+        .from('ic_sync_configuration')
+        .insert({
+          school_id: schoolId,
+          enabled: syncConfig.enabled,
+          interval_type: syncConfig.interval_type,
+          interval_value: syncConfig.interval_value,
+          sync_window_start: syncConfig.sync_window_start,
+          sync_window_end: syncConfig.sync_window_end,
+          timezone: syncConfig.timezone,
+          sync_students: syncConfig.sync_students,
+          sync_teachers: syncConfig.sync_teachers,
+          sync_classes: syncConfig.sync_classes,
+          sync_enrollments: syncConfig.sync_enrollments,
+          skip_weekends: syncConfig.skip_weekends,
+        })
+        .select()
+        .single();
+
+      if (syncConfigError) {
+        console.error('Sync config error:', syncConfigError);
+        // Don't fail the whole operation if sync config fails
+        // The user can configure it later
+      } else {
+        // Calculate and set next sync time
+        const { error: calcError } = await supabaseAdmin.rpc('calculate_next_sync_time', {
+          p_school_id: schoolId,
+        });
+
+        if (calcError) {
+          console.error('Calculate next sync error:', calcError);
+        } else {
+          console.log('Next sync time calculated successfully');
+        }
+      }
+    }
+
     // Log audit event
     await supabaseAdmin.from('audit_logs').insert({
       school_id: schoolId,
@@ -113,6 +169,7 @@ serve(async (req) => {
       details: {
         host_url: hostUrl,
         version: version,
+        sync_config_provided: !!syncConfig,
       },
     });
 
