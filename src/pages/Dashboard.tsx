@@ -20,6 +20,7 @@ import { deleteTodayDismissal } from "@/lib/deleteTodayDismissal";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTodayDismissalRun as useDismissalRunRefetch } from "@/hooks/useTodayDismissalRun";
+import { ICSyncStatusWidget } from "@/components/ICSyncStatusWidget";
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -475,6 +476,11 @@ const Dashboard = () => {
                 </Button>
               </CardContent>
             </Card>
+          )}
+
+          {/* IC Sync Status Widget - Only for school admins */}
+          {userRole === 'school_admin' && schoolId && (
+            <ICSyncStatusWidget schoolId={schoolId} />
           )}
 
           

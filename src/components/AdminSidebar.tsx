@@ -1,4 +1,4 @@
-import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar } from "lucide-react";
+import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar, RefreshCw, GitMerge } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.svg";
@@ -101,6 +101,39 @@ export function AdminSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Integrations Section - Only for school admins */}
+        {userRole === 'school_admin' && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Integrations</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to="/dashboard/integrations/ic-sync-history" 
+                      className={getNavCls}
+                    >
+                      <RefreshCw className="h-5 w-5" />
+                      <span className="ml-3">IC Sync History</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to="/dashboard/integrations/ic-pending-merges" 
+                      className={getNavCls}
+                    >
+                      <GitMerge className="h-5 w-5" />
+                      <span className="ml-3">IC Pending Merges</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="mt-auto border-t">
