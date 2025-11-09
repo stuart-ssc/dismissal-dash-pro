@@ -1282,8 +1282,66 @@ export type Database = {
           },
         ]
       }
+      ic_auto_merge_rules: {
+        Row: {
+          allowed_match_types: string[]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          enabled: boolean
+          id: string
+          min_confidence_score: number
+          priority: number
+          record_types: string[]
+          rule_name: string
+          school_id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed_match_types?: string[]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          min_confidence_score?: number
+          priority?: number
+          record_types?: string[]
+          rule_name: string
+          school_id: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed_match_types?: string[]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          min_confidence_score?: number
+          priority?: number
+          record_types?: string[]
+          rule_name?: string
+          school_id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_auto_merge_rules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ic_pending_merges: {
         Row: {
+          auto_approved_at: string | null
+          auto_approved_by_rule_id: string | null
           created_at: string | null
           decision_made_at: string | null
           decision_made_by: string | null
@@ -1301,6 +1359,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_approved_at?: string | null
+          auto_approved_by_rule_id?: string | null
           created_at?: string | null
           decision_made_at?: string | null
           decision_made_by?: string | null
@@ -1318,6 +1378,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_approved_at?: string | null
+          auto_approved_by_rule_id?: string | null
           created_at?: string | null
           decision_made_at?: string | null
           decision_made_by?: string | null
@@ -1335,6 +1397,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ic_pending_merges_auto_approved_by_rule_id_fkey"
+            columns: ["auto_approved_by_rule_id"]
+            isOneToOne: false
+            referencedRelation: "ic_auto_merge_rules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ic_pending_merges_school_id_fkey"
             columns: ["school_id"]
@@ -3233,6 +3302,15 @@ export type Database = {
       can_view_school_data: {
         Args: { target_school_id: number }
         Returns: boolean
+      }
+      check_auto_merge_rules: {
+        Args: {
+          p_confidence_score: number
+          p_match_type: string
+          p_record_type: string
+          p_school_id: number
+        }
+        Returns: string
       }
       check_suspicious_school: {
         Args: { email: string; ip_address: string; school_name: string }

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckCircle2, History, Loader2, Unplug } from 'lucide-react';
+import { CheckCircle2, History, Loader2, Unplug, AlertCircle, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -21,10 +21,27 @@ export const ICConnectionStatus = ({ connection, onDisconnect }: ICConnectionSta
   const [disconnectConfirmed, setDisconnectConfirmed] = useState(false);
   const [lastSync, setLastSync] = useState<any>(null);
   const [syncStats, setSyncStats] = useState<any>(null);
+  const [pendingMergesCount, setPendingMergesCount] = useState(0);
 
   useEffect(() => {
     fetchLastSync();
+    fetchPendingMergesCount();
   }, [connection]);
+
+  const fetchPendingMergesCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('ic_pending_merges')
+        .select('*', { count: 'exact', head: true })
+        .eq('school_id', connection.school_id)
+        .eq('status', 'pending');
+
+      if (error) throw error;
+      setPendingMergesCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching pending merges count:', error);
+    }
+  };
 
   const fetchLastSync = async () => {
     try {
@@ -163,6 +180,17 @@ export const ICConnectionStatus = ({ connection, onDisconnect }: ICConnectionSta
         <Button variant="outline" onClick={() => navigate('/dashboard/integrations/ic-sync-history')}>
           <History className="mr-2 h-4 w-4" />
           View History
+        </Button>
+        <Button variant="outline" onClick={() => navigate('/dashboard/integrations/ic-pending-merges')}>
+          <AlertCircle className="mr-2 h-4 w-4" />
+          Pending Merges
+          {pendingMergesCount > 0 && (
+            <Badge variant="destructive" className="ml-2">{pendingMergesCount}</Badge>
+          )}
+        </Button>
+        <Button variant="outline" onClick={() => navigate('/dashboard/integrations/ic-auto-merge-rules')}>
+          <Settings className="mr-2 h-4 w-4" />
+          Auto-Merge Rules
         </Button>
         <Button variant="destructive" onClick={() => setDisconnectDialogOpen(true)}>
           <Unplug className="mr-2 h-4 w-4" />

@@ -714,6 +714,26 @@ serve(async (req) => {
       })
       .eq('id', syncLogId);
 
+    // Process auto-merge rules after successful sync
+    console.log('Processing auto-merge rules...');
+    try {
+      const { data: autoMergeResult, error: autoMergeError } = await supabaseAdmin.functions.invoke(
+        'process-auto-merge-rules',
+        {
+          body: { schoolId: connection.school_id, syncLogId },
+        }
+      );
+      
+      if (autoMergeError) {
+        console.error('Auto-merge processing failed:', autoMergeError);
+      } else if (autoMergeResult?.autoApprovedCount > 0) {
+        console.log(`Auto-approved ${autoMergeResult.autoApprovedCount} merge(s)`);
+      }
+    } catch (autoMergeError) {
+      console.error('Error calling process-auto-merge-rules:', autoMergeError);
+      // Don't fail the sync if auto-merge processing fails
+    }
+
     // Update connection
     await supabaseAdmin
       .from('infinite_campus_connections')

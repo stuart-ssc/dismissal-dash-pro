@@ -7,6 +7,7 @@ interface ApproveRequest {
   mergeIds?: string[];
   decision: 'approve' | 'reject';
   notes?: string;
+  autoApprovedByRuleId?: string;
 }
 
 serve(async (req) => {
@@ -38,7 +39,7 @@ serve(async (req) => {
     }
 
     const body: ApproveRequest = await req.json();
-    const { mergeId, mergeIds, decision, notes } = body;
+    const { mergeId, mergeIds, decision, notes, autoApprovedByRuleId } = body;
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -74,26 +75,28 @@ serve(async (req) => {
           continue;
         }
 
-        // Verify permissions
-        const { data: userSchools } = await supabaseAdmin
-          .from('user_schools')
-          .select('school_id')
-          .eq('user_id', user.id);
-
-        const hasAccess = userSchools?.some(us => us.school_id === merge.school_id);
-        
-        if (!hasAccess) {
-          const { data: userRoles } = await supabaseAdmin
-            .from('user_roles')
-            .select('role')
+        // Verify permissions (skip for auto-approved)
+        if (!autoApprovedByRuleId) {
+          const { data: userSchools } = await supabaseAdmin
+            .from('user_schools')
+            .select('school_id')
             .eq('user_id', user.id);
 
-          const isSystemAdmin = userRoles?.some(r => r.role === 'system_admin');
+          const hasAccess = userSchools?.some(us => us.school_id === merge.school_id);
           
-          if (!isSystemAdmin) {
-            results.push({ id: currentMergeId, success: false, error: 'Insufficient permissions' });
-            failCount++;
-            continue;
+          if (!hasAccess) {
+            const { data: userRoles } = await supabaseAdmin
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', user.id);
+
+            const isSystemAdmin = userRoles?.some(r => r.role === 'system_admin');
+            
+            if (!isSystemAdmin) {
+              results.push({ id: currentMergeId, success: false, error: 'Insufficient permissions' });
+              failCount++;
+              continue;
+            }
           }
         }
 
@@ -129,21 +132,24 @@ serve(async (req) => {
             .update({
               status: 'approved',
               decision_made_at: new Date().toISOString(),
-              decision_made_by: user.id,
+              decision_made_by: autoApprovedByRuleId ? null : user.id,
               decision_notes: notes || null,
+              auto_approved_by_rule_id: autoApprovedByRuleId || null,
+              auto_approved_at: autoApprovedByRuleId ? new Date().toISOString() : null,
             })
             .eq('id', currentMergeId);
 
           // Log audit event
           await supabaseAdmin.from('audit_logs').insert({
             school_id: merge.school_id,
-            user_id: user.id,
-            action: 'ic_merge_approved',
+            user_id: autoApprovedByRuleId ? null : user.id,
+            action: autoApprovedByRuleId ? 'ic_merge_auto_approved' : 'ic_merge_approved',
             entity_type: merge.record_type,
             entity_id: merge.existing_record_id,
             details: {
               ic_external_id: merge.ic_external_id,
               match_confidence: merge.match_confidence,
+              auto_approved_by_rule_id: autoApprovedByRuleId || null,
               notes,
             },
           });

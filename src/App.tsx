@@ -40,6 +40,7 @@ import { useSessionTimeout } from "./hooks/useSessionTimeout";
 import { MultiSchoolProvider } from "./hooks/useMultiSchool";
 import ICSyncHistory from "./pages/admin/ICSyncHistory";
 import ICPendingMerges from "./pages/admin/ICPendingMerges";
+import ICAutoMergeRules from "./pages/admin/ICAutoMergeRules";
 import AcademicSessions from "./pages/admin/AcademicSessions";
 import ArchivedUsers from "./pages/admin/ArchivedUsers";
 import DismissalLauncher from "./pages/DismissalLauncher";
@@ -94,6 +95,7 @@ const AppContent = () => {
             <Route path="/dashboard/special-use-runs/:runId" element={<SpecialUseRunDetail />} />
             <Route path="/dashboard/integrations/ic-sync-history" element={<ICSyncHistory />} />
             <Route path="/dashboard/integrations/ic-pending-merges" element={<ICPendingMerges />} />
+            <Route path="/dashboard/integrations/ic-auto-merge-rules" element={<ICAutoMergeRules />} />
             <Route path="/dashboard/academic-sessions" element={<AcademicSessions />} />
             <Route path="/dashboard/people/archived" element={<ArchivedUsers />} />
           </Route>
