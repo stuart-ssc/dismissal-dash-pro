@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckSquare, XSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ICPendingMerges = () => {
@@ -20,6 +21,8 @@ const ICPendingMerges = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [filterType, setFilterType] = useState('all');
+  const [selectedMerges, setSelectedMerges] = useState<Set<string>>(new Set());
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || userRole !== 'school_admin')) {
@@ -104,6 +107,62 @@ const ICPendingMerges = () => {
     setExpandedRows(newExpanded);
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedMerges(new Set(filteredMerges.map(m => m.id)));
+    } else {
+      setSelectedMerges(new Set());
+    }
+  };
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedMerges);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedMerges(newSelected);
+  };
+
+  const handleBulkAction = async (decision: 'approve' | 'reject') => {
+    if (selectedMerges.size === 0) return;
+
+    setIsProcessingBulk(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('approve-ic-merge', {
+        body: { 
+          mergeIds: Array.from(selectedMerges), 
+          decision 
+        },
+      });
+
+      if (error) throw error;
+
+      const { successCount, failCount } = data;
+      
+      if (failCount > 0) {
+        toast.warning(
+          `Processed ${successCount} of ${successCount + failCount} records. ${failCount} failed.`
+        );
+      } else {
+        toast.success(
+          decision === 'approve' 
+            ? `Successfully merged ${successCount} record(s)` 
+            : `Successfully created ${successCount} new record(s)`
+        );
+      }
+      
+      setSelectedMerges(new Set());
+      fetchPendingMerges();
+    } catch (error: any) {
+      console.error('Error processing bulk action:', error);
+      toast.error(error.message || 'Failed to process bulk action');
+    } finally {
+      setIsProcessingBulk(false);
+    }
+  };
+
   const filteredMerges = filterType === 'all' 
     ? pendingMerges
     : pendingMerges.filter(m => m.record_type === filterType);
@@ -176,6 +235,12 @@ const ICPendingMerges = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedMerges.size === filteredMerges.length && filteredMerges.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead></TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>IC Name</TableHead>
@@ -192,6 +257,12 @@ const ICPendingMerges = () => {
                       return (
                         <>
                           <TableRow key={merge.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedMerges.has(merge.id)}
+                                onCheckedChange={(checked) => handleSelectRow(merge.id, checked as boolean)}
+                              />
+                            </TableCell>
                             <TableCell>
                               <Button
                                 variant="ghost"
@@ -240,7 +311,7 @@ const ICPendingMerges = () => {
                           </TableRow>
                           {isExpanded && (
                             <TableRow>
-                              <TableCell colSpan={6}>
+                              <TableCell colSpan={7}>
                                 <div className="p-4 space-y-4 bg-muted/20 rounded-lg">
                                   <div className="grid grid-cols-2 gap-8">
                                     <div>
@@ -304,6 +375,53 @@ const ICPendingMerges = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {selectedMerges.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <Card className="shadow-lg border-2">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium">
+                  {selectedMerges.size} selected
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedMerges(new Set())}
+                >
+                  Clear
+                </Button>
+                <div className="h-4 w-px bg-border" />
+                <Button
+                  size="sm"
+                  onClick={() => handleBulkAction('approve')}
+                  disabled={isProcessingBulk}
+                >
+                  {isProcessingBulk ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                  )}
+                  Approve Selected
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBulkAction('reject')}
+                  disabled={isProcessingBulk}
+                >
+                  {isProcessingBulk ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <XSquare className="h-4 w-4 mr-2" />
+                  )}
+                  Create as New
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
