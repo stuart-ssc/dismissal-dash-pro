@@ -1338,6 +1338,134 @@ export type Database = {
           },
         ]
       }
+      ic_data_quality_alert_config: {
+        Row: {
+          alert_cooldown_hours: number | null
+          alert_email_recipients: string[] | null
+          alert_enabled: boolean | null
+          class_coverage_threshold: number | null
+          created_at: string | null
+          id: string
+          overall_threshold: number | null
+          school_id: number
+          student_contact_threshold: number | null
+          student_parent_threshold: number | null
+          teacher_email_threshold: number | null
+          updated_at: string | null
+          weekly_summary_day: number | null
+          weekly_summary_enabled: boolean | null
+        }
+        Insert: {
+          alert_cooldown_hours?: number | null
+          alert_email_recipients?: string[] | null
+          alert_enabled?: boolean | null
+          class_coverage_threshold?: number | null
+          created_at?: string | null
+          id?: string
+          overall_threshold?: number | null
+          school_id: number
+          student_contact_threshold?: number | null
+          student_parent_threshold?: number | null
+          teacher_email_threshold?: number | null
+          updated_at?: string | null
+          weekly_summary_day?: number | null
+          weekly_summary_enabled?: boolean | null
+        }
+        Update: {
+          alert_cooldown_hours?: number | null
+          alert_email_recipients?: string[] | null
+          alert_enabled?: boolean | null
+          class_coverage_threshold?: number | null
+          created_at?: string | null
+          id?: string
+          overall_threshold?: number | null
+          school_id?: number
+          student_contact_threshold?: number | null
+          student_parent_threshold?: number | null
+          teacher_email_threshold?: number | null
+          updated_at?: string | null
+          weekly_summary_day?: number | null
+          weekly_summary_enabled?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_data_quality_alert_config_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ic_data_quality_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          acknowledgment_notes: string | null
+          alert_type: string
+          created_at: string | null
+          data_quality_grade: string | null
+          id: string
+          issues_detected: Json | null
+          notification_sent: boolean | null
+          notification_sent_at: string | null
+          overall_completeness_score: number | null
+          recipients: string[] | null
+          school_id: number
+          severity: string
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          acknowledgment_notes?: string | null
+          alert_type: string
+          created_at?: string | null
+          data_quality_grade?: string | null
+          id?: string
+          issues_detected?: Json | null
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          overall_completeness_score?: number | null
+          recipients?: string[] | null
+          school_id: number
+          severity: string
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          acknowledgment_notes?: string | null
+          alert_type?: string
+          created_at?: string | null
+          data_quality_grade?: string | null
+          id?: string
+          issues_detected?: Json | null
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          overall_completeness_score?: number | null
+          recipients?: string[] | null
+          school_id?: number
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_data_quality_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ic_data_quality_alerts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ic_data_quality_snapshots: {
         Row: {
           classes_without_students: number
@@ -1405,6 +1533,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ic_data_quality_snapshots_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ic_data_quality_weekly_summaries: {
+        Row: {
+          avg_completeness_score: number | null
+          created_at: string | null
+          id: string
+          max_completeness_score: number | null
+          min_completeness_score: number | null
+          recipients: string[] | null
+          school_id: number
+          score_change_from_previous_week: number | null
+          sent_at: string | null
+          top_issues: Json | null
+          total_alerts_triggered: number | null
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          avg_completeness_score?: number | null
+          created_at?: string | null
+          id?: string
+          max_completeness_score?: number | null
+          min_completeness_score?: number | null
+          recipients?: string[] | null
+          school_id: number
+          score_change_from_previous_week?: number | null
+          sent_at?: string | null
+          top_issues?: Json | null
+          total_alerts_triggered?: number | null
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          avg_completeness_score?: number | null
+          created_at?: string | null
+          id?: string
+          max_completeness_score?: number | null
+          min_completeness_score?: number | null
+          recipients?: string[] | null
+          school_id?: number
+          score_change_from_previous_week?: number | null
+          sent_at?: string | null
+          top_issues?: Json | null
+          total_alerts_triggered?: number | null
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_data_quality_weekly_summaries_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -3746,6 +3930,10 @@ export type Database = {
           school_name: string
           state: string
         }[]
+      }
+      should_trigger_data_quality_alert: {
+        Args: { p_current_score: number; p_school_id: number }
+        Returns: boolean
       }
       student_in_user_school: {
         Args: { _student_id: string }
