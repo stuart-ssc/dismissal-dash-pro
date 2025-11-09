@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,10 +13,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckSquare, XSquare, Search, Calendar, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckSquare, XSquare, Search, Calendar, X, ArrowUpDown, ArrowUp, ArrowDown, Eye, Users, Zap, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { MergeCommentsSection } from '@/components/MergeCommentsSection';
+import { MergePreviewDialog } from '@/components/MergePreviewDialog';
+import { ManualMergeCreationDialog } from '@/components/ManualMergeCreationDialog';
 
 const ICPendingMerges = () => {
   const { user, userRole, loading } = useAuth();
@@ -37,6 +39,10 @@ const ICPendingMerges = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [expandedRecordDetails, setExpandedRecordDetails] = useState<Map<string, any>>(new Map());
+  const [previewMerge, setPreviewMerge] = useState<any>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [manualMergeDialogOpen, setManualMergeDialogOpen] = useState(false);
+  const [focusedRowIndex, setFocusedRowIndex] = useState<number>(0);
 
   useEffect(() => {
     if (!loading && (!user || userRole !== 'school_admin')) {
@@ -109,6 +115,22 @@ const ICPendingMerges = () => {
       console.error('Error processing decision:', error);
       toast.error(error.message || 'Failed to process decision');
     }
+  };
+
+  const handlePreviewMerge = async (merge: any) => {
+    // Fetch existing record if not already loaded
+    if (merge.existing_record_id && !expandedRecordDetails.has(merge.id)) {
+      await fetchExistingRecord(merge);
+    }
+    setPreviewMerge(merge);
+    setPreviewDialogOpen(true);
+  };
+
+  const handleConfirmMerge = async () => {
+    if (!previewMerge) return;
+    await handleDecision(previewMerge.id, 'approve');
+    setPreviewDialogOpen(false);
+    setPreviewMerge(null);
   };
 
   const toggleRowExpansion = async (merge: any) => {
@@ -384,6 +406,69 @@ const ICPendingMerges = () => {
     setCurrentPage(1);
   }, [filterType, searchQuery, confidenceFilter, matchTypeFilter, dateRange]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      const currentMerges = paginatedMerges;
+      if (currentMerges.length === 0) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'j':
+          // Navigate down
+          e.preventDefault();
+          setFocusedRowIndex(prev => Math.min(prev + 1, currentMerges.length - 1));
+          break;
+        case 'k':
+          // Navigate up
+          e.preventDefault();
+          setFocusedRowIndex(prev => Math.max(prev - 1, 0));
+          break;
+        case 'a':
+          // Approve focused row
+          e.preventDefault();
+          if (currentMerges[focusedRowIndex]) {
+            handleDecision(currentMerges[focusedRowIndex].id, 'approve');
+          }
+          break;
+        case 'r':
+          // Reject focused row
+          e.preventDefault();
+          if (currentMerges[focusedRowIndex]) {
+            handleDecision(currentMerges[focusedRowIndex].id, 'reject');
+          }
+          break;
+        case 'p':
+          // Preview focused row
+          e.preventDefault();
+          if (currentMerges[focusedRowIndex]) {
+            handlePreviewMerge(currentMerges[focusedRowIndex]);
+          }
+          break;
+        case 'x':
+          // Toggle selection of focused row
+          e.preventDefault();
+          if (currentMerges[focusedRowIndex]) {
+            const id = currentMerges[focusedRowIndex].id;
+            handleSelectRow(id, !selectedMerges.has(id));
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [paginatedMerges, focusedRowIndex, selectedMerges]);
+
+  // Reset focused row when page changes
+  useEffect(() => {
+    setFocusedRowIndex(0);
+  }, [currentPage]);
+
   const studentCount = pendingMerges.filter(m => m.record_type === 'student').length;
   const teacherCount = pendingMerges.filter(m => m.record_type === 'teacher').length;
 
@@ -409,8 +494,12 @@ const ICPendingMerges = () => {
           <Button variant="outline" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
             ← Dashboard
           </Button>
-          <Button variant="outline" onClick={() => navigate("/dashboard/integrations/ic-pending-merges")}>
-            View Pending Merges
+          <Button 
+            onClick={() => setManualMergeDialogOpen(true)}
+            className="gap-2"
+          >
+            <Users className="h-4 w-4" />
+            Find Duplicates
           </Button>
         </div>
       </div>
@@ -420,7 +509,15 @@ const ICPendingMerges = () => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Action Required</AlertTitle>
           <AlertDescription>
-            {sortedMerges.length} record(s) require your review before they can be added to the system
+            <div className="flex items-center justify-between">
+              <span>{sortedMerges.length} record(s) require your review before they can be added to the system</span>
+              <Badge variant="outline" className="ml-2 gap-1">
+                <kbd className="px-1 py-0.5 text-xs bg-muted rounded">J/K</kbd> navigate
+                <kbd className="px-1 py-0.5 text-xs bg-muted rounded ml-1">A</kbd> approve
+                <kbd className="px-1 py-0.5 text-xs bg-muted rounded ml-1">R</kbd> reject
+                <kbd className="px-1 py-0.5 text-xs bg-muted rounded ml-1">P</kbd> preview
+              </Badge>
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -609,33 +706,126 @@ const ICPendingMerges = () => {
             </CardHeader>
             <CardContent>
               {sortedMerges.length > 0 && (
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Show</span>
-                    <Select 
-                      value={itemsPerPage.toString()} 
-                      onValueChange={(value) => {
-                        setItemsPerPage(Number(value));
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger className="w-20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-muted-foreground">
-                      records per page
-                    </span>
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Show</span>
+                      <Select 
+                        value={itemsPerPage.toString()} 
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="25">25</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground">
+                        records per page
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Showing {startIndex + 1}-{Math.min(endIndex, sortedMerges.length)} of {sortedMerges.length}
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    Showing {startIndex + 1}-{Math.min(endIndex, sortedMerges.length)} of {sortedMerges.length}
-                  </div>
-                </div>
+                  
+                  {/* Bulk Actions Bar */}
+                  {selectedMerges.size > 0 && (
+                    <Card className="mb-4 bg-primary/5 border-primary/20">
+                      <CardContent className="py-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm font-medium">
+                              {selectedMerges.size} record(s) selected
+                            </span>
+                            {confidenceFilter !== 'all' && (
+                              <Badge variant="secondary" className="gap-1">
+                                <Filter className="h-3 w-3" />
+                                Filtered: {confidenceFilter}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedMerges(new Set())}
+                            >
+                              Clear Selection
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleBulkAction('approve')}
+                              disabled={isProcessingBulk}
+                              className="gap-2"
+                            >
+                              {isProcessingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckSquare className="h-4 w-4" />}
+                              Approve Selected
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleBulkAction('reject')}
+                              disabled={isProcessingBulk}
+                              className="gap-2"
+                            >
+                              {isProcessingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <XSquare className="h-4 w-4" />}
+                              Reject Selected
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Smart Bulk Actions */}
+                  {sortedMerges.length > 0 && (
+                    <Card className="mb-4">
+                      <CardContent className="py-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-amber-500" />
+                            <span className="text-sm font-medium">Quick Actions</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const highConfidenceMerges = sortedMerges
+                                  .filter(m => getConfidenceLevel(m.match_confidence || 0) === 'high')
+                                  .map(m => m.id);
+                                setSelectedMerges(new Set(highConfidenceMerges));
+                                toast.info(`Selected ${highConfidenceMerges.length} high-confidence merges`);
+                              }}
+                            >
+                              Select High Confidence (≥90%)
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const mediumHighMerges = sortedMerges
+                                  .filter(m => (m.match_confidence || 0) >= 70)
+                                  .map(m => m.id);
+                                setSelectedMerges(new Set(mediumHighMerges));
+                                toast.info(`Selected ${mediumHighMerges.length} merges ≥70% confidence`);
+                              }}
+                            >
+                              Select Medium+ (≥70%)
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
               )}
               {sortedMerges.length === 0 ? (
                 <div className="text-center py-12">
@@ -718,13 +908,17 @@ const ICPendingMerges = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedMerges.map((merge) => {
+                    {paginatedMerges.map((merge, index) => {
                       const isExpanded = expandedRows.has(merge.id);
                       const icData = merge.ic_data;
+                      const isFocused = index === focusedRowIndex;
                       
                       return (
                         <>
-                          <TableRow key={merge.id}>
+                          <TableRow 
+                            key={merge.id}
+                            className={isFocused ? "bg-primary/5 border-l-2 border-l-primary" : ""}
+                          >
                             <TableCell>
                               <Checkbox
                                 checked={selectedMerges.has(merge.id)}
@@ -778,16 +972,25 @@ const ICPendingMerges = () => {
                               <div className="flex gap-2">
                                 <Button
                                   size="sm"
+                                  variant="ghost"
+                                  onClick={() => handlePreviewMerge(merge)}
+                                  className="gap-1"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  Preview
+                                </Button>
+                                <Button
+                                  size="sm"
                                   onClick={() => handleDecision(merge.id, 'approve')}
                                 >
-                                  Approve Merge
+                                  Approve
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => handleDecision(merge.id, 'reject')}
                                 >
-                                  Create New
+                                  Reject
                                 </Button>
                               </div>
                             </TableCell>
@@ -1139,6 +1342,23 @@ const ICPendingMerges = () => {
           </Card>
         </div>
       )}
+
+      {/* Merge Preview Dialog */}
+      <MergePreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={setPreviewDialogOpen}
+        merge={previewMerge}
+        existingRecord={previewMerge ? expandedRecordDetails.get(previewMerge.id) : null}
+        onConfirm={handleConfirmMerge}
+      />
+
+      {/* Manual Merge Creation Dialog */}
+      <ManualMergeCreationDialog
+        open={manualMergeDialogOpen}
+        onOpenChange={setManualMergeDialogOpen}
+        schoolId={schoolId || 0}
+        onMergeCreated={fetchPendingMerges}
+      />
     </div>
   );
 };
