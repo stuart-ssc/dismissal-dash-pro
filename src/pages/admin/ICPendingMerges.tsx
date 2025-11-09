@@ -33,6 +33,8 @@ const ICPendingMerges = () => {
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [sortField, setSortField] = useState<'name' | 'confidence' | 'date' | 'matchType'>('confidence');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   useEffect(() => {
     if (!loading && (!user || userRole !== 'school_admin')) {
@@ -144,7 +146,8 @@ const ICPendingMerges = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedMerges(new Set(sortedMerges.map(m => m.id)));
+      // Select only items on current page
+      setSelectedMerges(new Set(paginatedMerges.map(m => m.id)));
     } else {
       setSelectedMerges(new Set());
     }
@@ -283,6 +286,17 @@ const ICPendingMerges = () => {
     
     return sorted;
   }, [filteredAndSearchedMerges, sortField, sortDirection]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedMerges.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMerges = sortedMerges.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, searchQuery, confidenceFilter, matchTypeFilter, dateRange]);
 
   const studentCount = pendingMerges.filter(m => m.record_type === 'student').length;
   const teacherCount = pendingMerges.filter(m => m.record_type === 'teacher').length;
@@ -503,6 +517,35 @@ const ICPendingMerges = () => {
               <CardDescription>Review and approve or reject potential matches</CardDescription>
             </CardHeader>
             <CardContent>
+              {sortedMerges.length > 0 && (
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Show</span>
+                    <Select 
+                      value={itemsPerPage.toString()} 
+                      onValueChange={(value) => {
+                        setItemsPerPage(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-muted-foreground">
+                      records per page
+                    </span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Showing {startIndex + 1}-{Math.min(endIndex, sortedMerges.length)} of {sortedMerges.length}
+                  </div>
+                </div>
+              )}
               {sortedMerges.length === 0 ? (
                 <div className="text-center py-12">
                   {pendingMerges.length === 0 ? (
@@ -541,7 +584,7 @@ const ICPendingMerges = () => {
                     <TableRow>
                       <TableHead className="w-12">
                         <Checkbox
-                          checked={selectedMerges.size === sortedMerges.length && sortedMerges.length > 0}
+                          checked={paginatedMerges.length > 0 && paginatedMerges.every(m => selectedMerges.has(m.id))}
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
@@ -584,7 +627,7 @@ const ICPendingMerges = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedMerges.map((merge) => {
+                    {paginatedMerges.map((merge) => {
                       const isExpanded = expandedRows.has(merge.id);
                       const icData = merge.ic_data;
                       
@@ -719,6 +762,61 @@ const ICPendingMerges = () => {
                     })}
                   </TableBody>
                 </Table>
+              )}
+
+              {sortedMerges.length > 0 && totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        // Show first page, last page, current page, and pages near current
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          Math.abs(page - currentPage) <= 1
+                        );
+                      })
+                      .map((page, index, array) => {
+                        // Add ellipsis if there's a gap
+                        const prevPage = array[index - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+                        
+                        return (
+                          <div key={page} className="flex items-center gap-1">
+                            {showEllipsis && (
+                              <span className="px-2 text-muted-foreground">...</span>
+                            )}
+                            <Button
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className="w-9"
+                            >
+                              {page}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
