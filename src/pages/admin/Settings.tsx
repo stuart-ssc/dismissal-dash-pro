@@ -15,6 +15,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import * as z from "zod";
 import { TimePicker } from "@/components/ui/time-picker";
+import { ICConnectionForm } from "@/components/ICConnectionForm";
+import { ICConnectionStatus } from "@/components/ICConnectionStatus";
+import { Database } from "lucide-react";
 
 const formatPhoneNumber = (value: string): string => {
   const digits = value.replace(/\D/g, '');
@@ -53,6 +56,7 @@ const Settings = () => {
   const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [classroomLayout, setClassroomLayout] = useState<string>('transportation-columns');
+  const [icConnection, setIcConnection] = useState<any>(null);
   const [dismissalSettings, setDismissalSettings] = useState({
     dismissalTime: '15:30',
     preparationMinutes: 30,
@@ -78,7 +82,28 @@ const Settings = () => {
 
   useEffect(() => {
     fetchSchoolData();
+    fetchICConnection();
   }, [user]);
+
+  const fetchICConnection = async () => {
+    if (!user) return;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('school_id')
+      .eq('id', user.id)
+      .single();
+    
+    if (profile?.school_id) {
+      const { data } = await supabase
+        .from('infinite_campus_connections')
+        .select('*')
+        .eq('school_id', profile.school_id)
+        .eq('status', 'active')
+        .maybeSingle();
+      
+      setIcConnection(data);
+    }
+  };
 
   const fetchSchoolData = async () => {
     if (!user) return;
@@ -379,6 +404,23 @@ const Settings = () => {
             </div>
             
             <Button onClick={handleSaveDismissalSettings} className="w-full">Save Settings</Button>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-blue-500" />
+              Infinite Campus Integration
+            </CardTitle>
+            <CardDescription>Sync students, teachers, and classes from your Infinite Campus SIS</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!icConnection ? (
+              <ICConnectionForm schoolId={schoolData?.id || 0} onConnectionSuccess={fetchICConnection} />
+            ) : (
+              <ICConnectionStatus connection={icConnection} onDisconnect={fetchICConnection} />
+            )}
           </CardContent>
         </Card>
 

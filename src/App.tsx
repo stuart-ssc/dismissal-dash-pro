@@ -37,6 +37,11 @@ import DismissalDetailReport from "./pages/DismissalDetailReport";
 import VerifyEmailChange from "./pages/VerifyEmailChange";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useSessionTimeout } from "./hooks/useSessionTimeout";
+import { MultiSchoolProvider } from "./hooks/useMultiSchool";
+import ICSyncHistory from "./pages/admin/ICSyncHistory";
+import ICPendingMerges from "./pages/admin/ICPendingMerges";
+import AcademicSessions from "./pages/admin/AcademicSessions";
+import ArchivedUsers from "./pages/admin/ArchivedUsers";
 import DismissalLauncher from "./pages/DismissalLauncher";
 import AdminLayout from "./layouts/AdminLayout";
 import ClassroomMode from "./pages/modes/ClassroomMode";
@@ -87,6 +92,10 @@ const AppContent = () => {
             <Route path="/dashboard/special-use-groups" element={<SpecialUseGroups />} />
             <Route path="/dashboard/special-use-runs" element={<SpecialUseRuns />} />
             <Route path="/dashboard/special-use-runs/:runId" element={<SpecialUseRunDetail />} />
+            <Route path="/dashboard/integrations/ic-sync-history" element={<ICSyncHistory />} />
+            <Route path="/dashboard/integrations/ic-pending-merges" element={<ICPendingMerges />} />
+            <Route path="/dashboard/academic-sessions" element={<AcademicSessions />} />
+            <Route path="/dashboard/people/archived" element={<ArchivedUsers />} />
           </Route>
 
           {/* Fullscreen dismissal modes (no left navigation) */}
@@ -122,13 +131,15 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppContent />
-        </TooltipProvider>
+        <MultiSchoolProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppContent />
+          </TooltipProvider>
+        </MultiSchoolProvider>
       </AuthProvider>
-  </QueryClientProvider>
+    </QueryClientProvider>
   </HelmetProvider>
 );
 

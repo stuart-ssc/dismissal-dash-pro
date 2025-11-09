@@ -5,14 +5,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { Menu } from "lucide-react";
 import logo from "@/assets/logo.svg";
 import SystemAdminSchoolSwitcher from "@/components/SystemAdminSchoolSwitcher";
+import { SchoolSwitcher } from "@/components/SchoolSwitcher";
+import { useMultiSchool } from "@/hooks/useMultiSchool";
 
 const Navbar = () => {
   const location = useLocation();
   const isAuthPage = location.pathname === "/auth";
   const isIndexPage = location.pathname === "/";
   const { user, userRole, signOut } = useAuth();
+  const { schools } = useMultiSchool();
   const isSystemAdmin = userRole === "system_admin";
   const isTeacher = user && userRole && userRole !== "system_admin";
+  const hasMultipleSchools = schools.length > 1;
   
   // Show navigation links on content pages for non-authenticated users
   const isContentPage = ['/', '/how-it-works', '/pricing', '/auth'].includes(location.pathname);
@@ -69,7 +73,10 @@ const Navbar = () => {
               <Button variant="hero" onClick={signOut}>Sign Out</Button>
             </>
           ) : isTeacher ? (
-            <Button variant="hero" onClick={signOut}>Sign Out</Button>
+            <>
+              {hasMultipleSchools && <SchoolSwitcher />}
+              <Button variant="hero" onClick={signOut}>Sign Out</Button>
+            </>
           ) : (
             <Link to="/auth">
               <Button variant="hero">Get Started</Button>

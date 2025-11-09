@@ -27,6 +27,7 @@ const adminNavItems = [
   { title: "Transportation", url: "/dashboard/transportation", icon: Bus },
   { title: "Special Use Groups", url: "/dashboard/special-use-groups", icon: Plane },
   { title: "Special Use Runs", url: "/dashboard/special-use-runs", icon: Calendar },
+  { title: "Academic Sessions", url: "/dashboard/academic-sessions", icon: Calendar },
   { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
