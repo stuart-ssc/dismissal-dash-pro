@@ -112,9 +112,9 @@ export default function ICMergeAudit() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/admin/ic-pending-merges")}>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            Dashboard
           </Button>
           <h1 className="text-3xl font-bold">IC Merge Audit Log</h1>
         </div>
@@ -130,9 +130,9 @@ export default function ICMergeAudit() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/ic-pending-merges")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          Dashboard
         </Button>
         <h1 className="text-3xl font-bold">IC Merge Audit Log</h1>
       </div>

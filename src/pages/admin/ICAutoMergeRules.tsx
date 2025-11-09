@@ -127,8 +127,9 @@ export default function ICAutoMergeRules() {
     return (
       <div className="container mx-auto py-8">
         <div className="flex items-center gap-2 mb-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/admin/settings")}>
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Dashboard
           </Button>
           <h1 className="text-3xl font-bold">Auto-Merge Rules</h1>
         </div>
@@ -141,8 +142,9 @@ export default function ICAutoMergeRules() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/admin/settings")}>
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Dashboard
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Auto-Merge Rules</h1>

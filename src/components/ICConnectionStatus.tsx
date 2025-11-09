@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckCircle2, History, Loader2, Unplug, AlertCircle, Settings } from 'lucide-react';
+import { CheckCircle2, History, Loader2, Unplug, AlertCircle, Settings, LayoutDashboard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -173,6 +173,10 @@ export const ICConnectionStatus = ({ connection, onDisconnect }: ICConnectionSta
       )}
 
       <div className="flex flex-wrap gap-2">
+        <Button variant="default" onClick={() => navigate('/dashboard/integrations/ic-sync')}>
+          <LayoutDashboard className="mr-2 h-4 w-4" />
+          Dashboard
+        </Button>
         <Button onClick={handleSyncNow} disabled={isSyncing}>
           {isSyncing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Sync Now

@@ -406,11 +406,11 @@ const ICPendingMerges = () => {
           <p className="text-muted-foreground">Review potential duplicate records from Infinite Campus sync</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/dashboard/integrations/ic-merge-audit')}>
-            View Audit Log
+          <Button variant="outline" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
+            ← Dashboard
           </Button>
-          <Button variant="outline" onClick={() => navigate('/dashboard/settings')}>
-            ← Back to Settings
+          <Button variant="outline" onClick={() => navigate("/dashboard/integrations/ic-pending-merges")}>
+            View Pending Merges
           </Button>
         </div>
       </div>

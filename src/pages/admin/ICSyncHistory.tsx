@@ -122,9 +122,14 @@ const ICSyncHistory = () => {
           </h1>
           <p className="text-muted-foreground">View all Infinite Campus synchronization attempts</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/dashboard/settings')}>
-          ← Back to Settings
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/dashboard/integrations/ic-sync')}>
+            ← Dashboard
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/dashboard/settings')}>
+            ← Back to Settings
+          </Button>
+        </div>
       </div>
 
       <Card>
