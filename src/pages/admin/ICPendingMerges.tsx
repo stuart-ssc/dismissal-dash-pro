@@ -16,6 +16,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { GitMerge, Loader2, ChevronDown, ChevronUp, AlertCircle, CheckSquare, XSquare, Search, Calendar, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { MergeCommentsSection } from '@/components/MergeCommentsSection';
 
 const ICPendingMerges = () => {
   const { user, userRole, loading } = useAuth();
@@ -959,6 +960,11 @@ const ICPendingMerges = () => {
                                           </div>
                                         </CardContent>
                                       </Card>
+
+                                      {/* Comments Section */}
+                                      <div className="mt-6 pt-6 border-t">
+                                        <MergeCommentsSection mergeId={merge.id} />
+                                      </div>
                                     </>
                                   ) : (
                                     /* New Record (no existing match) */
