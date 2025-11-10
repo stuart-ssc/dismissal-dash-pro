@@ -211,7 +211,7 @@ export function ICSyncStatusWidget({ schoolId }: ICSyncStatusWidgetProps) {
                 Sync Now
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <Link to="/dashboard/integrations/ic-sync-history">
+                <Link to="/dashboard/integrations/infinite-campus?tab=sync">
                   View History
                 </Link>
               </Button>
@@ -223,7 +223,7 @@ export function ICSyncStatusWidget({ schoolId }: ICSyncStatusWidgetProps) {
               Connect Infinite Campus to automatically sync students, teachers, and classes.
             </p>
             <Button asChild size="sm">
-              <Link to="/dashboard/settings">Connect IC</Link>
+              <Link to="/dashboard/integrations/infinite-campus">Connect IC</Link>
             </Button>
           </div>
         )}

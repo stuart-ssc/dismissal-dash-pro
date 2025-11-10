@@ -11,16 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Settings as SettingsIcon, School, Bell, Shield, Clock, Upload, X, Database } from "lucide-react";
+import { Settings as SettingsIcon, School, Bell, Shield, Clock, Upload, X } from "lucide-react";
 import { toast } from "sonner";
-import { ICConnectionForm } from "@/components/ICConnectionForm";
-import { ICConnectionStatus } from "@/components/ICConnectionStatus";
-import { ICConnectionWizard } from "@/components/ICConnectionWizard";
-import { DataQualityAlertSettings } from "@/components/DataQualityAlertSettings";
-import { DataQualityAlertHistory } from "@/components/DataQualityAlertHistory";
-import { ICSyncConfigurationForm } from "@/components/ICSyncConfigurationForm";
-import { ICSyncControlPanel } from "@/components/ICSyncControlPanel";
-import { SchoolHolidayManager } from "@/components/SchoolHolidayManager";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -113,7 +105,6 @@ const Settings = () => {
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [icConnection, setIcConnection] = useState<any>(null);
 
   const form = useForm<z.infer<typeof schoolFormSchema>>({
     resolver: zodResolver(schoolFormSchema),
@@ -167,12 +158,6 @@ const Settings = () => {
   useEffect(() => {
     fetchSchoolData();
   }, [user]);
-
-  useEffect(() => {
-    if (schoolData) {
-      fetchICConnection();
-    }
-  }, [schoolData]);
 
   const fetchSchoolData = async () => {
     if (!user) return;
@@ -244,23 +229,6 @@ const Settings = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fetchICConnection = async () => {
-    if (!schoolData?.id) return;
-    
-    const { data, error } = await supabase
-      .from('infinite_campus_connections')
-      .select('*')
-      .eq('school_id', schoolData.id)
-      .maybeSingle();
-    
-    if (error) {
-      console.error('Error fetching IC connection:', error);
-      return;
-    }
-    
-    setIcConnection(data);
   };
 
   const handleLogoUpload = async (file: File) => {
@@ -713,48 +681,6 @@ const Settings = () => {
                   </Form>
                 </CardContent>
               </Card>
-
-              {/* Infinite Campus Integration Card */}
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Database className="h-5 w-5 text-blue-500" />
-                    Infinite Campus Integration
-                  </CardTitle>
-                  <CardDescription>Sync students, teachers, and classes from your Infinite Campus SIS</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!icConnection ? (
-                    <ICConnectionWizard 
-                      schoolId={schoolData?.id || 0} 
-                      onComplete={fetchICConnection}
-                      onCancel={() => console.log('Wizard cancelled')}
-                    />
-                  ) : (
-                    <ICConnectionStatus connection={icConnection} onDisconnect={fetchICConnection} />
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Data Quality Alert Settings - Only show if IC is connected */}
-              {icConnection && (
-                <>
-                  <ICSyncControlPanel 
-                    schoolId={schoolData?.id || 0}
-                    onSyncTriggered={fetchICConnection}
-                  />
-                  
-                  <ICSyncConfigurationForm 
-                    schoolId={schoolData?.id || 0}
-                    onConfigUpdated={fetchICConnection}
-                  />
-                  
-                  <SchoolHolidayManager schoolId={schoolData?.id || 0} />
-                  
-                  <DataQualityAlertSettings schoolId={schoolData?.id || 0} />
-                  <DataQualityAlertHistory schoolId={schoolData?.id || 0} />
-                </>
-              )}
 
               {/* Notifications Card - Hidden until functionality is built */}
               {/* <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
