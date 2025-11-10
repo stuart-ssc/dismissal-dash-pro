@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTodayDismissalRun as useDismissalRunRefetch } from "@/hooks/useTodayDismissalRun";
 import { ICSyncStatusWidget } from "@/components/ICSyncStatusWidget";
+import { ICDashboardSummary } from "@/components/ICDashboardSummary";
 import { SchoolSetupMethodDialog } from "@/components/SchoolSetupMethodDialog";
 import { ICSetupDialog } from "@/components/ICSetupDialog";
 
@@ -530,6 +531,11 @@ const Dashboard = () => {
           {/* IC Sync Status Widget - Only for school admins */}
           {userRole === 'school_admin' && schoolId && (
             <ICSyncStatusWidget schoolId={schoolId} />
+          )}
+
+          {/* IC Dashboard Summary - Only for school admins */}
+          {userRole === 'school_admin' && schoolId && (
+            <ICDashboardSummary schoolId={schoolId} />
           )}
 
           
