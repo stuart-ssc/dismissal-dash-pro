@@ -29,5 +29,16 @@ export function ICAutoMergeRulesTab({ schoolId }: ICAutoMergeRulesTabProps) {
     return <div>Error loading auto-merge rules</div>;
   }
 
-  return <ContentComponent embedded={true} />;
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <Zap className="h-6 w-6" />
+          Auto-Merge Rules
+        </h2>
+        <p className="text-muted-foreground">Configure automatic approval for IC pending merges</p>
+      </div>
+      <ContentComponent embedded={true} />
+    </div>
+  );
 }

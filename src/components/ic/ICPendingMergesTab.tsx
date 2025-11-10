@@ -33,6 +33,16 @@ export function ICPendingMergesTab({ schoolId }: ICPendingMergesTabProps) {
     return <div>Error loading pending merges</div>;
   }
 
-  // Render the full component but strip out the header/back button since we're in tabs
-  return <ContentComponent embedded={true} />;
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <GitMerge className="h-6 w-6" />
+          Pending Merges
+        </h2>
+        <p className="text-muted-foreground">Review potential duplicate records from Infinite Campus sync</p>
+      </div>
+      <ContentComponent embedded={true} />
+    </div>
+  );
 }
