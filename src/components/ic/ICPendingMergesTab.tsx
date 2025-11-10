@@ -34,16 +34,5 @@ export function ICPendingMergesTab({ schoolId }: ICPendingMergesTabProps) {
   }
 
   // Render the full component but strip out the header/back button since we're in tabs
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <GitMerge className="h-6 w-6" />
-          Pending Merges
-        </h2>
-        <p className="text-muted-foreground">Review potential duplicate records from Infinite Campus sync</p>
-      </div>
-      <ContentComponent />
-    </div>
-  );
+  return <ContentComponent embedded={true} />;
 }
