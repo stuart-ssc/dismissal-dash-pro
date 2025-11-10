@@ -62,6 +62,7 @@ const [allSchools, setAllSchools] = useState<{ id: number; school_name: string; 
   const [isCreatingSchool, setIsCreatingSchool] = useState(false);
   const [isInCreateSchoolMode, setIsInCreateSchoolMode] = useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const [isFormPreFilled, setIsFormPreFilled] = useState(false);
   const [newSchoolData, setNewSchoolData] = useState({
     schoolName: '',
     streetAddress: '',
@@ -356,6 +357,9 @@ const prefetchSchools = useCallback(async () => {
       signUpForm.setValue('firstName', newSchoolData.creatorFirstName);
       signUpForm.setValue('lastName', newSchoolData.creatorLastName);
       signUpForm.setValue('email', newSchoolData.creatorEmail);
+      
+      // Mark form as pre-filled
+      setIsFormPreFilled(true);
       
       // Exit create school mode
       setIsInCreateSchoolMode(false);
@@ -1065,11 +1069,11 @@ const prefetchSchools = useCallback(async () => {
                     <TabsContent value="signup">
                       <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
                         {/* Show pre-filled details after school creation */}
-                        {selectedSchool && selectedRole && signUpForm.watch('firstName') && (
+                        {isFormPreFilled && (
                           <div className="mb-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
                             <h4 className="font-semibold text-primary mb-2">Your Details</h4>
                             <div className="text-sm space-y-1">
-                              <p><strong>School:</strong> {selectedSchool.school_name}</p>
+                              <p><strong>School:</strong> {selectedSchool?.school_name}</p>
                               <p><strong>Role:</strong> {selectedRole === 'school_admin' ? 'School Administrator' : 'Teacher'}</p>
                               <p><strong>Name:</strong> {signUpForm.watch('firstName')} {signUpForm.watch('lastName')}</p>
                               <p><strong>Email:</strong> {signUpForm.watch('email')}</p>
@@ -1078,7 +1082,7 @@ const prefetchSchools = useCallback(async () => {
                         )}
 
                         {/* STEP 1: School Selection (Required First) - Hide if pre-filled */}
-                        {!signUpForm.watch('firstName') && (
+                        {!isFormPreFilled && (
                           <>
                         <div className="space-y-2">
                           <Label htmlFor="schoolId">School *</Label>
@@ -1234,7 +1238,7 @@ const prefetchSchools = useCallback(async () => {
                           </div>
 
                           {/* Name Fields - For email signup (hide if pre-filled) */}
-                          {!signUpForm.watch('firstName') && (
+                          {!isFormPreFilled && (
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor="firstName">First Name *</Label>
@@ -1270,7 +1274,7 @@ const prefetchSchools = useCallback(async () => {
 
                           )}
 
-                          {!signUpForm.watch('email') && (
+                          {!isFormPreFilled && (
                           <div className="space-y-2">
                             <Label htmlFor="signupEmail">Email *</Label>
                             <div className="relative">
