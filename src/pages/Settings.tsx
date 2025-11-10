@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { SidebarTrigger } from "@/components/ui/sidebar";
+
 import { Settings as SettingsIcon, School, Bell, Shield, Clock, Upload, X, Calendar, Plus, Edit, Trash2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -603,18 +603,6 @@ const Settings = () => {
   return (
     <>
       <SEO />
-      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-2xl font-bold">{schoolData?.school_name || 'Settings'}</h1>
-            <p className="text-sm text-muted-foreground">
-              Configure your school's dismissal system preferences
-            </p>
-          </div>
-        </div>
-      </header>
-
       <div className="flex-1 p-6 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
