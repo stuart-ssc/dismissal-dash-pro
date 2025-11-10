@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, Clock, Shield, Users, BarChart3, Database, Briefcase } from "lucide-react";
+import { ArrowRight, CheckCircle, Clock, Shield, Users, BarChart3, Briefcase } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import heroImage from "@/assets/hero-dismissal.jpg";
 import { useSEO } from "@/hooks/useSEO";
+import InfiniteCampusLogo from "@/components/InfiniteCampusLogo";
 
 const Index = () => {
   const SEO = useSEO();
@@ -21,9 +22,10 @@ const Index = () => {
       description: "Ensure every child gets to the right person with our verification protocols."
     },
     {
-      icon: <Database className="h-6 w-6" />,
+      icon: <InfiniteCampusLogo className="w-32 h-8" />,
       title: "Infinite Campus Integration",
-      description: "Quick setup with automatic student data sync. Keep your roster up-to-date effortlessly."
+      description: "Quick setup with automatic student data sync. Keep your roster up-to-date effortlessly.",
+      customIconLayout: true
     },
     {
       icon: <BarChart3 className="h-6 w-6" />,
@@ -107,11 +109,17 @@ const Index = () => {
           {features.map((feature, index) => (
             <Card key={index} className="border-0 shadow-soft bg-card/80 backdrop-blur hover:shadow-elevated transition-all duration-300">
               <CardHeader>
-                <div className="p-3 rounded-full bg-gradient-to-r from-primary/10 to-secondary/10 w-fit">
-                  <div className="text-primary">
+                {feature.customIconLayout ? (
+                  <div className="mb-4 text-primary">
                     {feature.icon}
                   </div>
-                </div>
+                ) : (
+                  <div className="p-3 rounded-full bg-gradient-to-r from-primary/10 to-secondary/10 w-fit">
+                    <div className="text-primary">
+                      {feature.icon}
+                    </div>
+                  </div>
+                )}
                 <CardTitle className="text-lg">{feature.title}</CardTitle>
               </CardHeader>
               <CardContent>
