@@ -48,7 +48,7 @@ export default function HowItWorks() {
       title: "Class Roster Management",
       description: "Manage all your student data in one place",
       points: [
-        "Import rosters via CSV in seconds",
+        "Import rosters via Infinite Campus or CSV in seconds",
         "Assign students to classes and teachers",
         "Configure transportation assignments",
         "Update student information easily"
