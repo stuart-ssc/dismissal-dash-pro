@@ -123,7 +123,7 @@ export default function SpecialUseRuns() {
           {searchQuery ? "No runs found matching your search" : "No runs scheduled yet"}
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg bg-card">
           <Table>
             <TableHeader>
               <TableRow>
