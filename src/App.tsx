@@ -8,6 +8,7 @@ import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import Pricing from "./pages/Pricing";
+import SpecialTrips from "./pages/SpecialTrips";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Transportation from "./pages/Transportation";
@@ -66,6 +67,7 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/special-trips" element={<SpecialTrips />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/verify-email-change" element={<VerifyEmailChange />} />
 

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, Clock, Shield, Users, BarChart3 } from "lucide-react";
+import { ArrowRight, CheckCircle, Clock, Shield, Users, BarChart3, Database, Briefcase } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import heroImage from "@/assets/hero-dismissal.jpg";
 import { useSEO } from "@/hooks/useSEO";
@@ -21,9 +21,9 @@ const Index = () => {
       description: "Ensure every child gets to the right person with our verification protocols."
     },
     {
-      icon: <Users className="h-6 w-6" />,
-      title: "Parent Communication",
-      description: "Real-time updates and notifications keep parents informed throughout the process."
+      icon: <Database className="h-6 w-6" />,
+      title: "Infinite Campus Integration",
+      description: "Quick setup with automatic student data sync. Keep your roster up-to-date effortlessly."
     },
     {
       icon: <BarChart3 className="h-6 w-6" />,
@@ -38,7 +38,8 @@ const Index = () => {
     "Increase staff efficiency",
     "Enhanced student safety protocols",
     "Real-time dismissal tracking",
-    "Automated parent notifications"
+    "Infinite Campus integration with automatic sync",
+    "Manage field trips and special event transportation"
   ];
 
   return (
@@ -118,6 +119,73 @@ const Index = () => {
               </CardContent>
             </Card>
           ))}
+        </div>
+      </section>
+
+      {/* Special Trip Management Section */}
+      <section className="container mx-auto px-4 py-20 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/5 rounded-3xl">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <div className="p-3 rounded-full bg-gradient-to-r from-primary/10 to-secondary/10 w-fit mb-6">
+              <Briefcase className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-3xl font-bold mb-4">
+              Special Trip Management
+            </h2>
+            <p className="text-xl text-muted-foreground mb-6">
+              Going beyond daily dismissal—organize transportation for field trips, 
+              sports teams, club activities, and special events with dedicated 
+              management tools.
+            </p>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-secondary flex-shrink-0 mt-1" />
+                <span>Create custom runs for any special event or trip</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-secondary flex-shrink-0 mt-1" />
+                <span>Assign specific students to each trip or activity</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-secondary flex-shrink-0 mt-1" />
+                <span>Track attendance and manage rosters in real-time</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-secondary flex-shrink-0 mt-1" />
+                <span>Dedicated departure modes for organized loading</span>
+              </li>
+            </ul>
+            <Link to="/special-trips">
+              <Button variant="hero" size="lg">
+                Learn More About Special Trips
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+          
+          <Card className="p-8 border-0 shadow-elevated bg-gradient-to-br from-card to-secondary/5">
+            <CardHeader className="p-0 mb-6">
+              <CardTitle className="text-xl mb-2">Perfect For</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 space-y-4">
+              <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
+                <Briefcase className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="font-medium">Field Trips & Excursions</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
+                <Briefcase className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="font-medium">Athletic Events & Games</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
+                <Briefcase className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="font-medium">After-School Activities</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
+                <Briefcase className="h-5 w-5 text-primary flex-shrink-0" />
+                <span className="font-medium">Special Events & Programs</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
