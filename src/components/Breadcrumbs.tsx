@@ -36,9 +36,9 @@ export function Breadcrumbs() {
   if (pathnames.length <= 1) return null;
 
   return (
-    <div className="px-6 py-3 border-b bg-card/30 backdrop-blur-sm">
+    <div className="px-4 md:px-6 py-2 md:py-3 border-b bg-card/30 backdrop-blur-sm">
       <Breadcrumb>
-        <BreadcrumbList>
+        <BreadcrumbList className="text-sm md:text-base">
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
               <Link to="/dashboard">
@@ -57,10 +57,10 @@ export function Breadcrumbs() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   {isLast ? (
-                    <BreadcrumbPage>{name}</BreadcrumbPage>
+                    <BreadcrumbPage className="truncate max-w-[150px] md:max-w-none">{name}</BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink asChild>
-                      <Link to={routeTo}>{name}</Link>
+                      <Link to={routeTo} className="truncate max-w-[150px] md:max-w-none block">{name}</Link>
                     </BreadcrumbLink>
                   )}
                 </BreadcrumbItem>
