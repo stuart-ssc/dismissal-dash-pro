@@ -482,32 +482,20 @@ const ICPendingMerges = ({ embedded = false }: { embedded?: boolean }) => {
 
   return (
     <div className="flex-1 p-6 space-y-6">
-      {!embedded && (
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <GitMerge className="h-8 w-8" />
-              Pending Merges
-            </h1>
-            <p className="text-muted-foreground">Review potential duplicate records from Infinite Campus sync</p>
-          </div>
-          <div className="flex gap-2">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <GitMerge className="h-8 w-8" />
+            Pending Merges
+          </h1>
+          <p className="text-muted-foreground">Review potential duplicate records from Infinite Campus sync</p>
+        </div>
+        <div className="flex gap-2">
+          {!embedded && (
             <Button variant="outline" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
               ← Dashboard
             </Button>
-            <Button 
-              onClick={() => setManualMergeDialogOpen(true)}
-              className="gap-2"
-            >
-            <Users className="h-4 w-4" />
-            Find Duplicates
-          </Button>
-        </div>
-      </div>
-      )}
-      
-      {embedded && (
-        <div className="flex justify-end">
+          )}
           <Button 
             onClick={() => setManualMergeDialogOpen(true)}
             className="gap-2"
@@ -516,7 +504,7 @@ const ICPendingMerges = ({ embedded = false }: { embedded?: boolean }) => {
             Find Duplicates
           </Button>
         </div>
-      )}
+      </div>
 
       {sortedMerges.length > 0 && (
         <Alert>
