@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,10 +14,9 @@ import { ModeCompletionButton } from "@/components/ModeCompletionButton";
 import { TeacherUsageCard } from "@/components/TeacherUsageCard";
 
 export default function DismissalLauncher() {
-  const { signOut, user, userRole, loading } = useAuth();
+  const { user, userRole, loading } = useAuth();
   const { run, schoolId, planTimeFallback, isLoading, refetch } = useTodayDismissalRun({ allowCreate: true });
 
-  const [schoolName, setSchoolName] = useState<string>('');
   const [isBusCompleted, setIsBusCompleted] = useState(false);
   const [isCarLineCompleted, setIsCarLineCompleted] = useState(false);
   const [isWalkerCompleted, setIsWalkerCompleted] = useState(false);
@@ -32,30 +31,6 @@ export default function DismissalLauncher() {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
-
-  useEffect(() => {
-    const fetchSchoolName = async () => {
-      if (!user) return;
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('school_id')
-          .eq('id', user.id)
-          .single();
-        if (profile?.school_id) {
-          const { data: school } = await supabase
-            .from('schools')
-            .select('school_name')
-            .eq('id', profile.school_id)
-            .single();
-          if (school?.school_name) setSchoolName(school.school_name);
-        }
-      } catch (e) {
-        console.error('Error fetching school name:', e);
-      }
-    };
-    fetchSchoolName();
-  }, [user]);
 
   // Remove the old completion checking functions
   // ... keep existing code (real-time update subscriptions)
@@ -102,35 +77,17 @@ export default function DismissalLauncher() {
   // Show loader if we're creating a run
   if (isLoading || (!run && planTimeFallback)) {
     return (
-      <>
-        <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger />
-            <h1 className="text-2xl font-bold">{schoolName || '—'}</h1>
-          </div>
-          <Button onClick={signOut} variant="outline">Sign Out</Button>
-        </header>
-        <main className="flex-1 p-6 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
-            <p className="text-lg text-muted-foreground">Preparing today's dismissal…</p>
-          </div>
-        </main>
-      </>
+      <main className="flex-1 p-6 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
+          <p className="text-lg text-muted-foreground">Preparing today's dismissal…</p>
+        </div>
+      </main>
     );
   }
 
   return (
-    <>
-      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <h1 className="text-2xl font-bold">{schoolName || '—'}</h1>
-        </div>
-        <Button onClick={signOut} variant="outline">Sign Out</Button>
-      </header>
-
-      <main className="flex-1 p-6">
+    <main className="flex-1 p-6">
         {/* Dismissal Status Info */}
         {run && (
           <div className="mb-6 max-w-5xl">
@@ -286,6 +243,5 @@ export default function DismissalLauncher() {
           <DismissalRunTimeline />
         </section>
       </main>
-    </>
   );
 }
