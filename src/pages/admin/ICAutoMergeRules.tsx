@@ -34,7 +34,7 @@ interface AutoMergeRule {
   created_at: string;
 }
 
-export default function ICAutoMergeRules() {
+export default function ICAutoMergeRules({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const { activeSchoolId } = useMultiSchool();
   const queryClient = useQueryClient();
@@ -127,10 +127,12 @@ export default function ICAutoMergeRules() {
     return (
       <div className="container mx-auto py-8">
         <div className="flex items-center gap-2 mb-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Dashboard
-          </Button>
+          {!embedded && (
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+          )}
           <h1 className="text-3xl font-bold">Auto-Merge Rules</h1>
         </div>
         <p className="text-muted-foreground">Loading...</p>
@@ -142,10 +144,12 @@ export default function ICAutoMergeRules() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Dashboard
-          </Button>
+          {!embedded && (
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+          )}
           <div>
             <h1 className="text-3xl font-bold">Auto-Merge Rules</h1>
             <p className="text-muted-foreground mt-1">
