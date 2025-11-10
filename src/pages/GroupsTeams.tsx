@@ -132,9 +132,9 @@ export default function SpecialUseGroups() {
         <div className="flex items-center gap-4">
           <SidebarTrigger />
           <div>
-            <h1 className="text-2xl font-bold">Special Use Groups</h1>
+            <h1 className="text-2xl font-bold">Groups & Teams</h1>
             <p className="text-sm text-muted-foreground">
-              Manage groups for field trips, athletics, and other special transportation needs
+              Manage groups for field trips, athletics, clubs, and other special activities
             </p>
           </div>
         </div>

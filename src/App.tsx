@@ -24,8 +24,10 @@ import EmailManagement from "./pages/admin/EmailManagement";
 import PeopleManagement from "./pages/People";
 import AdminSettings from "./pages/admin/Settings";
 import AdminSchools from "./pages/admin/Schools";
-import SpecialUseGroups from "./pages/SpecialUseGroups";
+import GroupsTeams from "./pages/GroupsTeams";
 import SpecialUseRuns from "./pages/SpecialUseRuns";
+import PeopleHub from "./pages/PeopleHub";
+import DismissalsHub from "./pages/DismissalsHub";
 import SpecialUseRunDetail from "./pages/SpecialUseRunDetail";
 import SpecialUseRunMode from "./pages/modes/SpecialUseRunMode";
 import Settings from "./pages/Settings";
@@ -70,26 +72,43 @@ const AppContent = () => {
           {/* Admin layout for dashboard routes */}
           <Route element={<AdminLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/coverage" element={<TeacherCoverage />} />
-            <Route path="/dashboard/absences" element={<Absences />} />
-            <Route path="/dashboard/people" element={<PeopleManagement />} />
-            <Route path="/dashboard/classes" element={<Classes />} />
-            <Route path="/dashboard/transportation" element={<Transportation />} />
-            <Route path="/dashboard/dismissals" element={<Dismissals />} />
             <Route path="/dashboard/dismissal" element={<DismissalLauncher />} />
-            <Route path="/dashboard/dismissal-plans" element={<DismissalPlans />} />
-            <Route path="/dashboard/dismissal-plans/:planId/groups" element={<DismissalGroups />} />
-            <Route path="/dashboard/settings" element={<Settings />} />
-            <Route path="/dashboard/help" element={<Help />} />
-            <Route path="/dashboard/car-lines" element={<CarLines />} />
-            <Route path="/dashboard/walker-locations" element={<WalkerLocations />} />
+            
+            {/* People Hub Routes */}
+            <Route path="/dashboard/people" element={<PeopleHub />} />
+            <Route path="/dashboard/people/manage" element={<PeopleManagement />} />
+            <Route path="/dashboard/people/classes" element={<Classes />} />
+            <Route path="/dashboard/people/coverage" element={<TeacherCoverage />} />
+            <Route path="/dashboard/people/absences" element={<Absences />} />
+            <Route path="/dashboard/people/groups-teams" element={<GroupsTeams />} />
+            <Route path="/dashboard/people/archived" element={<ArchivedUsers />} />
+            
+            {/* Dismissals Hub Routes */}
+            <Route path="/dashboard/dismissals" element={<DismissalsHub />} />
+            <Route path="/dashboard/dismissals/plans" element={<DismissalPlans />} />
+            <Route path="/dashboard/dismissals/plans/:planId/groups" element={<DismissalGroups />} />
+            <Route path="/dashboard/dismissals/transportation" element={<Transportation />} />
+            <Route path="/dashboard/dismissals/special-runs" element={<SpecialUseRuns />} />
+            <Route path="/dashboard/dismissals/special-runs/:runId" element={<SpecialUseRunDetail />} />
+            
+            {/* Other Routes */}
             <Route path="/dashboard/reports" element={<Reports />} />
             <Route path="/dashboard/reports/detail" element={<DismissalDetailReport />} />
             <Route path="/dashboard/reports/mode-usage" element={<ModeUsageReports />} />
+            <Route path="/dashboard/settings" element={<Settings />} />
+            <Route path="/dashboard/help" element={<Help />} />
             <Route path="/dashboard/import" element={<Import />} />
-            <Route path="/dashboard/special-use-groups" element={<SpecialUseGroups />} />
-            <Route path="/dashboard/special-use-runs" element={<SpecialUseRuns />} />
-            <Route path="/dashboard/special-use-runs/:runId" element={<SpecialUseRunDetail />} />
+            
+            {/* Backward Compatibility Redirects */}
+            <Route path="/dashboard/coverage" element={<Navigate to="/dashboard/people/coverage" replace />} />
+            <Route path="/dashboard/absences" element={<Navigate to="/dashboard/people/absences" replace />} />
+            <Route path="/dashboard/classes" element={<Navigate to="/dashboard/people/classes" replace />} />
+            <Route path="/dashboard/transportation" element={<Navigate to="/dashboard/dismissals/transportation" replace />} />
+            <Route path="/dashboard/dismissal-plans" element={<Navigate to="/dashboard/dismissals/plans" replace />} />
+            <Route path="/dashboard/special-use-groups" element={<Navigate to="/dashboard/people/groups-teams" replace />} />
+            <Route path="/dashboard/special-use-runs" element={<Navigate to="/dashboard/dismissals/special-runs" replace />} />
+            <Route path="/dashboard/car-lines" element={<Navigate to="/dashboard/dismissals/transportation" replace />} />
+            <Route path="/dashboard/walker-locations" element={<Navigate to="/dashboard/dismissals/transportation" replace />} />
               {/* New unified IC hub */}
               <Route path="/dashboard/integrations/infinite-campus" element={<InfiniteCampus />} />
               
@@ -100,7 +119,6 @@ const AppContent = () => {
               <Route path="/dashboard/integrations/ic-data-quality" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=quality" replace />} />
               <Route path="/dashboard/integrations/ic-auto-merge-rules" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=rules" replace />} />
               <Route path="/dashboard/integrations/ic-merge-audit" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=audit" replace />} />
-            <Route path="/dashboard/people/archived" element={<ArchivedUsers />} />
           </Route>
 
           {/* Fullscreen dismissal modes (no left navigation) */}

@@ -19,23 +19,19 @@ import {
 
 const adminNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Dismissal Plans", url: "/dashboard/dismissal-plans", icon: ClipboardList },
-  { title: "Classes", url: "/dashboard/classes", icon: Users },
-  { title: "Coverage", url: "/dashboard/coverage", icon: CalendarDays },
-  { title: "Absences", url: "/dashboard/absences", icon: UserX },
-  { title: "People", url: "/dashboard/people", icon: UserCog },
-  { title: "Transportation", url: "/dashboard/transportation", icon: Bus },
-  { title: "Special Use Groups", url: "/dashboard/special-use-groups", icon: Plane },
-  { title: "Special Use Runs", url: "/dashboard/special-use-runs", icon: Calendar },
+  { title: "People", url: "/dashboard/people", icon: Users },
+  { title: "Dismissals", url: "/dashboard/dismissals", icon: ClipboardList },
   { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
 
 const teacherNavItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Coverage", url: "/dashboard/coverage", icon: CalendarDays },
-  { title: "Absences", url: "/dashboard/absences", icon: UserX },
-  { title: "People", url: "/dashboard/people", icon: UserCog },
+  { title: "Coverage", url: "/dashboard/people/coverage", icon: CalendarDays },
+  { title: "Absences", url: "/dashboard/people/absences", icon: UserX },
+  { title: "People", url: "/dashboard/people/manage", icon: UserCog },
+  { title: "Groups & Teams", url: "/dashboard/people/groups-teams", icon: Users },
+  { title: "Special Runs", url: "/dashboard/dismissals/special-runs", icon: Calendar },
 ];
 
 export function AdminSidebar() {
