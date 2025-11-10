@@ -1,12 +1,10 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { LogOut } from "lucide-react";
 
 export function DashboardHeader() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [schoolName, setSchoolName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
@@ -49,11 +47,11 @@ export function DashboardHeader() {
   }, [user]);
 
   return (
-    <header className="min-h-16 flex items-center justify-between px-4 md:px-6 border-b bg-card/50 backdrop-blur-sm">
+    <header className="min-h-16 flex items-center px-4 md:px-6 border-b bg-card/50 backdrop-blur-sm">
       <div className="flex items-center gap-2 md:gap-4 flex-wrap min-w-0 flex-1">
         <SidebarTrigger />
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg md:text-2xl font-bold truncate max-w-[200px] md:max-w-none">
+          <h1 className="text-lg md:text-2xl font-bold">
             {schoolName ? `${schoolName} ` : ''}Dashboard
           </h1>
           <p className="text-sm text-muted-foreground hidden md:block">
@@ -61,10 +59,6 @@ export function DashboardHeader() {
           </p>
         </div>
       </div>
-      <Button onClick={signOut} variant="outline" size="sm" className="shrink-0">
-        <LogOut className="h-4 w-4 md:hidden" />
-        <span className="hidden md:inline">Sign Out</span>
-      </Button>
     </header>
   );
 }

@@ -1,4 +1,4 @@
-import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar, RefreshCw, GitMerge } from "lucide-react";
+import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar, RefreshCw, GitMerge, LogOut } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.svg";
@@ -37,7 +37,7 @@ const teacherNavItems = [
 export function AdminSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
-  const { userRole } = useAuth();
+  const { userRole, signOut } = useAuth();
   const currentPath = location.pathname;
 
   let navItems = userRole === 'teacher' ? teacherNavItems : adminNavItems;
@@ -128,6 +128,17 @@ export function AdminSidebar() {
                 <HelpCircle className="h-5 w-5" />
                 <span className="ml-3">Help & Support</span>
               </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <button 
+                onClick={signOut} 
+                className="w-full hover:bg-muted/50"
+              >
+                <LogOut className="h-5 w-5" />
+                <span className="ml-3">Sign Out</span>
+              </button>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
