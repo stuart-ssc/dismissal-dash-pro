@@ -111,22 +111,11 @@ export function AdminSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink 
-                      to="/dashboard/integrations/ic-sync-history" 
+                      to="/dashboard/integrations/infinite-campus" 
                       className={getNavCls}
                     >
                       <RefreshCw className="h-5 w-5" />
-                      <span className="ml-3">IC Sync History</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to="/dashboard/integrations/ic-pending-merges" 
-                      className={getNavCls}
-                    >
-                      <GitMerge className="h-5 w-5" />
-                      <span className="ml-3">IC Pending Merges</span>
+                      <span className="ml-3">Infinite Campus</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

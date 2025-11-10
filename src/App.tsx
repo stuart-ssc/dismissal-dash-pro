@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
@@ -38,12 +38,7 @@ import VerifyEmailChange from "./pages/VerifyEmailChange";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useSessionTimeout } from "./hooks/useSessionTimeout";
 import { MultiSchoolProvider } from "./hooks/useMultiSchool";
-import ICSyncHistory from "./pages/admin/ICSyncHistory";
-import ICPendingMerges from "./pages/admin/ICPendingMerges";
-import ICAutoMergeRules from "./pages/admin/ICAutoMergeRules";
-import ICMergeAudit from "./pages/admin/ICMergeAudit";
-import ICSyncDashboard from "./pages/admin/ICSyncDashboard";
-import ICDataQuality from "./pages/admin/ICDataQuality";
+import InfiniteCampus from "./pages/admin/InfiniteCampus";
 import AcademicSessions from "./pages/admin/AcademicSessions";
 import ArchivedUsers from "./pages/admin/ArchivedUsers";
 import DismissalLauncher from "./pages/DismissalLauncher";
@@ -96,12 +91,16 @@ const AppContent = () => {
             <Route path="/dashboard/special-use-groups" element={<SpecialUseGroups />} />
             <Route path="/dashboard/special-use-runs" element={<SpecialUseRuns />} />
             <Route path="/dashboard/special-use-runs/:runId" element={<SpecialUseRunDetail />} />
-            <Route path="/dashboard/integrations/ic-sync" element={<ICSyncDashboard />} />
-            <Route path="/dashboard/integrations/ic-sync-history" element={<ICSyncHistory />} />
-            <Route path="/dashboard/integrations/ic-pending-merges" element={<ICPendingMerges />} />
-            <Route path="/dashboard/integrations/ic-data-quality" element={<ICDataQuality />} />
-            <Route path="/dashboard/integrations/ic-auto-merge-rules" element={<ICAutoMergeRules />} />
-            <Route path="/dashboard/integrations/ic-merge-audit" element={<ICMergeAudit />} />
+              {/* New unified IC hub */}
+              <Route path="/dashboard/integrations/infinite-campus" element={<InfiniteCampus />} />
+              
+              {/* Redirects for backward compatibility */}
+              <Route path="/dashboard/integrations/ic-sync" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=overview" replace />} />
+              <Route path="/dashboard/integrations/ic-sync-history" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=sync" replace />} />
+              <Route path="/dashboard/integrations/ic-pending-merges" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=merges" replace />} />
+              <Route path="/dashboard/integrations/ic-data-quality" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=quality" replace />} />
+              <Route path="/dashboard/integrations/ic-auto-merge-rules" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=rules" replace />} />
+              <Route path="/dashboard/integrations/ic-merge-audit" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=audit" replace />} />
             <Route path="/dashboard/academic-sessions" element={<AcademicSessions />} />
             <Route path="/dashboard/people/archived" element={<ArchivedUsers />} />
           </Route>
