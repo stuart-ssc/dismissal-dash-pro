@@ -1,5 +1,4 @@
 import { useSEO } from "@/hooks/useSEO";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart-secure";
@@ -59,22 +58,6 @@ const Reports = () => {
   return (
     <>
       <SEO />
-      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-2xl font-bold">Reports</h1>
-            <p className="text-sm text-muted-foreground">
-              Analyze dismissal performance and trends
-            </p>
-          </div>
-        </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
-      </header>
-
       <main className="flex-1 p-6 space-y-6">
         {/* Mode Usage Reports Card */}
         <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur cursor-pointer transition-all hover:shadow-lg" onClick={() => navigate('/dashboard/reports/mode-usage')}>
