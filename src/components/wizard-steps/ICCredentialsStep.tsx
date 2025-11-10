@@ -70,6 +70,11 @@ export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
     }
   }, [watchHostUrl, form]);
 
+  // Focus on Host URL field when component mounts
+  useEffect(() => {
+    form.setFocus('hostUrl');
+  }, [form]);
+
   const onSubmit = (data: CredentialsForm) => {
     updateState({
       credentials: {
