@@ -34,7 +34,7 @@ export function ICPendingMergesTab({ schoolId }: ICPendingMergesTabProps) {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <GitMerge className="h-6 w-6" />
