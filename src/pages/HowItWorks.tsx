@@ -163,8 +163,49 @@ export default function HowItWorks() {
           </Link>
         </section>
 
+        {/* Main Features Section */}
+        <section className="container mx-auto px-4 py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Core Features That Make Dismissal Simple
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to manage your school's dismissal process efficiently and safely.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {features.map((feature, index) => (
+              <Card 
+                key={index}
+                className="border-0 shadow-soft bg-card/80 backdrop-blur hover:shadow-elevated transition-all duration-300"
+              >
+                <CardHeader>
+                  <div className="p-3 rounded-full bg-gradient-to-r from-primary/10 to-secondary/10 w-fit mb-4">
+                    <feature.icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardDescription className="text-base">
+                    {feature.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {feature.points.map((point, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground">{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
         {/* Infinite Campus Integration Section */}
-        <section className="container mx-auto px-4 pb-20">
+        <section className="container mx-auto px-4 py-20">
           <div className="bg-card/40 backdrop-blur rounded-3xl shadow-elevated p-8 md:p-12">
             {/* Header */}
             <div className="text-center mb-12">
@@ -320,47 +361,6 @@ export default function HowItWorks() {
                 <span>Setup takes less than 5 minutes • Sync starts immediately • Cancel anytime</span>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Main Features Section */}
-        <section className="container mx-auto px-4 py-20">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Core Features That Make Dismissal Simple
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to manage your school's dismissal process efficiently and safely.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            {features.map((feature, index) => (
-              <Card 
-                key={index}
-                className="border-0 shadow-soft bg-card/80 backdrop-blur hover:shadow-elevated transition-all duration-300"
-              >
-                <CardHeader>
-                  <div className="p-3 rounded-full bg-gradient-to-r from-primary/10 to-secondary/10 w-fit mb-4">
-                    <feature.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
-                  <CardDescription className="text-base">
-                    {feature.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {feature.points.map((point, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-muted-foreground">{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </section>
 
