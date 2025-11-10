@@ -19,7 +19,7 @@ const Navbar = () => {
   const hasMultipleSchools = schools.length > 1;
   
   // Show navigation links on content pages for non-authenticated users
-  const isContentPage = ['/', '/how-it-works', '/pricing', '/auth'].includes(location.pathname);
+  const isContentPage = ['/', '/how-it-works', '/pricing', '/special-trips', '/auth'].includes(location.pathname);
   const showNavLinks = isContentPage;
 
   return (
