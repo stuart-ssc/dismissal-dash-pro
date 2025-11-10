@@ -4,6 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMultiSchool } from "@/hooks/useMultiSchool";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import { ICOverviewTab } from "@/components/ic/ICOverviewTab";
 import { ICSyncTab } from "@/components/ic/ICSyncTab";
 import { ICDataQualityTab } from "@/components/ic/ICDataQualityTab";
@@ -16,10 +20,35 @@ export default function InfiniteCampus() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'overview';
   const { activeSchoolId } = useMultiSchool();
+  const { signOut } = useAuth();
+  const [schoolName, setSchoolName] = useState<string>('');
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value });
   };
+
+  // Fetch school name
+  useEffect(() => {
+    const fetchSchoolName = async () => {
+      if (!activeSchoolId) return;
+      
+      try {
+        const { data: school } = await supabase
+          .from('schools')
+          .select('school_name')
+          .eq('id', activeSchoolId)
+          .maybeSingle();
+  
+        if (school?.school_name) {
+          setSchoolName(school.school_name);
+        }
+      } catch (error) {
+        console.error('Error fetching school name:', error);
+      }
+    };
+  
+    fetchSchoolName();
+  }, [activeSchoolId]);
 
   // Query IC connection
   const { data: connection, isLoading: connectionLoading } = useQuery({
@@ -37,26 +66,53 @@ export default function InfiniteCampus() {
 
   if (connectionLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
+      <>
+        <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <div>
+              <h1 className="text-2xl font-bold">
+                {schoolName ? `${schoolName} - ` : ''}Infinite Campus Integration
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Manage your Infinite Campus connection, sync data, and monitor data quality
+              </p>
+            </div>
+          </div>
+          <Button onClick={signOut} variant="outline">
+            Sign Out
+          </Button>
+        </header>
+        <main className="flex-1 p-6">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </main>
+      </>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-4xl font-bold mb-2">Infinite Campus Integration</h1>
-        <p className="text-muted-foreground">
-          Manage your Infinite Campus connection, sync data, and monitor data quality
-        </p>
-      </div>
+    <>
+      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-2xl font-bold">
+              {schoolName ? `${schoolName} - ` : ''}Infinite Campus Integration
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Manage your Infinite Campus connection, sync data, and monitor data quality
+            </p>
+          </div>
+        </div>
+        <Button onClick={signOut} variant="outline">
+          Sign Out
+        </Button>
+      </header>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+      <main className="flex-1 p-6 space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="sync">Sync</TabsTrigger>
@@ -89,6 +145,7 @@ export default function InfiniteCampus() {
           <ICSettingsTab connection={connection} schoolId={activeSchoolId} />
         </TabsContent>
       </Tabs>
-    </div>
+      </main>
+    </>
   );
 }
