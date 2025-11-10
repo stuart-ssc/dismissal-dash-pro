@@ -39,7 +39,6 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useSessionTimeout } from "./hooks/useSessionTimeout";
 import { MultiSchoolProvider } from "./hooks/useMultiSchool";
 import InfiniteCampus from "./pages/admin/InfiniteCampus";
-import AcademicSessions from "./pages/admin/AcademicSessions";
 import ArchivedUsers from "./pages/admin/ArchivedUsers";
 import DismissalLauncher from "./pages/DismissalLauncher";
 import AdminLayout from "./layouts/AdminLayout";
@@ -101,7 +100,6 @@ const AppContent = () => {
               <Route path="/dashboard/integrations/ic-data-quality" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=quality" replace />} />
               <Route path="/dashboard/integrations/ic-auto-merge-rules" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=rules" replace />} />
               <Route path="/dashboard/integrations/ic-merge-audit" element={<Navigate to="/dashboard/integrations/infinite-campus?tab=audit" replace />} />
-            <Route path="/dashboard/academic-sessions" element={<AcademicSessions />} />
             <Route path="/dashboard/people/archived" element={<ArchivedUsers />} />
           </Route>
 
