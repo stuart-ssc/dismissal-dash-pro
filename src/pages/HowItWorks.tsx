@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
 import { useSEO } from "@/hooks/useSEO";
 import { Link } from "react-router-dom";
@@ -15,8 +16,13 @@ import {
   Calendar,
   Upload,
   Monitor,
-  Zap
+  Zap,
+  RefreshCw,
+  ArrowRightLeft,
+  Database,
+  Shield
 } from "lucide-react";
+import InfiniteCampusLogo from "@/components/InfiniteCampusLogo";
 
 export default function HowItWorks() {
   const SEO = useSEO({
@@ -155,6 +161,166 @@ export default function HowItWorks() {
               <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
+        </section>
+
+        {/* Infinite Campus Integration Section */}
+        <section className="container mx-auto px-4 pb-20">
+          <div className="bg-card/40 backdrop-blur rounded-3xl shadow-elevated p-8 md:p-12">
+            {/* Header */}
+            <div className="text-center mb-12">
+              <div className="flex justify-center mb-6">
+                <InfiniteCampusLogo className="w-48 h-12" />
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Automatic Student Data Sync
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Connect your Infinite Campus system and let student rosters, class assignments, and updates flow automatically into DismissalPro—no manual data entry required.
+              </p>
+            </div>
+
+            {/* Two-Column Layout */}
+            <div className="grid md:grid-cols-2 gap-8 md:gap-12">
+              {/* Left Column: Benefits */}
+              <div>
+                <h3 className="text-2xl font-semibold mb-6">Why Schools Love IC Integration</h3>
+                <div className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                      <Zap className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">5-Minute Setup</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Enter your IC credentials once and you're done. Our guided wizard walks you through every step.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                      <RefreshCw className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Always Up-to-Date</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Automatic daily syncs keep your rosters current. New students, schedule changes, and transfers update automatically.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                      <Shield className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Enterprise-Grade Security</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Your IC credentials are encrypted and stored securely. We use industry-standard OAuth protocols.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-1">Zero Data Entry</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Eliminate hours of manual roster updates. Staff, students, and class assignments sync automatically.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: What Gets Synced */}
+              <div>
+                <h3 className="text-2xl font-semibold mb-6">What Gets Synced</h3>
+                <div className="space-y-4">
+                  <Card className="border-0 shadow-soft bg-card/60">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-secondary/10">
+                          <Users className="h-5 w-5 text-secondary" />
+                        </div>
+                        <CardTitle className="text-lg">Student Rosters</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <p className="text-sm text-muted-foreground">
+                        Complete student information including names, grade levels, and student IDs.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-soft bg-card/60">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-secondary/10">
+                          <School className="h-5 w-5 text-secondary" />
+                        </div>
+                        <CardTitle className="text-lg">Class Assignments</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <p className="text-sm text-muted-foreground">
+                        Teacher-student relationships and class rosters automatically populate and update.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-soft bg-card/60">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-secondary/10">
+                          <ArrowRightLeft className="h-5 w-5 text-secondary" />
+                        </div>
+                        <CardTitle className="text-lg">Real-Time Updates</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <p className="text-sm text-muted-foreground">
+                        Schedule changes, new enrollments, and withdrawals sync daily or on-demand.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-soft bg-card/60">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-secondary/10">
+                          <Database className="h-5 w-5 text-secondary" />
+                        </div>
+                        <CardTitle className="text-lg">Custom Fields</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <p className="text-sm text-muted-foreground">
+                        Intelligent mapping of custom data fields ensures all your important student information transfers.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <div className="pt-2">
+                    <Badge variant="outline" className="w-full justify-center py-2 text-xs">
+                      <Upload className="h-3 w-3 mr-2" />
+                      Don't use IC? CSV import is also available
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Footer */}
+            <div className="text-center mt-12 pt-8 border-t border-border/50">
+              <div className="inline-flex items-center gap-2 text-sm text-muted-foreground bg-success/10 px-4 py-2 rounded-full">
+                <CheckCircle className="h-4 w-4 text-success" />
+                <span>Setup takes less than 5 minutes • Sync starts immediately • Cancel anytime</span>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Main Features Section */}
