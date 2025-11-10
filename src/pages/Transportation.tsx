@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+
 import { Bus, PersonStanding, Car, Users, Plus, Search, MoreHorizontal, Edit, UserPlus, Trash2, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -164,7 +164,7 @@ const Transportation = () => {
     studentId: ''
   });
   const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; class_name: string }>>([]);
-  const [schoolName, setSchoolName] = useState<string>('');
+  
   const [schoolId, setSchoolId] = useState<number | null>(null);
   
   // Walker locations state
@@ -252,7 +252,6 @@ const Transportation = () => {
     fetchWalkerLocations();
     fetchCarLines();
     fetchAfterSchoolActivities();
-    fetchSchoolName();
   }, [user]);
 
   const fetchTransportation = async () => {
@@ -590,31 +589,6 @@ const Transportation = () => {
     }
   };
 
-  const fetchSchoolName = async () => {
-    if (!user) return;
-
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (profile?.school_id) {
-        const { data: school } = await supabase
-          .from('schools')
-          .select('school_name')
-          .eq('id', profile.school_id)
-          .single();
-
-        if (school?.school_name) {
-          setSchoolName(school.school_name);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching school name:', error);
-    }
-  };
 
   // Search and filter logic for buses
   useEffect(() => {
@@ -2148,21 +2122,6 @@ const Transportation = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
         
         <div className="flex-1 flex flex-col">
-          <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-2xl font-bold">{schoolName || 'Transportation'}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage transportation, walker locations, and car lines
-                </p>
-              </div>
-            </div>
-            <Button onClick={signOut} variant="outline">
-              Sign Out
-            </Button>
-          </header>
-
           <main className="flex-1 p-6 space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

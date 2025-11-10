@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+
 import { UserX, Calendar as CalendarIcon, Search, Loader2, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -319,17 +319,6 @@ export default function Absences() {
   return (
     <>
       <SEO />
-      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-2xl font-bold">Student Absences</h1>
-            <p className="text-sm text-muted-foreground">
-              Mark students absent for dismissal
-            </p>
-          </div>
-        </div>
-      </header>
 
       <main className="flex-1 p-6 space-y-6">
         {/* Mark Student Absent Section */}

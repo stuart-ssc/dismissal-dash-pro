@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+
 import { Users, GraduationCap, BarChart3, Calendar, Plus, Search, ChevronDown, MoreHorizontal, Edit, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -214,7 +214,7 @@ const Classes = () => {
   const [filterGrade, setFilterGrade] = useState<'all' | '6' | '7' | '8'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ClassRecord | null>(null);
-  const [schoolName, setSchoolName] = useState<string>('');
+  
   const [availableTeachers, setAvailableTeachers] = useState<Teacher[]>([]);
   const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
   const [teacherSearchResults, setTeacherSearchResults] = useState<Teacher[]>([]);
@@ -237,7 +237,6 @@ const Classes = () => {
 
   useEffect(() => {
     fetchClasses();
-    fetchSchoolName();
     fetchTeachers();
   }, [user]);
 
@@ -317,32 +316,6 @@ const Classes = () => {
     }
   };
 
-  const fetchSchoolName = async () => {
-    if (!user) return;
-
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (profile?.school_id) {
-        setSchoolId(profile.school_id);
-        const { data: school } = await supabase
-          .from('schools')
-          .select('school_name')
-          .eq('id', profile.school_id)
-          .single();
-
-        if (school?.school_name) {
-          setSchoolName(school.school_name);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching school name:', error);
-    }
-  };
 
   const fetchTeachers = async () => {
     if (!user) return;
@@ -679,21 +652,6 @@ const Classes = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
         
         <div className="flex-1 flex flex-col">
-          <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div>
-                <h1 className="text-2xl font-bold">{schoolName || 'Classes'}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage school classes and assignments
-                </p>
-              </div>
-            </div>
-            <Button onClick={signOut} variant="outline">
-              Sign Out
-            </Button>
-          </header>
-
           <main className="flex-1 p-6 space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

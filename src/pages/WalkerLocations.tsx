@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Search, Plus, Edit, MoreHorizontal, Users, ArrowLeft, Trash2, MapPin } from "lucide-react";
 
-import { SidebarTrigger } from "@/components/ui/sidebar";
+
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -49,7 +49,7 @@ const WalkerLocations = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingRecord, setEditingRecord] = useState<WalkerLocationRecord | null>(null);
-  const [schoolName, setSchoolName] = useState<string>('');
+  
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -66,7 +66,6 @@ const WalkerLocations = () => {
 
   useEffect(() => {
     fetchWalkerLocations();
-    fetchSchoolName();
   }, [user]);
 
   const fetchWalkerLocations = async () => {
@@ -112,31 +111,6 @@ const WalkerLocations = () => {
     }
   };
 
-  const fetchSchoolName = async () => {
-    if (!user) return;
-
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (profile?.school_id) {
-        const { data: school } = await supabase
-          .from('schools')
-          .select('school_name')
-          .eq('id', profile.school_id)
-          .single();
-
-        if (school?.school_name) {
-          setSchoolName(school.school_name);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching school name:', error);
-    }
-  };
 
   // Search and filter logic
   useEffect(() => {
@@ -317,18 +291,6 @@ const WalkerLocations = () => {
 
   return (
     <>
-      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-2xl font-bold">{schoolName || 'Walker Locations'}</h1>
-            <p className="text-sm text-muted-foreground">
-              Manage walker pickup locations
-            </p>
-          </div>
-        </div>
-      </header>
-
       <div className="flex-1 p-6">
           <div className="space-y-6">
 

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -65,7 +65,7 @@ export default function DismissalPlans() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingPlan, setEditingPlan] = useState<DismissalPlan | null>(null);
-  const [schoolName, setSchoolName] = useState<string>('');
+  
   const [schoolDismissalTime, setSchoolDismissalTime] = useState<string>('');
   const [showTimeWarningDialog, setShowTimeWarningDialog] = useState(false);
   const [pendingPlanData, setPendingPlanData] = useState<PlanFormData | null>(null);
@@ -148,7 +148,6 @@ export default function DismissalPlans() {
           .eq('id', impersonatedSchoolId)
           .single();
         if (school) {
-          setSchoolName(school.school_name || '');
           setSchoolDismissalTime(school.dismissal_time || '');
         }
         return;
@@ -168,7 +167,6 @@ export default function DismissalPlans() {
           .single();
 
         if (school) {
-          setSchoolName(school.school_name || '');
           setSchoolDismissalTime(school.dismissal_time || '');
         }
       }
@@ -665,24 +663,6 @@ export default function DismissalPlans() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <header className="bg-card border-b border-border p-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-2xl font-bold">{schoolName || 'Dismissal Plans'}</h1>
-            <p className="text-sm text-muted-foreground">
-              Manage dismissal plans and schedules
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/auth')}
-        >
-          Sign Out
-        </Button>
-      </header>
 
       <main className="flex-1 overflow-auto p-6">
           {/* Summary Cards */}
