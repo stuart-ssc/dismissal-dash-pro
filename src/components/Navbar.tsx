@@ -57,7 +57,7 @@ const Navbar = () => {
             <Link to="/">
               <Button variant="ghost">← Back to Home</Button>
             </Link>
-          ) : isIndexPage ? (
+          ) : isContentPage ? (
             user && userRole ? (
               <Link to="/dashboard">
                 <Button variant="hero">Dashboard</Button>
