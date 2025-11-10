@@ -533,11 +533,6 @@ const Dashboard = () => {
             <ICSyncStatusWidget schoolId={schoolId} />
           )}
 
-          {/* IC Dashboard Summary - Only for school admins */}
-          {userRole === 'school_admin' && schoolId && (
-            <ICDashboardSummary schoolId={schoolId} />
-          )}
-
           
           <div className="relative">
             {!setupLoading && !isReady && (
@@ -716,58 +711,8 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                  <CardHeader>
-                    <CardTitle>Recent Dismissals</CardTitle>
-                    <CardDescription>
-                      Elapsed time for the 5 most recent dismissals (minutes)
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {recentDismissals.length > 0 ? (
-                      <div className="h-48">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={recentDismissals}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis 
-                              dataKey="name" 
-                              fontSize={12}
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                            />
-                            <YAxis 
-                              fontSize={12}
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                              label={{ 
-                                value: 'Minutes', 
-                                angle: -90, 
-                                position: 'insideLeft',
-                                style: { textAnchor: 'middle', fill: 'hsl(var(--muted-foreground))' }
-                              }}
-                            />
-                            <Tooltip 
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--background))',
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: '6px'
-                              }}
-                              formatter={(value: number) => [`${value} min`, 'Elapsed Time']}
-                              labelFormatter={(label) => `Date: ${label}`}
-                            />
-                            <Bar 
-                              dataKey="elapsed" 
-                              fill="hsl(var(--primary))"
-                              radius={[2, 2, 0, 0]}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    ) : (
-                      <div className="h-48 flex items-center justify-center text-muted-foreground">
-                        <p className="text-sm">No recent dismissals found</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                {/* IC Dashboard Summary */}
+                <ICDashboardSummary schoolId={schoolId} />
               </div>
             </div>
           )}
