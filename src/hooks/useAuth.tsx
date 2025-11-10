@@ -346,6 +346,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error('Error creating user role:', roleError);
         }
 
+        // Create user-school association
+        const { error: userSchoolError } = await supabase
+          .from('user_schools')
+          .insert({
+            user_id: data.user.id,
+            school_id: schoolId
+          });
+
+        if (userSchoolError) {
+          console.error('Error creating user-school association:', userSchoolError);
+        }
+
         // If role is teacher, also create teacher record
         if (role === 'teacher') {
           const { error: teacherError } = await supabase

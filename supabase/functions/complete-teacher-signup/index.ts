@@ -147,6 +147,19 @@ const handler = async (req: Request): Promise<Response> => {
       // Don't fail the request, user is created
     }
 
+    // Create user-school association
+    const { error: userSchoolError } = await supabase
+      .from('user_schools')
+      .insert({
+        user_id: userId,
+        school_id: teacher.school_id
+      });
+
+    if (userSchoolError) {
+      console.error('Error creating user-school association:', userSchoolError);
+      // Don't fail the request, user is created
+    }
+
     console.info(`Successfully completed teacher signup for email: ${teacher.email}`);
 
     return new Response(
