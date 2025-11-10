@@ -21,6 +21,9 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTodayDismissalRun as useDismissalRunRefetch } from "@/hooks/useTodayDismissalRun";
 import { ICSyncStatusWidget } from "@/components/ICSyncStatusWidget";
+import { SchoolSetupMethodDialog } from "@/components/SchoolSetupMethodDialog";
+import { ICSetupDialog } from "@/components/ICSetupDialog";
+
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
@@ -40,6 +43,8 @@ const Dashboard = () => {
   const [fastestDismissal, setFastestDismissal] = useState<{date: string, duration: number} | null>(null);
   const [resetting, setResetting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showSetupMethodDialog, setShowSetupMethodDialog] = useState(false);
+  const [showICSetupDialog, setShowICSetupDialog] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -290,6 +295,22 @@ const Dashboard = () => {
     fetchFastestDismissal();
   }, [schoolId]);
 
+  // Check if setup method dialog should be shown
+  useEffect(() => {
+    if (!schoolId || setupLoading) return;
+    
+    // Check if setup is incomplete and user hasn't selected a method
+    if (!isReady) {
+      const setupMethodKey = `setup_method_selected_${schoolId}`;
+      const selectedMethod = localStorage.getItem(setupMethodKey);
+      
+      // Only show if no method has been selected yet
+      if (!selectedMethod) {
+        setShowSetupMethodDialog(true);
+      }
+    }
+  }, [schoolId, isReady, setupLoading]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -395,6 +416,34 @@ const Dashboard = () => {
     }
   };
 
+  const handleSelectICSetup = () => {
+    if (!schoolId) return;
+    
+    // Mark IC method as selected
+    localStorage.setItem(`setup_method_selected_${schoolId}`, 'ic');
+    setShowSetupMethodDialog(false);
+    setShowICSetupDialog(true);
+  };
+
+  const handleSelectManualSetup = () => {
+    if (!schoolId) return;
+    
+    // Mark manual method as selected
+    localStorage.setItem(`setup_method_selected_${schoolId}`, 'manual');
+    setShowSetupMethodDialog(false);
+  };
+
+  const handleICSetupComplete = () => {
+    setShowICSetupDialog(false);
+    // Refresh the page to reload setup status
+    window.location.reload();
+  };
+
+  const handleICSetupClose = () => {
+    setShowICSetupDialog(false);
+    // User can come back to this later
+  };
+
   // For school admins and teachers, show the sidebar layout
   if (userRole === 'school_admin' || userRole === 'teacher') {
     return (
@@ -418,7 +467,23 @@ const Dashboard = () => {
               </AlertDescription>
             </Alert>
           )}
-          {!setupLoading && !isReady && (
+          
+          <SchoolSetupMethodDialog
+            open={showSetupMethodDialog}
+            onSelectICSetup={handleSelectICSetup}
+            onSelectManualSetup={handleSelectManualSetup}
+          />
+
+          {schoolId && (
+            <ICSetupDialog
+              open={showICSetupDialog}
+              onClose={handleICSetupClose}
+              schoolId={schoolId}
+              onComplete={handleICSetupComplete}
+            />
+          )}
+
+          {!setupLoading && !isReady && !showSetupMethodDialog && (
             userRole === 'school_admin' ? (
               <SetupChecklistCard statuses={statuses} />
             ) : (
