@@ -3,16 +3,11 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Users, GraduationCap, CalendarDays, UserX, UsersRound } from "lucide-react";
 
 export default function PeopleHub() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [schoolId, setSchoolId] = useState<number | null>(null);
-  const [schoolName, setSchoolName] = useState<string>("");
-  const [firstName, setFirstName] = useState<string>("");
-  const [lastName, setLastName] = useState<string>("");
   const [stats, setStats] = useState({
     totalPeople: 0,
     totalClasses: 0,
@@ -25,24 +20,12 @@ export default function PeopleHub() {
       if (!user) return;
       const { data: profile } = await supabase
         .from('profiles')
-        .select('school_id, first_name, last_name')
+        .select('school_id')
         .eq('id', user.id)
         .single();
       
       const sid = profile?.school_id ?? null;
       setSchoolId(sid);
-      setFirstName(profile?.first_name ?? "");
-      setLastName(profile?.last_name ?? "");
-      
-      if (sid) {
-        const { data: school } = await supabase
-          .from('schools')
-          .select('school_name')
-          .eq('id', sid)
-          .single();
-        
-        setSchoolName(school?.school_name ?? "");
-      }
       
       if (!sid) return;
 
@@ -127,25 +110,7 @@ export default function PeopleHub() {
   ];
 
   return (
-    <>
-      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-2xl font-bold">
-              {schoolName ? `${schoolName} ` : ''}Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Welcome {firstName} {lastName}
-            </p>
-          </div>
-        </div>
-        <Button onClick={signOut} variant="outline">
-          Sign Out
-        </Button>
-      </header>
-
-      <main className="flex-1 p-6 space-y-6">
+    <main className="flex-1 p-6 space-y-6">
         {/* Summary Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
@@ -212,9 +177,8 @@ export default function PeopleHub() {
                 )}
               </Card>
             </Link>
-          ))}
-        </div>
-      </main>
-    </>
+        ))}
+      </div>
+    </main>
   );
 }

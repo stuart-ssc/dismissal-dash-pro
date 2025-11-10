@@ -84,6 +84,7 @@ const Dashboard = () => {
     fetchSchoolName();
   }, [user]);
 
+
   // Periodically update time to refresh button states
   useEffect(() => {
     const id = setInterval(() => setNowTs(Date.now()), 30000);
@@ -399,23 +400,6 @@ const Dashboard = () => {
     return (
       <>
         <SEO />
-        <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger />
-            <div>
-              <h1 className="text-2xl font-bold">
-                {schoolName ? `${schoolName} ` : ''}Dashboard
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Welcome {firstName} {lastName}
-              </p>
-            </div>
-          </div>
-          <Button onClick={signOut} variant="outline">
-            Sign Out
-          </Button>
-        </header>
-
         <main className="flex-1 p-6 space-y-6">
           {run?.testing_mode && (
             <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
