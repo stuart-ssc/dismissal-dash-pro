@@ -38,7 +38,7 @@ export function ICAuditTab({ schoolId }: ICAuditTabProps) {
         </h2>
         <p className="text-muted-foreground">Complete history of merge decisions</p>
       </div>
-      <ContentComponent />
+      <ContentComponent embedded={true} />
     </div>
   );
 }

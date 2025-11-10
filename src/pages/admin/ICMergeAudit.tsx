@@ -12,7 +12,7 @@ import { ArrowLeft, Search, Filter, CheckCircle, XCircle, Bot, User } from "luci
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 
-export default function ICMergeAudit() {
+export default function ICMergeAudit({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const { activeSchoolId } = useMultiSchool();
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,13 +111,15 @@ export default function ICMergeAudit() {
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Dashboard
-          </Button>
-          <h1 className="text-3xl font-bold">IC Merge Audit Log</h1>
-        </div>
+        {!embedded && (
+          <div className="flex items-center gap-4 mb-6">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+            <h1 className="text-3xl font-bold">IC Merge Audit Log</h1>
+          </div>
+        )}
         <Card className="p-8">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -129,13 +131,15 @@ export default function ICMergeAudit() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Dashboard
-        </Button>
-        <h1 className="text-3xl font-bold">IC Merge Audit Log</h1>
-      </div>
+      {!embedded && (
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/integrations/ic-sync")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Dashboard
+          </Button>
+          <h1 className="text-3xl font-bold">IC Merge Audit Log</h1>
+        </div>
+      )}
 
       <Card className="p-6 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
