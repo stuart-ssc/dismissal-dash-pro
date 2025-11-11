@@ -16,10 +16,6 @@ export function ICWelcomeStep({ nextStep }: StepProps) {
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-8">
       <div className="text-center space-y-4 max-w-2xl">
-        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary to-primary/60 rounded-2xl flex items-center justify-center">
-          <RefreshCw className="h-10 w-10 text-primary-foreground" />
-        </div>
-        
         <h1 className="text-3xl font-bold">Connect to Infinite Campus</h1>
         
         <p className="text-lg text-muted-foreground">
@@ -68,15 +64,6 @@ export function ICWelcomeStep({ nextStep }: StepProps) {
             Your credentials are encrypted and stored securely. We take data security seriously.
           </p>
         </div>
-      </div>
-
-      <div className="flex flex-col items-center space-y-4 pt-4">
-        <Button size="lg" onClick={nextStep} className="px-8">
-          Get Started
-        </Button>
-        <p className="text-sm text-muted-foreground">
-          Setup takes about 5 minutes
-        </p>
       </div>
     </div>
   );
