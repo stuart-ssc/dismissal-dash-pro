@@ -16,7 +16,7 @@ export function ICSetupDialog({
 }: ICSetupDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent hideClose className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Connect to Infinite Campus</DialogTitle>
         </DialogHeader>

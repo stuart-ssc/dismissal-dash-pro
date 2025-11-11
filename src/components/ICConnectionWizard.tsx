@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { ICWelcomeStep } from './wizard-steps/ICWelcomeStep';
 import { ICCredentialsStep } from './wizard-steps/ICCredentialsStep';
 import { ICTestConnectionStep } from './wizard-steps/ICTestConnectionStep';
@@ -74,7 +73,6 @@ interface ICConnectionWizardProps {
 }
 
 export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnectionWizardProps) {
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
   
   const getInitialState = (): WizardState => {
     // Try to load from localStorage
@@ -149,16 +147,6 @@ export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnect
     }
   };
 
-  const handleCancel = () => {
-    setShowCancelDialog(true);
-  };
-
-  const confirmCancel = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setShowCancelDialog(false);
-    onCancel?.();
-  };
-
   const handleComplete = () => {
     localStorage.removeItem(STORAGE_KEY);
     onComplete?.();
@@ -174,15 +162,7 @@ export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnect
     <div className="w-full max-w-5xl mx-auto space-y-6">
       {/* Header with progress */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Infinite Campus Setup</h2>
-          {!isLastStep && (
-            <Button variant="ghost" size="sm" onClick={handleCancel}>
-              <X className="h-4 w-4 mr-2" />
-              Cancel
-            </Button>
-          )}
-        </div>
+        <h2 className="text-2xl font-bold">Infinite Campus Setup</h2>
 
         {/* Progress bar with step labels */}
         <div className="space-y-2">
@@ -257,22 +237,6 @@ export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnect
           </Button>
         </div>
       )}
-
-      {/* Cancel confirmation dialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Setup?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel the Infinite Campus setup? Your progress will be saved and you can resume later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Continue Setup</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCancel}>Cancel Setup</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
