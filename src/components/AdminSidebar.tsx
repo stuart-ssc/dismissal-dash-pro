@@ -135,7 +135,7 @@ export function AdminSidebar() {
             <SidebarMenuButton asChild>
               <button 
                 onClick={signOut} 
-                className="w-full hover:bg-muted/50"
+                className="w-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
               >
                 <LogOut className="h-5 w-5" />
                 <span className="ml-3">Sign Out</span>
