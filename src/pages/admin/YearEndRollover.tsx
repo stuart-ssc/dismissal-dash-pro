@@ -18,7 +18,10 @@ import {
   ArrowRight,
   ArrowLeft,
   Calendar,
-  ShieldCheck
+  ShieldCheck,
+  Copy,
+  Users,
+  History
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -191,7 +194,7 @@ export default function YearEndRollover() {
   };
 
   const handleArchiveCurrentSession = async () => {
-    if (!currentSession?.id) return;
+    if (!currentSession?.id || !schoolId) return;
 
     try {
       setProcessing(true);
@@ -203,14 +206,49 @@ export default function YearEndRollover() {
 
       if (error) throw error;
 
+      // Get new session data
+      const { data: newSessionData } = await supabase
+        .from("academic_sessions")
+        .select("*")
+        .eq("school_id", schoolId)
+        .eq("session_name", newSessionName)
+        .single();
+
+      if (!newSessionData) throw new Error("New session not found");
+
       // Set new session as active
       const { error: activateError } = await supabase
         .from("academic_sessions")
         .update({ is_active: true })
-        .eq("school_id", schoolId)
-        .eq("session_name", newSessionName);
+        .eq("id", newSessionData.id);
 
       if (activateError) throw activateError;
+
+      // Log the rollover to history
+      try {
+        await supabase.functions.invoke("log-year-end-rollover", {
+          body: {
+            school_id: schoolId,
+            performed_by: user?.id,
+            archived_session_id: currentSession.id,
+            archived_session_name: currentSession.session_name,
+            new_session_id: newSessionData.id,
+            new_session_name: newSessionData.session_name,
+            groups_migrated: 0,
+            groups_selected: 0,
+            groups_available: sessionStats.groups,
+            validation_passed: validationPassed,
+            validation_warnings: [],
+            validation_errors: [],
+            metadata: {
+              rollover_date: new Date().toISOString(),
+            },
+          },
+        });
+      } catch (logError) {
+        console.error("Error logging rollover:", logError);
+        // Continue even if logging fails
+      }
 
       // Get school name for email notification
       const { data: school } = await supabase
@@ -237,7 +275,6 @@ export default function YearEndRollover() {
 
       if (notificationError) {
         console.error("Error sending notification:", notificationError);
-        // Don't fail the whole operation if email fails
         toast.warning("Session archived successfully, but email notifications failed to send");
       } else {
         toast.success("Current session archived, new session activated, and staff notified");
@@ -581,6 +618,13 @@ export default function YearEndRollover() {
                   onClick={() => navigate("/dashboard/people/groups-teams")}
                 >
                   Manage Groups
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate("/admin/rollover-history")}
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  View Rollover History
                 </Button>
               </div>
             </CardContent>

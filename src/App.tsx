@@ -27,6 +27,7 @@ import AdminSettings from "./pages/admin/Settings";
 import AdminSchools from "./pages/admin/Schools";
 import AcademicSessionAssignment from "./pages/admin/AcademicSessionAssignment";
 import YearEndRollover from "./pages/admin/YearEndRollover";
+import RolloverHistory from "./pages/admin/RolloverHistory";
 import GroupsTeams from "./pages/GroupsTeams";
 import SpecialUseRuns from "./pages/SpecialUseRuns";
 import PeopleHub from "./pages/PeopleHub";
@@ -156,6 +157,7 @@ const AppContent = () => {
           <Route path="/admin/schools" element={<AdminSchools />} />
           <Route path="/admin/session-assignment" element={<AcademicSessionAssignment />} />
           <Route path="/admin/year-end-rollover" element={<YearEndRollover />} />
+          <Route path="/admin/rollover-history" element={<RolloverHistory />} />
           
           {/* Special Use Run Mode (fullscreen) */}
           <Route path="/modes/special-use-run/:runId" element={<SpecialUseRunMode />} />

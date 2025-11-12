@@ -3535,6 +3535,85 @@ export type Database = {
           },
         ]
       }
+      year_end_rollover_logs: {
+        Row: {
+          archived_session_id: string | null
+          archived_session_name: string
+          created_at: string
+          groups_available: number | null
+          groups_migrated: number | null
+          groups_selected: number | null
+          id: string
+          metadata: Json | null
+          new_session_id: string | null
+          new_session_name: string
+          performed_at: string
+          performed_by: string
+          school_id: number
+          validation_errors: Json | null
+          validation_passed: boolean
+          validation_warnings: Json | null
+        }
+        Insert: {
+          archived_session_id?: string | null
+          archived_session_name: string
+          created_at?: string
+          groups_available?: number | null
+          groups_migrated?: number | null
+          groups_selected?: number | null
+          id?: string
+          metadata?: Json | null
+          new_session_id?: string | null
+          new_session_name: string
+          performed_at?: string
+          performed_by: string
+          school_id: number
+          validation_errors?: Json | null
+          validation_passed?: boolean
+          validation_warnings?: Json | null
+        }
+        Update: {
+          archived_session_id?: string | null
+          archived_session_name?: string
+          created_at?: string
+          groups_available?: number | null
+          groups_migrated?: number | null
+          groups_selected?: number | null
+          id?: string
+          metadata?: Json | null
+          new_session_id?: string | null
+          new_session_name?: string
+          performed_at?: string
+          performed_by?: string
+          school_id?: number
+          validation_errors?: Json | null
+          validation_passed?: boolean
+          validation_warnings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "year_end_rollover_logs_archived_session_id_fkey"
+            columns: ["archived_session_id"]
+            isOneToOne: false
+            referencedRelation: "academic_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "year_end_rollover_logs_new_session_id_fkey"
+            columns: ["new_session_id"]
+            isOneToOne: false
+            referencedRelation: "academic_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "year_end_rollover_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       active_temp_transportation: {
