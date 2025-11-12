@@ -106,11 +106,20 @@ export function SpecialUseRunDialog({
         .eq("id", user.id)
         .single();
 
+      // Get active academic session
+      const { data: activeSession } = await supabase
+        .from("academic_sessions")
+        .select("id")
+        .eq("school_id", profile?.school_id)
+        .eq("is_active", true)
+        .single();
+
       const [groupsRes, busesRes] = await Promise.all([
         supabase
           .from("special_use_groups")
           .select("id, name")
           .eq("school_id", profile?.school_id)
+          .eq("academic_session_id", activeSession?.id)
           .eq("is_active", true)
           .order("name"),
         supabase
@@ -162,6 +171,18 @@ export function SpecialUseRunDialog({
         if (error) throw error;
         toast.success("Run updated successfully");
       } else {
+        // Get active academic session for the school
+        const { data: activeSession } = await supabase
+          .from("academic_sessions")
+          .select("id")
+          .eq("school_id", profile.school_id)
+          .eq("is_active", true)
+          .single();
+
+        if (!activeSession) {
+          throw new Error("No active academic session found. Please create an academic session first.");
+        }
+
         // Create new run
         const { data: newRun, error: runError } = await supabase
           .from("special_use_runs")
@@ -175,6 +196,7 @@ export function SpecialUseRunDialog({
             notes: formData.notes || null,
             status: "scheduled",
             created_by: user.id,
+            academic_session_id: activeSession.id,
           })
           .select()
           .single();

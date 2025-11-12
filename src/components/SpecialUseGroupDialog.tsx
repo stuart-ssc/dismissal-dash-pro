@@ -90,6 +90,18 @@ export function SpecialUseGroupDialog({
         if (error) throw error;
         toast.success("Group updated successfully");
       } else {
+        // Get active academic session for the school
+        const { data: activeSession } = await supabase
+          .from("academic_sessions")
+          .select("id")
+          .eq("school_id", profile.school_id)
+          .eq("is_active", true)
+          .single();
+
+        if (!activeSession) {
+          throw new Error("No active academic session found. Please create an academic session first.");
+        }
+
         // Create new group
         const { error } = await supabase
           .from("special_use_groups")
@@ -97,6 +109,7 @@ export function SpecialUseGroupDialog({
             ...formData,
             school_id: profile.school_id,
             created_by: user.id,
+            academic_session_id: activeSession.id,
           });
 
         if (error) throw error;
