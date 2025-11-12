@@ -239,6 +239,18 @@ export default function SpecialUseGroups() {
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold">Groups & Teams</h1>
+            <p className="text-muted-foreground">Create and manage special use groups for field trips, athletics, clubs, and other activities</p>
+            {selectedSessionId && academicSessions.length > 0 && (
+              <Badge variant="secondary" className="mt-2">
+                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+              </Badge>
+            )}
+          </div>
+        </div>
+
         {selectedGroupIds.size > 0 && (
           <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
             <div className="flex items-center gap-3">
