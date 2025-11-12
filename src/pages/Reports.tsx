@@ -5,23 +5,85 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Download, Filter, Users, ArrowRight, TrendingUp, ClipboardList } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { Calendar, Download, Filter, Users, ArrowRight, TrendingUp, ClipboardList, CalendarDays } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts";
 import { format, subDays } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useReportsData } from "@/hooks/useReportsData";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Reports = () => {
   const SEO = useSEO();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [dateRange, setDateRange] = useState<number>(14); // Default to 14 days
   const [currentPage, setCurrentPage] = useState(1);
+  const [schoolId, setSchoolId] = useState<number | null>(null);
+  const [academicSessions, setAcademicSessions] = useState<Array<{ id: string; session_name: string; is_active: boolean }>>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [compareEnabled, setCompareEnabled] = useState(false);
+  const [compareSessionId, setCompareSessionId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
-  const { chartData, dismissalLogs, isLoading, error } = useReportsData(dateRange, currentPage, itemsPerPage);
+  useEffect(() => {
+    const fetchSchoolData = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('school_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.school_id) {
+          setSchoolId(profile.school_id);
+
+          // Fetch academic sessions
+          const { data: sessions } = await supabase
+            .from('academic_sessions')
+            .select('id, session_name, is_active')
+            .eq('school_id', profile.school_id)
+            .order('is_active', { ascending: false })
+            .order('start_date', { ascending: false });
+
+          if (sessions) {
+            setAcademicSessions(sessions);
+            // Pre-select active session
+            const activeSession = sessions.find(s => s.is_active);
+            if (activeSession) {
+              setSelectedSessionId(activeSession.id);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching school data:', error);
+      }
+    };
+
+    fetchSchoolData();
+  }, [user]);
+
+  const { chartData, compareChartData, dismissalLogs, isLoading, error } = useReportsData({
+    dateRangeDays: dateRange,
+    currentPage,
+    itemsPerPage,
+    sessionId: selectedSessionId,
+    compareSessionId: compareEnabled ? compareSessionId : null
+  });
 
   const totalPages = dismissalLogs ? Math.ceil(dismissalLogs.totalCount / itemsPerPage) : 0;
+
+  // Merge chart data for comparison
+  const mergedChartData = chartData.map((point, index) => ({
+    date: point.date,
+    current: point.duration,
+    compare: compareChartData[index]?.duration || 0
+  }));
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return "--";
@@ -48,7 +110,16 @@ const Reports = () => {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const chartConfig = {
+  const chartConfig = compareEnabled ? {
+    current: {
+      label: academicSessions.find(s => s.id === selectedSessionId)?.session_name || "Current Session",
+      color: "hsl(var(--primary))"
+    },
+    compare: {
+      label: academicSessions.find(s => s.id === compareSessionId)?.session_name || "Compare Session",
+      color: "hsl(var(--secondary))"
+    }
+  } : {
     duration: {
       label: "Duration (minutes)",
       color: "hsl(var(--primary))"
@@ -106,6 +177,11 @@ const Reports = () => {
               </CardTitle>
               <CardDescription>
                 Dismissal duration trends over time
+                {selectedSessionId && academicSessions.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                  </Badge>
+                )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -122,7 +198,68 @@ const Reports = () => {
               </Select>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Session Filters */}
+            {academicSessions.length > 0 && (
+              <div className="p-4 bg-muted/30 rounded-lg border space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="session-filter" className="text-sm font-medium">
+                      Academic Year / Session
+                    </Label>
+                    <Select value={selectedSessionId || ''} onValueChange={(value) => setSelectedSessionId(value)}>
+                      <SelectTrigger id="session-filter">
+                        <SelectValue placeholder="Select session" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {academicSessions.map((session) => (
+                          <SelectItem key={session.id} value={session.id}>
+                            {session.session_name} {session.is_active && '(Active)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {compareEnabled && (
+                    <div className="space-y-2">
+                      <Label htmlFor="compare-session-filter" className="text-sm font-medium">
+                        Compare with
+                      </Label>
+                      <Select value={compareSessionId || ''} onValueChange={(value) => setCompareSessionId(value)}>
+                        <SelectTrigger id="compare-session-filter">
+                          <SelectValue placeholder="Select session to compare" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {academicSessions
+                            .filter(s => s.id !== selectedSessionId)
+                            .map((session) => (
+                              <SelectItem key={session.id} value={session.id}>
+                                {session.session_name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="compare-mode" 
+                    checked={compareEnabled}
+                    onCheckedChange={(checked) => setCompareEnabled(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="compare-mode"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Compare with another academic year
+                  </label>
+                </div>
+              </div>
+            )}
+
             <div className="h-[300px] w-full relative overflow-hidden">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
@@ -139,7 +276,7 @@ const Reports = () => {
               ) : (
                 <ChartContainer config={chartConfig} className="h-full w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
+                    <BarChart data={compareEnabled ? mergedChartData : chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
                         dataKey="date" 
@@ -155,11 +292,29 @@ const Reports = () => {
                         content={<ChartTooltipContent />}
                         cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
                       />
-                      <Bar 
-                        dataKey="duration" 
-                        fill="var(--color-duration)" 
-                        radius={[4, 4, 0, 0]}
-                      />
+                      {compareEnabled ? (
+                        <>
+                          <Legend />
+                          <Bar 
+                            dataKey="current" 
+                            fill="var(--color-current)" 
+                            radius={[4, 4, 0, 0]}
+                            name={chartConfig.current.label}
+                          />
+                          <Bar 
+                            dataKey="compare" 
+                            fill="var(--color-compare)" 
+                            radius={[4, 4, 0, 0]}
+                            name={chartConfig.compare.label}
+                          />
+                        </>
+                      ) : (
+                        <Bar 
+                          dataKey="duration" 
+                          fill="var(--color-duration)" 
+                          radius={[4, 4, 0, 0]}
+                        />
+                      )}
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartContainer>
