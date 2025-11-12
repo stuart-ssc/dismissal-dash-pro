@@ -2476,6 +2476,7 @@ export type Database = {
       }
       special_use_groups: {
         Row: {
+          academic_session_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -2487,6 +2488,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_session_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -2498,6 +2500,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_session_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -2509,6 +2512,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "special_use_groups_academic_session_id_fkey"
+            columns: ["academic_session_id"]
+            isOneToOne: false
+            referencedRelation: "academic_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "special_use_groups_created_by_fkey"
             columns: ["created_by"]
@@ -2612,6 +2622,7 @@ export type Database = {
       }
       special_use_runs: {
         Row: {
+          academic_session_id: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
@@ -2637,6 +2648,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_session_id?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
@@ -2662,6 +2674,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_session_id?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
@@ -2687,6 +2700,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "special_use_runs_academic_session_id_fkey"
+            columns: ["academic_session_id"]
+            isOneToOne: false
+            referencedRelation: "academic_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "special_use_runs_cancelled_by_fkey"
             columns: ["cancelled_by"]

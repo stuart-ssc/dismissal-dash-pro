@@ -92,7 +92,7 @@ export default function SpecialUseRuns() {
     }
   }, [user?.id]);
 
-  const { data: runs = [], isLoading, refetch } = useQuery({
+  const { data: runs = [], isLoading, refetch } = useQuery<SpecialUseRun[]>({
     queryKey: ["special-use-runs", user?.id, selectedSessionId],
     queryFn: async () => {
       if (!selectedSessionId) return [];
@@ -100,7 +100,12 @@ export default function SpecialUseRuns() {
       const { data, error } = await supabase
         .from("special_use_runs")
         .select(`
-          *,
+          id,
+          run_name,
+          run_date,
+          status,
+          scheduled_departure_time,
+          scheduled_return_time,
           group:special_use_groups(name, group_type),
           buses:special_use_run_buses(
             bus:buses(bus_number)

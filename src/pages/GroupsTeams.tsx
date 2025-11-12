@@ -91,14 +91,14 @@ export default function SpecialUseGroups() {
     }
   }, [user?.id]);
 
-  const { data: groups = [], isLoading, refetch } = useQuery({
+  const { data: groups = [], isLoading, refetch } = useQuery<SpecialUseGroup[]>({
     queryKey: ["special-use-groups", user?.id, selectedSessionId],
     queryFn: async () => {
       if (!selectedSessionId) return [];
 
       const { data: groupsData, error } = await supabase
         .from("special_use_groups")
-        .select("*")
+        .select("id, name, description, group_type, is_active, created_at")
         .eq("academic_session_id", selectedSessionId)
         .order("name");
 
