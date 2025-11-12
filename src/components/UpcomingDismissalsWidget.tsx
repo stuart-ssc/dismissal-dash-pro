@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { format, endOfWeek, isToday, isTomorrow, parseISO } from "date-fns";
 
 interface UpcomingDismissalsWidgetProps {
@@ -137,16 +137,13 @@ export function UpcomingDismissalsWidget({ schoolId }: UpcomingDismissalsWidgetP
     return (
       <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <CardTitle>Upcoming Dismissals & Runs</CardTitle>
-          </div>
+          <CardTitle>Upcoming Dismissals</CardTitle>
           <CardDescription>Scheduled for this week</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-16 w-full" />
+              <Skeleton key={i} className="h-24 w-full" />
             ))}
           </div>
         </CardContent>
@@ -158,10 +155,7 @@ export function UpcomingDismissalsWidget({ schoolId }: UpcomingDismissalsWidgetP
     return (
       <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <CardTitle>Upcoming Dismissals & Runs</CardTitle>
-          </div>
+          <CardTitle>Upcoming Dismissals</CardTitle>
           <CardDescription>Scheduled for this week</CardDescription>
         </CardHeader>
         <CardContent>
@@ -179,10 +173,7 @@ export function UpcomingDismissalsWidget({ schoolId }: UpcomingDismissalsWidgetP
   return (
     <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-primary" />
-          <CardTitle>Upcoming Dismissals & Runs</CardTitle>
-        </div>
+        <CardTitle>Upcoming Dismissals</CardTitle>
         <CardDescription>Scheduled for this week</CardDescription>
       </CardHeader>
       <CardContent>
@@ -198,27 +189,24 @@ export function UpcomingDismissalsWidget({ schoolId }: UpcomingDismissalsWidgetP
                   key={item.id}
                   className="flex items-start gap-3 p-3 rounded-lg border bg-card/50 hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex-1 space-y-1.5">
+                    <div>
                       <Badge variant="outline" className="text-xs">
                         {getDateLabel(item.date)}
                       </Badge>
-                      {item.time && (
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {format(parseISO(item.time), "h:mm a")}
-                        </span>
-                      )}
-                      <Badge variant={getStatusColor(item.status)} className="text-xs">
-                        {item.status}
-                      </Badge>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">{item.name}</p>
-                      {item.type === "special" && (
+                    <p className="text-sm font-medium">{item.name}</p>
+                    {item.type === "special" && item.groupType && (
+                      <div>
                         <Badge variant="secondary" className="text-xs">
-                          {getTypeLabel(item)}
+                          {item.groupType}
                         </Badge>
-                      )}
+                      </div>
+                    )}
+                    <div>
+                      <Badge variant={getStatusColor(item.status)} className="text-xs capitalize">
+                        {item.status.replace('_', ' ')}
+                      </Badge>
                     </div>
                   </div>
                 </div>
