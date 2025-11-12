@@ -1,4 +1,4 @@
-import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar, RefreshCw, GitMerge, LogOut, GraduationCap } from "lucide-react";
+import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar, RefreshCw, GitMerge, LogOut, GraduationCap, Archive } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.svg";
@@ -133,6 +133,17 @@ export function AdminSidebar() {
                     >
                       <GraduationCap className="h-5 w-5" />
                       <span className="ml-3">Session Assignment</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to="/admin/year-end-rollover" 
+                      className={getNavCls}
+                    >
+                      <Archive className="h-5 w-5" />
+                      <span className="ml-3">Year-End Rollover</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
