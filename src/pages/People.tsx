@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon, Loader2, Archive } from "lucide-react";
 import { usePaginatedPeople, type PersonData } from "@/hooks/usePaginatedPeople";
 import { useQueryClient } from "@tanstack/react-query";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,9 +33,6 @@ const People = () => {
   const SEO = useSEO();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [schoolName, setSchoolName] = useState<string>('');
-  const [firstName, setFirstName] = useState<string>('');
-  const [lastName, setLastName] = useState<string>('');
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<PersonData | null>(null);
@@ -88,45 +84,30 @@ const People = () => {
       if (!user) return;
       
       try {
-        // Get user's profile to get school_id, first_name, and last_name
+        // Get user's profile to get school_id
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('school_id, first_name, last_name')
+          .select('school_id')
           .eq('id', user.id)
           .single();
 
-        if (profile) {
-          setFirstName(profile.first_name || '');
-          setLastName(profile.last_name || '');
+        if (profile?.school_id) {
+          setSchoolId(profile.school_id);
 
-          if (profile.school_id) {
-            setSchoolId(profile.school_id);
-            // Get school name
-            const { data: school } = await supabase
-              .from('schools')
-              .select('school_name')
-              .eq('id', profile.school_id)
-              .single();
+          // Fetch academic sessions
+          const { data: sessions } = await supabase
+            .from('academic_sessions')
+            .select('id, session_name, is_active')
+            .eq('school_id', profile.school_id)
+            .order('is_active', { ascending: false })
+            .order('start_date', { ascending: false });
 
-            if (school?.school_name) {
-              setSchoolName(school.school_name);
-            }
-
-            // Fetch academic sessions
-            const { data: sessions } = await supabase
-              .from('academic_sessions')
-              .select('id, session_name, is_active')
-              .eq('school_id', profile.school_id)
-              .order('is_active', { ascending: false })
-              .order('start_date', { ascending: false });
-
-            if (sessions) {
-              setAcademicSessions(sessions);
-              // Pre-select active session
-              const activeSession = sessions.find(s => s.is_active);
-              if (activeSession) {
-                setSelectedSessionId(activeSession.id);
-              }
+          if (sessions) {
+            setAcademicSessions(sessions);
+            // Pre-select active session
+            const activeSession = sessions.find(s => s.is_active);
+            if (activeSession) {
+              setSelectedSessionId(activeSession.id);
             }
           }
         }
@@ -538,23 +519,6 @@ const People = () => {
     return (
       <>
         <SEO />
-        <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger />
-            <div>
-              <h1 className="text-2xl font-bold">
-                {schoolName}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Welcome back, {firstName} {lastName}
-              </p>
-            </div>
-          </div>
-          <Button onClick={signOut} variant="outline">
-            Sign Out
-          </Button>
-        </header>
-
         <main className="flex-1 p-6 space-y-6">
           {schoolId && <TeachersWithoutClassesAlert schoolId={schoolId} />}
           
@@ -1156,23 +1120,6 @@ const People = () => {
   return (
     <>
       <SEO />
-      <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-2xl font-bold">
-              {schoolName}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Welcome {firstName} {lastName}
-            </p>
-          </div>
-        </div>
-        <Button onClick={signOut} variant="outline">
-          Sign Out
-        </Button>
-      </header>
-
       <main className="flex-1 p-6 space-y-6">
         <div className="space-y-6">
           <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
