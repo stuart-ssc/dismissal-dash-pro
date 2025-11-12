@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
@@ -88,6 +89,8 @@ export default function DismissalGroups() {
   const [editingGroup, setEditingGroup] = useState<DismissalGroup | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<string>("ALL_GRADES");
   const [schoolName, setSchoolName] = useState<string>("");
+  const [academicSessions, setAcademicSessions] = useState<{ id: string; session_name: string; is_active: boolean }[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const form = useForm<GroupFormData>({
     resolver: zodResolver(groupFormSchema),
@@ -117,18 +120,59 @@ export default function DismissalGroups() {
     }
 
     if (planId) {
-      fetchPlanAndGroups();
+      fetchAcademicSessions();
       fetchWalkerLocations();
       fetchBuses();
       fetchCarLines();
-      fetchClasses();
-      fetchActivities();
       fetchSchoolName();
     }
   }, [user, userRole, planId, navigate]);
 
+  // Fetch plan and groups when session changes
+  useEffect(() => {
+    if (planId && selectedSessionId !== null) {
+      fetchPlanAndGroups();
+      fetchClasses();
+      fetchActivities();
+    }
+  }, [planId, selectedSessionId]);
+
+  const fetchAcademicSessions = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('school_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.school_id) return;
+
+      const { data, error } = await supabase
+        .from('academic_sessions')
+        .select('id, session_name, is_active')
+        .eq('school_id', profile.school_id)
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+      
+      setAcademicSessions(data || []);
+      
+      // Pre-select active session
+      const activeSession = data?.find(s => s.is_active);
+      if (activeSession) {
+        setSelectedSessionId(activeSession.id);
+      } else if (data && data.length > 0) {
+        setSelectedSessionId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching academic sessions:', error);
+    }
+  };
+
   const fetchPlanAndGroups = async () => {
-    if (!planId || !user) return;
+    if (!planId || !user || selectedSessionId === null) return;
 
     try {
       setLoading(true);
@@ -186,16 +230,35 @@ export default function DismissalGroups() {
               enrichedGroup.dismissal_group_buses = busData || [];
             }
 
-            // Fetch class assignments
+            // Fetch class assignments with session filtering
             if (group.group_type === 'class') {
               const { data: classData } = await supabase
                 .from('dismissal_group_classes')
                 .select(`
-                  classes(class_name, class_rosters(student_id))
+                  classes!inner(
+                    class_name, 
+                    academic_session_id,
+                    class_rosters!inner(
+                      student_id,
+                      students!inner(academic_session_id)
+                    )
+                  )
                 `)
-                .eq('dismissal_group_id', group.id);
+                .eq('dismissal_group_id', group.id)
+                .eq('classes.academic_session_id', selectedSessionId);
               
-              enrichedGroup.dismissal_group_classes = classData || [];
+              // Filter roster by session
+              const filteredClassData = (classData || []).map(item => ({
+                ...item,
+                classes: item.classes ? {
+                  ...item.classes,
+                  class_rosters: (item.classes.class_rosters || []).filter((roster: any) => 
+                    roster.students?.academic_session_id === selectedSessionId
+                  )
+                } : null
+              }));
+              
+              enrichedGroup.dismissal_group_classes = filteredClassData;
             }
 
             // Fetch car line assignments
@@ -332,7 +395,7 @@ export default function DismissalGroups() {
   };
 
   const fetchClasses = async () => {
-    if (!user) return;
+    if (!user || selectedSessionId === null) return;
 
     try {
       const { data: profile } = await supabase
@@ -347,6 +410,7 @@ export default function DismissalGroups() {
         .from('classes')
         .select('id, class_name, grade_level')
         .eq('school_id', profile.school_id)
+        .eq('academic_session_id', selectedSessionId)
         .order('grade_level, class_name');
 
       if (error) throw error;
@@ -381,7 +445,7 @@ export default function DismissalGroups() {
   };
 
   const fetchActivities = async () => {
-    if (!user) return;
+    if (!user || selectedSessionId === null) return;
 
     try {
       const { data: profile } = await supabase
@@ -392,6 +456,7 @@ export default function DismissalGroups() {
 
       if (!profile?.school_id) return;
 
+      // Activities themselves aren't session-specific, but we still filter for consistency
       const { data, error } = await supabase
         .from('after_school_activities')
         .select('id, activity_name')
@@ -586,10 +651,14 @@ export default function DismissalGroups() {
       try {
         const { data } = await supabase
           .from('dismissal_group_classes')
-          .select('class_id')
-          .eq('dismissal_group_id', group.id);
+          .select('class_id, classes!inner(academic_session_id)')
+          .eq('dismissal_group_id', group.id)
+          .eq('classes.academic_session_id', selectedSessionId);
         
         existingClassIds = data?.map(assignment => assignment.class_id) || [];
+        if (existingClassIds.length > 0) {
+          setSelectedGrade("ALL_GRADES");
+        }
       } catch (error) {
         console.error('Error fetching class assignments:', error);
       }
@@ -854,13 +923,43 @@ export default function DismissalGroups() {
             {/* Groups Management */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
                     <CardTitle>Dismissal Groups</CardTitle>
                     <CardDescription>
                       Create and manage groups for this dismissal plan
                     </CardDescription>
                   </div>
+                  
+                  <div className="flex items-center gap-4">
+                    {/* Academic Session Selector */}
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="session-select" className="text-sm whitespace-nowrap">Academic Year:</Label>
+                      <Select
+                        value={selectedSessionId || undefined}
+                        onValueChange={(value) => setSelectedSessionId(value)}
+                      >
+                        <SelectTrigger id="session-select" className="w-[200px]">
+                          <SelectValue placeholder="Select session" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {academicSessions.map((session) => (
+                            <SelectItem key={session.id} value={session.id}>
+                              {session.session_name}
+                              {session.is_active && <Badge variant="secondary" className="ml-2 text-xs">Active</Badge>}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {selectedSessionId && (
+                      <Badge variant="outline" className="ml-2">
+                        Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                      </Badge>
+                    )}
+                  </div>
+                  
                   <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                     <DialogTrigger asChild>
                       <Button
