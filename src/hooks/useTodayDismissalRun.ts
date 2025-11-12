@@ -76,14 +76,27 @@ export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
       const timezone = school?.timezone || 'America/New_York';
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
 
-      console.log(`[useTodayDismissalRun] Fetching runs for school ${schoolId}, date ${today}`);
+      // Get current academic session for filtering
+      const { data: currentSession } = await supabase
+        .from("academic_sessions")
+        .select("id")
+        .eq("school_id", schoolId)
+        .lte("start_date", today)
+        .gte("end_date", today)
+        .order("start_date", { ascending: false })
+        .maybeSingle();
 
-      // Fetch ALL existing runs for today (not just one)
+      const currentSessionId = currentSession?.id || null;
+
+      console.log(`[useTodayDismissalRun] Fetching runs for school ${schoolId}, date ${today}, session ${currentSessionId}`);
+
+      // Fetch ALL existing runs for today (not just one), filtered by current session
       const { data: allRuns, error: findErr } = await supabase
         .from("dismissal_runs")
         .select("*")
         .eq("school_id", schoolId)
         .eq("date", today)
+        .eq("academic_session_id", currentSessionId)
         .order('updated_at', { ascending: false });
 
       if (findErr) throw findErr;
@@ -151,13 +164,14 @@ export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
       console.log(`[useTodayDismissalRun] No existing run, fetching applicable plan for today`);
       let planTimeFallback: string | null = null;
       
-      // PRIORITY 1: Try to find a date-specific plan for today
+      // PRIORITY 1: Try to find a date-specific plan for today (filtered by session)
       // Date-specific plans have start_date NOT NULL
       const { data: dateSpecificPlan, error: dateSpecificErr } = await supabase
         .from("dismissal_plans")
         .select("dismissal_time")
         .eq("school_id", schoolId)
         .eq("status", "active")
+        .eq("academic_session_id", currentSessionId)
         .not("start_date", "is", null) // Must have a start date (date-specific)
         .or(`and(start_date.lte.${today},end_date.gte.${today}),and(start_date.lte.${today},end_date.is.null)`)
         .order("start_date", { ascending: false }) // Most recent date-specific plan first
@@ -168,13 +182,14 @@ export const useTodayDismissalRun = (options?: { allowCreate?: boolean }) => {
         planTimeFallback = dateSpecificPlan.dismissal_time;
         console.log(`[useTodayDismissalRun] Found date-specific plan with time:`, planTimeFallback);
       } else {
-        // PRIORITY 2: Fallback to default plan if no date-specific plan found
+        // PRIORITY 2: Fallback to default plan if no date-specific plan found (filtered by session)
         const { data: defaultPlan, error: defaultErr } = await supabase
           .from("dismissal_plans")
           .select("dismissal_time")
           .eq("school_id", schoolId)
           .eq("status", "active")
           .eq("is_default", true)
+          .eq("academic_session_id", currentSessionId)
           .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle();
