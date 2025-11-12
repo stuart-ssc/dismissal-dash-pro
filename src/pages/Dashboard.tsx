@@ -24,6 +24,7 @@ import { ICSyncStatusWidget } from "@/components/ICSyncStatusWidget";
 import { ICDashboardSummary } from "@/components/ICDashboardSummary";
 import { SchoolSetupMethodDialog } from "@/components/SchoolSetupMethodDialog";
 import { ICSetupDialog } from "@/components/ICSetupDialog";
+import { SessionHealthWidget } from "@/components/SessionHealthWidget";
 
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
@@ -657,7 +658,7 @@ const Dashboard = () => {
                   <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these actions and activity.</p>
                 </div>
               )}
-              <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                   <CardHeader>
                     <CardTitle>Quick Actions</CardTitle>
@@ -713,6 +714,9 @@ const Dashboard = () => {
 
                 {/* IC Dashboard Summary */}
                 <ICDashboardSummary schoolId={schoolId} />
+
+                {/* Session Health Widget */}
+                {schoolId && <SessionHealthWidget schoolId={schoolId} />}
               </div>
             </div>
           )}
