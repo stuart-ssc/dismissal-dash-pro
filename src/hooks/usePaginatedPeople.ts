@@ -30,6 +30,7 @@ interface UsePaginatedPeopleParams {
   searchQuery: string;
   sortBy: string;
   sortOrder: "asc" | "desc";
+  sessionId?: string | null;
   enabled?: boolean;
 }
 
@@ -47,10 +48,11 @@ export const usePaginatedPeople = ({
   searchQuery,
   sortBy,
   sortOrder,
+  sessionId,
   enabled = true,
 }: UsePaginatedPeopleParams) => {
   return useQuery<PaginatedPeopleResult>({
-    queryKey: ['people-paginated', schoolId, page, pageSize, roleFilter, gradeFilter, searchQuery, sortBy, sortOrder],
+    queryKey: ['people-paginated', schoolId, page, pageSize, roleFilter, gradeFilter, searchQuery, sortBy, sortOrder, sessionId],
     queryFn: async () => {
       if (!schoolId) {
         return { people: [], totalCount: 0 };
@@ -68,6 +70,7 @@ export const usePaginatedPeople = ({
         p_sort_order: sortOrder,
         p_limit: pageSize,
         p_offset: offset,
+        p_session_id: sessionId || null,
       });
 
       if (rpcError) {

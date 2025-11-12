@@ -3759,6 +3759,10 @@ export type Database = {
         }[]
       }
       get_app_secret: { Args: { p_key: string }; Returns: string }
+      get_current_academic_session: {
+        Args: { p_school_id: number }
+        Returns: string
+      }
       get_current_user_school_id: { Args: never; Returns: number }
       get_group_school_id: { Args: { p_group_id: string }; Returns: number }
       get_impersonated_school_id: { Args: never; Returns: number }
@@ -3770,6 +3774,7 @@ export type Database = {
           p_role_filter?: string
           p_school_id: number
           p_search_query?: string
+          p_session_id?: string
           p_sort_by?: string
           p_sort_order?: string
         }
@@ -3865,24 +3870,7 @@ export type Database = {
         }[]
       }
       get_students_for_teacher: {
-        Args: { teacher_uuid?: string }
-        Returns: {
-          contact_info: string
-          created_at: string
-          dismissal_group: string
-          first_name: string
-          grade_level: string
-          id: string
-          last_name: string
-          parent_guardian_name: string
-          school_id: number
-          special_notes: string
-          student_id: string
-          updated_at: string
-        }[]
-      }
-      get_students_for_teacher_safe: {
-        Args: { teacher_uuid?: string }
+        Args: { session_id?: string; teacher_uuid?: string }
         Returns: {
           contact_info: string
           created_at: string
@@ -3899,13 +3887,21 @@ export type Database = {
         }[]
       }
       get_teacher_accessible_classes: {
-        Args: { target_date?: string; teacher_uuid: string }
+        Args: {
+          session_id?: string
+          target_date?: string
+          teacher_uuid: string
+        }
         Returns: {
           class_id: string
           class_name: string
           coverage_notes: string
           grade_level: string
           is_permanent: boolean
+          period_end_time: string
+          period_name: string
+          period_number: number
+          period_start_time: string
         }[]
       }
       get_teacher_class_ids: {

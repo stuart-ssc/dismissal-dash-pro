@@ -9,9 +9,13 @@ type TeacherClass = {
   grade_level: string;
   is_permanent: boolean;
   coverage_notes?: string;
+  period_number?: number;
+  period_start_time?: string;
+  period_end_time?: string;
+  period_name?: string;
 };
 
-export const useTeacherClasses = (targetDate?: string) => {
+export const useTeacherClasses = (targetDate?: string, sessionId?: string) => {
   const { user } = useAuth();
   const { activeSchoolId } = useMultiSchool();
   const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -37,7 +41,8 @@ export const useTeacherClasses = (targetDate?: string) => {
           'get_teacher_accessible_classes',
           {
             teacher_uuid: user.id,
-            target_date: date
+            target_date: date,
+            session_id: sessionId || null
           }
         );
 
@@ -62,7 +67,7 @@ export const useTeacherClasses = (targetDate?: string) => {
     };
 
     fetchClasses();
-  }, [user, targetDate, activeSchoolId]);
+  }, [user, targetDate, sessionId, activeSchoolId]);
 
   return { classes, loading, error };
 };
