@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import InfiniteCampusLogo from "@/components/InfiniteCampusLogo";
 
 interface ICSyncStatusWidgetProps {
   schoolId: number;
@@ -139,13 +140,11 @@ export function ICSyncStatusWidget({ schoolId }: ICSyncStatusWidgetProps) {
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <RefreshCw className="h-5 w-5" />
-              <CardTitle>Infinite Campus Sync</CardTitle>
-            </div>
-            <Skeleton className="h-6 w-24" />
+          <div className="flex justify-center mb-4">
+            <InfiniteCampusLogo className="w-32" />
           </div>
+          <CardTitle>Infinite Campus Sync</CardTitle>
+          <Skeleton className="h-6 w-24 mt-2" />
         </CardHeader>
         <CardContent>
           <Skeleton className="h-20 w-full" />
@@ -157,16 +156,16 @@ export function ICSyncStatusWidget({ schoolId }: ICSyncStatusWidgetProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 text-primary" />
-            <CardTitle>Infinite Campus Sync</CardTitle>
-          </div>
+        <div className="flex justify-center mb-4">
+          <InfiniteCampusLogo className="w-32" />
+        </div>
+        <CardTitle>Infinite Campus Sync</CardTitle>
+        <div className="mt-2">
           <Badge variant={isConnected ? "default" : "secondary"}>
             {isConnected ? "Connected" : "Not Connected"}
           </Badge>
         </div>
-        <CardDescription>
+        <CardDescription className="mt-2">
           Automatically sync students, teachers, and classes from Infinite Campus
         </CardDescription>
       </CardHeader>
