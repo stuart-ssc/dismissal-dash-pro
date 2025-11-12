@@ -46,6 +46,8 @@ const Dashboard = () => {
   const [deleting, setDeleting] = useState(false);
   const [showSetupMethodDialog, setShowSetupMethodDialog] = useState(false);
   const [showICSetupDialog, setShowICSetupDialog] = useState(false);
+  const [hasICConnection, setHasICConnection] = useState(false);
+  const [checkingICConnection, setCheckingICConnection] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -296,6 +298,33 @@ const Dashboard = () => {
     fetchFastestDismissal();
   }, [schoolId]);
 
+  // Check IC connection status
+  useEffect(() => {
+    const checkICConnection = async () => {
+      if (!schoolId) {
+        setCheckingICConnection(false);
+        return;
+      }
+      
+      try {
+        const { data: connection } = await supabase
+          .from('ic_connections' as any)
+          .select('id')
+          .eq('school_id', schoolId)
+          .maybeSingle();
+        
+        setHasICConnection(!!connection);
+      } catch (error) {
+        console.error('Error checking IC connection:', error);
+        setHasICConnection(false);
+      } finally {
+        setCheckingICConnection(false);
+      }
+    };
+
+    checkICConnection();
+  }, [schoolId]);
+
   // Check if setup method dialog should be shown
   useEffect(() => {
     if (!schoolId || setupLoading) return;
@@ -527,12 +556,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           )}
-
-          {/* IC Sync Status Widget - Only for school admins */}
-          {userRole === 'school_admin' && schoolId && (
-            <ICSyncStatusWidget schoolId={schoolId} />
-          )}
-
           
           <div className="relative">
             {!setupLoading && !isReady && (
@@ -711,8 +734,14 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                {/* IC Dashboard Summary */}
-                <ICDashboardSummary schoolId={schoolId} />
+                {/* IC Integration Card - Shows setup widget if not connected, summary if connected */}
+                {!checkingICConnection && (
+                  hasICConnection ? (
+                    <ICDashboardSummary schoolId={schoolId} />
+                  ) : (
+                    <ICSyncStatusWidget schoolId={schoolId} />
+                  )
+                )}
               </div>
             </div>
           )}
