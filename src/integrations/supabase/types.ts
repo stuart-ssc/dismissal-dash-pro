@@ -3860,10 +3860,8 @@ export type Database = {
           last_name: string
           left_with_parent: boolean
           outbound_checked: boolean
-          outbound_time: string
           parent_name: string
           return_checked: boolean
-          return_time: string
           student_id: string
           student_number: string
         }[]
