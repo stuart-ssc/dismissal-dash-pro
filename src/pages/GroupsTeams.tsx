@@ -239,42 +239,6 @@ export default function SpecialUseGroups() {
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold">Groups & Teams</h1>
-            <p className="text-muted-foreground">Create and manage special use groups for field trips, athletics, clubs, and other activities</p>
-            {selectedSessionId && academicSessions.length > 0 && (
-              <Badge variant="secondary" className="mt-2">
-                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {selectedGroupIds.size > 0 && (
-          <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">
-                {selectedGroupIds.size} {selectedGroupIds.size === 1 ? "group" : "groups"} selected
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedGroupIds(new Set())}
-              >
-                Clear Selection
-              </Button>
-            </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setBulkAssignDialogOpen(true)}
-            >
-              Assign Session
-            </Button>
-          </div>
-        )}
-
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -344,6 +308,44 @@ export default function SpecialUseGroups() {
             New Group
           </Button>
         </div>
+
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">Groups & Teams</h1>
+              {selectedSessionId && academicSessions.length > 0 && (
+                <Badge variant="secondary">
+                  Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground mt-1">Create and manage special use groups for field trips, athletics, clubs, and other activities</p>
+          </div>
+        </div>
+
+        {selectedGroupIds.size > 0 && (
+          <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">
+                {selectedGroupIds.size} {selectedGroupIds.size === 1 ? "group" : "groups"} selected
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedGroupIds(new Set())}
+              >
+                Clear Selection
+              </Button>
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setBulkAssignDialogOpen(true)}
+            >
+              Assign Session
+            </Button>
+          </div>
+        )}
 
       {isLoading ? (
         <div className="text-center py-8 text-muted-foreground">Loading groups...</div>
