@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings as SettingsIcon, School, Bell, Shield, Clock, Monitor } from "lucide-react";
+import { Settings as SettingsIcon, School, Bell, Shield, Clock, Monitor, GraduationCap, ArrowRight, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -415,6 +416,40 @@ const Settings = () => {
         </Card>
 
         <AcademicSessionManager />
+
+        <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-primary" />
+              Year-End Rollover
+            </CardTitle>
+            <CardDescription>
+              Archive the current academic year and set up the next school year
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Use this wizard at the end of the school year to transition to a new academic year. 
+                The wizard will guide you through validation, archiving current data, and setting up the new session.
+              </p>
+            </div>
+            
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                This process should only be performed once per year when transitioning to a new school year. 
+                Make sure all dismissal runs are completed before starting.
+              </AlertDescription>
+            </Alert>
+
+            <Button onClick={() => navigate('/admin/year-end-rollover')} className="w-full sm:w-auto">
+              <GraduationCap className="mr-2 h-4 w-4" />
+              Start Year-End Rollover Wizard
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Notifications Card - Hidden until functionality is built */}
         {/* <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
