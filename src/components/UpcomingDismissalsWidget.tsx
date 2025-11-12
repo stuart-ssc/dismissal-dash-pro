@@ -196,14 +196,12 @@ export function UpcomingDismissalsWidget({ schoolId }: UpcomingDismissalsWidgetP
                       </Badge>
                     </div>
                     <p className="text-sm font-medium">{item.name}</p>
-                    {item.type === "special" && item.groupType && (
-                      <div>
-                        <Badge variant="secondary" className="text-xs">
-                          {item.groupType}
+                    <div className="flex items-center gap-2">
+                      {item.type === "special" && item.groupType && (
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {item.groupType.replace('_', ' ')}
                         </Badge>
-                      </div>
-                    )}
-                    <div>
+                      )}
                       <Badge variant={getStatusColor(item.status)} className="text-xs capitalize">
                         {item.status.replace('_', ' ')}
                       </Badge>
