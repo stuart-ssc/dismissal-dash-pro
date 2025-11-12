@@ -59,10 +59,24 @@ export function ManageGroupStudentsDialog({
         .eq("id", user.id)
         .single();
 
+      // Get group's academic session
+      const { data: groupData } = await supabase
+        .from("special_use_groups")
+        .select("academic_session_id")
+        .eq("id", group.id)
+        .single();
+
+      if (!groupData?.academic_session_id) {
+        toast.error("Group has no academic session assigned");
+        return;
+      }
+
+      // Filter students by the group's academic session
       const { data: allStudents, error: studentsError } = await supabase
         .from("students")
         .select("id, first_name, last_name, grade_level, student_id")
         .eq("school_id", profile?.school_id)
+        .eq("academic_session_id", groupData.academic_session_id)
         .order("last_name");
 
       if (studentsError) throw studentsError;
