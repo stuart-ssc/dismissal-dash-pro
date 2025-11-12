@@ -22,13 +22,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Play, Edit, Filter, X } from "lucide-react";
+import { Plus, Search, Play, Edit, Filter, X, Download } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
 import { BulkSessionAssigner } from "@/components/BulkSessionAssigner";
 import { toast } from "sonner";
+import { convertToCSV, downloadCSV, formatTimeForCSV } from "@/lib/csvExport";
 
 const formatTimeString = (timeString: string | null): string => {
   if (!timeString) return "-";
@@ -202,6 +203,38 @@ export default function SpecialUseRuns() {
     navigate(`/modes/special-use-run/${runId}`);
   };
 
+  const handleExportCSV = () => {
+    if (filteredRuns.length === 0) {
+      toast.error("No runs to export");
+      return;
+    }
+
+    const exportData = filteredRuns.map(run => ({
+      'Run Name': run.run_name,
+      'Group': run.group.name,
+      'Academic Session': run.session?.session_name || 'Not Assigned',
+      'Date': format(new Date(run.run_date), 'MMM d, yyyy'),
+      'Departure Time': formatTimeForCSV(run.scheduled_departure_time),
+      'Return Time': formatTimeForCSV(run.scheduled_return_time),
+      'Buses': run.buses.map(b => b.bus_number).join('; '),
+      'Status': run.status === 'scheduled' ? 'Scheduled' :
+                run.status === 'outbound_active' ? 'Outbound' :
+                run.status === 'at_destination' ? 'At Destination' :
+                run.status === 'return_active' ? 'Returning' :
+                run.status === 'completed' ? 'Completed' :
+                run.status === 'cancelled' ? 'Cancelled' : run.status,
+    }));
+
+    const csv = convertToCSV(
+      exportData,
+      ['Run Name', 'Group', 'Academic Session', 'Date', 'Departure Time', 'Return Time', 'Buses', 'Status']
+    );
+
+    const filename = `special-use-runs-${new Date().toISOString().split('T')[0]}.csv`;
+    downloadCSV(csv, filename);
+    toast.success(`Exported ${filteredRuns.length} runs to CSV`);
+  };
+
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
@@ -275,6 +308,14 @@ export default function SpecialUseRuns() {
           >
             {showUnassignedOnly ? <X className="h-4 w-4 mr-2" /> : <Filter className="h-4 w-4 mr-2" />}
             {showUnassignedOnly ? "Show All" : "Unassigned Only"}
+          </Button>
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            disabled={filteredRuns.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
           </Button>
         </div>
 

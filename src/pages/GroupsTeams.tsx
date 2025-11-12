@@ -21,8 +21,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Filter, X } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Filter, X, Download } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { convertToCSV, downloadCSV, formatDateForCSV } from "@/lib/csvExport";
 
 import { SpecialUseGroupDialog } from "@/components/SpecialUseGroupDialog";
 import { ManageGroupStudentsDialog } from "@/components/ManageGroupStudentsDialog";
@@ -190,6 +191,35 @@ export default function SpecialUseGroups() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (filteredGroups.length === 0) {
+      toast.error("No groups to export");
+      return;
+    }
+
+    const exportData = filteredGroups.map(group => ({
+      Name: group.name,
+      Type: group.group_type === 'field_trip' ? 'Field Trip' : 
+            group.group_type === 'athletics' ? 'Athletics' : 
+            group.group_type === 'club' ? 'Club' : 'Other',
+      'Academic Session': group.session?.session_name || 'Not Assigned',
+      Description: group.description || '',
+      'Student Count': group.student_count || 0,
+      'Manager Count': group.manager_count || 0,
+      Status: group.is_active ? 'Active' : 'Inactive',
+      'Created Date': formatDateForCSV(group.created_at),
+    }));
+
+    const csv = convertToCSV(
+      exportData,
+      ['Name', 'Type', 'Academic Session', 'Description', 'Student Count', 'Manager Count', 'Status', 'Created Date']
+    );
+
+    const filename = `special-use-groups-${new Date().toISOString().split('T')[0]}.csv`;
+    downloadCSV(csv, filename);
+    toast.success(`Exported ${filteredGroups.length} groups to CSV`);
+  };
+
   const handleDelete = async () => {
     if (!groupToDelete) return;
 
@@ -295,6 +325,14 @@ export default function SpecialUseGroups() {
           >
             {showUnassignedOnly ? <X className="h-4 w-4 mr-2" /> : <Filter className="h-4 w-4 mr-2" />}
             {showUnassignedOnly ? "Show All" : "Unassigned Only"}
+          </Button>
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            disabled={filteredGroups.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
           </Button>
           <Button
             onClick={() => setMigrationDialogOpen(true)}
