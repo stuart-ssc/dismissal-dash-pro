@@ -377,7 +377,6 @@ export default function SpecialUseGroups() {
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Type</TableHead>
                   <TableHead>Academic Session</TableHead>
-                  <TableHead className="hidden md:table-cell">Description</TableHead>
                   <TableHead className="text-center">Students</TableHead>
                   <TableHead className="text-center">Managers</TableHead>
                   <TableHead className="hidden sm:table-cell">Status</TableHead>
@@ -416,7 +415,6 @@ export default function SpecialUseGroups() {
                       <Badge variant="destructive">Not Assigned</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell max-w-xs truncate">{group.description || "-"}</TableCell>
                   <TableCell className="text-center">{group.student_count}</TableCell>
                   <TableCell className="text-center">{group.manager_count}</TableCell>
                   <TableCell className="hidden sm:table-cell">
