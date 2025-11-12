@@ -76,6 +76,8 @@ export default function SpecialUseRuns() {
   const [selectedRun, setSelectedRun] = useState<any>(null);
   const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [groupTypeFilter, setGroupTypeFilter] = useState<string>("all");
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -140,10 +142,13 @@ export default function SpecialUseRuns() {
     enabled: !!user && !!selectedSessionId,
   });
 
-  const filteredRuns = runs.filter((run) =>
-    run.run_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    run.group.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRuns = runs.filter((run) => {
+    const matchesSearch = run.run_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      run.group.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || run.status === statusFilter;
+    const matchesGroupType = groupTypeFilter === "all" || run.group.group_type === groupTypeFilter;
+    return matchesSearch && matchesStatus && matchesGroupType;
+  });
 
 
   const getStatusBadge = (status: string) => {
@@ -199,7 +204,7 @@ export default function SpecialUseRuns() {
     <>
       <main className="flex-1 p-6 space-y-6">
         {/* Search/Settings/New Run row - OUTSIDE CARD */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -209,6 +214,33 @@ export default function SpecialUseRuns() {
               className="pl-10"
             />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="outbound_active">Outbound</SelectItem>
+              <SelectItem value="at_destination">At Destination</SelectItem>
+              <SelectItem value="return_active">Returning</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={groupTypeFilter} onValueChange={setGroupTypeFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="field_trip">Field Trip</SelectItem>
+              <SelectItem value="athletics">Athletics</SelectItem>
+              <SelectItem value="club">Club</SelectItem>
+              <SelectItem value="afterschool">After School</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
