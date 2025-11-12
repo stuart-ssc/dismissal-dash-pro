@@ -11,6 +11,8 @@ import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Users, GraduationC
 import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Navbar from "@/components/Navbar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
@@ -63,6 +65,8 @@ const Import = () => {
   const [parsedData, setParsedData] = useState<RosterRow[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
   const [sendInvitations, setSendInvitations] = useState(true);
+  const [academicSessions, setAcademicSessions] = useState<Array<{ id: string; session_name: string; is_active: boolean }>>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -72,7 +76,7 @@ const Import = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    const fetchSchoolName = async () => {
+    const fetchSchoolData = async () => {
       if (!user) return;
       
       try {
@@ -98,14 +102,31 @@ const Import = () => {
             if (school?.school_name) {
               setSchoolName(school.school_name);
             }
+
+            // Fetch academic sessions
+            const { data: sessions } = await supabase
+              .from('academic_sessions')
+              .select('id, session_name, is_active')
+              .eq('school_id', profile.school_id)
+              .order('is_active', { ascending: false })
+              .order('start_date', { ascending: false });
+
+            if (sessions) {
+              setAcademicSessions(sessions);
+              // Pre-select active session
+              const activeSession = sessions.find(s => s.is_active);
+              if (activeSession) {
+                setSelectedSessionId(activeSession.id);
+              }
+            }
           }
         }
       } catch (error) {
-        console.error('Error fetching school name:', error);
+        console.error('Error fetching school data:', error);
       }
     };
 
-    fetchSchoolName();
+    fetchSchoolData();
   }, [user]);
 
   const parseCSVContent = (content: string): RosterRow[] => {
@@ -247,6 +268,7 @@ const Import = () => {
       formData.append('file', selectedFile);
       formData.append('rosterData', JSON.stringify(parsedData));
       formData.append('sendInvitations', sendInvitations.toString());
+      formData.append('sessionId', selectedSessionId);
 
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90));
@@ -442,6 +464,38 @@ const Import = () => {
 
                   {parsedData.length > 0 && (
                     <div className="space-y-4">
+                      {academicSessions.length > 0 && (
+                        <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
+                          <Label htmlFor="session-select" className="text-sm font-medium">
+                            Academic Year/Session
+                          </Label>
+                          <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
+                            <SelectTrigger id="session-select" className="w-full">
+                              <SelectValue placeholder="Select academic session" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {academicSessions.map((session) => (
+                                <SelectItem key={session.id} value={session.id}>
+                                  {session.session_name} {session.is_active && '(Active)'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Students and classes will be assigned to this academic session
+                          </p>
+                        </div>
+                      )}
+
+                      {academicSessions.length === 0 && (
+                        <Alert>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            No academic sessions found. Please create an academic session in Settings before importing data.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
                       <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg">
                         <Checkbox 
                           id="send-invitations" 
@@ -463,7 +517,7 @@ const Import = () => {
                       
                       <Button 
                         onClick={handleFileUpload} 
-                        disabled={isProcessing}
+                        disabled={isProcessing || !selectedSessionId}
                         className="w-full"
                       >
                         {isProcessing ? (

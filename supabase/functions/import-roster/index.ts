@@ -151,8 +151,9 @@ serve(async (req) => {
     const rosterData = JSON.parse(formData.get('rosterData') as string) as RosterRow[];
     const validateOnly = formData.get('validateOnly') === 'true';
     const sendInvitations = formData.get('sendInvitations') !== 'false'; // Default true for backward compatibility
+    const sessionId = formData.get('sessionId') as string | null;
     
-    console.log(`Import configuration: sendInvitations=${sendInvitations}`);
+    console.log(`Import configuration: sendInvitations=${sendInvitations}, sessionId=${sessionId}`);
 
     if (!file || !rosterData || !Array.isArray(rosterData)) {
       return new Response(JSON.stringify({ error: 'Invalid file or roster data' }), {
@@ -211,6 +212,41 @@ serve(async (req) => {
 
     console.log(`Processing ${rosterData.length} roster entries for school ${profile.school_id}`);
 
+    // Get or validate academic session
+    let academicSessionId: string | null = sessionId;
+    
+    if (sessionId) {
+      // Validate provided session belongs to this school
+      const { data: session, error: sessionError } = await supabase
+        .from('academic_sessions')
+        .select('id')
+        .eq('id', sessionId)
+        .eq('school_id', profile.school_id)
+        .maybeSingle();
+      
+      if (sessionError || !session) {
+        return new Response(JSON.stringify({ 
+          error: 'Invalid academic session',
+          details: 'The selected academic session does not exist or does not belong to your school'
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      // No session provided, try to get active session
+      const { data: activeSession } = await supabase
+        .from('academic_sessions')
+        .select('id')
+        .eq('school_id', profile.school_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (activeSession) {
+        academicSessionId = activeSession.id;
+      }
+    }
+
     // Set up PostgreSQL client for transactions
     const dbUrl = Deno.env.get('SUPABASE_DB_URL')!;
     const client = new Client(dbUrl);
@@ -246,9 +282,9 @@ serve(async (req) => {
             classId = (existingClassResult.rows[0] as any).id as string;
           } else {
             const newClassResult = await client.queryObject(
-              `INSERT INTO classes (class_name, room_number, school_id, grade_level) 
-               VALUES ($1, $2, $3, $4) RETURNING id`,
-              [sanitizeCSVValue(row.className), row.roomNumber || null, profile.school_id, sanitizeCSVValue(row.gradeLevel)]
+              `INSERT INTO classes (class_name, room_number, school_id, grade_level, academic_session_id) 
+               VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+              [sanitizeCSVValue(row.className), row.roomNumber || null, profile.school_id, sanitizeCSVValue(row.gradeLevel), academicSessionId]
             );
 
             if (newClassResult.rows.length === 0) {
@@ -314,8 +350,8 @@ serve(async (req) => {
         } else {
           const newStudentResult = await client.queryObject(
             `INSERT INTO students (student_id, dismissal_mode_id, first_name, last_name, grade_level, school_id, 
-                                 parent_guardian_name, contact_info, special_notes, dismissal_group) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+                                 parent_guardian_name, contact_info, special_notes, dismissal_group, academic_session_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
             [
               row.studentId || null,
               sanitizeCSVValue(row.dismissalModeId),
@@ -326,7 +362,8 @@ serve(async (req) => {
               sanitizeCSVValue(row.parentGuardianName),
               sanitizeCSVValue(row.contactInfo),
               sanitizeCSVValue(row.specialNotes),
-              row.dismissalGroup || null
+              row.dismissalGroup || null,
+              academicSessionId
             ]
           );
 
@@ -339,9 +376,9 @@ serve(async (req) => {
 
         // 4. Enroll student in class
         await client.queryObject(
-          `INSERT INTO class_rosters (student_id, class_id) VALUES ($1, $2) 
+          `INSERT INTO class_rosters (student_id, class_id, academic_session_id) VALUES ($1, $2, $3) 
            ON CONFLICT (student_id, class_id) DO NOTHING`,
-          [studentId, classId]
+          [studentId, classId, academicSessionId]
         );
         results.studentsEnrolled++;
 
