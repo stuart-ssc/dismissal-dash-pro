@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Download, MoreHorizontal } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Download, MoreHorizontal, Settings } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { convertToCSV, downloadCSV, formatDateForCSV } from "@/lib/csvExport";
 import {
@@ -254,35 +254,6 @@ export default function SpecialUseGroups() {
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <Label htmlFor="session-select" className="text-sm font-medium whitespace-nowrap">
-              Academic Year:
-            </Label>
-            <Select
-              value={selectedSessionId || undefined}
-              onValueChange={setSelectedSessionId}
-            >
-              <SelectTrigger id="session-select" className="w-[240px]">
-                <SelectValue placeholder="Select session..." />
-              </SelectTrigger>
-              <SelectContent>
-                {academicSessions.map((session) => (
-                  <SelectItem key={session.id} value={session.id}>
-                    {session.session_name}
-                    {session.is_active && " (Active)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedSessionId && (
-              <Badge variant="outline" className="ml-2">
-                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-              </Badge>
-            )}
-          </div>
-        </div>
-
         {selectedGroupIds.size > 0 && (
           <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
             <div className="flex items-center gap-3">
@@ -317,22 +288,60 @@ export default function SpecialUseGroups() {
               className="pl-10"
             />
           </div>
-          <Button
-            onClick={handleExportCSV}
-            variant="outline"
-            disabled={filteredGroups.length === 0}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button
-            onClick={() => setMigrationDialogOpen(true)}
-            variant="outline"
-            disabled={!selectedSessionId || !schoolId}
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Migrate Groups
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <div className="px-2 py-3 border-b">
+                <Label className="text-xs font-medium mb-2 block">
+                  Academic Year
+                </Label>
+                <Select
+                  value={selectedSessionId || undefined}
+                  onValueChange={setSelectedSessionId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select session..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicSessions.map((session) => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.session_name}
+                        {session.is_active && " (Active)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedSessionId && (
+                  <Badge variant="outline" className="mt-2">
+                    Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                  </Badge>
+                )}
+              </div>
+
+              <DropdownMenuItem 
+                onClick={handleExportCSV}
+                disabled={filteredGroups.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem 
+                onClick={() => setMigrationDialogOpen(true)}
+                disabled={!selectedSessionId || !schoolId}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Migrate Groups
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Group
