@@ -83,3 +83,6 @@ verify_jwt = true
 
 [functions.send-year-end-rollover-notification]
 verify_jwt = true
+
+[functions.migrate-special-use-groups]
+verify_jwt = true

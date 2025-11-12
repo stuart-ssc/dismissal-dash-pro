@@ -533,7 +533,7 @@ export default function YearEndRollover() {
                     <li>Import or sync new student rosters</li>
                     <li>Update class schedules and teacher assignments</li>
                     <li>Review and update dismissal plans</li>
-                    <li>Create new special use groups for the year</li>
+                    <li>Migrate special use groups from previous year</li>
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -544,6 +544,12 @@ export default function YearEndRollover() {
                 </Button>
                 <Button variant="outline" onClick={() => navigate("/dashboard/import")}>
                   Import Rosters
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate("/dashboard/people/groups-teams")}
+                >
+                  Manage Groups
                 </Button>
               </div>
             </CardContent>

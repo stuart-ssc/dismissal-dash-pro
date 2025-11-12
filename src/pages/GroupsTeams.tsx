@@ -21,12 +21,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy } from "lucide-react";
 
 import { SpecialUseGroupDialog } from "@/components/SpecialUseGroupDialog";
 import { ManageGroupStudentsDialog } from "@/components/ManageGroupStudentsDialog";
 import { ManageGroupManagersDialog } from "@/components/ManageGroupManagersDialog";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
+import { GroupMigrationDialog } from "@/components/GroupMigrationDialog";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -62,6 +63,8 @@ export default function SpecialUseGroups() {
   const [groupToDelete, setGroupToDelete] = useState<SpecialUseGroup | null>(null);
   const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
+  const [schoolId, setSchoolId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -72,6 +75,8 @@ export default function SpecialUseGroups() {
         .single();
 
       if (profileData?.school_id) {
+        setSchoolId(profileData.school_id);
+        
         const { data: sessions } = await supabase
           .from("academic_sessions")
           .select("*")
@@ -209,6 +214,18 @@ export default function SpecialUseGroups() {
               className="pl-10"
             />
           </div>
+          <Button
+            onClick={() => setMigrationDialogOpen(true)}
+            variant="outline"
+            disabled={!selectedSessionId || !schoolId}
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            Migrate Groups
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Group
+          </Button>
         </div>
 
       {isLoading ? (
@@ -340,6 +357,22 @@ export default function SpecialUseGroups() {
           toast.success("Run scheduled successfully");
         }}
       />
+
+      {selectedSessionId && schoolId && (
+        <GroupMigrationDialog
+          open={migrationDialogOpen}
+          onOpenChange={setMigrationDialogOpen}
+          schoolId={schoolId}
+          targetSessionId={selectedSessionId}
+          targetSessionName={
+            academicSessions.find((s) => s.id === selectedSessionId)?.session_name || ""
+          }
+          onSuccess={() => {
+            refetch();
+            toast.success("Groups migrated successfully");
+          }}
+        />
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
