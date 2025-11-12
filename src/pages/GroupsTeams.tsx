@@ -174,21 +174,6 @@ export default function SpecialUseGroups() {
     setSelectedGroupIds(newSelected);
   };
 
-  const handleSessionChange = async (groupId: string, sessionId: string) => {
-    try {
-      const { error } = await supabase
-        .from("special_use_groups")
-        .update({ academic_session_id: sessionId })
-        .eq("id", groupId);
-
-      if (error) throw error;
-
-      toast.success("Session updated successfully");
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update session");
-    }
-  };
 
   const handleExportCSV = () => {
     if (filteredGroups.length === 0) {
@@ -355,11 +340,11 @@ export default function SpecialUseGroups() {
           {searchQuery ? "No groups found matching your search" : "No groups yet. Create one to get started!"}
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg bg-background overflow-hidden">
           <ScrollArea className="w-full">
             <Table className="min-w-[800px]">
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead className="w-12">
                     <Checkbox
                       checked={selectedGroupIds.size === filteredGroups.length && filteredGroups.length > 0}
@@ -368,7 +353,6 @@ export default function SpecialUseGroups() {
                   </TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead>Academic Session</TableHead>
                   <TableHead className="text-center">Students</TableHead>
                   <TableHead className="text-center">Managers</TableHead>
                   <TableHead className="hidden sm:table-cell">Status</TableHead>
@@ -377,7 +361,7 @@ export default function SpecialUseGroups() {
               </TableHeader>
             <TableBody>
               {filteredGroups.map((group) => (
-                <TableRow key={group.id}>
+                <TableRow key={group.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell>
                     <Checkbox
                       checked={selectedGroupIds.has(group.id)}
@@ -386,27 +370,6 @@ export default function SpecialUseGroups() {
                   </TableCell>
                   <TableCell className="font-medium">{group.name}</TableCell>
                   <TableCell className="hidden sm:table-cell">{getGroupTypeBadge(group.group_type)}</TableCell>
-                  <TableCell>
-                    {group.academic_session_id ? (
-                      <Select
-                        value={group.academic_session_id}
-                        onValueChange={(value) => handleSessionChange(group.id, value)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {academicSessions.map((session) => (
-                            <SelectItem key={session.id} value={session.id}>
-                              {session.session_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge variant="destructive">Not Assigned</Badge>
-                    )}
-                  </TableCell>
                   <TableCell className="text-center">{group.student_count}</TableCell>
                   <TableCell className="text-center">{group.manager_count}</TableCell>
                   <TableCell className="hidden sm:table-cell">

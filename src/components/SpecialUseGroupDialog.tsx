@@ -38,30 +38,71 @@ export function SpecialUseGroupDialog({
 }: SpecialUseGroupDialogProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     group_type: "other",
     is_active: true,
+    academic_session_id: "",
   });
 
   useEffect(() => {
+    const fetchSessions = async () => {
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.school_id) {
+        const { data: sessions } = await supabase
+          .from("academic_sessions")
+          .select("*")
+          .eq("school_id", profile.school_id)
+          .order("start_date", { ascending: false });
+
+        if (sessions) {
+          setAcademicSessions(sessions);
+          
+          // If creating new group, pre-select active session
+          if (!group) {
+            const activeSession = sessions.find(s => s.is_active);
+            if (activeSession) {
+              setFormData(prev => ({
+                ...prev,
+                academic_session_id: activeSession.id
+              }));
+            }
+          }
+        }
+      }
+    };
+
+    if (open) {
+      fetchSessions();
+    }
+
     if (group) {
       setFormData({
         name: group.name || "",
         description: group.description || "",
         group_type: group.group_type || "other",
         is_active: group.is_active ?? true,
+        academic_session_id: group.academic_session_id || "",
       });
-    } else {
+    } else if (!group && open) {
       setFormData({
         name: "",
         description: "",
         group_type: "other",
         is_active: true,
+        academic_session_id: "",
       });
     }
-  }, [group, open]);
+  }, [group, open, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,24 +125,15 @@ export function SpecialUseGroupDialog({
         // Update existing group
         const { error } = await supabase
           .from("special_use_groups")
-          .update(formData)
+          .update({
+            ...formData,
+            academic_session_id: formData.academic_session_id,
+          })
           .eq("id", group.id);
 
         if (error) throw error;
         toast.success("Group updated successfully");
       } else {
-        // Get active academic session for the school
-        const { data: activeSession } = await supabase
-          .from("academic_sessions")
-          .select("id")
-          .eq("school_id", profile.school_id)
-          .eq("is_active", true)
-          .single();
-
-        if (!activeSession) {
-          throw new Error("No active academic session found. Please create an academic session first.");
-        }
-
         // Create new group
         const { error } = await supabase
           .from("special_use_groups")
@@ -109,7 +141,7 @@ export function SpecialUseGroupDialog({
             ...formData,
             school_id: profile.school_id,
             created_by: user.id,
-            academic_session_id: activeSession.id,
+            academic_session_id: formData.academic_session_id,
           });
 
         if (error) throw error;
@@ -158,6 +190,26 @@ export function SpecialUseGroupDialog({
                   <SelectItem value="athletics">Athletics</SelectItem>
                   <SelectItem value="club">Club</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="academic_session">Academic Session</Label>
+              <Select
+                value={formData.academic_session_id}
+                onValueChange={(value) => setFormData({ ...formData, academic_session_id: value })}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select session..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicSessions.map((session) => (
+                    <SelectItem key={session.id} value={session.id}>
+                      {session.session_name}
+                      {session.is_active && " (Active)"}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
