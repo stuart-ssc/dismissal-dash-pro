@@ -24,7 +24,6 @@ import { ICSyncStatusWidget } from "@/components/ICSyncStatusWidget";
 import { ICDashboardSummary } from "@/components/ICDashboardSummary";
 import { SchoolSetupMethodDialog } from "@/components/SchoolSetupMethodDialog";
 import { ICSetupDialog } from "@/components/ICSetupDialog";
-import { SessionHealthWidget } from "@/components/SessionHealthWidget";
 
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
@@ -714,9 +713,6 @@ const Dashboard = () => {
 
                 {/* IC Dashboard Summary */}
                 <ICDashboardSummary schoolId={schoolId} />
-
-                {/* Session Health Widget */}
-                {schoolId && <SessionHealthWidget schoolId={schoolId} />}
               </div>
             </div>
           )}

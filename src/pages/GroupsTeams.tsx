@@ -21,13 +21,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Filter, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { SpecialUseGroupDialog } from "@/components/SpecialUseGroupDialog";
 import { ManageGroupStudentsDialog } from "@/components/ManageGroupStudentsDialog";
 import { ManageGroupManagersDialog } from "@/components/ManageGroupManagersDialog";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
 import { GroupMigrationDialog } from "@/components/GroupMigrationDialog";
+import { BulkSessionAssigner } from "@/components/BulkSessionAssigner";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -49,6 +51,8 @@ type SpecialUseGroup = {
   created_at: string;
   student_count?: number;
   manager_count?: number;
+  academic_session_id?: string | null;
+  session?: { session_name: string } | null;
 };
 
 export default function SpecialUseGroups() {
@@ -65,6 +69,9 @@ export default function SpecialUseGroups() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [schoolId, setSchoolId] = useState<number | null>(null);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
+  const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -97,15 +104,24 @@ export default function SpecialUseGroups() {
   }, [user?.id]);
 
   const { data: groups = [], isLoading, refetch } = useQuery<SpecialUseGroup[]>({
-    queryKey: ["special-use-groups", user?.id, selectedSessionId],
+    queryKey: ["special-use-groups", user?.id, selectedSessionId, showUnassignedOnly],
     queryFn: async () => {
-      if (!selectedSessionId) return [];
+      if (!selectedSessionId && !showUnassignedOnly) return [];
 
-      const { data: groupsData, error } = await supabase
+      let query = supabase
         .from("special_use_groups")
-        .select("id, name, description, group_type, is_active, created_at")
-        .eq("academic_session_id", selectedSessionId)
-        .order("name");
+        .select("id, name, description, group_type, is_active, created_at, academic_session_id, session:academic_sessions(session_name)");
+
+      if (showUnassignedOnly) {
+        query = query.is("academic_session_id", null);
+        if (schoolId) {
+          query = query.eq("school_id", schoolId);
+        }
+      } else {
+        query = query.eq("academic_session_id", selectedSessionId);
+      }
+
+      const { data: groupsData, error } = await query.order("name");
 
       if (error) throw error;
 
@@ -133,12 +149,46 @@ export default function SpecialUseGroups() {
 
       return groupsWithCounts as SpecialUseGroup[];
     },
-    enabled: !!user && !!selectedSessionId,
+    enabled: !!user && (!!selectedSessionId || showUnassignedOnly),
   });
 
   const filteredGroups = groups.filter((group) =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedGroupIds(new Set(filteredGroups.map(g => g.id)));
+    } else {
+      setSelectedGroupIds(new Set());
+    }
+  };
+
+  const handleSelectGroup = (groupId: string, checked: boolean) => {
+    const newSelected = new Set(selectedGroupIds);
+    if (checked) {
+      newSelected.add(groupId);
+    } else {
+      newSelected.delete(groupId);
+    }
+    setSelectedGroupIds(newSelected);
+  };
+
+  const handleSessionChange = async (groupId: string, sessionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("special_use_groups")
+        .update({ academic_session_id: sessionId })
+        .eq("id", groupId);
+
+      if (error) throw error;
+
+      toast.success("Session updated successfully");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update session");
+    }
+  };
 
   const handleDelete = async () => {
     if (!groupToDelete) return;
@@ -204,6 +254,31 @@ export default function SpecialUseGroups() {
           </div>
         </div>
 
+        {selectedGroupIds.size > 0 && (
+          <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">
+                {selectedGroupIds.size} {selectedGroupIds.size === 1 ? "group" : "groups"} selected
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedGroupIds(new Set())}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear Selection
+              </Button>
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setBulkAssignDialogOpen(true)}
+            >
+              Assign Session
+            </Button>
+          </div>
+        )}
+
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -214,6 +289,13 @@ export default function SpecialUseGroups() {
               className="pl-10"
             />
           </div>
+          <Button
+            onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
+            variant={showUnassignedOnly ? "default" : "outline"}
+          >
+            {showUnassignedOnly ? <X className="h-4 w-4 mr-2" /> : <Filter className="h-4 w-4 mr-2" />}
+            {showUnassignedOnly ? "Show All" : "Unassigned Only"}
+          </Button>
           <Button
             onClick={() => setMigrationDialogOpen(true)}
             variant="outline"
@@ -239,8 +321,15 @@ export default function SpecialUseGroups() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedGroupIds.size === filteredGroups.length && filteredGroups.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Academic Session</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="text-center">Students</TableHead>
                 <TableHead className="text-center">Managers</TableHead>
@@ -251,8 +340,35 @@ export default function SpecialUseGroups() {
             <TableBody>
               {filteredGroups.map((group) => (
                 <TableRow key={group.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedGroupIds.has(group.id)}
+                      onCheckedChange={(checked) => handleSelectGroup(group.id, checked as boolean)}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{group.name}</TableCell>
                   <TableCell>{getGroupTypeBadge(group.group_type)}</TableCell>
+                  <TableCell>
+                    {group.academic_session_id ? (
+                      <Select
+                        value={group.academic_session_id}
+                        onValueChange={(value) => handleSessionChange(group.id, value)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {academicSessions.map((session) => (
+                            <SelectItem key={session.id} value={session.id}>
+                              {session.session_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="destructive">Not Assigned</Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="max-w-xs truncate">{group.description || "-"}</TableCell>
                   <TableCell className="text-center">{group.student_count}</TableCell>
                   <TableCell className="text-center">{group.manager_count}</TableCell>
@@ -373,6 +489,18 @@ export default function SpecialUseGroups() {
           }}
         />
       )}
+
+      <BulkSessionAssigner
+        open={bulkAssignDialogOpen}
+        onOpenChange={setBulkAssignDialogOpen}
+        selectedIds={Array.from(selectedGroupIds)}
+        entityType="group"
+        sessions={academicSessions}
+        onSuccess={() => {
+          setSelectedGroupIds(new Set());
+          refetch();
+        }}
+      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

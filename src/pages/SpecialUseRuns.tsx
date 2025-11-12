@@ -22,10 +22,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Play, Edit } from "lucide-react";
+import { Plus, Search, Play, Edit, Filter, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
+import { BulkSessionAssigner } from "@/components/BulkSessionAssigner";
 import { toast } from "sonner";
 
 const formatTimeString = (timeString: string | null): string => {
@@ -48,11 +50,13 @@ type SpecialUseRun = {
   status: string;
   scheduled_departure_time: string | null;
   scheduled_return_time: string | null;
+  academic_session_id?: string | null;
   group: {
     name: string;
     group_type: string;
   };
   buses: { bus_number: string }[];
+  session?: { session_name: string } | null;
 };
 
 export default function SpecialUseRuns() {
@@ -63,6 +67,10 @@ export default function SpecialUseRuns() {
   const [selectedRun, setSelectedRun] = useState<any>(null);
   const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(new Set());
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
+  const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
+  const [schoolId, setSchoolId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -73,6 +81,8 @@ export default function SpecialUseRuns() {
         .single();
 
       if (profileData?.school_id) {
+        setSchoolId(profileData.school_id);
+        
         const { data: sessions } = await supabase
           .from("academic_sessions")
           .select("*")
@@ -93,11 +103,11 @@ export default function SpecialUseRuns() {
   }, [user?.id]);
 
   const { data: runs = [], isLoading, refetch } = useQuery<SpecialUseRun[]>({
-    queryKey: ["special-use-runs", user?.id, selectedSessionId],
+    queryKey: ["special-use-runs", user?.id, selectedSessionId, showUnassignedOnly],
     queryFn: async () => {
-      if (!selectedSessionId) return [];
+      if (!selectedSessionId && !showUnassignedOnly) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("special_use_runs")
         .select(`
           id,
@@ -106,13 +116,24 @@ export default function SpecialUseRuns() {
           status,
           scheduled_departure_time,
           scheduled_return_time,
+          academic_session_id,
+          session:academic_sessions(session_name),
           group:special_use_groups(name, group_type),
           buses:special_use_run_buses(
             bus:buses(bus_number)
           )
-        `)
-        .eq("academic_session_id", selectedSessionId)
-        .order("run_date", { ascending: false });
+        `);
+
+      if (showUnassignedOnly) {
+        query = query.is("academic_session_id", null);
+        if (schoolId) {
+          query = query.eq("school_id", schoolId);
+        }
+      } else {
+        query = query.eq("academic_session_id", selectedSessionId);
+      }
+
+      const { data, error } = await query.order("run_date", { ascending: false });
 
       if (error) throw error;
 
@@ -122,13 +143,47 @@ export default function SpecialUseRuns() {
         buses: run.buses.map((b: any) => b.bus)
       })) as SpecialUseRun[];
     },
-    enabled: !!user && !!selectedSessionId,
+    enabled: !!user && (!!selectedSessionId || showUnassignedOnly),
   });
 
   const filteredRuns = runs.filter((run) =>
     run.run_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     run.group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRunIds(new Set(filteredRuns.map(r => r.id)));
+    } else {
+      setSelectedRunIds(new Set());
+    }
+  };
+
+  const handleSelectRun = (runId: string, checked: boolean) => {
+    const newSelected = new Set(selectedRunIds);
+    if (checked) {
+      newSelected.add(runId);
+    } else {
+      newSelected.delete(runId);
+    }
+    setSelectedRunIds(newSelected);
+  };
+
+  const handleSessionChange = async (runId: string, sessionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("special_use_runs")
+        .update({ academic_session_id: sessionId })
+        .eq("id", runId);
+
+      if (error) throw error;
+
+      toast.success("Session updated successfully");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update session");
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -179,6 +234,31 @@ export default function SpecialUseRuns() {
           </div>
         </div>
 
+        {selectedRunIds.size > 0 && (
+          <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">
+                {selectedRunIds.size} {selectedRunIds.size === 1 ? "run" : "runs"} selected
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedRunIds(new Set())}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear Selection
+              </Button>
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setBulkAssignDialogOpen(true)}
+            >
+              Assign Session
+            </Button>
+          </div>
+        )}
+
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -189,6 +269,13 @@ export default function SpecialUseRuns() {
               className="pl-10"
             />
           </div>
+          <Button
+            onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
+            variant={showUnassignedOnly ? "default" : "outline"}
+          >
+            {showUnassignedOnly ? <X className="h-4 w-4 mr-2" /> : <Filter className="h-4 w-4 mr-2" />}
+            {showUnassignedOnly ? "Show All" : "Unassigned Only"}
+          </Button>
         </div>
 
       {isLoading ? (
@@ -202,8 +289,15 @@ export default function SpecialUseRuns() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedRunIds.size === filteredRuns.length && filteredRuns.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Run Name</TableHead>
                 <TableHead>Group</TableHead>
+                <TableHead>Academic Session</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Departure</TableHead>
                 <TableHead>Return</TableHead>
@@ -216,6 +310,12 @@ export default function SpecialUseRuns() {
               {filteredRuns.map((run) => (
                 <TableRow key={run.id}>
                   <TableCell>
+                    <Checkbox
+                      checked={selectedRunIds.has(run.id)}
+                      onCheckedChange={(checked) => handleSelectRun(run.id, checked as boolean)}
+                    />
+                  </TableCell>
+                  <TableCell>
                     <button
                       onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}
                       className="font-medium text-left hover:underline hover:text-primary transition-colors"
@@ -224,6 +324,27 @@ export default function SpecialUseRuns() {
                     </button>
                   </TableCell>
                   <TableCell>{run.group.name}</TableCell>
+                  <TableCell>
+                    {run.academic_session_id ? (
+                      <Select
+                        value={run.academic_session_id}
+                        onValueChange={(value) => handleSessionChange(run.id, value)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {academicSessions.map((session) => (
+                            <SelectItem key={session.id} value={session.id}>
+                              {session.session_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="destructive">Not Assigned</Badge>
+                    )}
+                  </TableCell>
                   <TableCell>{format(new Date(run.run_date), "MMM d, yyyy")}</TableCell>
                   <TableCell>
                     {formatTimeString(run.scheduled_departure_time)}
@@ -286,6 +407,18 @@ export default function SpecialUseRuns() {
           refetch();
           setDialogOpen(false);
           setSelectedRun(null);
+        }}
+      />
+
+      <BulkSessionAssigner
+        open={bulkAssignDialogOpen}
+        onOpenChange={setBulkAssignDialogOpen}
+        selectedIds={Array.from(selectedRunIds)}
+        entityType="run"
+        sessions={academicSessions}
+        onSuccess={() => {
+          setSelectedRunIds(new Set());
+          refetch();
         }}
       />
       </main>

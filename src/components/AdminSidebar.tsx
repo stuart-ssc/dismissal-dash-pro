@@ -128,17 +128,6 @@ export function AdminSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink 
-                      to="/admin/session-assignment" 
-                      className={getNavCls}
-                    >
-                      <GraduationCap className="h-5 w-5" />
-                      <span className="ml-3">Session Assignment</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
                       to="/admin/year-end-rollover" 
                       className={getNavCls}
                     >
