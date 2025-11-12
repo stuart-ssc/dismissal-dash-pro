@@ -15,6 +15,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -54,6 +56,8 @@ const People = () => {
   const [tempTransportData, setTempTransportData] = useState<Record<string, any>>({});
   const [anyOverrideData, setAnyOverrideData] = useState<Record<string, boolean>>({});
   const [isBulkInviting, setIsBulkInviting] = useState(false);
+  const [academicSessions, setAcademicSessions] = useState<Array<{ id: string; session_name: string; is_active: boolean }>>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   // Use the paginated people hook
   const { data: paginatedData, isLoading: isPeopleLoading, error: peopleError } = usePaginatedPeople({
@@ -65,6 +69,7 @@ const People = () => {
     searchQuery,
     sortBy,
     sortOrder,
+    sessionId: selectedSessionId,
     enabled: !!schoolId,
   });
 
@@ -105,6 +110,23 @@ const People = () => {
 
             if (school?.school_name) {
               setSchoolName(school.school_name);
+            }
+
+            // Fetch academic sessions
+            const { data: sessions } = await supabase
+              .from('academic_sessions')
+              .select('id, session_name, is_active')
+              .eq('school_id', profile.school_id)
+              .order('is_active', { ascending: false })
+              .order('start_date', { ascending: false });
+
+            if (sessions) {
+              setAcademicSessions(sessions);
+              // Pre-select active session
+              const activeSession = sessions.find(s => s.is_active);
+              if (activeSession) {
+                setSelectedSessionId(activeSession.id);
+              }
             }
           }
         }
@@ -619,15 +641,20 @@ const People = () => {
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        People Management
-                      </CardTitle>
-                      <CardDescription>
-                        Manage students, teachers, and administrators
-                      </CardDescription>
-                    </div>
+                     <div className="space-y-2">
+                       <CardTitle className="flex items-center gap-2">
+                         <Users className="h-5 w-5" />
+                         People Management
+                       </CardTitle>
+                       <CardDescription>
+                         Manage students, teachers, and administrators
+                       </CardDescription>
+                       {selectedSessionId && academicSessions.length > 0 && (
+                         <Badge variant="secondary" className="text-xs">
+                           Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                         </Badge>
+                       )}
+                     </div>
                     <div className="flex gap-2">
                       <Button 
                         variant="outline"
@@ -648,9 +675,33 @@ const People = () => {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  {/* Filters and Sort Controls */}
-                  <div className="flex items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
+                 <CardContent>
+                   {/* Academic Session Selector */}
+                   {academicSessions.length > 0 && (
+                     <div className="mb-4 p-4 bg-muted/30 rounded-lg border space-y-2">
+                       <Label htmlFor="session-filter" className="text-sm font-medium">
+                         Academic Year / Session
+                       </Label>
+                       <Select value={selectedSessionId || ''} onValueChange={(value) => setSelectedSessionId(value)}>
+                         <SelectTrigger id="session-filter" className="w-full max-w-md">
+                           <SelectValue placeholder="Select academic session" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {academicSessions.map((session) => (
+                             <SelectItem key={session.id} value={session.id}>
+                               {session.session_name} {session.is_active && '(Active)'}
+                             </SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                       <p className="text-xs text-muted-foreground">
+                         Filtering people by selected academic session
+                       </p>
+                     </div>
+                   )}
+
+                   {/* Filters and Sort Controls */}
+                   <div className="flex items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
                     <div className="flex items-center gap-2">
                       <Filter className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Filters:</span>
