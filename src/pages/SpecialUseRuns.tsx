@@ -22,9 +22,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Play, Edit, Filter, X, Download, Settings } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Search, Play, Edit, Download, Settings, MoreHorizontal, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +36,6 @@ import {
 
 import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
-import { BulkSessionAssigner } from "@/components/BulkSessionAssigner";
 import { toast } from "sonner";
 import { convertToCSV, downloadCSV, formatTimeForCSV } from "@/lib/csvExport";
 
@@ -77,10 +76,6 @@ export default function SpecialUseRuns() {
   const [selectedRun, setSelectedRun] = useState<any>(null);
   const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(new Set());
-  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
-  const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
-  const [schoolId, setSchoolId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -91,8 +86,6 @@ export default function SpecialUseRuns() {
         .single();
 
       if (profileData?.school_id) {
-        setSchoolId(profileData.school_id);
-        
         const { data: sessions } = await supabase
           .from("academic_sessions")
           .select("*")
@@ -113,11 +106,11 @@ export default function SpecialUseRuns() {
   }, [user?.id]);
 
   const { data: runs = [], isLoading, refetch } = useQuery<SpecialUseRun[]>({
-    queryKey: ["special-use-runs", user?.id, selectedSessionId, showUnassignedOnly],
+    queryKey: ["special-use-runs", user?.id, selectedSessionId],
     queryFn: async () => {
-      if (!selectedSessionId && !showUnassignedOnly) return [];
+      if (!selectedSessionId) return [];
 
-      let query = supabase
+      const { data, error } = await supabase
         .from("special_use_runs")
         .select(`
           id,
@@ -132,18 +125,9 @@ export default function SpecialUseRuns() {
           buses:special_use_run_buses(
             bus:buses(bus_number)
           )
-        `);
-
-      if (showUnassignedOnly) {
-        query = query.is("academic_session_id", null);
-        if (schoolId) {
-          query = query.eq("school_id", schoolId);
-        }
-      } else {
-        query = query.eq("academic_session_id", selectedSessionId);
-      }
-
-      const { data, error } = await query.order("run_date", { ascending: false });
+        `)
+        .eq("academic_session_id", selectedSessionId)
+        .order("run_date", { ascending: false });
 
       if (error) throw error;
 
@@ -153,7 +137,7 @@ export default function SpecialUseRuns() {
         buses: run.buses.map((b: any) => b.bus)
       })) as SpecialUseRun[];
     },
-    enabled: !!user && (!!selectedSessionId || showUnassignedOnly),
+    enabled: !!user && !!selectedSessionId,
   });
 
   const filteredRuns = runs.filter((run) =>
@@ -161,39 +145,6 @@ export default function SpecialUseRuns() {
     run.group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedRunIds(new Set(filteredRuns.map(r => r.id)));
-    } else {
-      setSelectedRunIds(new Set());
-    }
-  };
-
-  const handleSelectRun = (runId: string, checked: boolean) => {
-    const newSelected = new Set(selectedRunIds);
-    if (checked) {
-      newSelected.add(runId);
-    } else {
-      newSelected.delete(runId);
-    }
-    setSelectedRunIds(newSelected);
-  };
-
-  const handleSessionChange = async (runId: string, sessionId: string) => {
-    try {
-      const { error } = await supabase
-        .from("special_use_runs")
-        .update({ academic_session_id: sessionId })
-        .eq("id", runId);
-
-      if (error) throw error;
-
-      toast.success("Session updated successfully");
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update session");
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -299,13 +250,6 @@ export default function SpecialUseRuns() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
-            variant={showUnassignedOnly ? "default" : "outline"}
-          >
-            {showUnassignedOnly ? <X className="h-4 w-4 mr-2" /> : <Filter className="h-4 w-4 mr-2" />}
-            {showUnassignedOnly ? "Show All" : "Unassigned Only"}
-          </Button>
           <Button onClick={() => {
             setSelectedRun(null);
             setDialogOpen(true);
@@ -331,32 +275,6 @@ export default function SpecialUseRuns() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Bulk Selection Toolbar */}
-            {selectedRunIds.size > 0 && (
-              <div className="flex items-center justify-between p-4 mb-4 bg-primary/5 border border-primary/20 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium">
-                    {selectedRunIds.size} {selectedRunIds.size === 1 ? "run" : "runs"} selected
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedRunIds(new Set())}
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Clear Selection
-                  </Button>
-                </div>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setBulkAssignDialogOpen(true)}
-                >
-                  Assign Session
-                </Button>
-              </div>
-            )}
-
             {/* Table or Empty States */}
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading runs...</div>
@@ -365,118 +283,74 @@ export default function SpecialUseRuns() {
                 {searchQuery ? "No runs found matching your search" : "No runs scheduled yet"}
               </div>
             ) : (
-              <div className="border rounded-lg">
-                <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedRunIds.size === filteredRuns.length && filteredRuns.length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>Run Name</TableHead>
-                <TableHead>Group</TableHead>
-                <TableHead>Academic Session</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Departure</TableHead>
-                <TableHead>Return</TableHead>
-                <TableHead>Buses</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRuns.map((run) => (
-                <TableRow key={run.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedRunIds.has(run.id)}
-                      onCheckedChange={(checked) => handleSelectRun(run.id, checked as boolean)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <button
-                      onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}
-                      className="font-medium text-left hover:underline hover:text-primary transition-colors"
-                    >
-                      {run.run_name}
-                    </button>
-                  </TableCell>
-                  <TableCell>{run.group.name}</TableCell>
-                  <TableCell>
-                    {run.academic_session_id ? (
-                      <Select
-                        value={run.academic_session_id}
-                        onValueChange={(value) => handleSessionChange(run.id, value)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {academicSessions.map((session) => (
-                            <SelectItem key={session.id} value={session.id}>
-                              {session.session_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge variant="destructive">Not Assigned</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{format(new Date(run.run_date), "MMM d, yyyy")}</TableCell>
-                  <TableCell>
-                    {formatTimeString(run.scheduled_departure_time)}
-                  </TableCell>
-                  <TableCell>
-                    {formatTimeString(run.scheduled_return_time)}
-                  </TableCell>
-                  <TableCell>
-                    {run.buses.map(b => b.bus_number).join(", ")}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(run.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {run.status === "scheduled" && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedRun(run);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleLaunch(run.id)}
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Launch
-                          </Button>
-                        </>
-                      )}
-                      {(run.status === "outbound_active" || run.status === "at_destination" || run.status === "return_active") && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleLaunch(run.id)}
-                        >
-                          <Play className="h-4 w-4 mr-1" />
-                          Continue
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              <ScrollArea className="border rounded-lg">
+                <Table className="min-w-[800px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Run Name</TableHead>
+                      <TableHead>Group</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="hidden md:table-cell">Departure</TableHead>
+                      <TableHead className="hidden md:table-cell">Return</TableHead>
+                      <TableHead className="hidden sm:table-cell">Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRuns.map((run) => (
+                      <TableRow key={run.id}>
+                        <TableCell className="font-medium">{run.run_name}</TableCell>
+                        <TableCell>{run.group.name}</TableCell>
+                        <TableCell>{format(new Date(run.run_date), "MMM d, yyyy")}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {formatTimeString(run.scheduled_departure_time)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {formatTimeString(run.scheduled_return_time)}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">{getStatusBadge(run.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {run.status === "scheduled" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => {
+                                    setSelectedRun(run);
+                                    setDialogOpen(true);
+                                  }}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleLaunch(run.id)}>
+                                    <Play className="h-4 w-4 mr-2" />
+                                    Launch
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {(run.status === "outbound_active" || run.status === "at_destination" || run.status === "return_active") && (
+                                <DropdownMenuItem onClick={() => handleLaunch(run.id)}>
+                                  <Play className="h-4 w-4 mr-2" />
+                                  Continue
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             )}
           </CardContent>
         </Card>
@@ -489,18 +363,6 @@ export default function SpecialUseRuns() {
           refetch();
           setDialogOpen(false);
           setSelectedRun(null);
-        }}
-      />
-
-      <BulkSessionAssigner
-        open={bulkAssignDialogOpen}
-        onOpenChange={setBulkAssignDialogOpen}
-        selectedIds={Array.from(selectedRunIds)}
-        entityType="run"
-        sessions={academicSessions}
-        onSuccess={() => {
-          setSelectedRunIds(new Set());
-          refetch();
         }}
       />
       </main>
