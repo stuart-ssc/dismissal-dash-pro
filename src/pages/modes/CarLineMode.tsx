@@ -331,11 +331,20 @@ export default function CarLineMode() {
 
       const permanentStudentIds = (assigns || []).map((a) => a.student_id);
       
-      // Get all students in school to check for temp overrides
-      const { data: allSchoolStudents } = await supabase
+      // Get all students in school to check for temp overrides (filtered by session)
+      const sessionId = run?.academic_session_id || null;
+      let studentQuery = supabase
         .from("students")
         .select("id")
         .eq("school_id", schoolId);
+      
+      if (sessionId) {
+        studentQuery = studentQuery.eq("academic_session_id", sessionId);
+      } else {
+        studentQuery = studentQuery.is("academic_session_id", null);
+      }
+      
+      const { data: allSchoolStudents } = await studentQuery;
       
       const allStudentIds = (allSchoolStudents || []).map(s => s.id);
       const today = new Date().toISOString().split('T')[0];
@@ -367,16 +376,23 @@ export default function CarLineMode() {
 
       const { data: studs } = await supabase
         .from("students")
-        .select("id,first_name,last_name,grade_level,dismissal_mode_id")
-        .in("id", allCarStudentIds);
+        .select("id,first_name,last_name,grade_level,dismissal_mode_id,academic_session_id")
+        .in("id", allCarStudentIds)
+        .eq("academic_session_id", sessionId);
 
-      // Load ALL classes from the school for the filter dropdown
-      const { data: allClasses } = await supabase.rpc('get_school_classes', { p_school_id: schoolId });
+      // Load ALL classes from the school for the filter dropdown (filtered by session)
+      const { data: allClasses } = await supabase.rpc('get_school_classes', { 
+        p_school_id: schoolId,
+        p_session_id: sessionId 
+      });
       const classList = (allClasses || []).map((c: any) => ({ id: c.id, class_name: c.class_name }));
       setClasses(classList);
 
-      // Get student-to-class mappings
-      const { data: rosterMap } = await supabase.rpc('get_student_class_map', { p_student_ids: allCarStudentIds });
+      // Get student-to-class mappings (filtered by session)
+      const { data: rosterMap } = await supabase.rpc('get_student_class_map', { 
+        p_student_ids: allCarStudentIds,
+        p_session_id: sessionId 
+      });
       const classMap: Record<string, string> = {};
       (rosterMap || []).forEach((r: any) => {
         classMap[r.student_id] = r.class_name;

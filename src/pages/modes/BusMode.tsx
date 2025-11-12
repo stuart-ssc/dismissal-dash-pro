@@ -215,11 +215,20 @@ export default function BusMode() {
 
     const permanentStudentIds = (assignments || []).map((a) => a.student_id);
     
-    // Get all students in school to check for temp overrides
-    const { data: allSchoolStudents } = await supabase
+    // Get all students in school to check for temp overrides (filtered by session)
+    const sessionId = run?.academic_session_id || null;
+    let studentQuery = supabase
       .from("students")
       .select("id")
       .eq("school_id", schoolId);
+    
+    if (sessionId) {
+      studentQuery = studentQuery.eq("academic_session_id", sessionId);
+    } else {
+      studentQuery = studentQuery.is("academic_session_id", null);
+    }
+    
+    const { data: allSchoolStudents } = await studentQuery;
     
     const allStudentIds = (allSchoolStudents || []).map(s => s.id);
     const today = new Date().toISOString().split('T')[0];
@@ -244,8 +253,9 @@ export default function BusMode() {
 
     const { data: students } = await supabase
       .from("students")
-      .select("id,first_name,last_name,grade_level")
+      .select("id,first_name,last_name,grade_level,academic_session_id")
       .in("id", allBusStudentIds)
+      .eq("academic_session_id", sessionId)
       .order("last_name", { ascending: true });
 
     // Mark which students have temp overrides and filter out absent students

@@ -148,17 +148,36 @@ export default function ClassroomMode() {
     setLoadingGroups(true);
 
     try {
+      // Get academic session from the run for filtering
+      const sessionId = run?.academic_session_id || null;
+      
       // Get teacher's class and students (use selected class or first accessible class)
       const classIdToUse = selectedClassId || accessibleClasses[0]?.class_id;
       
       let teacherStudentIds: string[] = [];
       if (classIdToUse) {
-        const { data: roster } = await supabase
-          .from("class_rosters")
-          .select("student_id")
-          .eq("class_id", classIdToUse);
+        // Verify class belongs to current session and get roster
+        const { data: classData } = await supabase
+          .from("classes")
+          .select("academic_session_id")
+          .eq("id", classIdToUse)
+          .maybeSingle();
         
-        teacherStudentIds = (roster || []).map(r => r.student_id);
+        // Only proceed if class is in current session (or both null for backward compatibility)
+        if (classData && (classData.academic_session_id === sessionId || (classData.academic_session_id === null && sessionId === null))) {
+          const { data: roster } = await supabase
+            .from("class_rosters")
+            .select("student_id, students!inner(academic_session_id)")
+            .eq("class_id", classIdToUse);
+          
+          // Filter students by session
+          teacherStudentIds = (roster || [])
+            .filter(r => {
+              const studentSessionId = (r as any).students?.academic_session_id || null;
+              return studentSessionId === sessionId || (studentSessionId === null && sessionId === null);
+            })
+            .map(r => r.student_id);
+        }
       }
 
       // Get all groups from the plan
@@ -271,11 +290,21 @@ export default function ClassroomMode() {
 
       // Fetch students for this group based on type
       if (teacherStudentIds.length > 0) {
-        // Get all students in the teacher's class
-        const { data: allStudents } = await supabase
+        // Get all students in the teacher's class (filtered by session)
+        const sessionId = run?.academic_session_id || null;
+        let studentQuery = supabase
           .from("students")
-          .select("id, first_name, last_name")
+          .select("id, first_name, last_name, academic_session_id")
           .in("id", teacherStudentIds);
+        
+        // Apply session filter
+        if (sessionId) {
+          studentQuery = studentQuery.eq("academic_session_id", sessionId);
+        } else {
+          studentQuery = studentQuery.is("academic_session_id", null);
+        }
+        
+        const { data: allStudents } = await studentQuery;
 
         const studentMap = new Map((allStudents || []).map(s => [s.id, s]));
 

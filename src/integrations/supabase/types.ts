@@ -3807,7 +3807,7 @@ export type Database = {
         }[]
       }
       get_school_classes: {
-        Args: { p_school_id: number }
+        Args: { p_school_id: number; p_session_id?: string }
         Returns: {
           class_name: string
           id: string
@@ -3849,7 +3849,7 @@ export type Database = {
         }[]
       }
       get_student_class_map: {
-        Args: { p_student_ids: string[] }
+        Args: { p_session_id?: string; p_student_ids: string[] }
         Returns: {
           class_id: string
           class_name: string
