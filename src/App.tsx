@@ -23,7 +23,6 @@ import AdminClasses from "./pages/admin/Classes";
 import AdminUsers from "./pages/admin/Users";
 import EmailManagement from "./pages/admin/EmailManagement";
 import PeopleManagement from "./pages/People";
-import AdminSettings from "./pages/admin/Settings";
 import AdminSchools from "./pages/admin/Schools";
 import YearEndRollover from "./pages/admin/YearEndRollover";
 import RolloverHistory from "./pages/admin/RolloverHistory";
@@ -152,7 +151,6 @@ const AppContent = () => {
           <Route path="/admin/classes" element={<AdminClasses />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/email-management" element={<EmailManagement />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/schools" element={<AdminSchools />} />
           <Route path="/admin/year-end-rollover" element={<YearEndRollover />} />
           <Route path="/admin/rollover-history" element={<RolloverHistory />} />
