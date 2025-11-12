@@ -1,9 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -52,13 +60,46 @@ export default function SpecialUseGroups() {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<SpecialUseGroup | null>(null);
+  const [academicSessions, setAcademicSessions] = useState<any[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", user?.id)
+        .single();
+
+      if (profileData?.school_id) {
+        const { data: sessions } = await supabase
+          .from("academic_sessions")
+          .select("*")
+          .eq("school_id", profileData.school_id)
+          .order("start_date", { ascending: false });
+
+        if (sessions) {
+          setAcademicSessions(sessions);
+          const activeSession = sessions.find((s) => s.is_active);
+          setSelectedSessionId(activeSession?.id || sessions[0]?.id || null);
+        }
+      }
+    };
+
+    if (user?.id) {
+      fetchSessions();
+    }
+  }, [user?.id]);
 
   const { data: groups = [], isLoading, refetch } = useQuery({
-    queryKey: ["special-use-groups", user?.id],
+    queryKey: ["special-use-groups", user?.id, selectedSessionId],
     queryFn: async () => {
+      if (!selectedSessionId) return [];
+
       const { data: groupsData, error } = await supabase
         .from("special_use_groups")
         .select("*")
+        .eq("academic_session_id", selectedSessionId)
         .order("name");
 
       if (error) throw error;
@@ -87,7 +128,7 @@ export default function SpecialUseGroups() {
 
       return groupsWithCounts as SpecialUseGroup[];
     },
-    enabled: !!user,
+    enabled: !!user && !!selectedSessionId,
   });
 
   const filteredGroups = groups.filter((group) =>
@@ -129,17 +170,46 @@ export default function SpecialUseGroups() {
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search groups..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <Label htmlFor="session-select" className="text-sm font-medium whitespace-nowrap">
+              Academic Year:
+            </Label>
+            <Select
+              value={selectedSessionId || undefined}
+              onValueChange={setSelectedSessionId}
+            >
+              <SelectTrigger id="session-select" className="w-[240px]">
+                <SelectValue placeholder="Select session..." />
+              </SelectTrigger>
+              <SelectContent>
+                {academicSessions.map((session) => (
+                  <SelectItem key={session.id} value={session.id}>
+                    {session.session_name}
+                    {session.is_active && " (Active)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedSessionId && (
+              <Badge variant="outline" className="ml-2">
+                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+              </Badge>
+            )}
+          </div>
         </div>
-      </div>
+
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search groups..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
 
       {isLoading ? (
         <div className="text-center py-8 text-muted-foreground">Loading groups...</div>

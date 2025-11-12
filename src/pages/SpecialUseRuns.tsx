@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -53,10 +61,42 @@ export default function SpecialUseRuns() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedRun, setSelectedRun] = useState<any>(null);
+  const [academicSessions, setAcademicSessions] = useState<any[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", user?.id)
+        .single();
+
+      if (profileData?.school_id) {
+        const { data: sessions } = await supabase
+          .from("academic_sessions")
+          .select("*")
+          .eq("school_id", profileData.school_id)
+          .order("start_date", { ascending: false });
+
+        if (sessions) {
+          setAcademicSessions(sessions);
+          const activeSession = sessions.find((s) => s.is_active);
+          setSelectedSessionId(activeSession?.id || sessions[0]?.id || null);
+        }
+      }
+    };
+
+    if (user?.id) {
+      fetchSessions();
+    }
+  }, [user?.id]);
 
   const { data: runs = [], isLoading, refetch } = useQuery({
-    queryKey: ["special-use-runs", user?.id],
+    queryKey: ["special-use-runs", user?.id, selectedSessionId],
     queryFn: async () => {
+      if (!selectedSessionId) return [];
+
       const { data, error } = await supabase
         .from("special_use_runs")
         .select(`
@@ -66,6 +106,7 @@ export default function SpecialUseRuns() {
             bus:buses(bus_number)
           )
         `)
+        .eq("academic_session_id", selectedSessionId)
         .order("run_date", { ascending: false });
 
       if (error) throw error;
@@ -76,7 +117,7 @@ export default function SpecialUseRuns() {
         buses: run.buses.map((b: any) => b.bus)
       })) as SpecialUseRun[];
     },
-    enabled: !!user,
+    enabled: !!user && !!selectedSessionId,
   });
 
   const filteredRuns = runs.filter((run) =>
@@ -104,17 +145,46 @@ export default function SpecialUseRuns() {
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search runs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <Label htmlFor="session-select" className="text-sm font-medium whitespace-nowrap">
+              Academic Year:
+            </Label>
+            <Select
+              value={selectedSessionId || undefined}
+              onValueChange={setSelectedSessionId}
+            >
+              <SelectTrigger id="session-select" className="w-[240px]">
+                <SelectValue placeholder="Select session..." />
+              </SelectTrigger>
+              <SelectContent>
+                {academicSessions.map((session) => (
+                  <SelectItem key={session.id} value={session.id}>
+                    {session.session_name}
+                    {session.is_active && " (Active)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedSessionId && (
+              <Badge variant="outline" className="ml-2">
+                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+              </Badge>
+            )}
+          </div>
         </div>
-      </div>
+
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search runs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
 
       {isLoading ? (
         <div className="text-center py-8 text-muted-foreground">Loading runs...</div>
