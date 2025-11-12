@@ -58,6 +58,7 @@ export interface OneRosterClass {
     sourcedId: string;
   };
   terms?: Array<{ sourcedId: string }>;
+  metadata?: Record<string, any>; // Catch-all for IC custom fields and period data
 }
 
 export interface OneRosterEnrollment {
@@ -253,6 +254,19 @@ export class OneRosterClient {
       return this.paginate<OneRosterEnrollment>(`classes/${classId}/enrollments`);
     }
     return this.paginate<OneRosterEnrollment>('enrollments');
+  }
+
+  /**
+   * Fetch resources (may contain schedule data)
+   * Note: Not all IC implementations support this endpoint
+   */
+  async getResources(): Promise<any[]> {
+    try {
+      return await this.paginate('resources');
+    } catch (error) {
+      console.log('Resources endpoint not available:', error);
+      return [];
+    }
   }
 
   /**

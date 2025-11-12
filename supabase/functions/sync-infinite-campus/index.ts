@@ -368,16 +368,80 @@ async function syncStudents(
   return { created, updated, pending };
 }
 
+/**
+ * Extract period number from IC class data
+ * Priority: metadata.periodNumber > classCode parsing > null
+ */
+function extractPeriodNumber(cls: any): number | null {
+  // Check metadata
+  if (cls.metadata?.periodNumber) {
+    const num = parseInt(cls.metadata.periodNumber, 10);
+    if (!isNaN(num)) return num;
+  }
+  
+  if (cls.metadata?.period) {
+    const num = parseInt(cls.metadata.period, 10);
+    if (!isNaN(num)) return num;
+  }
+  
+  // Parse from classCode (e.g., "Math-P3", "3-Math", "P3")
+  if (cls.classCode) {
+    const match = cls.classCode.match(/[Pp]?(\d+)/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > 0 && num <= 20) return num; // Reasonable period range
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Extract period start time from IC class data
+ */
+function extractPeriodStartTime(cls: any): string | null {
+  if (cls.metadata?.startTime) return cls.metadata.startTime;
+  if (cls.metadata?.periodStartTime) return cls.metadata.periodStartTime;
+  if (cls.metadata?.start_time) return cls.metadata.start_time;
+  return null;
+}
+
+/**
+ * Extract period end time from IC class data
+ */
+function extractPeriodEndTime(cls: any): string | null {
+  if (cls.metadata?.endTime) return cls.metadata.endTime;
+  if (cls.metadata?.periodEndTime) return cls.metadata.periodEndTime;
+  if (cls.metadata?.end_time) return cls.metadata.end_time;
+  return null;
+}
+
+/**
+ * Extract period name from IC class data
+ */
+function extractPeriodName(cls: any): string | null {
+  if (cls.metadata?.periodName) return cls.metadata.periodName;
+  if (cls.metadata?.period_name) return cls.metadata.period_name;
+  
+  // Generate from period number if available
+  const periodNum = extractPeriodNumber(cls);
+  if (periodNum) return `Period ${periodNum}`;
+  
+  return null;
+}
+
 async function syncClasses(
   client: OneRosterClient,
   supabase: SupabaseClient,
   schoolId: number
-): Promise<{ created: number; updated: number }> {
+): Promise<{ created: number; updated: number; withPeriods: number; withoutPeriods: number }> {
   console.log('Syncing classes...');
   
   const classes = await client.getClasses();
   let created = 0;
   let updated = 0;
+  let withPeriods = 0;
+  let withoutPeriods = 0;
 
   // Get active session
   const { data: activeSession } = await supabase
@@ -387,6 +451,11 @@ async function syncClasses(
     .eq('is_active', true)
     .maybeSingle();
 
+  // Log sample class for debugging (first class only)
+  if (classes.length > 0) {
+    console.log('Sample IC class data:', JSON.stringify(classes[0], null, 2));
+  }
+
   for (const cls of classes) {
     // Check for existing by ic_external_id
     const { data: existing } = await supabase
@@ -395,11 +464,28 @@ async function syncClasses(
       .eq('ic_external_id', cls.sourcedId)
       .maybeSingle();
 
+    // Extract period data
+    const periodNumber = extractPeriodNumber(cls);
+    const periodStartTime = extractPeriodStartTime(cls);
+    const periodEndTime = extractPeriodEndTime(cls);
+    const periodName = extractPeriodName(cls);
+
+    // Track period data availability
+    if (periodNumber !== null) {
+      withPeriods++;
+    } else {
+      withoutPeriods++;
+    }
+
     const classData = {
       school_id: schoolId,
       class_name: cls.title,
       grade_level: cls.grade ? parseInt(cls.grade, 10) : null,
       academic_session_id: activeSession?.id || null,
+      period_number: periodNumber,
+      period_start_time: periodStartTime,
+      period_end_time: periodEndTime,
+      period_name: periodName,
     };
 
     if (existing) {
@@ -423,7 +509,9 @@ async function syncClasses(
     }
   }
 
-  return { created, updated };
+  console.log(`Period data: ${withPeriods} classes with periods, ${withoutPeriods} without periods`);
+
+  return { created, updated, withPeriods, withoutPeriods };
 }
 
 async function syncEnrollments(
@@ -687,7 +775,7 @@ serve(async (req) => {
     // Conditionally sync based on configuration
     let teacherStats = { created: 0, updated: 0, pending: 0 };
     let studentStats = { created: 0, updated: 0, pending: 0 };
-    let classStats = { created: 0, updated: 0 };
+    let classStats = { created: 0, updated: 0, withPeriods: 0, withoutPeriods: 0 };
     let enrollmentStats = { created: 0, updated: 0 };
     
     // Sync academic sessions first if enabled
@@ -747,6 +835,12 @@ serve(async (req) => {
         status: 'success',
         completed_at: new Date().toISOString(),
         ...stats,
+        details: {
+          period_data_available: classStats.withPeriods > 0,
+          classes_with_periods: classStats.withPeriods,
+          classes_without_periods: classStats.withoutPeriods,
+          skipped_data_types: skippedDataTypes.length > 0 ? skippedDataTypes : null,
+        },
       })
       .eq('id', syncLogId);
 
