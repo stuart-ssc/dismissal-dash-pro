@@ -710,6 +710,10 @@ export type Database = {
           grade_level: string | null
           ic_external_id: string | null
           id: string
+          period_end_time: string | null
+          period_name: string | null
+          period_number: number | null
+          period_start_time: string | null
           room_number: string | null
           school_id: number
           updated_at: string
@@ -721,6 +725,10 @@ export type Database = {
           grade_level?: string | null
           ic_external_id?: string | null
           id?: string
+          period_end_time?: string | null
+          period_name?: string | null
+          period_number?: number | null
+          period_start_time?: string | null
           room_number?: string | null
           school_id: number
           updated_at?: string
@@ -732,6 +740,10 @@ export type Database = {
           grade_level?: string | null
           ic_external_id?: string | null
           id?: string
+          period_end_time?: string | null
+          period_name?: string | null
+          period_number?: number | null
+          period_start_time?: string | null
           room_number?: string | null
           school_id?: number
           updated_at?: string
@@ -1075,6 +1087,8 @@ export type Database = {
           completion_method: string | null
           created_at: string
           date: string
+          dismissal_period: number | null
+          dismissal_period_name: string | null
           ended_at: string | null
           id: string
           plan_id: string | null
@@ -1101,6 +1115,8 @@ export type Database = {
           completion_method?: string | null
           created_at?: string
           date?: string
+          dismissal_period?: number | null
+          dismissal_period_name?: string | null
           ended_at?: string | null
           id?: string
           plan_id?: string | null
@@ -1127,6 +1143,8 @@ export type Database = {
           completion_method?: string | null
           created_at?: string
           date?: string
+          dismissal_period?: number | null
+          dismissal_period_name?: string | null
           ended_at?: string | null
           id?: string
           plan_id?: string | null
