@@ -15,6 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import * as z from "zod";
 import { TimePicker } from "@/components/ui/time-picker";
+import { AcademicSessionManager } from "@/components/AcademicSessionManager";
 
 const formatPhoneNumber = (value: string): string => {
   const digits = value.replace(/\D/g, '');
@@ -412,6 +413,8 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        <AcademicSessionManager />
 
         {/* Notifications Card - Hidden until functionality is built */}
         {/* <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
