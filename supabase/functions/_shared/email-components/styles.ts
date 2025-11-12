@@ -125,4 +125,30 @@ export const styles = {
     borderLeft: `4px solid ${brandColors.blueInfo}`,
     fontFamily,
   },
+  infoBox: {
+    backgroundColor: brandColors.gray50,
+    padding: '20px',
+    borderRadius: '6px',
+    border: `1px solid ${brandColors.grayBorder}`,
+    margin: '20px 0',
+  },
+  infoText: {
+    color: brandColors.gray700,
+    fontSize: '14px',
+    lineHeight: '20px',
+    margin: '8px 0',
+    fontFamily,
+  },
+  list: {
+    margin: '10px 0 20px',
+    paddingLeft: '20px',
+    fontFamily,
+  },
+  listItem: {
+    color: brandColors.gray700,
+    fontSize: '16px',
+    lineHeight: '24px',
+    margin: '8px 0',
+    fontFamily,
+  },
 };

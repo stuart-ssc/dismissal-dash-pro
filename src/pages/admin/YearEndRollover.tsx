@@ -206,7 +206,37 @@ export default function YearEndRollover() {
 
       if (activateError) throw activateError;
 
-      toast.success("Current session archived and new session activated");
+      // Get school name for email notification
+      const { data: school } = await supabase
+        .from("schools")
+        .select("school_name")
+        .eq("id", schoolId)
+        .single();
+
+      // Send notification emails to all staff
+      const { error: notificationError } = await supabase.functions.invoke(
+        "send-year-end-rollover-notification",
+        {
+          body: {
+            schoolId,
+            schoolName: school?.school_name || "Your School",
+            oldSessionName: currentSession.session_name,
+            newSessionName,
+            newSessionStartDate,
+            newSessionEndDate,
+            completedByUserId: user?.id,
+          },
+        }
+      );
+
+      if (notificationError) {
+        console.error("Error sending notification:", notificationError);
+        // Don't fail the whole operation if email fails
+        toast.warning("Session archived successfully, but email notifications failed to send");
+      } else {
+        toast.success("Current session archived, new session activated, and staff notified");
+      }
+
       setCurrentStep(4);
     } catch (error: any) {
       console.error("Error archiving session:", error);
@@ -492,6 +522,7 @@ export default function YearEndRollover() {
                 <h3 className="text-xl font-semibold mb-2">Year-End Rollover Complete!</h3>
                 <p className="text-muted-foreground mb-6">
                   The new academic session <strong>{newSessionName}</strong> is now active.
+                  All staff members have been notified via email.
                 </p>
               </div>
 
