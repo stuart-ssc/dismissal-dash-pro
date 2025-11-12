@@ -310,27 +310,21 @@ export default function SpecialUseGroups() {
           </Button>
         </div>
 
-        {/* Header */}
-        <div>
+        {/* Main Data Card */}
+        <Card className="shadow-elevated border-0 bg-card backdrop-blur">
+        <CardHeader>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">Groups & Teams</h1>
+            <CardTitle>Groups & Teams</CardTitle>
             {selectedSessionId && academicSessions.length > 0 && (
               <Badge variant="secondary" className="font-normal">
                 Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground mt-1">
+          <CardDescription className="mt-2">
             Create and manage special use groups for field trips, athletics, clubs, and other activities
-          </p>
-        </div>
-
-        {/* Main Data Card */}
-        <Card className="shadow-elevated border-0 bg-card backdrop-blur">
-          <CardHeader>
-            <CardTitle>Group Management</CardTitle>
-            <CardDescription>View and manage all special use groups</CardDescription>
-          </CardHeader>
+          </CardDescription>
+        </CardHeader>
           <CardContent>
 
             {/* Bulk Selection Toolbar */}
