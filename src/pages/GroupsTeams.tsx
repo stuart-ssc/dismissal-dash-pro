@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -240,128 +240,135 @@ export default function SpecialUseGroups() {
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
-        <Card className="shadow-elevated border-0 bg-card backdrop-blur">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold">Groups & Teams</h1>
-                  {selectedSessionId && academicSessions.length > 0 && (
-                    <Badge variant="secondary">
-                      Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-muted-foreground mt-1">Create and manage special use groups for field trips, athletics, clubs, and other activities</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search groups..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Settings
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <div className="px-2 py-3 border-b">
-                    <Label className="text-xs font-medium mb-2 block">
-                      Academic Year
-                    </Label>
-                    <Select
-                      value={selectedSessionId || undefined}
-                      onValueChange={setSelectedSessionId}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select session..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {academicSessions.map((session) => (
-                          <SelectItem key={session.id} value={session.id}>
-                            {session.session_name}
-                            {session.is_active && " (Active)"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {selectedSessionId && (
-                      <Badge variant="outline" className="mt-2">
-                        Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <DropdownMenuItem 
-                    onClick={handleExportCSV}
-                    disabled={filteredGroups.length === 0}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem 
-                    onClick={() => setMigrationDialogOpen(true)}
-                    disabled={!selectedSessionId || !schoolId}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Migrate Groups
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Group
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {selectedGroupIds.size > 0 && (
-          <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">
-                {selectedGroupIds.size} {selectedGroupIds.size === 1 ? "group" : "groups"} selected
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedGroupIds(new Set())}
-              >
-                Clear Selection
-              </Button>
-            </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setBulkAssignDialogOpen(true)}
-            >
-              Assign Session
-            </Button>
+        {/* Search and Actions Row */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search groups..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        )}
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <div className="px-2 py-3 border-b">
+                <Label className="text-xs font-medium mb-2 block">
+                  Academic Year
+                </Label>
+                <Select
+                  value={selectedSessionId || undefined}
+                  onValueChange={setSelectedSessionId}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select session..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicSessions.map((session) => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.session_name}
+                        {session.is_active && " (Active)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedSessionId && (
+                  <Badge variant="outline" className="mt-2">
+                    Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                  </Badge>
+                )}
+              </div>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Loading groups...</div>
-      ) : filteredGroups.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          {searchQuery ? "No groups found matching your search" : "No groups yet. Create one to get started!"}
+              <DropdownMenuItem 
+                onClick={handleExportCSV}
+                disabled={filteredGroups.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem 
+                onClick={() => setMigrationDialogOpen(true)}
+                disabled={!selectedSessionId || !schoolId}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Migrate Groups
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Group
+          </Button>
         </div>
-      ) : (
-        <div className="border rounded-lg bg-background overflow-hidden">
-          <ScrollArea className="w-full">
-            <Table className="min-w-[800px]">
+
+        {/* Header */}
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">Groups & Teams</h1>
+            {selectedSessionId && academicSessions.length > 0 && (
+              <Badge variant="secondary" className="font-normal">
+                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+              </Badge>
+            )}
+          </div>
+          <p className="text-muted-foreground mt-1">
+            Create and manage special use groups for field trips, athletics, clubs, and other activities
+          </p>
+        </div>
+
+        {/* Main Data Card */}
+        <Card className="shadow-elevated border-0 bg-card backdrop-blur">
+          <CardHeader>
+            <CardTitle>Group Management</CardTitle>
+            <CardDescription>View and manage all special use groups</CardDescription>
+          </CardHeader>
+          <CardContent>
+
+            {/* Bulk Selection Toolbar */}
+            {selectedGroupIds.size > 0 && (
+              <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg mb-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium">
+                    {selectedGroupIds.size} {selectedGroupIds.size === 1 ? "group" : "groups"} selected
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedGroupIds(new Set())}
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setBulkAssignDialogOpen(true)}
+                >
+                  Assign Session
+                </Button>
+              </div>
+            )}
+
+            {/* Groups Table */}
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading groups...</div>
+            ) : filteredGroups.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery ? "No groups found matching your search" : "No groups yet. Create one to get started!"}
+              </div>
+            ) : (
+              <div className="border rounded-lg bg-background overflow-hidden">
+                <ScrollArea className="w-full">
+                  <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableHead className="w-12">
@@ -457,10 +464,12 @@ export default function SpecialUseGroups() {
                 </TableRow>
               ))}
               </TableBody>
-            </Table>
-          </ScrollArea>
-        </div>
-      )}
+                  </Table>
+                </ScrollArea>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
       <SpecialUseGroupDialog
         open={dialogOpen}
