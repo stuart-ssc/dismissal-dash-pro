@@ -17,16 +17,19 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowLeft,
-  Calendar
+  Calendar,
+  ShieldCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { RolloverValidationChecklist } from "@/components/RolloverValidationChecklist";
 
 const STEPS = [
   { id: 1, title: "Review Current Session", icon: GraduationCap },
-  { id: 2, title: "Create New Session", icon: Plus },
-  { id: 3, title: "Archive Current Session", icon: Archive },
-  { id: 4, title: "Complete", icon: CheckCircle },
+  { id: 2, title: "Validate System", icon: ShieldCheck },
+  { id: 3, title: "Create New Session", icon: Plus },
+  { id: 4, title: "Archive Current Session", icon: Archive },
+  { id: 5, title: "Complete", icon: CheckCircle },
 ];
 
 export default function YearEndRollover() {
@@ -52,6 +55,9 @@ export default function YearEndRollover() {
   const [newSessionCode, setNewSessionCode] = useState("");
   const [newSessionStartDate, setNewSessionStartDate] = useState("");
   const [newSessionEndDate, setNewSessionEndDate] = useState("");
+  
+  // Validation state
+  const [validationPassed, setValidationPassed] = useState(false);
 
   useEffect(() => {
     fetchCurrentSession();
@@ -175,7 +181,7 @@ export default function YearEndRollover() {
       if (error) throw error;
 
       toast.success("New academic session created");
-      setCurrentStep(3);
+      setCurrentStep(4);
     } catch (error: any) {
       console.error("Error creating session:", error);
       toast.error(error.message || "Failed to create new session");
@@ -237,7 +243,7 @@ export default function YearEndRollover() {
         toast.success("Current session archived, new session activated, and staff notified");
       }
 
-      setCurrentStep(4);
+      setCurrentStep(5);
     } catch (error: any) {
       console.error("Error archiving session:", error);
       toast.error(error.message || "Failed to archive session");
@@ -387,6 +393,31 @@ export default function YearEndRollover() {
         )}
 
         {currentStep === 2 && (
+          <>
+            <RolloverValidationChecklist
+              schoolId={schoolId!}
+              currentSessionId={currentSession.id}
+              currentSessionName={currentSession.session_name}
+              onValidationComplete={setValidationPassed}
+            />
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Previous
+              </Button>
+              <Button 
+                onClick={() => setCurrentStep(3)} 
+                disabled={!validationPassed}
+              >
+                {validationPassed ? "Continue" : "Resolve Issues First"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        )}
+
+        {currentStep === 3 && (
           <Card>
             <CardHeader>
               <CardTitle>Create New Academic Session</CardTitle>
@@ -444,7 +475,7 @@ export default function YearEndRollover() {
               </Alert>
 
               <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                <Button variant="outline" onClick={() => setCurrentStep(2)}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Previous
                 </Button>
@@ -457,7 +488,7 @@ export default function YearEndRollover() {
           </Card>
         )}
 
-        {currentStep === 3 && (
+        {currentStep === 4 && (
           <Card>
             <CardHeader>
               <CardTitle>Archive Current Session</CardTitle>
@@ -490,7 +521,7 @@ export default function YearEndRollover() {
               </div>
 
               <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setCurrentStep(2)}>
+                <Button variant="outline" onClick={() => setCurrentStep(3)}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Previous
                 </Button>
@@ -503,7 +534,7 @@ export default function YearEndRollover() {
           </Card>
         )}
 
-        {currentStep === 4 && (
+        {currentStep === 5 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
