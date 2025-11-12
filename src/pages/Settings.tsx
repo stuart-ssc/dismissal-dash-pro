@@ -1172,7 +1172,7 @@ const Settings = () => {
                     </AlertDescription>
                   </Alert>
 
-                  <Button onClick={() => navigate('/admin/year-end-rollover')} className="w-full sm:w-auto">
+                  <Button onClick={() => navigate('/dashboard/year-end-rollover')} className="w-full sm:w-auto">
                     <GraduationCap className="mr-2 h-4 w-4" />
                     Start Year-End Rollover Wizard
                     <ArrowRight className="ml-2 h-4 w-4" />

@@ -112,6 +112,7 @@ const AppContent = () => {
             <Route path="/dashboard/reports/mode-usage" element={<ModeUsageReports />} />
             <Route path="/dashboard/settings" element={<Settings />} />
             <Route path="/dashboard/help" element={<Help />} />
+            <Route path="/dashboard/year-end-rollover" element={<YearEndRollover />} />
             <Route path="/dashboard/import" element={<Import />} />
             
             {/* Backward Compatibility Redirects */}
@@ -152,7 +153,7 @@ const AppContent = () => {
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/email-management" element={<EmailManagement />} />
           <Route path="/admin/schools" element={<AdminSchools />} />
-          <Route path="/admin/year-end-rollover" element={<YearEndRollover />} />
+          
           <Route path="/admin/rollover-history" element={<RolloverHistory />} />
           
           {/* Special Use Run Mode (fullscreen) */}
