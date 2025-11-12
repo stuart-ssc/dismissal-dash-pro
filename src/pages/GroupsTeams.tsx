@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Filter, X, Download, MoreHorizontal } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Download, MoreHorizontal } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { convertToCSV, downloadCSV, formatDateForCSV } from "@/lib/csvExport";
 import {
@@ -79,7 +79,6 @@ export default function SpecialUseGroups() {
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
-  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
   const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -113,22 +112,14 @@ export default function SpecialUseGroups() {
   }, [user?.id]);
 
   const { data: groups = [], isLoading, refetch } = useQuery<SpecialUseGroup[]>({
-    queryKey: ["special-use-groups", user?.id, selectedSessionId, showUnassignedOnly],
+    queryKey: ["special-use-groups", user?.id, selectedSessionId],
     queryFn: async () => {
-      if (!selectedSessionId && !showUnassignedOnly) return [];
+      if (!selectedSessionId) return [];
 
       let query = supabase
         .from("special_use_groups")
-        .select("id, name, description, group_type, is_active, created_at, academic_session_id, session:academic_sessions(session_name)");
-
-      if (showUnassignedOnly) {
-        query = query.is("academic_session_id", null);
-        if (schoolId) {
-          query = query.eq("school_id", schoolId);
-        }
-      } else {
-        query = query.eq("academic_session_id", selectedSessionId);
-      }
+        .select("id, name, description, group_type, is_active, created_at, academic_session_id, session:academic_sessions(session_name)")
+        .eq("academic_session_id", selectedSessionId);
 
       const { data: groupsData, error } = await query.order("name");
 
@@ -158,7 +149,7 @@ export default function SpecialUseGroups() {
 
       return groupsWithCounts as SpecialUseGroup[];
     },
-    enabled: !!user && (!!selectedSessionId || showUnassignedOnly),
+    enabled: !!user && !!selectedSessionId,
   });
 
   const filteredGroups = groups.filter((group) =>
@@ -303,7 +294,6 @@ export default function SpecialUseGroups() {
                 size="sm"
                 onClick={() => setSelectedGroupIds(new Set())}
               >
-                <X className="h-4 w-4 mr-1" />
                 Clear Selection
               </Button>
             </div>
@@ -327,13 +317,6 @@ export default function SpecialUseGroups() {
               className="pl-10"
             />
           </div>
-          <Button
-            onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
-            variant={showUnassignedOnly ? "default" : "outline"}
-          >
-            {showUnassignedOnly ? <X className="h-4 w-4 mr-2" /> : <Filter className="h-4 w-4 mr-2" />}
-            {showUnassignedOnly ? "Show All" : "Unassigned Only"}
-          </Button>
           <Button
             onClick={handleExportCSV}
             variant="outline"
