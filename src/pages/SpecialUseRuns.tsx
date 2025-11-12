@@ -22,8 +22,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Play, Edit, Filter, X, Download } from "lucide-react";
+import { Plus, Search, Play, Edit, Filter, X, Download, Settings } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
@@ -238,60 +247,7 @@ export default function SpecialUseRuns() {
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <Label htmlFor="session-select" className="text-sm font-medium whitespace-nowrap">
-              Academic Year:
-            </Label>
-            <Select
-              value={selectedSessionId || undefined}
-              onValueChange={setSelectedSessionId}
-            >
-              <SelectTrigger id="session-select" className="w-[240px]">
-                <SelectValue placeholder="Select session..." />
-              </SelectTrigger>
-              <SelectContent>
-                {academicSessions.map((session) => (
-                  <SelectItem key={session.id} value={session.id}>
-                    {session.session_name}
-                    {session.is_active && " (Active)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedSessionId && (
-              <Badge variant="outline" className="ml-2">
-                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {selectedRunIds.size > 0 && (
-          <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">
-                {selectedRunIds.size} {selectedRunIds.size === 1 ? "run" : "runs"} selected
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedRunIds(new Set())}
-              >
-                <X className="h-4 w-4 mr-1" />
-                Clear Selection
-              </Button>
-            </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setBulkAssignDialogOpen(true)}
-            >
-              Assign Session
-            </Button>
-          </div>
-        )}
-
+        {/* Search/Settings/New Run row - OUTSIDE CARD */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -302,6 +258,47 @@ export default function SpecialUseRuns() {
               className="pl-10"
             />
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[280px]">
+              <DropdownMenuLabel>Administrative Functions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="p-2">
+                <Label htmlFor="settings-session-select" className="text-sm font-medium">
+                  Academic Year
+                </Label>
+                <Select
+                  value={selectedSessionId || undefined}
+                  onValueChange={setSelectedSessionId}
+                >
+                  <SelectTrigger id="settings-session-select" className="w-full mt-2">
+                    <SelectValue placeholder="Select session..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicSessions.map((session) => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.session_name}
+                        {session.is_active && " (Active)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleExportCSV}
+                disabled={filteredRuns.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export to CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
             variant={showUnassignedOnly ? "default" : "outline"}
@@ -309,25 +306,67 @@ export default function SpecialUseRuns() {
             {showUnassignedOnly ? <X className="h-4 w-4 mr-2" /> : <Filter className="h-4 w-4 mr-2" />}
             {showUnassignedOnly ? "Show All" : "Unassigned Only"}
           </Button>
-          <Button
-            onClick={handleExportCSV}
-            variant="outline"
-            disabled={filteredRuns.length === 0}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
+          <Button onClick={() => {
+            setSelectedRun(null);
+            setDialogOpen(true);
+          }}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Run
           </Button>
         </div>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Loading runs...</div>
-      ) : filteredRuns.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          {searchQuery ? "No runs found matching your search" : "No runs scheduled yet"}
-        </div>
-      ) : (
-        <div className="border rounded-lg bg-card">
-          <Table>
+        {/* Main Data Card */}
+        <Card className="shadow-elevated border-0 bg-card backdrop-blur">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <CardTitle>Special Use Runs</CardTitle>
+              {selectedSessionId && academicSessions.length > 0 && (
+                <Badge variant="secondary" className="font-normal">
+                  Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                </Badge>
+              )}
+            </div>
+            <CardDescription className="mt-2">
+              Schedule and manage special trips, field trips, athletic events, and after-school activities
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Bulk Selection Toolbar */}
+            {selectedRunIds.size > 0 && (
+              <div className="flex items-center justify-between p-4 mb-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium">
+                    {selectedRunIds.size} {selectedRunIds.size === 1 ? "run" : "runs"} selected
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedRunIds(new Set())}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear Selection
+                  </Button>
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setBulkAssignDialogOpen(true)}
+                >
+                  Assign Session
+                </Button>
+              </div>
+            )}
+
+            {/* Table or Empty States */}
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading runs...</div>
+            ) : filteredRuns.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery ? "No runs found matching your search" : "No runs scheduled yet"}
+              </div>
+            ) : (
+              <div className="border rounded-lg">
+                <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
@@ -438,7 +477,9 @@ export default function SpecialUseRuns() {
             </TableBody>
           </Table>
         </div>
-      )}
+            )}
+          </CardContent>
+        </Card>
 
       <SpecialUseRunDialog
         open={dialogOpen}
