@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Bus, Users, Shield, Calendar, Clock, MapPin, FileText, Edit, XCircle } from "lucide-react";
+import { ArrowLeft, Bus, Users, Shield, Calendar, Clock, MapPin, FileText, Edit, XCircle, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
@@ -42,7 +42,16 @@ export default function SpecialUseRunDetail() {
             id,
             name,
             group_type,
-            description
+            description,
+            academic_session_id
+          ),
+          academic_session:academic_sessions(
+            id,
+            session_name,
+            session_code,
+            start_date,
+            end_date,
+            is_active
           ),
           buses:special_use_run_buses(
             id,
@@ -286,6 +295,29 @@ export default function SpecialUseRunDetail() {
 
         {/* Run Information */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {run.academic_session && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Academic Year
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="font-semibold">{run.academic_session.session_name}</p>
+                <p className="text-sm text-muted-foreground">{run.academic_session.session_code}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  {run.academic_session.is_active && (
+                    <Badge variant="default" className="text-xs">Active</Badge>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(run.academic_session.start_date), "MMM yyyy")} - {format(new Date(run.academic_session.end_date), "MMM yyyy")}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
