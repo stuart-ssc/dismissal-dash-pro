@@ -21,9 +21,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Filter, X, Download } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Filter, X, Download, MoreHorizontal } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { convertToCSV, downloadCSV, formatDateForCSV } from "@/lib/csvExport";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { SpecialUseGroupDialog } from "@/components/SpecialUseGroupDialog";
 import { ManageGroupStudentsDialog } from "@/components/ManageGroupStudentsDialog";
@@ -356,25 +364,26 @@ export default function SpecialUseGroups() {
         </div>
       ) : (
         <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedGroupIds.size === filteredGroups.length && filteredGroups.length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Academic Session</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-center">Students</TableHead>
-                <TableHead className="text-center">Managers</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+          <ScrollArea className="w-full">
+            <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedGroupIds.size === filteredGroups.length && filteredGroups.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">Type</TableHead>
+                  <TableHead>Academic Session</TableHead>
+                  <TableHead className="hidden md:table-cell">Description</TableHead>
+                  <TableHead className="text-center">Students</TableHead>
+                  <TableHead className="text-center">Managers</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {filteredGroups.map((group) => (
                 <TableRow key={group.id}>
@@ -385,7 +394,7 @@ export default function SpecialUseGroups() {
                     />
                   </TableCell>
                   <TableCell className="font-medium">{group.name}</TableCell>
-                  <TableCell>{getGroupTypeBadge(group.group_type)}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{getGroupTypeBadge(group.group_type)}</TableCell>
                   <TableCell>
                     {group.academic_session_id ? (
                       <Select
@@ -407,72 +416,77 @@ export default function SpecialUseGroups() {
                       <Badge variant="destructive">Not Assigned</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">{group.description || "-"}</TableCell>
+                  <TableCell className="hidden md:table-cell max-w-xs truncate">{group.description || "-"}</TableCell>
                   <TableCell className="text-center">{group.student_count}</TableCell>
                   <TableCell className="text-center">{group.manager_count}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={group.is_active ? "default" : "secondary"}>
                       {group.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedGroup(group);
-                          setStudentsDialogOpen(true);
-                        }}
-                      >
-                        <Users className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedGroup(group);
-                          setManagersDialogOpen(true);
-                        }}
-                      >
-                        <UserCog className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedGroup(group);
-                          setScheduleDialogOpen(true);
-                        }}
-                      >
-                        <Calendar className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedGroup(group);
-                          setDialogOpen(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setGroupToDelete(group);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedGroup(group);
+                            setStudentsDialogOpen(true);
+                          }}
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Manage Students
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedGroup(group);
+                            setManagersDialogOpen(true);
+                          }}
+                        >
+                          <UserCog className="h-4 w-4 mr-2" />
+                          Manage Managers
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedGroup(group);
+                            setScheduleDialogOpen(true);
+                          }}
+                        >
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Schedule Run
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedGroup(group);
+                            setDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Group
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setGroupToDelete(group);
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Group
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </div>
       )}
 
