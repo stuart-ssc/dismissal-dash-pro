@@ -172,15 +172,31 @@ export function SpecialUseRunDialog({
         toast.success("Run updated successfully");
       } else {
         // Get active academic session for the school
-        const { data: activeSession } = await supabase
+        const { data: activeSession, error: sessionError } = await supabase
           .from("academic_sessions")
           .select("id")
           .eq("school_id", profile.school_id)
           .eq("is_active", true)
           .single();
 
-        if (!activeSession) {
+        if (sessionError || !activeSession) {
           throw new Error("No active academic session found. Please create an academic session first.");
+        }
+
+        // Validate that the selected group belongs to the active session
+        const { data: selectedGroup, error: groupError } = await supabase
+          .from("special_use_groups")
+          .select("academic_session_id, name")
+          .eq("id", formData.group_id)
+          .single();
+
+        if (groupError) throw groupError;
+
+        if (selectedGroup.academic_session_id !== activeSession.id) {
+          throw new Error(
+            `Cannot create run: Group "${selectedGroup.name}" belongs to a different academic session. ` +
+            `Please select a group from the current academic year.`
+          );
         }
 
         // Create new run
