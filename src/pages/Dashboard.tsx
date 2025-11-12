@@ -24,6 +24,7 @@ import { ICSyncStatusWidget } from "@/components/ICSyncStatusWidget";
 import { ICDashboardSummary } from "@/components/ICDashboardSummary";
 import { SchoolSetupMethodDialog } from "@/components/SchoolSetupMethodDialog";
 import { ICSetupDialog } from "@/components/ICSetupDialog";
+import { UpcomingDismissalsWidget } from "@/components/UpcomingDismissalsWidget";
 
 const Dashboard = () => {
   const { user, userRole, signOut, loading } = useAuth();
@@ -742,6 +743,9 @@ const Dashboard = () => {
                     <ICSyncStatusWidget schoolId={schoolId} />
                   )
                 )}
+
+                {/* Upcoming Dismissals & Runs Card */}
+                <UpcomingDismissalsWidget schoolId={schoolId} />
               </div>
             </div>
           )}
