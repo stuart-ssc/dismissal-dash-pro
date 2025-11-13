@@ -35,12 +35,18 @@ const teacherNavItems = [
 ];
 
 export function AdminSidebar() {
-  const { state, isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile, openMobile } = useSidebar();
   const location = useLocation();
   const { userRole, signOut } = useAuth();
   const currentPath = location.pathname;
 
   const handleNavClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
+  const handleBackdropClick = () => {
     if (isMobile) {
       setOpenMobile(false);
     }
@@ -60,10 +66,20 @@ export function AdminSidebar() {
     isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50";
 
   return (
-    <Sidebar
-      variant="sidebar"
-      collapsible="icon"
-    >
+    <>
+      {/* Mobile backdrop overlay */}
+      {isMobile && openMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 animate-fade-in"
+          onClick={handleBackdropClick}
+          aria-hidden="true"
+        />
+      )}
+      
+      <Sidebar
+        variant="sidebar"
+        collapsible="icon"
+      >
       <SidebarContent>
         <SidebarGroup>
           <div className={`flex items-center py-3 ${state === 'collapsed' ? 'justify-center px-1' : 'px-4'}`}>
@@ -153,5 +169,6 @@ export function AdminSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+    </>
   );
 }
