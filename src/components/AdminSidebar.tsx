@@ -35,10 +35,16 @@ const teacherNavItems = [
 ];
 
 export function AdminSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
   const { userRole, signOut } = useAuth();
   const currentPath = location.pathname;
+
+  const handleNavClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   let navItems = userRole === 'teacher' ? teacherNavItems : adminNavItems;
   if (userRole === 'system_admin') {
@@ -86,6 +92,7 @@ export function AdminSidebar() {
                       to={item.url} 
                       end 
                       className={getNavCls}
+                      onClick={handleNavClick}
                     >
                       <item.icon className="h-5 w-5" />
                       <span className="ml-3">{item.title}</span>
@@ -108,6 +115,7 @@ export function AdminSidebar() {
                     <NavLink 
                       to="/dashboard/integrations/infinite-campus" 
                       className={getNavCls}
+                      onClick={handleNavClick}
                     >
                       <RefreshCw className="h-5 w-5" />
                       <span className="ml-3">Infinite Campus</span>
@@ -125,7 +133,7 @@ export function AdminSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <NavLink to="/dashboard/help" className={getNavCls}>
+              <NavLink to="/dashboard/help" className={getNavCls} onClick={handleNavClick}>
                 <HelpCircle className="h-5 w-5" />
                 <span className="ml-3">Help & Support</span>
               </NavLink>
