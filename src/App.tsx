@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
 import Pricing from "./pages/Pricing";
 import SpecialTrips from "./pages/SpecialTrips";
+import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Transportation from "./pages/Transportation";
@@ -83,6 +84,7 @@ const AppContent = () => {
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/special-trips" element={<SpecialTrips />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/auth" element={<Auth />} />
