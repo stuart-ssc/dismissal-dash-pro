@@ -707,15 +707,22 @@ export default function CarLineMode() {
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground p-6">
-      <div className="mt-8 flex justify-center">
-        <ExitModeButton label="Exit Car Line Mode" inHeader />
-      </div>
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Car Line</h1>
-            <p className="text-muted-foreground mt-2">Manage car riders for today&apos;s dismissal.</p>
+        <header className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+            <div>
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Car Line</h1>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate("/dashboard/dismissal")}
+              className="self-start sm:self-auto"
+            >
+              Exit Car Line Mode
+            </Button>
           </div>
+          <p className="text-muted-foreground mt-2">Manage car riders for today&apos;s dismissal.</p>
         </header>
 
         <Card>

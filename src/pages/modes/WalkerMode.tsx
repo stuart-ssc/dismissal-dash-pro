@@ -643,8 +643,20 @@ export default function WalkerMode() {
   return (
     <div className="min-h-screen w-full bg-background text-foreground p-6">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Walker</h1>
+        <header className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+            <div>
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Walker</h1>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate("/dashboard/dismissal")}
+              className="self-start sm:self-auto"
+            >
+              Exit Walker Mode
+            </Button>
+          </div>
           <p className="text-muted-foreground mt-2">Manage walkers for today&apos;s dismissal.</p>
         </header>
 
@@ -839,9 +851,6 @@ export default function WalkerMode() {
         )}
       </div>
 
-      <div className="mt-8 flex justify-center">
-        <ExitModeButton label="Exit Walker Mode" inHeader />
-      </div>
     </div>
   );
 }
