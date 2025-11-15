@@ -44,7 +44,7 @@ const Footer = () => {
 
         </div>
 
-        <div className="mt-8 pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+        <div className="mt-8 pt-8 border-t border-border/50 bg-accent/20 -mx-4 px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
             <p>&copy; {new Date().getFullYear()} DismissalPro, Inc. All rights reserved.</p>
             <span className="hidden md:inline">|</span>
