@@ -248,7 +248,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-12">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-3 gap-8">
             {/* Company Info */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">DismissalPro</h3>
@@ -276,6 +276,11 @@ const Index = () => {
                     Special Trips
                   </Link>
                 </li>
+                <li>
+                  <Link to="/contact" className="text-muted-foreground hover:text-primary transition-colors">
+                    Contact Us
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -292,22 +297,6 @@ const Index = () => {
                   <Link to="/terms-conditions" className="text-muted-foreground hover:text-primary transition-colors">
                     Terms & Conditions
                   </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-foreground">Contact</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <a href="mailto:legal@dismissalpro.io" className="hover:text-primary transition-colors">
-                    legal@dismissalpro.io
-                  </a>
-                </li>
-                <li>
-                  1042 Rockbridge Rd<br />
-                  Lexington, KY 40515
                 </li>
               </ul>
             </div>

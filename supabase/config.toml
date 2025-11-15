@@ -89,3 +89,6 @@ verify_jwt = true
 
 [functions.migrate-special-use-groups]
 verify_jwt = true
+
+[functions.submit-contact-form]
+verify_jwt = false

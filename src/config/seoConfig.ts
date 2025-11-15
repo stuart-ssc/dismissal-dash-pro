@@ -163,6 +163,11 @@ export const seoConfig: Record<string, SEOConfig> = {
     description: 'Learn how DismissalPro protects your data and complies with FERPA. Our privacy policy details data collection, usage, and security practices.',
     keywords: 'privacy policy, data protection, FERPA compliance, student data privacy, school data security',
   },
+  '/contact': {
+    title: 'Contact Us | DismissalPro',
+    description: 'Get in touch with the DismissalPro team. We\'re here to answer your questions about school dismissal management and help transform your dismissal process.',
+    keywords: 'contact dismissalpro, school dismissal support, customer service, get in touch, school dismissal questions',
+  },
   '/terms-conditions': {
     title: 'Terms and Conditions | DismissalPro',
     description: 'Review DismissalPro\'s terms of service, including subscription details, acceptable use policy, and user responsibilities.',
