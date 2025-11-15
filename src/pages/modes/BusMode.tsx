@@ -605,7 +605,9 @@ export default function BusMode() {
         )}
       </div>
 
-      <ExitModeButton label="Exit Bus Mode" />
+      <div className="mt-8 flex justify-center">
+        <ExitModeButton label="Exit Bus Mode" inHeader />
+      </div>
 
       {/* Bus mode completion confirmation dialog */}
       <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
