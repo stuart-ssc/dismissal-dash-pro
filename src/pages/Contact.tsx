@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Mail, MapPin, Clock, Send } from "lucide-react";
+import { Mail, Clock, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSEO } from "@/hooks/useSEO";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const contactFormSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name must be less than 100 characters"),
@@ -55,7 +57,7 @@ const Contact = () => {
       setIsSuccess(true);
       reset();
       toast.success("Message sent successfully!", {
-        description: "We'll get back to you within 24-48 hours.",
+        description: "We'll get back to you within 12-24 hours.",
       });
     } catch (error) {
       console.error("Error submitting contact form:", error);
@@ -68,19 +70,22 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <>
       <SEO />
-      {/* Hero Section */}
-      <section className="border-b border-border/50 bg-card/50 backdrop-blur-sm py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-            Get in Touch
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Have questions about DismissalPro? We're here to help your school transform its dismissal process.
-          </p>
-        </div>
-      </section>
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10">
+        <Navbar />
+        
+        {/* Hero Section */}
+        <section className="border-b border-border/50 bg-card/50 backdrop-blur-sm py-20">
+          <div className="container mx-auto px-4 text-center">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+              Get in Touch
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Have questions about DismissalPro? We're here to help your school transform its dismissal process.
+            </p>
+          </div>
+        </section>
 
       {/* Main Content */}
       <section className="py-16">
@@ -92,7 +97,7 @@ const Contact = () => {
                 <CardHeader>
                   <CardTitle>Send Us a Message</CardTitle>
                   <CardDescription>
-                    Fill out the form below and we'll respond within 24-48 hours.
+                    Fill out the form below and we'll respond within 12-24 hours.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -226,28 +231,13 @@ const Contact = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5" />
-                    Address
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <address className="not-italic text-muted-foreground">
-                    1042 Rockbridge Rd<br />
-                    Lexington, KY 40515
-                  </address>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
                     <Clock className="w-5 h-5" />
                     Response Time
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">
-                    We typically respond within 24-48 hours during business days.
+                    We typically respond within 12-24 hours during business days.
                   </p>
                 </CardContent>
               </Card>
@@ -255,7 +245,10 @@ const Contact = () => {
           </div>
         </div>
       </section>
+      
+      <Footer />
     </div>
+    </>
   );
 };
 
