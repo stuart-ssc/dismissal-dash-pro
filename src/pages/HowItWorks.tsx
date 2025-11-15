@@ -463,7 +463,7 @@ export default function HowItWorks() {
                 </Link>
               </div>
             </CardHeader>
-            <CardContent className="p-0 space-y-4">
+            <CardContent className="pb-8 pt-0 px-0 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-secondary">15min</div>
