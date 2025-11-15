@@ -152,6 +152,21 @@ export const seoConfig: Record<string, SEOConfig> = {
     title: 'Sign In',
     description: 'Sign in to Dismissal Pro to access your school\'s dismissal management system. Secure authentication for teachers and administrators.',
     keywords: 'sign in, login, authentication, school access, dismissal pro login'
+  },
+  '/special-trips': {
+    title: 'Special Trips | DismissalPro',
+    description: 'Manage field trips, sporting events, and special transportation needs with DismissalPro\'s comprehensive trip management system.',
+    keywords: 'field trip management, special transportation, event transportation, school trips',
+  },
+  '/privacy-policy': {
+    title: 'Privacy Policy | DismissalPro',
+    description: 'Learn how DismissalPro protects your data and complies with FERPA. Our privacy policy details data collection, usage, and security practices.',
+    keywords: 'privacy policy, data protection, FERPA compliance, student data privacy, school data security',
+  },
+  '/terms-conditions': {
+    title: 'Terms and Conditions | DismissalPro',
+    description: 'Review DismissalPro\'s terms of service, including subscription details, acceptable use policy, and user responsibilities.',
+    keywords: 'terms of service, terms and conditions, user agreement, service agreement',
   }
 };
 

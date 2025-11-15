@@ -54,6 +54,8 @@ import { RouteGuard } from "./components/RouteGuard";
 import TeacherCoverage from "./pages/TeacherCoverage";
 import Help from "./pages/Help";
 import Absences from "./pages/Absences";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsConditions from "./pages/TermsConditions";
 
 
 const queryClient = new QueryClient();
@@ -81,6 +83,8 @@ const AppContent = () => {
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/special-trips" element={<SpecialTrips />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/verify-email-change" element={<VerifyEmailChange />} />
 
