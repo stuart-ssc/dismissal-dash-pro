@@ -462,12 +462,24 @@ export default function BusMode() {
   return (
     <div className="min-h-screen w-full bg-background text-foreground p-6">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-6">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
-            Bus Dismissal {isCompleted && <span className="text-green-600">- Completed</span>}
-          </h1>
-          <p className="text-muted-foreground mt-2">Check in buses, view riders, and mark departures.</p>
-        </header>
+      <header className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
+              Bus Dismissal {isCompleted && <span className="text-green-600">- Completed</span>}
+            </h1>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate("/dashboard/dismissal")}
+            className="self-start sm:self-auto"
+          >
+            Exit Bus Mode
+          </Button>
+        </div>
+        <p className="text-muted-foreground mt-2">Check in buses, view riders, and mark departures.</p>
+      </header>
 
         {isLoading || loadingData ? (
           <div className="flex items-center gap-2 text-muted-foreground">
@@ -605,9 +617,6 @@ export default function BusMode() {
         )}
       </div>
 
-      <div className="mt-8 flex justify-center">
-        <ExitModeButton label="Exit Bus Mode" inHeader />
-      </div>
 
       {/* Bus mode completion confirmation dialog */}
       <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
