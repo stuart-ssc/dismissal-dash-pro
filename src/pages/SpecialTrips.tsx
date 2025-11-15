@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle, Briefcase, Users, Calendar, Bus, MapPin, Trophy, GraduationCap, Music } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { useSEO } from "@/hooks/useSEO";
 
 const SpecialTrips = () => {
@@ -302,6 +303,7 @@ const SpecialTrips = () => {
           </div>
         </section>
       </div>
+      <Footer />
     </>
   );
 };
