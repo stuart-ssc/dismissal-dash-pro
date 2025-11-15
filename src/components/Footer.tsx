@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Facebook, Linkedin } from "lucide-react";
+import logo from "@/assets/logo.svg";
 
 const Footer = () => {
   return (
@@ -8,7 +9,7 @@ const Footer = () => {
         <div className="grid md:grid-cols-2 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-foreground">DismissalPro</h3>
+            <img src={logo} alt="DismissalPro" className="h-8" />
             <p className="text-sm text-muted-foreground">
               Transforming school dismissal processes with safer, faster, and more organized solutions.
             </p>
