@@ -61,7 +61,7 @@ const Footer = () => {
               href="https://facebook.com/dismissalpro" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="hover:text-primary transition-colors"
+              className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
               aria-label="Follow us on Facebook"
             >
               <Facebook className="h-5 w-5" />
@@ -70,7 +70,7 @@ const Footer = () => {
               href="https://linkedin.com/company/dismissalpro" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="hover:text-primary transition-colors"
+              className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
               aria-label="Follow us on LinkedIn"
             >
               <Linkedin className="h-5 w-5" />
