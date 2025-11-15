@@ -17,7 +17,7 @@ const Footer = () => {
           {/* Product Links */}
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">Product</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className="grid grid-cols-2 gap-2 text-sm">
               <li>
                 <Link to="/how-it-works" className="text-muted-foreground hover:text-primary transition-colors">
                   How It Works
