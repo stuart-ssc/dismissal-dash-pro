@@ -55,6 +55,7 @@ export default function BusMode() {
   const [completingDismissal, setCompletingDismissal] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState<Record<string, LoadingEvent[]>>({});
   const [loadingStudent, setLoadingStudent] = useState<string | null>(null);
+  const [checkingInBus, setCheckingInBus] = useState<string | null>(null);
   const runId = run?.id;
   const isCompleted = !!run?.ended_at;
 
@@ -156,20 +157,40 @@ export default function BusMode() {
 
   const checkInBus = async (bus: Bus) => {
     if (!runId || !schoolId || !user) return;
-    const existing = events[bus.id];
-    const payload = {
-      school_id: schoolId,
-      dismissal_run_id: runId,
-      bus_id: bus.id,
-      check_in_time: existing?.check_in_time ? existing.check_in_time : new Date().toISOString(),
-      checked_in_by: user.id,
-      order_index: existing?.order_index ?? nextOrderIndex(),
-    };
-    const { error } = await supabase
-      .from("bus_run_events")
-      .upsert(payload, { onConflict: "dismissal_run_id,bus_id" });
+    
+    setCheckingInBus(bus.id);
+    
+    try {
+      const existing = events[bus.id];
+      const payload = {
+        school_id: schoolId,
+        dismissal_run_id: runId,
+        bus_id: bus.id,
+        check_in_time: existing?.check_in_time ? existing.check_in_time : new Date().toISOString(),
+        checked_in_by: user.id,
+        order_index: existing?.order_index ?? nextOrderIndex(),
+      };
+      
+      const { error } = await supabase
+        .from("bus_run_events")
+        .upsert(payload, { onConflict: "dismissal_run_id,bus_id" });
 
-    if (error) console.error(error);
+      if (error) {
+        console.error(error);
+        toast({
+          title: "Error",
+          description: "Failed to check in bus. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Bus Checked In",
+          description: `Bus ${bus.bus_number} has been checked in successfully.`,
+        });
+      }
+    } finally {
+      setCheckingInBus(null);
+    }
   };
 
   const markDeparted = async (bus: Bus) => {
@@ -559,8 +580,12 @@ export default function BusMode() {
                               </DialogContent>
                             </Dialog>
                             {!ev?.check_in_time && !isCompleted && (
-                              <Button onClick={() => checkInBus(bus)} disabled={isCompleted}>
-                                Check In
+                              <Button 
+                                onClick={() => checkInBus(bus)} 
+                                disabled={isCompleted || checkingInBus === bus.id}
+                              >
+                                {checkingInBus === bus.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {checkingInBus === bus.id ? "Checking In..." : "Check In"}
                               </Button>
                             )}
                             {ev?.check_in_time && !ev?.departed_at && !isCompleted && (
