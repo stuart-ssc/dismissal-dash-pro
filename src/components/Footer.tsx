@@ -4,7 +4,7 @@ import logo from "@/assets/logo.svg";
 
 const Footer = () => {
   return (
-    <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-12">
+    <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-12 pb-0">
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-8">
           {/* Company Info */}
@@ -43,8 +43,10 @@ const Footer = () => {
           </div>
 
         </div>
+      </div>
 
-        <div className="mt-8 pt-8 border-t border-border/50 bg-slate-800 -mx-4 px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-white">
+      <div className="mt-8 pt-8 border-t border-border/50 bg-slate-800 py-6">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-white">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
             <p>&copy; {new Date().getFullYear()} DismissalPro, Inc. All rights reserved.</p>
             <span className="hidden md:inline">|</span>
