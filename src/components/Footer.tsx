@@ -10,7 +10,7 @@ const Footer = () => {
           {/* Company Info */}
           <div className="space-y-4">
             <img src={logo} alt="DismissalPro" className="h-8" />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground max-w-[65%]">
               Transforming school dismissal processes with safer, faster, and more organized solutions.
             </p>
           </div>
