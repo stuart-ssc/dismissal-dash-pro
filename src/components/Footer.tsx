@@ -44,15 +44,15 @@ const Footer = () => {
 
         </div>
 
-        <div className="mt-8 pt-8 border-t border-border/50 bg-accent/70 -mx-4 px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+        <div className="mt-8 pt-8 border-t border-border/50 bg-slate-800 -mx-4 px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-white">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
             <p>&copy; {new Date().getFullYear()} DismissalPro, Inc. All rights reserved.</p>
             <span className="hidden md:inline">|</span>
-            <Link to="/privacy-policy" className="hover:text-primary transition-colors">
+            <Link to="/privacy-policy" className="hover:text-gray-300 transition-colors">
               Privacy Policy
             </Link>
             <span className="hidden md:inline">|</span>
-            <Link to="/terms-conditions" className="hover:text-primary transition-colors">
+            <Link to="/terms-conditions" className="hover:text-gray-300 transition-colors">
               Terms & Conditions
             </Link>
           </div>
@@ -62,7 +62,7 @@ const Footer = () => {
               href="https://facebook.com/dismissalpro" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+              className="p-2 rounded-full bg-slate-700 hover:bg-white hover:text-slate-800 transition-colors"
               aria-label="Follow us on Facebook"
             >
               <Facebook className="h-5 w-5" />
@@ -71,7 +71,7 @@ const Footer = () => {
               href="https://linkedin.com/company/dismissalpro" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+              className="p-2 rounded-full bg-slate-700 hover:bg-white hover:text-slate-800 transition-colors"
               aria-label="Follow us on LinkedIn"
             >
               <Linkedin className="h-5 w-5" />
