@@ -707,7 +707,9 @@ export default function CarLineMode() {
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground p-6">
-      <ExitModeButton label="Exit Car Line Mode" />
+      <div className="mt-8 flex justify-center">
+        <ExitModeButton label="Exit Car Line Mode" inHeader />
+      </div>
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex justify-between items-start">
           <div>

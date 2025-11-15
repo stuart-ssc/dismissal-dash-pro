@@ -839,7 +839,9 @@ export default function WalkerMode() {
         )}
       </div>
 
-      <ExitModeButton label="Exit Walker Mode" />
+      <div className="mt-8 flex justify-center">
+        <ExitModeButton label="Exit Walker Mode" inHeader />
+      </div>
     </div>
   );
 }
