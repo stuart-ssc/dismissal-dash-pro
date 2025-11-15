@@ -714,7 +714,7 @@ export default function CarLineMode() {
               <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Car Line</h1>
             </div>
             <Button 
-              variant="outline" 
+              variant="destructive" 
               size="sm"
               onClick={() => navigate("/dashboard/dismissal")}
               className="self-start sm:self-auto"

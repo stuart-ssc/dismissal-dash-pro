@@ -470,7 +470,7 @@ export default function BusMode() {
             </h1>
           </div>
           <Button 
-            variant="outline" 
+            variant="destructive" 
             size="sm"
             onClick={() => navigate("/dashboard/dismissal")}
             className="self-start sm:self-auto"
