@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { useSEO } from "@/hooks/useSEO";
 import { Check, Building2, Users, GraduationCap, Shield, BarChart3, Clock, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -49,7 +50,7 @@ const Pricing = () => {
   const faqs = [
     {
       question: "What happens after the free trial?",
-      answer: "After 30 days, you can choose to continue with a paid subscription at $250/year. Your data is always yours and you can export it anytime.",
+      answer: "After 30 days, you can choose to continue with a paid subscription at $350/year. Your data is always yours and you can export it anytime.",
     },
     {
       question: "Can I cancel anytime?",
@@ -57,7 +58,7 @@ const Pricing = () => {
     },
     {
       question: "Is there a setup fee?",
-      answer: "No setup fees, no hidden costs. Just $250/year for unlimited access to all features.",
+      answer: "No setup fees, no hidden costs. Just $350/year for unlimited access to all features.",
     },
     {
       question: "What kind of support do you offer?",
@@ -69,7 +70,7 @@ const Pricing = () => {
     },
     {
       question: "Can our PTO/PTA cover the cost?",
-      answer: "Absolutely! At just $250/year, many schools have their PTO/PTA cover DismissalPro as part of their student safety initiatives. It's less than the cost of a single fundraiser and ensures safe, organized dismissal for every student, every day. PTOs love that it's a one-time annual expense that benefits the entire school community.",
+      answer: "Absolutely! At just $350/year, many schools have their PTO/PTA cover DismissalPro as part of their student safety initiatives. It's less than the cost of a single fundraiser and ensures safe, organized dismissal for every student, every day. PTOs love that it's a one-time annual expense that benefits the entire school community.",
     },
   ];
 
@@ -107,7 +108,7 @@ const Pricing = () => {
                   <h2 className="mb-2 text-2xl font-bold">School Plan</h2>
                   <div className="flex items-baseline justify-center gap-2 mb-4">
                     <span className="text-3xl font-bold text-muted-foreground line-through">$500</span>
-                    <span className="text-6xl font-bold text-success">$250</span>
+                    <span className="text-6xl font-bold text-success">$350</span>
                     <span className="text-2xl text-muted-foreground">/year</span>
                   </div>
                   <p className="text-lg text-muted-foreground">
@@ -277,6 +278,7 @@ const Pricing = () => {
           </div>
         </section>
       </div>
+      <Footer />
     </>
   );
 };
