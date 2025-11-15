@@ -18,14 +18,14 @@ const Navbar = () => {
   const isTeacher = user && userRole && userRole !== "system_admin";
   const hasMultipleSchools = schools.length > 1;
   
-  // Show navigation links on content pages for non-authenticated users
-  const isContentPage = ['/', '/how-it-works', '/pricing', '/special-trips', '/auth'].includes(location.pathname);
-  const showNavLinks = isContentPage;
+  // Show navigation links on marketing/public pages (everything except app routes)
+  const isMarketingRoute = !/^\/(dashboard|admin|modes)\b/.test(location.pathname);
+  const showNavLinks = isMarketingRoute;
 
   return (
     <nav className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        {isContentPage && (
+        {isMarketingRoute && (
           <Link to="/" className="flex items-center">
             <img 
               src={logo}
@@ -57,7 +57,7 @@ const Navbar = () => {
             <Link to="/">
               <Button variant="ghost">← Back to Home</Button>
             </Link>
-          ) : isContentPage ? (
+          ) : isMarketingRoute ? (
             user && userRole ? (
               <Link to="/dashboard">
                 <Button variant="hero">Dashboard</Button>
