@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, MapPin } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { useSEO } from "@/hooks/useSEO";
 
 const TermsConditions = () => {
@@ -16,13 +16,6 @@ const TermsConditions = () => {
         <Navbar />
         
         <div className="container mx-auto px-4 py-12 max-w-4xl">
-          <Link to="/">
-            <Button variant="ghost" className="mb-6">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
-            </Button>
-          </Link>
-
           <Card className="border-0 shadow-elevated">
             <CardContent className="p-8 md:p-12">
               <div className="prose prose-slate max-w-none">
@@ -501,6 +494,8 @@ const TermsConditions = () => {
             </CardContent>
           </Card>
         </div>
+        
+        <Footer />
       </div>
     </>
   );
