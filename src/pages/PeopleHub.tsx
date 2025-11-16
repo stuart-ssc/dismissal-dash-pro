@@ -124,7 +124,7 @@ export default function PeopleHub() {
                 <ChevronDown className={`h-5 w-5 transition-transform ${statsOpen ? 'rotate-180' : ''}`} />
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
+            <CollapsibleContent className="mt-2 p-4 border rounded-lg bg-muted/30">
               <div className="grid gap-4 grid-cols-1">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
