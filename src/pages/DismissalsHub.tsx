@@ -5,14 +5,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, Bus, Calendar, PlayCircle, CheckCircle2 } from "lucide-react";
+import { ClipboardList, Bus, Calendar, PlayCircle, CheckCircle2, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
 export default function DismissalsHub() {
   const { user } = useAuth();
   const [schoolId, setSchoolId] = useState<number | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
   const { run } = useTodayDismissalRun();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,49 +106,104 @@ export default function DismissalsHub() {
 
   return (
     <main className="flex-1 p-6 space-y-6">
-        {/* Summary Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Plans</CardTitle>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.activePlans ?? '-'}</div>
-              <p className="text-xs text-muted-foreground">Dismissal plans</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Transportation</CardTitle>
-              <Bus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalTransportation ?? '-'}</div>
-              <p className="text-xs text-muted-foreground">Buses, car lines, walkers</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Scheduled Runs</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.scheduledRuns ?? '-'}</div>
-              <p className="text-xs text-muted-foreground">Special runs</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Students</CardTitle>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalStudents ?? '-'}</div>
-              <p className="text-xs text-muted-foreground">Total in dismissal</p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Summary Stats - Collapsible on Mobile */}
+        {isMobile ? (
+          <Collapsible open={statsOpen} onOpenChange={setStatsOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center justify-between w-full px-4 py-3 bg-card border rounded-lg hover:bg-accent transition-colors">
+                <span className="font-semibold text-lg">Stats</span>
+                <ChevronDown className={`h-5 w-5 transition-transform ${statsOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 p-4 border rounded-lg bg-muted/30">
+              <div className="grid gap-4 grid-cols-1">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Active Plans</CardTitle>
+                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.activePlans ?? '-'}</div>
+                    <p className="text-xs text-muted-foreground">Dismissal plans</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Transportation</CardTitle>
+                    <Bus className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.totalTransportation ?? '-'}</div>
+                    <p className="text-xs text-muted-foreground">Buses, car lines, walkers</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Scheduled Runs</CardTitle>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.scheduledRuns ?? '-'}</div>
+                    <p className="text-xs text-muted-foreground">Special runs</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Students</CardTitle>
+                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.totalStudents ?? '-'}</div>
+                    <p className="text-xs text-muted-foreground">Total in dismissal</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Plans</CardTitle>
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.activePlans ?? '-'}</div>
+                <p className="text-xs text-muted-foreground">Dismissal plans</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Transportation</CardTitle>
+                <Bus className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.totalTransportation ?? '-'}</div>
+                <p className="text-xs text-muted-foreground">Buses, car lines, walkers</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Scheduled Runs</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.scheduledRuns ?? '-'}</div>
+                <p className="text-xs text-muted-foreground">Special runs</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Students</CardTitle>
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.totalStudents ?? '-'}</div>
+                <p className="text-xs text-muted-foreground">Total in dismissal</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Navigation Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
