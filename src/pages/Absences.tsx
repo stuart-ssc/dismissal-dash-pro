@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ export default function Absences() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const SEO = useSEO();
+  const isMobile = useIsMobile();
   const [schoolId, setSchoolId] = useState<number | null>(null);
   
   // Form state
@@ -503,6 +505,72 @@ export default function Absences() {
               ) : filteredAbsences.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   {absenceSearch ? 'No absences found matching your search.' : 'No students marked absent. All students will participate in dismissal.'}
+                </div>
+              ) : isMobile ? (
+                <div className="space-y-3">
+                  {filteredAbsences.map((absence) => (
+                    <Card key={absence.id} className="border">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-base">
+                              {absence.student?.first_name} {absence.student?.last_name}
+                            </CardTitle>
+                            <CardDescription className="text-xs mt-1">
+                              Grade {absence.student?.grade_level}
+                            </CardDescription>
+                          </div>
+                          {absence.returned_at ? (
+                            <Badge variant="default" className="bg-secondary flex-shrink-0">Returned</Badge>
+                          ) : (
+                            <Badge variant="destructive" className="flex-shrink-0">Absent</Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3 pt-0">
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Dates</p>
+                          <p className="text-sm">
+                            {absence.absence_type === 'single_date' 
+                              ? format(new Date(absence.start_date), 'MMM d, yyyy')
+                              : `${format(new Date(absence.start_date), 'MMM d')} - ${format(new Date(absence.end_date!), 'MMM d, yyyy')}`
+                            }
+                          </p>
+                        </div>
+                        
+                        {absence.reason && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Reason</p>
+                            <p className="text-sm">{absence.reason}</p>
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-2 pt-2">
+                          {!absence.returned_at && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMarkReturned(absence.id)}
+                              className="flex-1"
+                            >
+                              Mark Returned
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setAbsenceToDelete(absence.id);
+                              setDeleteDialogOpen(true);
+                            }}
+                            className={!absence.returned_at ? "flex-1" : "w-full"}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               ) : (
                 <div className="rounded-md border">
