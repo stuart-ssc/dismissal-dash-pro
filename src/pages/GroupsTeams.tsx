@@ -218,8 +218,9 @@ export default function SpecialUseGroups() {
     <>
       <main className="flex-1 p-6 space-y-6">
         {/* Search and Actions Row */}
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
+        <div className="space-y-3">
+          {/* Search Field - Full Width */}
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search groups..."
@@ -229,75 +230,76 @@ export default function SpecialUseGroups() {
             />
           </div>
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <div className="px-2 py-3 border-b">
-                <Label className="text-xs font-medium mb-2 block">
-                  Academic Year
-                </Label>
-                <Select
-                  value={selectedSessionId || undefined}
-                  onValueChange={setSelectedSessionId}
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <div className="px-2 py-3 border-b">
+                  <Label className="text-xs font-medium mb-2 block">
+                    Academic Year
+                  </Label>
+                  <Select
+                    value={selectedSessionId || undefined}
+                    onValueChange={setSelectedSessionId}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select session..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {academicSessions.map((session) => (
+                        <SelectItem key={session.id} value={session.id}>
+                          {session.session_name}
+                          {session.is_active && " (Active)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedSessionId && (
+                    <Badge variant="outline" className="mt-2">
+                      Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                    </Badge>
+                  )}
+                </div>
+
+                <DropdownMenuItem 
+                  onClick={handleExportCSV}
+                  disabled={filteredGroups.length === 0}
                 >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select session..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {academicSessions.map((session) => (
-                      <SelectItem key={session.id} value={session.id}>
-                        {session.session_name}
-                        {session.is_active && " (Active)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedSessionId && (
-                  <Badge variant="outline" className="mt-2">
-                    Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-                  </Badge>
-                )}
-              </div>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  onClick={() => setMigrationDialogOpen(true)}
+                  disabled={!selectedSessionId || !schoolId}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Migrate Groups
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              <DropdownMenuItem 
-                onClick={handleExportCSV}
-                disabled={filteredGroups.length === 0}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem 
-                onClick={() => setMigrationDialogOpen(true)}
-                disabled={!selectedSessionId || !schoolId}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Migrate Groups
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Group
-          </Button>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Group
+            </Button>
+          </div>
         </div>
 
         {/* Main Data Card */}
         <Card className="shadow-elevated border-0 bg-card backdrop-blur">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <CardTitle>Groups & Teams</CardTitle>
-            {selectedSessionId && academicSessions.length > 0 && (
-              <Badge variant="secondary" className="font-normal">
-                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-              </Badge>
-            )}
-          </div>
+          <CardTitle>Groups & Teams</CardTitle>
+          {selectedSessionId && academicSessions.length > 0 && (
+            <Badge variant="secondary" className="font-normal mt-2">
+              Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+            </Badge>
+          )}
           <CardDescription className="mt-2">
             Create and manage special use groups for field trips, athletics, clubs, and other activities
           </CardDescription>
