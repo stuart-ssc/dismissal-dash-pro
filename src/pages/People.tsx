@@ -544,7 +544,7 @@ const People = () => {
     return (
       <>
         <SEO />
-      <main className="flex-1 p-6 space-y-6 max-w-full overflow-x-hidden">
+      <main className="flex-1 px-4 py-6 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
           {schoolId && <TeachersWithoutClassesAlert schoolId={schoolId} />}
           
           {/* Statistics Cards */}
@@ -556,8 +556,8 @@ const People = () => {
                   <ChevronDown className={`h-5 w-5 transition-transform ${statsOpen ? 'rotate-180' : ''}`} />
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 space-y-3">
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
+              <CollapsibleContent className="mt-2 space-y-3 w-full">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
                   </CardHeader>
@@ -568,7 +568,7 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
                   </CardHeader>
@@ -579,7 +579,7 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200 max-w-full">
+                <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200 w-full max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <Mail className="h-4 w-4 text-blue-600" />
@@ -593,7 +593,7 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Total Students</CardTitle>
                   </CardHeader>
@@ -729,7 +729,7 @@ const People = () => {
                     {/* Role Filter */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
+                        <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
                           Role: {filterRole === 'all' ? 'All' : filterRole === 'school_admin' ? 'School Admin' : filterRole === 'teacher' ? 'Teacher' : 'Student'}
                           <ChevronDown className="h-3 w-3 ml-1" />
                         </Button>
@@ -753,7 +753,7 @@ const People = () => {
                     {/* Grade Filter - Limited options for server-side filtering */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
+                        <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
                           Grade: {filterGrade === 'all' ? 'All' : filterGrade}
                           <ChevronDown className="h-3 w-3 ml-1" />
                         </Button>
@@ -770,7 +770,7 @@ const People = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <div className="h-4 w-px bg-border mx-2" />
+            <div className="hidden sm:block h-4 w-px bg-border mx-2" />
 
                     <div className="flex items-center gap-2">
                       <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
@@ -780,7 +780,7 @@ const People = () => {
                     {/* Sort Options */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
+                        <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
                           {sortBy === 'name' ? 'Name' : sortBy === 'role' ? 'Role' : 'Grade'} ({sortOrder === 'asc' ? '↑' : '↓'})
                           <ChevronDown className="h-3 w-3 ml-1" />
                         </Button>
@@ -807,16 +807,14 @@ const People = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <div className="flex-1" />
-                    
                     {/* Results count */}
-                    <div className="text-sm text-muted-foreground">
+                    <div className="w-full sm:w-auto sm:ml-auto text-left sm:text-right text-sm text-muted-foreground">
                       Showing {startIndex}-{endIndex} of {totalCount} people
                     </div>
                   </div>
                   {isTabletOrMobile ? (
                     // CARD LAYOUT FOR MOBILE/TABLET
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full">
                       {people.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground text-sm">
                           No people found matching your filters.
@@ -825,29 +823,30 @@ const People = () => {
                         people.map((person) => {
                           const transportDisplay = getTransportationDisplay(person);
                           return (
-                             <Card key={person.id} className="border shadow-sm max-w-full">
+                             <Card key={person.id} className="border shadow-sm w-full max-w-full">
                               <CardContent className="pt-6 space-y-3">
-                                {/* Name & Role */}
-                                <div className="flex items-start justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                      {getRoleIcon(person.role)}
-                                    </div>
-                                    <div>
-                                      <p className="font-semibold text-base">
-                                        {person.firstName} {person.lastName}
-                                      </p>
-                                      <Badge variant={getRoleBadgeVariant(person.role)} className="text-xs mt-1">
-                                        {person.role}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
+                                 {/* Name & Role */}
+                                 <div className="flex flex-wrap items-start gap-3">
+                                   <div className="flex items-center gap-3 min-w-0">
+                                     <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                       {getRoleIcon(person.role)}
+                                     </div>
+                                     <div className="min-w-0">
+                                       <p className="font-semibold text-base truncate">
+                                         {person.firstName} {person.lastName}
+                                       </p>
+                                       <Badge variant={getRoleBadgeVariant(person.role)} className="text-xs mt-1">
+                                         {person.role}
+                                       </Badge>
+                                     </div>
+                                   </div>
+                                   <div className="sm:ml-auto">
+                                     <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg z-50">
                                       <DropdownMenuItem onClick={() => openEditDialog(person)}>
                                         <Edit className="h-4 w-4 mr-2" />
@@ -878,12 +877,13 @@ const People = () => {
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Delete
                                       </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
+                                     </DropdownMenuContent>
+                                   </DropdownMenu>
+                                 </div>
+                               </div>
 
                                 {/* Details Grid */}
-                                <div className="grid grid-cols-2 gap-3 pt-3 border-t text-sm">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t text-sm">
                                   {person.role === 'Student' && (
                                     <>
                                       <div>
@@ -1338,9 +1338,9 @@ const People = () => {
   return (
     <>
       <SEO />
-      <main className="flex-1 p-6 space-y-6 max-w-full overflow-x-hidden">
+      <main className="flex-1 px-4 py-6 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
         <div className="space-y-6">
-          <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
+          <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full max-w-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -1354,7 +1354,7 @@ const People = () => {
             </CardHeader>
             <CardContent>
               {/* Filters and Sort Controls */}
-              <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-muted/30 rounded-lg border">
+              <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-muted/30 rounded-lg border w-full">
                 {userRole !== 'teacher' && (
                   <>
                     <div className="flex items-center gap-2">
@@ -1365,7 +1365,7 @@ const People = () => {
                     {/* Role Filter */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
+                        <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
                           Role: {filterRole === 'all' ? 'All' : filterRole}
                           <ChevronDown className="h-3 w-3 ml-1" />
                         </Button>
@@ -1389,7 +1389,7 @@ const People = () => {
                     {/* Grade Filter */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8">
+                        <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
                           Grade: {filterGrade === 'all' ? 'All' : filterGrade}
                           <ChevronDown className="h-3 w-3 ml-1" />
                         </Button>
@@ -1406,7 +1406,7 @@ const People = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <div className="h-4 w-px bg-border mx-2" />
+                    <div className="hidden sm:block h-4 w-px bg-border mx-2" />
                   </>
                 )}
 
@@ -1418,7 +1418,7 @@ const People = () => {
                 {/* Sort Options */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8">
+                    <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
                       {sortBy === 'name' ? 'Name' : sortBy === 'role' ? 'Role' : 'Grade'} ({sortOrder === 'asc' ? '↑' : '↓'})
                       <ChevronDown className="h-3 w-3 ml-1" />
                     </Button>
@@ -1445,17 +1445,15 @@ const People = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="flex-1" />
-                
                 {/* Results count */}
-                <div className="text-sm text-muted-foreground">
+                <div className="w-full sm:w-auto sm:ml-auto text-left sm:text-right text-sm text-muted-foreground">
                   Showing {startIndex}-{endIndex} of {totalCount} people
                 </div>
               </div>
 
               {isTabletOrMobile ? (
                 // CARD LAYOUT FOR MOBILE/TABLET
-                <div className="space-y-3">
+                <div className="space-y-3 w-full">
                   {people.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground text-sm">
                       No people found.
@@ -1464,16 +1462,16 @@ const People = () => {
                     people.map((person) => {
                       const transportDisplay = getTransportationDisplay(person);
                       return (
-                        <Card key={person.id} className="border shadow-sm max-w-full">
+                        <Card key={person.id} className="border shadow-sm w-full max-w-full">
                           <CardContent className="pt-6 space-y-3">
                             {/* Name & Role */}
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-start gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                                   {getRoleIcon(person.role)}
                                 </div>
-                                <div>
-                                  <p className="font-semibold text-base">
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-base truncate">
                                     {person.firstName} {person.lastName}
                                   </p>
                                   <Badge variant={getRoleBadgeVariant(person.role)} className="text-xs mt-1">
@@ -1482,7 +1480,8 @@ const People = () => {
                                 </div>
                               </div>
                               {userRole === 'school_admin' && (
-                                <DropdownMenu>
+                                <div className="sm:ml-auto">
+                                  <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                       <MoreHorizontal className="h-4 w-4" />
@@ -1508,11 +1507,12 @@ const People = () => {
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
+                              </div>
                               )}
                             </div>
 
                             {/* Details Grid */}
-                            <div className="grid grid-cols-2 gap-3 pt-3 border-t text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t text-sm">
                               {person.role === 'Student' && (
                                 <>
                                   <div>
