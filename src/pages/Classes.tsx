@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-import { Users, GraduationCap, BarChart3, Calendar, Plus, Search, ChevronDown, MoreHorizontal, Edit, UserPlus } from "lucide-react";
+import { Users, GraduationCap, BarChart3, Calendar, Plus, Search, ChevronDown, MoreHorizontal, Edit, UserPlus, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -206,6 +207,7 @@ const Classes = () => {
   const navigate = useNavigate();
   const SEO = useSEO();
   const isMobile = useIsMobile();
+  const isTabletOrMobile = isMobile || window.innerWidth < 1024;
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [filteredClasses, setFilteredClasses] = useState<ClassRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -223,6 +225,7 @@ const Classes = () => {
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [managingClass, setManagingClass] = useState<ClassRecord | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -432,6 +435,16 @@ const Classes = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentClasses = filteredClasses.slice(startIndex, endIndex);
+
+  // Summary stats
+  const summaryStats = {
+    totalClasses: classes.length,
+    totalStudents: classes.reduce((sum, cls) => sum + (cls.student_count || 0), 0),
+    totalTeachers: new Set(classes.filter(cls => cls.teacher_name).map(cls => cls.teacher_name)).size,
+    avgClassSize: classes.length > 0 
+      ? (classes.reduce((sum, cls) => sum + (cls.student_count || 0), 0) / classes.length).toFixed(1)
+      : '0.0'
+  };
 
   const handleFilterChange = (newFilterGrade?: typeof filterGrade) => {
     setCurrentPage(1);
@@ -655,69 +668,120 @@ const Classes = () => {
         
         <div className="flex-1 flex flex-col">
           <main className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium">Total Classes</CardTitle>
-                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl md:text-2xl font-bold">{classes.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Total classes offered
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium">Total Students</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl md:text-2xl font-bold">
-                    {classes.reduce((sum, cls) => sum + cls.student_count, 0)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Students enrolled in classes
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium">Total Teachers</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl md:text-2xl font-bold">
-                    {availableTeachers.length}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Teachers in the school
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium">Average Class Size</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl md:text-2xl font-bold">
-                    {classes.length > 0 
-                      ? Math.round(classes.reduce((sum, cls) => sum + cls.student_count, 0) / classes.length)
-                      : 0
-                    }
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Students per class
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+        {/* Summary Cards */}
+        {isMobile ? (
+          <Collapsible open={statsOpen} onOpenChange={setStatsOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center justify-between w-full px-4 py-3 bg-card border rounded-lg hover:bg-accent transition-colors">
+                <span className="font-semibold text-lg">Stats</span>
+                <ChevronDown className={`h-5 w-5 transition-transform ${statsOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 p-4 border rounded-lg bg-muted/30">
+              <div className="grid gap-4 grid-cols-1">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Classes</CardTitle>
+                    <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{summaryStats.totalClasses}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Active classes this session
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{summaryStats.totalStudents}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Students enrolled
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
+                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{summaryStats.totalTeachers}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Teachers assigned
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Average Class Size</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{summaryStats.avgClassSize}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Students per class
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Classes</CardTitle>
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{summaryStats.totalClasses}</div>
+                <p className="text-xs text-muted-foreground">
+                  Active classes this session
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{summaryStats.totalStudents}</div>
+                <p className="text-xs text-muted-foreground">
+                  Students enrolled
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
+                <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{summaryStats.totalTeachers}</div>
+                <p className="text-xs text-muted-foreground">
+                  Teachers assigned
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Average Class Size</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{summaryStats.avgClassSize}</div>
+                <p className="text-xs text-muted-foreground">
+                  Students per class
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
             {/* Classes Management */}
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
