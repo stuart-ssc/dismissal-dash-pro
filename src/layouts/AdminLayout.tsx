@@ -6,20 +6,35 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DashboardHeader } from "@/components/DashboardHeader";
 
 export default function AdminLayout() {
-  const [defaultOpen, setDefaultOpen] = useState<boolean>(true);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 
   useEffect(() => {
-    const width = window.innerWidth;
+    const tabletMql = window.matchMedia("(min-width: 768px) and (max-width: 1024px)");
+    const desktopMql = window.matchMedia("(min-width: 1025px)");
+
+    const updateSidebarState = () => {
+      if (desktopMql.matches) {
+        setSidebarOpen(true);
+      } else if (tabletMql.matches) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+
+    updateSidebarState();
     
-    if (width >= 768 && width < 1024) {
-      setDefaultOpen(false);
-    } else if (width >= 1024) {
-      setDefaultOpen(true);
-    }
+    tabletMql.addEventListener("change", updateSidebarState);
+    desktopMql.addEventListener("change", updateSidebarState);
+
+    return () => {
+      tabletMql.removeEventListener("change", updateSidebarState);
+      desktopMql.removeEventListener("change", updateSidebarState);
+    };
   }, []);
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
+    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
         <AdminSidebar />
         <div className="flex-1 flex flex-col">
