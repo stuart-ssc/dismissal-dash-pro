@@ -962,7 +962,7 @@ const Settings = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur lg:col-span-2">
                 <CardHeader>
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <Calendar className="h-5 w-5 text-purple-500" />
