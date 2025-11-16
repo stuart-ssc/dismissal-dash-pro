@@ -544,7 +544,7 @@ const People = () => {
     return (
       <>
         <SEO />
-        <main className="flex-1 p-6 space-y-6">
+      <main className="flex-1 p-6 space-y-6 max-w-full overflow-x-hidden">
           {schoolId && <TeachersWithoutClassesAlert schoolId={schoolId} />}
           
           {/* Statistics Cards */}
@@ -557,7 +557,7 @@ const People = () => {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 space-y-3">
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
                   </CardHeader>
@@ -568,7 +568,7 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
                   </CardHeader>
@@ -579,7 +579,7 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200">
+                <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200 max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                       <Mail className="h-4 w-4 text-blue-600" />
@@ -593,7 +593,7 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Total Students</CardTitle>
                   </CardHeader>
@@ -607,7 +607,7 @@ const People = () => {
             </Collapsible>
           ) : (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
                   </CardHeader>
@@ -618,7 +618,7 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
                   </CardHeader>
@@ -629,7 +629,7 @@ const People = () => {
                   </CardContent>
                 </Card>
                 
-          <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200">
+          <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200 max-w-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Mail className="h-4 w-4 text-blue-600" />
@@ -643,7 +643,7 @@ const People = () => {
             </CardContent>
           </Card>
                 
-                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Total Students</CardTitle>
                   </CardHeader>
@@ -657,9 +657,9 @@ const People = () => {
           )}
 
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                      <div className="space-y-2">
                        <CardTitle className="flex items-center gap-2">
                          <Users className="h-5 w-5" />
@@ -674,7 +674,7 @@ const People = () => {
                          </Badge>
                        )}
                      </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button 
                         variant="outline"
                         onClick={() => navigate('/dashboard/people/archived')}
@@ -720,7 +720,7 @@ const People = () => {
                    )}
 
                    {/* Filters and Sort Controls */}
-                   <div className="flex items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
+          <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-muted/30 rounded-lg border">
                     <div className="flex items-center gap-2">
                       <Filter className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Filters:</span>
@@ -825,7 +825,7 @@ const People = () => {
                         people.map((person) => {
                           const transportDisplay = getTransportationDisplay(person);
                           return (
-                            <Card key={person.id} className="border shadow-sm">
+                             <Card key={person.id} className="border shadow-sm max-w-full">
                               <CardContent className="pt-6 space-y-3">
                                 {/* Name & Role */}
                                 <div className="flex items-start justify-between">
@@ -1338,9 +1338,9 @@ const People = () => {
   return (
     <>
       <SEO />
-      <main className="flex-1 p-6 space-y-6">
+      <main className="flex-1 p-6 space-y-6 max-w-full overflow-x-hidden">
         <div className="space-y-6">
-          <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+          <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -1354,7 +1354,7 @@ const People = () => {
             </CardHeader>
             <CardContent>
               {/* Filters and Sort Controls */}
-              <div className="flex items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg border">
+              <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-muted/30 rounded-lg border">
                 {userRole !== 'teacher' && (
                   <>
                     <div className="flex items-center gap-2">
@@ -1464,7 +1464,7 @@ const People = () => {
                     people.map((person) => {
                       const transportDisplay = getTransportationDisplay(person);
                       return (
-                        <Card key={person.id} className="border shadow-sm">
+                        <Card key={person.id} className="border shadow-sm max-w-full">
                           <CardContent className="pt-6 space-y-3">
                             {/* Name & Role */}
                             <div className="flex items-start justify-between">
