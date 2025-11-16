@@ -311,95 +311,187 @@ export default function SpecialUseGroups() {
                 {searchQuery ? "No groups found matching your search" : "No groups yet. Create one to get started!"}
               </div>
             ) : (
-              <div className="border rounded-lg bg-background overflow-hidden">
-                <ScrollArea className="w-full">
-                  <Table className="min-w-[800px]">
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="text-center">Students</TableHead>
-                  <TableHead className="text-center">Managers</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-            <TableBody>
-              {filteredGroups.map((group) => (
-                <TableRow key={group.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">{group.name}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{getGroupTypeBadge(group.group_type)}</TableCell>
-                  <TableCell className="text-center">{group.student_count}</TableCell>
-                  <TableCell className="text-center">{group.manager_count}</TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <Badge variant={group.is_active ? "default" : "secondary"}>
-                      {group.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedGroup(group);
-                            setStudentsDialogOpen(true);
-                          }}
-                        >
-                          <Users className="h-4 w-4 mr-2" />
-                          Manage Students
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedGroup(group);
-                            setManagersDialogOpen(true);
-                          }}
-                        >
-                          <UserCog className="h-4 w-4 mr-2" />
-                          Manage Managers
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedGroup(group);
-                            setScheduleDialogOpen(true);
-                          }}
-                        >
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Schedule Run
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedGroup(group);
-                            setDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Group
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setGroupToDelete(group);
-                            setDeleteDialogOpen(true);
-                          }}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Group
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-              </TableBody>
-                  </Table>
-                </ScrollArea>
+              <>
+              {/* Mobile Card Layout */}
+              <div className="md:hidden space-y-3">
+                {filteredGroups.map((group) => (
+                  <Card key={group.id} className="overflow-hidden">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-base truncate">{group.name}</CardTitle>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {getGroupTypeBadge(group.group_type)}
+                            <Badge variant={group.is_active ? "default" : "secondary"}>
+                              {group.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedGroup(group);
+                                setStudentsDialogOpen(true);
+                              }}
+                            >
+                              <Users className="h-4 w-4 mr-2" />
+                              Manage Students
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedGroup(group);
+                                setManagersDialogOpen(true);
+                              }}
+                            >
+                              <UserCog className="h-4 w-4 mr-2" />
+                              Manage Managers
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedGroup(group);
+                                setScheduleDialogOpen(true);
+                              }}
+                            >
+                              <Calendar className="h-4 w-4 mr-2" />
+                              Schedule Run
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedGroup(group);
+                                setDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Group
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setGroupToDelete(group);
+                                setDeleteDialogOpen(true);
+                              }}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Group
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">Students</div>
+                          <div className="font-medium">{group.student_count}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Managers</div>
+                          <div className="font-medium">{group.manager_count}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden md:block border rounded-lg bg-background overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead>Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-center">Students</TableHead>
+                        <TableHead className="text-center">Managers</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredGroups.map((group) => (
+                        <TableRow key={group.id} className="hover:bg-muted/50 transition-colors">
+                          <TableCell className="font-medium">{group.name}</TableCell>
+                          <TableCell>{getGroupTypeBadge(group.group_type)}</TableCell>
+                          <TableCell className="text-center">{group.student_count}</TableCell>
+                          <TableCell className="text-center">{group.manager_count}</TableCell>
+                          <TableCell>
+                            <Badge variant={group.is_active ? "default" : "secondary"}>
+                              {group.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedGroup(group);
+                                    setStudentsDialogOpen(true);
+                                  }}
+                                >
+                                  <Users className="h-4 w-4 mr-2" />
+                                  Manage Students
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedGroup(group);
+                                    setManagersDialogOpen(true);
+                                  }}
+                                >
+                                  <UserCog className="h-4 w-4 mr-2" />
+                                  Manage Managers
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedGroup(group);
+                                    setScheduleDialogOpen(true);
+                                  }}
+                                >
+                                  <Calendar className="h-4 w-4 mr-2" />
+                                  Schedule Run
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedGroup(group);
+                                    setDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Group
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setGroupToDelete(group);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Group
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+              </>
             )}
           </CardContent>
         </Card>
