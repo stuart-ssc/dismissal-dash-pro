@@ -544,7 +544,7 @@ const People = () => {
     return (
       <>
         <SEO />
-      <main className="flex-1 px-4 py-6 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
+      <main className="flex-1 min-w-0 px-4 py-6 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
           {schoolId && <TeachersWithoutClassesAlert schoolId={schoolId} />}
           
           {/* Statistics Cards */}
@@ -976,6 +976,7 @@ const People = () => {
                     </div>
                   ) : (
                     // TABLE LAYOUT FOR DESKTOP
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1212,6 +1213,7 @@ const People = () => {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                   )}
 
                   {people.length === 0 && (
@@ -1338,7 +1340,7 @@ const People = () => {
   return (
     <>
       <SEO />
-      <main className="flex-1 px-4 py-6 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
+      <main className="flex-1 min-w-0 px-4 py-6 sm:p-6 space-y-6 max-w-full overflow-x-hidden">
         <div className="space-y-6">
           <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full max-w-full">
             <CardHeader>
@@ -1573,6 +1575,7 @@ const People = () => {
                 </div>
               ) : (
                 // TABLE LAYOUT FOR DESKTOP
+              <div className="overflow-x-auto">
               <Table>
                   <TableHeader>
                     <TableRow>
@@ -1677,6 +1680,7 @@ const People = () => {
                   ))}
                 </TableBody>
               </Table>
+              </div>
               )}
 
               {people.length === 0 && (
