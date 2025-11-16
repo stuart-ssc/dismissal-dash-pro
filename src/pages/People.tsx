@@ -1224,11 +1224,11 @@ const People = () => {
 
                   {/* Pagination Controls */}
                   {people.length > 0 && (
-                    <div className="flex items-center justify-between mt-6">
-                      <div className="text-sm text-muted-foreground">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6">
+                      <div className="text-sm text-muted-foreground w-full sm:w-auto text-center sm:text-left">
                         Showing {startIndex} to {endIndex} of {totalCount} people
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
                         <Button
                           variant="outline"
                           size="sm"
@@ -1236,10 +1236,10 @@ const People = () => {
                           disabled={currentPage === 1}
                         >
                           <ChevronLeft className="h-4 w-4" />
-                          Previous
+                          <span className="hidden sm:inline">Previous</span>
                         </Button>
                         
-                        <div className="flex items-center space-x-1">
+                        <div className="flex items-center gap-1">
                           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                             const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
                             if (pageNum > totalPages) return null;
@@ -1263,7 +1263,7 @@ const People = () => {
                           onClick={goToNextPage}
                           disabled={currentPage === totalPages}
                         >
-                          Next
+                          <span className="hidden sm:inline">Next</span>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>
@@ -1691,11 +1691,11 @@ const People = () => {
 
               {/* Pagination Controls */}
               {people.length > 0 && (
-                <div className="flex items-center justify-between mt-6">
-                  <div className="text-sm text-muted-foreground">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6">
+                  <div className="text-sm text-muted-foreground w-full sm:w-auto text-center sm:text-left">
                     Showing {startIndex} to {endIndex} of {totalCount} people
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
                     <Button
                       variant="outline"
                       size="sm"
@@ -1703,10 +1703,10 @@ const People = () => {
                       disabled={currentPage === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      <span className="hidden sm:inline">Previous</span>
                     </Button>
                     
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
                         if (pageNum > totalPages) return null;
@@ -1730,7 +1730,7 @@ const People = () => {
                       onClick={goToNextPage}
                       disabled={currentPage === totalPages}
                     >
-                      Next
+                      <span className="hidden sm:inline">Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
