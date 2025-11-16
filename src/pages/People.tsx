@@ -14,6 +14,8 @@ import { usePaginatedPeople, type PersonData } from "@/hooks/usePaginatedPeople"
 import { useQueryClient } from "@tanstack/react-query";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
@@ -54,6 +56,29 @@ const People = () => {
   const [isBulkInviting, setIsBulkInviting] = useState(false);
   const [academicSessions, setAcademicSessions] = useState<Array<{ id: string; session_name: string; is_active: boolean }>>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [isTabletOrMobile, setIsTabletOrMobile] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+
+  useEffect(() => {
+    const tabletMql = window.matchMedia("(min-width: 768px) and (max-width: 1024px)");
+    const mobileMql = window.matchMedia("(max-width: 767px)");
+    
+    const updateTabletState = () => {
+      setIsTabletOrMobile(mobileMql.matches || tabletMql.matches);
+    };
+    
+    updateTabletState();
+    
+    const onChange = () => updateTabletState();
+    tabletMql.addEventListener("change", onChange);
+    mobileMql.addEventListener("change", onChange);
+    
+    return () => {
+      tabletMql.removeEventListener("change", onChange);
+      mobileMql.removeEventListener("change", onChange);
+    };
+  }, []);
 
   // Use the paginated people hook
   const { data: paginatedData, isLoading: isPeopleLoading, error: peopleError } = usePaginatedPeople({
@@ -523,6 +548,64 @@ const People = () => {
           {schoolId && <TeachersWithoutClassesAlert schoolId={schoolId} />}
           
           {/* Statistics Cards */}
+          {isMobile ? (
+            <Collapsible open={statsOpen} onOpenChange={setStatsOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center justify-between w-full px-4 py-3 bg-card border rounded-lg hover:bg-accent transition-colors">
+                  <span className="font-semibold text-lg">Stats</span>
+                  <ChevronDown className={`h-5 w-5 transition-transform ${statsOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-3">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {people.filter(p => p.role === 'Teacher').length}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'completed').length}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-elevated border-0 bg-blue-50/80 dark:bg-blue-950/20 backdrop-blur border-blue-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-blue-600" />
+                      Pending Invites
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'pending').length}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {people.filter(p => p.role === 'Student').length}
+                    </div>
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+          ) : (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                   <CardHeader className="pb-2">
@@ -553,53 +636,25 @@ const People = () => {
                 Pending Invites
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {people.filter(p => p.role === 'Teacher' && (!p.invitationStatus || p.invitationStatus === 'pending')).length}
+                {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'pending').length}
               </div>
-              {people.filter(p => p.role === 'Teacher' && (!p.invitationStatus || p.invitationStatus === 'pending')).length > 0 ? (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    Teachers without invitations
-                  </p>
-                  <Button 
-                    onClick={handleBulkInviteTeachers}
-                    disabled={isBulkInviting}
-                    className="w-full mt-2"
-                    size="sm"
-                  >
-                    {isBulkInviting ? (
-                      <>
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="mr-2 h-3 w-3" />
-                        Send All
-                      </>
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  All teachers invited
-                </p>
-              )}
             </CardContent>
           </Card>
                 
                 <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Expired Invites</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Students</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-red-600">
-                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'expired').length}
+                    <div className="text-2xl font-bold">
+                      {people.filter(p => p.role === 'Student').length}
                     </div>
                   </CardContent>
                 </Card>
               </div>
+          )}
 
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
@@ -759,6 +814,168 @@ const People = () => {
                       Showing {startIndex}-{endIndex} of {totalCount} people
                     </div>
                   </div>
+                  {isTabletOrMobile ? (
+                    // CARD LAYOUT FOR MOBILE/TABLET
+                    <div className="space-y-3">
+                      {people.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground text-sm">
+                          No people found matching your filters.
+                        </div>
+                      ) : (
+                        people.map((person) => {
+                          const transportDisplay = getTransportationDisplay(person);
+                          return (
+                            <Card key={person.id} className="border shadow-sm">
+                              <CardContent className="pt-6 space-y-3">
+                                {/* Name & Role */}
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                      {getRoleIcon(person.role)}
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-base">
+                                        {person.firstName} {person.lastName}
+                                      </p>
+                                      <Badge variant={getRoleBadgeVariant(person.role)} className="text-xs mt-1">
+                                        {person.role}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg z-50">
+                                      <DropdownMenuItem onClick={() => openEditDialog(person)}>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      {person.role === 'Student' && (
+                                        <DropdownMenuItem onClick={() => openTempTransportDialog(person)}>
+                                          <CalendarIcon className="h-4 w-4 mr-2" />
+                                          Temp Transportation
+                                        </DropdownMenuItem>
+                                      )}
+                                      {person.role === 'Teacher' && person.invitationStatus === 'pending' && (
+                                        <>
+                                          <DropdownMenuItem onClick={() => handleResendInvitation(person)}>
+                                            <Mail className="h-4 w-4 mr-2" />
+                                            Resend Invitation
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleCopyInvitationLink(person)}>
+                                            <Copy className="h-4 w-4 mr-2" />
+                                            Copy Link
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                      <DropdownMenuItem 
+                                        onClick={() => openDeleteDialog(person)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-2 gap-3 pt-3 border-t text-sm">
+                                  {person.role === 'Student' && (
+                                    <>
+                                      <div>
+                                        <p className="text-muted-foreground text-xs mb-1">Grade</p>
+                                        <p className="font-medium">{person.grade || '-'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-muted-foreground text-xs mb-1">Transportation</p>
+                                        {transportDisplay.hasTemp || transportDisplay.hasAnyOverride ? (
+                                          <Badge 
+                                            variant="outline"
+                                            className={cn(
+                                              "cursor-pointer hover:bg-accent",
+                                              transportDisplay.hasAnyOverride && 
+                                              "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700"
+                                            )}
+                                            onClick={() => {
+                                              if (transportDisplay.hasAnyOverride) {
+                                                openViewTempTransportDialog(person);
+                                              } else {
+                                                openTempTransportDialog(person);
+                                              }
+                                            }}
+                                          >
+                                            {transportDisplay.display}
+                                            {transportDisplay.hasTemp && (
+                                              <span className="text-amber-600 dark:text-amber-400 ml-1"> (Temp)</span>
+                                            )}
+                                            {transportDisplay.hasAnyOverride && (
+                                              <span className="text-amber-600 dark:text-amber-400 ml-1">*</span>
+                                            )}
+                                          </Badge>
+                                        ) : (
+                                          <p className="font-medium">{person.transportation || '-'}</p>
+                                        )}
+                                      </div>
+                                    </>
+                                  )}
+                                  
+                                  {person.classes && person.classes.length > 0 && (
+                                    <div className="col-span-2">
+                                      <p className="text-muted-foreground text-xs mb-1">Classes</p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {person.classes.map((className, index) => (
+                                          <Badge key={index} variant="outline" className="text-xs">
+                                            {className}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {person.role === 'Teacher' && person.invitationStatus && (
+                                    <div className="col-span-2">
+                                      <p className="text-muted-foreground text-xs mb-1">Status</p>
+                                      <div className="flex items-center gap-2">
+                                        {person.invitationStatus === 'completed' && (
+                                          <>
+                                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                            <Badge variant="outline" className="bg-green-50 border-green-200">Active</Badge>
+                                          </>
+                                        )}
+                                        {person.invitationStatus === 'pending' && (
+                                          <>
+                                            <Clock className="h-4 w-4 text-orange-600" />
+                                            <Badge variant="outline" className="bg-orange-50 border-orange-200">
+                                              Pending {person.daysUntilExpiry !== null && person.daysUntilExpiry > 0 
+                                                ? `(${person.daysUntilExpiry}d)` 
+                                                : person.daysUntilExpiry === 0 
+                                                ? '(Expires today)' 
+                                                : ''}
+                                            </Badge>
+                                          </>
+                                        )}
+                                        {person.invitationStatus === 'expired' && (
+                                          <>
+                                            <AlertCircle className="h-4 w-4 text-red-600" />
+                                            <Badge variant="outline" className="bg-red-50 border-red-200">Expired</Badge>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })
+                      )}
+                    </div>
+                  ) : (
+                    // TABLE LAYOUT FOR DESKTOP
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -995,6 +1212,7 @@ const People = () => {
                       ))}
                     </TableBody>
                   </Table>
+                  )}
 
                   {people.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
@@ -1235,6 +1453,126 @@ const People = () => {
                 </div>
               </div>
 
+              {isTabletOrMobile ? (
+                // CARD LAYOUT FOR MOBILE/TABLET
+                <div className="space-y-3">
+                  {people.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No people found.
+                    </div>
+                  ) : (
+                    people.map((person) => {
+                      const transportDisplay = getTransportationDisplay(person);
+                      return (
+                        <Card key={person.id} className="border shadow-sm">
+                          <CardContent className="pt-6 space-y-3">
+                            {/* Name & Role */}
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                  {getRoleIcon(person.role)}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-base">
+                                    {person.firstName} {person.lastName}
+                                  </p>
+                                  <Badge variant={getRoleBadgeVariant(person.role)} className="text-xs mt-1">
+                                    {person.role}
+                                  </Badge>
+                                </div>
+                              </div>
+                              {userRole === 'school_admin' && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg z-50">
+                                    <DropdownMenuItem onClick={() => openEditDialog(person)}>
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    {person.role === 'Student' && (
+                                      <DropdownMenuItem onClick={() => openTempTransportDialog(person)}>
+                                        <CalendarIcon className="h-4 w-4 mr-2" />
+                                        Temp Transportation
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem 
+                                      onClick={() => openDeleteDialog(person)}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid grid-cols-2 gap-3 pt-3 border-t text-sm">
+                              {person.role === 'Student' && (
+                                <>
+                                  <div>
+                                    <p className="text-muted-foreground text-xs mb-1">Grade</p>
+                                    <p className="font-medium">{person.grade || '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground text-xs mb-1">Transportation</p>
+                                    {transportDisplay.hasTemp || transportDisplay.hasAnyOverride ? (
+                                      <Badge 
+                                        variant="outline"
+                                        className={cn(
+                                          "cursor-pointer hover:bg-accent",
+                                          transportDisplay.hasAnyOverride && 
+                                          "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700"
+                                        )}
+                                        onClick={() => {
+                                          if (transportDisplay.hasAnyOverride) {
+                                            openViewTempTransportDialog(person);
+                                          } else {
+                                            openTempTransportDialog(person);
+                                          }
+                                        }}
+                                      >
+                                        {transportDisplay.display}
+                                        {transportDisplay.hasTemp && (
+                                          <span className="text-amber-600 dark:text-amber-400 ml-1"> (Temp)</span>
+                                        )}
+                                        {transportDisplay.hasAnyOverride && (
+                                          <span className="text-amber-600 dark:text-amber-400 ml-1">*</span>
+                                        )}
+                                      </Badge>
+                                    ) : (
+                                      <p className="font-medium">{person.transportation || '-'}</p>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                              
+                              {userRole !== 'teacher' && person.classes && person.classes.length > 0 && (
+                                <div className="col-span-2">
+                                  <p className="text-muted-foreground text-xs mb-1">Classes</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {person.classes.map((className, index) => (
+                                      <Badge key={index} variant="outline" className="text-xs">
+                                        {className}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </div>
+              ) : (
+                // TABLE LAYOUT FOR DESKTOP
               <Table>
                   <TableHeader>
                     <TableRow>
@@ -1339,6 +1677,7 @@ const People = () => {
                   ))}
                 </TableBody>
               </Table>
+              )}
 
               {people.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
