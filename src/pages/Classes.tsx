@@ -207,7 +207,27 @@ const Classes = () => {
   const navigate = useNavigate();
   const SEO = useSEO();
   const isMobile = useIsMobile();
-  const isTabletOrMobile = isMobile || window.innerWidth < 1024;
+  const [isTabletOrMobile, setIsTabletOrMobile] = useState(false);
+
+  useEffect(() => {
+    const tabletMql = window.matchMedia("(min-width: 768px) and (max-width: 1024px)");
+    const mobileMql = window.matchMedia("(max-width: 767px)");
+    
+    const updateTabletState = () => {
+      setIsTabletOrMobile(mobileMql.matches || tabletMql.matches);
+    };
+    
+    updateTabletState();
+    
+    const onChange = () => updateTabletState();
+    tabletMql.addEventListener("change", onChange);
+    mobileMql.addEventListener("change", onChange);
+    
+    return () => {
+      tabletMql.removeEventListener("change", onChange);
+      mobileMql.removeEventListener("change", onChange);
+    };
+  }, []);
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [filteredClasses, setFilteredClasses] = useState<ClassRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -839,7 +859,7 @@ const Classes = () => {
                   </div>
 
                   {/* Classes Table/Cards */}
-                  {isMobile ? (
+            {isTabletOrMobile ? (
                     <div className="space-y-3">
                       {currentClasses.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground text-sm">
