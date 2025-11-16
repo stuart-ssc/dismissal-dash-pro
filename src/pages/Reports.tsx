@@ -131,21 +131,21 @@ const Reports = () => {
   return (
     <>
       <SEO />
-      <main className="flex-1 p-6 space-y-6">
+      <main className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Mode Usage Reports Card */}
         <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur cursor-pointer transition-all hover:shadow-lg" onClick={() => navigate('/dashboard/reports/mode-usage')}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
               <TrendingUp className="h-5 w-5" />
               Mode Usage Reports
               <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs md:text-sm">
               Detailed analytics on teacher mode usage patterns
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
+          <CardContent className="p-4 md:p-6 pt-0">
+            <p className="text-xs md:text-sm text-muted-foreground">
               View comprehensive reports on how teachers are using different dismissal modes.
             </p>
           </CardContent>
@@ -153,25 +153,25 @@ const Reports = () => {
 
         {/* Dismissal Detail Report Card */}
         <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur cursor-pointer transition-all hover:shadow-lg" onClick={() => navigate('/dashboard/reports/detail')}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
               <ClipboardList className="h-5 w-5" />
               Dismissal Detail Report
               <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs md:text-sm">
               View every logged interaction for a day with filtering and search
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
+          <CardContent className="p-4 md:p-6 pt-0">
+            <p className="text-xs md:text-sm text-muted-foreground">
               See exactly how each student left the building, who marked absences, and all activities.
             </p>
           </CardContent>
         </Card>
         {/* Recent Dismissals Chart */}
         <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+          <CardHeader className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between pb-6">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
@@ -186,10 +186,10 @@ const Reports = () => {
                 )}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={dateRange.toString()} onValueChange={(value) => setDateRange(Number(value))}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Select range" />
                 </SelectTrigger>
                 <SelectContent>
@@ -203,7 +203,7 @@ const Reports = () => {
           <CardContent className="space-y-4">
             {/* Session Filters */}
             {academicSessions.length > 0 && (
-              <div className="p-4 bg-muted/30 rounded-lg border space-y-3">
+              <div className="p-3 md:p-4 bg-muted/30 rounded-lg border space-y-2 md:space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="session-filter" className="text-sm font-medium">
@@ -262,7 +262,7 @@ const Reports = () => {
               </div>
             )}
 
-            <div className="h-[300px] w-full relative overflow-hidden">
+            <div className="h-[250px] md:h-[300px] w-full relative overflow-hidden">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -348,62 +348,113 @@ const Reports = () => {
               </div>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Start Time</TableHead>
-                      <TableHead>End Time</TableHead>
-                      <TableHead>Car Line</TableHead>
-                      <TableHead>Walker</TableHead>
-                      <TableHead>Bus</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                {isMobile ? (
+                  <div className="space-y-3">
                     {dismissalLogs.data.map((run) => (
-                      <TableRow key={run.id}>
-                        <TableCell className="font-medium">
-                          {format(new Date(run.date), "MMM d, yyyy")}
-                        </TableCell>
-                        <TableCell>{formatTime(run.scheduled_start_time)}</TableCell>
-                        <TableCell>{formatTime(run.ended_at)}</TableCell>
-                        <TableCell>
-                          {run.car_line_completed_at 
-                            ? formatDuration(run.scheduled_start_time, run.car_line_completed_at)
-                            : "--"
-                          }
-                        </TableCell>
-                        <TableCell>
-                          {run.walker_completed_at 
-                            ? formatDuration(run.scheduled_start_time, run.walker_completed_at)
-                            : "--"
-                          }
-                        </TableCell>
-                        <TableCell>
-                          {run.bus_completed_at 
-                            ? formatDuration(run.scheduled_start_time, run.bus_completed_at)
-                            : "--"
-                          }
-                        </TableCell>
-                        <TableCell>{getStatusBadge(run.status)}</TableCell>
-                      </TableRow>
+                      <Card key={run.id} className="border">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-base">
+                                {format(new Date(run.date), "MMM d, yyyy")}
+                              </CardTitle>
+                              <CardDescription className="text-xs mt-1">
+                                {formatTime(run.scheduled_start_time)} - {formatTime(run.ended_at)}
+                              </CardDescription>
+                            </div>
+                            {getStatusBadge(run.status)}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div className="grid grid-cols-3 gap-2 text-sm">
+                            <div>
+                              <span className="text-muted-foreground text-xs block mb-1">Car Line</span>
+                              <p className="font-medium">
+                                {run.car_line_completed_at 
+                                  ? formatDuration(run.scheduled_start_time, run.car_line_completed_at)
+                                  : "--"}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground text-xs block mb-1">Walker</span>
+                              <p className="font-medium">
+                                {run.walker_completed_at 
+                                  ? formatDuration(run.scheduled_start_time, run.walker_completed_at)
+                                  : "--"}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground text-xs block mb-1">Bus</span>
+                              <p className="font-medium">
+                                {run.bus_completed_at 
+                                  ? formatDuration(run.scheduled_start_time, run.bus_completed_at)
+                                  : "--"}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Start Time</TableHead>
+                        <TableHead>End Time</TableHead>
+                        <TableHead>Car Line</TableHead>
+                        <TableHead>Walker</TableHead>
+                        <TableHead>Bus</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dismissalLogs.data.map((run) => (
+                        <TableRow key={run.id}>
+                          <TableCell className="font-medium">
+                            {format(new Date(run.date), "MMM d, yyyy")}
+                          </TableCell>
+                          <TableCell>{formatTime(run.scheduled_start_time)}</TableCell>
+                          <TableCell>{formatTime(run.ended_at)}</TableCell>
+                          <TableCell>
+                            {run.car_line_completed_at 
+                              ? formatDuration(run.scheduled_start_time, run.car_line_completed_at)
+                              : "--"
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {run.walker_completed_at 
+                              ? formatDuration(run.scheduled_start_time, run.walker_completed_at)
+                              : "--"
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {run.bus_completed_at 
+                              ? formatDuration(run.scheduled_start_time, run.bus_completed_at)
+                              : "--"
+                            }
+                          </TableCell>
+                          <TableCell>{getStatusBadge(run.status)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-4">
-                    <p className="text-sm text-muted-foreground">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-4">
+                    <p className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
                       Page {currentPage} of {totalPages} ({dismissalLogs.totalCount} total)
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full md:w-auto">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
+                        className="flex-1 md:flex-none"
                       >
                         Previous
                       </Button>
@@ -412,6 +463,7 @@ const Reports = () => {
                         size="sm"
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                         disabled={currentPage === totalPages}
+                        className="flex-1 md:flex-none"
                       >
                         Next
                       </Button>
