@@ -458,14 +458,19 @@ export default function Absences() {
         {/* Current Absences Section */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-primary" />
-                <CardTitle>Current Absences</CardTitle>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                  <CardTitle>Current Absences</CardTitle>
+                </div>
+                <CardDescription className="mt-1.5">
+                  Manage student absence records
+                </CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Select value={absenceFilter} onValueChange={(value: any) => setAbsenceFilter(value)}>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-full sm:w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -476,9 +481,6 @@ export default function Absences() {
                 </Select>
               </div>
             </div>
-            <CardDescription>
-              Manage student absence records
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
