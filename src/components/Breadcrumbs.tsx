@@ -36,7 +36,7 @@ export function Breadcrumbs() {
   if (pathnames.length <= 1) return null;
 
   return (
-    <div className="px-4 md:px-6 py-2 md:py-3 border-b bg-card/30 backdrop-blur-sm">
+    <div className="px-4 md:px-6 py-2 md:py-3 border-b bg-card/30 backdrop-blur-sm max-w-full overflow-x-hidden">
       <Breadcrumb>
         <BreadcrumbList className="text-sm md:text-base">
           <BreadcrumbItem>

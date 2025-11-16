@@ -35,9 +35,9 @@ export default function AdminLayout() {
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex overflow-x-hidden">
         <AdminSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 min-w-0 flex flex-col">
           <DashboardHeader />
           <Breadcrumbs />
           <Outlet />
