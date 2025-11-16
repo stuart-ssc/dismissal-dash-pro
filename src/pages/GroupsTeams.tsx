@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Download, MoreHorizontal, Settings } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { convertToCSV, downloadCSV, formatDateForCSV } from "@/lib/csvExport";
 import {
   DropdownMenu,
@@ -39,7 +38,6 @@ import { ManageGroupStudentsDialog } from "@/components/ManageGroupStudentsDialo
 import { ManageGroupManagersDialog } from "@/components/ManageGroupManagersDialog";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
 import { GroupMigrationDialog } from "@/components/GroupMigrationDialog";
-import { BulkSessionAssigner } from "@/components/BulkSessionAssigner";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -79,8 +77,6 @@ export default function SpecialUseGroups() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [schoolId, setSchoolId] = useState<number | null>(null);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
-  const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -156,25 +152,6 @@ export default function SpecialUseGroups() {
   const filteredGroups = groups.filter((group) =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedGroupIds(new Set(filteredGroups.map(g => g.id)));
-    } else {
-      setSelectedGroupIds(new Set());
-    }
-  };
-
-  const handleSelectGroup = (groupId: string, checked: boolean) => {
-    const newSelected = new Set(selectedGroupIds);
-    if (checked) {
-      newSelected.add(groupId);
-    } else {
-      newSelected.delete(groupId);
-    }
-    setSelectedGroupIds(newSelected);
-  };
-
 
   const handleExportCSV = () => {
     if (filteredGroups.length === 0) {
@@ -326,32 +303,6 @@ export default function SpecialUseGroups() {
           </CardDescription>
         </CardHeader>
           <CardContent>
-
-            {/* Bulk Selection Toolbar */}
-            {selectedGroupIds.size > 0 && (
-              <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-lg mb-6">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium">
-                    {selectedGroupIds.size} {selectedGroupIds.size === 1 ? "group" : "groups"} selected
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedGroupIds(new Set())}
-                  >
-                    Clear Selection
-                  </Button>
-                </div>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setBulkAssignDialogOpen(true)}
-                >
-                  Assign Session
-                </Button>
-              </div>
-            )}
-
             {/* Groups Table */}
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading groups...</div>
@@ -365,12 +316,6 @@ export default function SpecialUseGroups() {
                   <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedGroupIds.size === filteredGroups.length && filteredGroups.length > 0}
-                      onCheckedChange={handleSelectAll}
-                    />
-                  </TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Type</TableHead>
                   <TableHead className="text-center">Students</TableHead>
@@ -382,12 +327,6 @@ export default function SpecialUseGroups() {
             <TableBody>
               {filteredGroups.map((group) => (
                 <TableRow key={group.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedGroupIds.has(group.id)}
-                      onCheckedChange={(checked) => handleSelectGroup(group.id, checked as boolean)}
-                    />
-                  </TableCell>
                   <TableCell className="font-medium">{group.name}</TableCell>
                   <TableCell className="hidden sm:table-cell">{getGroupTypeBadge(group.group_type)}</TableCell>
                   <TableCell className="text-center">{group.student_count}</TableCell>
@@ -516,18 +455,6 @@ export default function SpecialUseGroups() {
           }}
         />
       )}
-
-      <BulkSessionAssigner
-        open={bulkAssignDialogOpen}
-        onOpenChange={setBulkAssignDialogOpen}
-        selectedIds={Array.from(selectedGroupIds)}
-        entityType="group"
-        sessions={academicSessions}
-        onSuccess={() => {
-          setSelectedGroupIds(new Set());
-          refetch();
-        }}
-      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
