@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSEO } from "@/hooks/useSEO";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -204,6 +205,7 @@ const Classes = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const SEO = useSEO();
+  const isMobile = useIsMobile();
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [filteredClasses, setFilteredClasses] = useState<ClassRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -652,16 +654,16 @@ const Classes = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 w-full flex">
         
         <div className="flex-1 flex flex-col">
-          <main className="flex-1 p-6 space-y-6">
+          <main className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Classes</CardTitle>
+                  <CardTitle className="text-xs md:text-sm font-medium">Total Classes</CardTitle>
                   <GraduationCap className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{classes.length}</div>
+                  <div className="text-xl md:text-2xl font-bold">{classes.length}</div>
                   <p className="text-xs text-muted-foreground">
                     Total classes offered
                   </p>
@@ -670,11 +672,11 @@ const Classes = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                  <CardTitle className="text-xs md:text-sm font-medium">Total Students</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-xl md:text-2xl font-bold">
                     {classes.reduce((sum, cls) => sum + cls.student_count, 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -685,11 +687,11 @@ const Classes = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
+                  <CardTitle className="text-xs md:text-sm font-medium">Total Teachers</CardTitle>
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-xl md:text-2xl font-bold">
                     {availableTeachers.length}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -700,11 +702,11 @@ const Classes = () => {
 
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Average Class Size</CardTitle>
+                  <CardTitle className="text-xs md:text-sm font-medium">Average Class Size</CardTitle>
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
+                  <div className="text-xl md:text-2xl font-bold">
                     {classes.length > 0 
                       ? Math.round(classes.reduce((sum, cls) => sum + cls.student_count, 0) / classes.length)
                       : 0
@@ -720,14 +722,14 @@ const Classes = () => {
             {/* Classes Management */}
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               <CardHeader>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                   <div>
-                    <CardTitle>Classes Management</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-lg md:text-xl">Classes Management</CardTitle>
+                    <CardDescription className="text-xs md:text-sm">
                       Manage school classes, teachers, and student assignments
                     </CardDescription>
                   </div>
-                  <Button onClick={() => setShowAddDialog(true)}>
+                  <Button onClick={() => setShowAddDialog(true)} className="w-full md:w-auto">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Class
                   </Button>
@@ -736,7 +738,7 @@ const Classes = () => {
               <CardContent>
                 <div className="space-y-4">
                   {/* Search and Filters */}
-                  <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                       <Input
@@ -772,58 +774,28 @@ const Classes = () => {
                     </DropdownMenu>
                   </div>
 
-                  {/* Classes Table */}
-                  <div className="rounded-md border bg-background/50">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border hover:bg-muted/50">
-                          <TableHead 
-                            className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('class_name', sortBy === 'class_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                          >
-                            Class Name
-                            {sortBy === 'class_name' && (
-                              <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                            )}
-                          </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('teacher_name', sortBy === 'teacher_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                          >
-                            Teacher
-                            {sortBy === 'teacher_name' && (
-                              <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                            )}
-                          </TableHead>
-                          <TableHead 
-                            className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => handleSortChange('grade_level', sortBy === 'grade_level' && sortOrder === 'asc' ? 'desc' : 'asc')}
-                          >
-                            Grade
-                            {sortBy === 'grade_level' && (
-                              <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                            )}
-                          </TableHead>
-                          <TableHead className="w-[50px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {currentClasses.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                              {searchTerm || filterGrade !== 'all' 
-                                ? 'No classes match your search criteria.' 
-                                : 'No classes found. Add your first class to get started.'
-                              }
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          currentClasses.map((classRecord) => (
-                            <TableRow key={classRecord.id} className="border-border hover:bg-muted/30">
-                              <TableCell className="font-medium">{classRecord.class_name}</TableCell>
-                              <TableCell>{classRecord.teacher_name || 'No teacher assigned'}</TableCell>
-                              <TableCell>{getGradeBadge(classRecord.grade_level)}</TableCell>
-                              <TableCell>
+                  {/* Classes Table/Cards */}
+                  {isMobile ? (
+                    <div className="space-y-3">
+                      {currentClasses.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground text-sm">
+                          {searchTerm || filterGrade !== 'all' 
+                            ? 'No classes match your search criteria.' 
+                            : 'No classes found. Add your first class to get started.'}
+                        </div>
+                      ) : (
+                        currentClasses.map((classRecord) => (
+                          <Card key={classRecord.id} className="border">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <CardTitle className="text-base">
+                                    {classRecord.class_name}
+                                  </CardTitle>
+                                  <CardDescription className="text-xs mt-1">
+                                    {classRecord.teacher_name || 'No teacher assigned'}
+                                  </CardDescription>
+                                </div>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -852,26 +824,120 @@ const Classes = () => {
                                     />
                                   </DropdownMenuContent>
                                 </DropdownMenu>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Grade:</span>
+                                {getGradeBadge(classRecord.grade_level)}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border bg-background/50">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border hover:bg-muted/50">
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/30"
+                              onClick={() => handleSortChange('class_name', sortBy === 'class_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
+                            >
+                              Class Name
+                              {sortBy === 'class_name' && (
+                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/30"
+                              onClick={() => handleSortChange('teacher_name', sortBy === 'teacher_name' && sortOrder === 'asc' ? 'desc' : 'asc')}
+                            >
+                              Teacher
+                              {sortBy === 'teacher_name' && (
+                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </TableHead>
+                            <TableHead 
+                              className="cursor-pointer hover:bg-muted/30"
+                              onClick={() => handleSortChange('grade_level', sortBy === 'grade_level' && sortOrder === 'asc' ? 'desc' : 'asc')}
+                            >
+                              Grade
+                              {sortBy === 'grade_level' && (
+                                <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                              )}
+                            </TableHead>
+                            <TableHead className="w-[50px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {currentClasses.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                {searchTerm || filterGrade !== 'all' 
+                                  ? 'No classes match your search criteria.' 
+                                  : 'No classes found. Add your first class to get started.'
+                                }
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                          ) : (
+                            currentClasses.map((classRecord) => (
+                              <TableRow key={classRecord.id} className="border-border hover:bg-muted/30">
+                                <TableCell className="font-medium">{classRecord.class_name}</TableCell>
+                                <TableCell>{classRecord.teacher_name || 'No teacher assigned'}</TableCell>
+                                <TableCell>{getGradeBadge(classRecord.grade_level)}</TableCell>
+                                <TableCell>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="bg-background border border-border shadow-lg z-50" align="end">
+                                      <DropdownMenuItem onClick={() => setEditingRecord(classRecord)}>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setManagingClass(classRecord)}>
+                                        <Users className="h-4 w-4 mr-2" />
+                                        Manage Students
+                                      </DropdownMenuItem>
+                                      <AssignClassCoverageDialog
+                                        classId={classRecord.id}
+                                        className={classRecord.class_name}
+                                        availableTeachers={availableTeachers.map(t => ({
+                                          id: t.id,
+                                          first_name: t.first_name,
+                                          last_name: t.last_name,
+                                          email: t.email
+                                        }))}
+                                        onCoverageAssigned={fetchClasses}
+                                      />
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <p className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
                         Showing {startIndex + 1} to {Math.min(endIndex, filteredClasses.length)} of {filteredClasses.length} classes
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full md:w-auto justify-center">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setCurrentPage(currentPage - 1)}
                           disabled={currentPage === 1}
+                          className="flex-1 md:flex-none"
                         >
                           Previous
                         </Button>
@@ -883,6 +949,7 @@ const Classes = () => {
                           size="sm"
                           onClick={() => setCurrentPage(currentPage + 1)}
                           disabled={currentPage === totalPages}
+                          className="flex-1 md:flex-none"
                         >
                           Next
                         </Button>
