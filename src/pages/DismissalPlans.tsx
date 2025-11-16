@@ -19,10 +19,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, MoreHorizontal, Edit, Trash2, Settings, CalendarDays, Users, Clock, CheckCircle, Copy } from "lucide-react";
+import { Plus, MoreHorizontal, Edit, Trash2, Settings, CalendarDays, Users, Clock, CheckCircle, Copy, ChevronDown } from "lucide-react";
 import { TimePicker } from "@/components/ui/time-picker";
 import { format, parseISO } from "date-fns";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface DismissalPlan {
   id: string;
@@ -69,6 +71,8 @@ export default function DismissalPlans() {
   const [schoolDismissalTime, setSchoolDismissalTime] = useState<string>('');
   const [showTimeWarningDialog, setShowTimeWarningDialog] = useState(false);
   const [pendingPlanData, setPendingPlanData] = useState<PlanFormData | null>(null);
+  const isMobile = useIsMobile();
+  const [statsOpen, setStatsOpen] = useState(false);
   const itemsPerPage = 10;
 
   const form = useForm<PlanFormData>({
@@ -666,103 +670,235 @@ export default function DismissalPlans() {
 
       <main className="flex-1 overflow-auto p-6">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Plans</CardTitle>
-                <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{plans.length}</div>
-              </CardContent>
-            </Card>
+          {isMobile ? (
+            <Collapsible open={statsOpen} onOpenChange={setStatsOpen} className="mb-6">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center justify-between w-full px-4 py-3 bg-card border rounded-lg hover:bg-accent transition-colors">
+                  <span className="font-semibold text-lg">Stats</span>
+                  <ChevronDown className={`h-5 w-5 transition-transform ${statsOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3 space-y-3">
+                <Card className="w-full max-w-full">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Plans</CardTitle>
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{plans.length}</div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Plans</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {plans.filter(p => p.status === 'active').length}
-                </div>
-              </CardContent>
-            </Card>
+                <Card className="w-full max-w-full">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Active Plans</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {plans.filter(p => p.status === 'active').length}
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Default Plan</CardTitle>
-                <Settings className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {plans.find(p => p.is_default)?.name || 'None'}
-                </div>
-              </CardContent>
-            </Card>
+                <Card className="w-full max-w-full">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Default Plan</CardTitle>
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {plans.find(p => p.is_default)?.name || 'None'}
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {plans.reduce((sum, p) => sum + (p.groups_count || 0), 0)}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <Card className="w-full max-w-full">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {plans.reduce((sum, p) => sum + (p.groups_count || 0), 0)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Plans</CardTitle>
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{plans.length}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Plans</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {plans.filter(p => p.status === 'active').length}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Default Plan</CardTitle>
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {plans.find(p => p.is_default)?.name || 'None'}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {plans.reduce((sum, p) => sum + (p.groups_count || 0), 0)}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Plans Management */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Dismissal Plans</CardTitle>
-                  <CardDescription>
-                    Create and manage dismissal plans for your school
-                  </CardDescription>
-                </div>
-                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                  <DialogTrigger asChild>
-                    <Button
-                      onClick={() => {
-                        setEditingPlan(null);
-                        form.reset({
-                          name: "",
-                          description: "",
-                          dismissal_time: schoolDismissalTime,
-                          is_default: false,
-                          status: 'active',
-                          start_date: "",
-                          end_date: "",
-                        });
-                      }}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Plan
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader>
-                      <DialogTitle>
-                        {editingPlan ? 'Edit Dismissal Plan' : 'Add New Dismissal Plan'}
-                      </DialogTitle>
-                      <DialogDescription>
-                        Create a new dismissal plan with specific settings and schedules.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <CardTitle>Dismissal Plans</CardTitle>
+              <CardDescription>
+                Create and manage dismissal plans for your school
+              </CardDescription>
+              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                <DialogTrigger asChild>
+                  <Button
+                    className="w-full sm:w-auto mt-3"
+                    onClick={() => {
+                      setEditingPlan(null);
+                      form.reset({
+                        name: "",
+                        description: "",
+                        dismissal_time: schoolDismissalTime,
+                        is_default: false,
+                        status: 'active',
+                        start_date: "",
+                        end_date: "",
+                      });
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Plan
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[600px]">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingPlan ? 'Edit Dismissal Plan' : 'Add New Dismissal Plan'}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Create a new dismissal plan with specific settings and schedules.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Plan Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter plan name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Enter plan description" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="dismissal_time"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Dismissal Time</FormLabel>
+                            <FormControl>
+                              <TimePicker
+                                value={field.value}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select 
+                              value={field.value} 
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">Inactive</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
-                          name="name"
+                          name="start_date"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Plan Name</FormLabel>
+                              <FormLabel>Start Date</FormLabel>
                               <FormControl>
-                                <Input placeholder="Enter plan name" {...field} />
+                                <Input type="date" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -771,143 +907,70 @@ export default function DismissalPlans() {
 
                         <FormField
                           control={form.control}
-                          name="description"
+                          name="end_date"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Description</FormLabel>
+                              <FormLabel>End Date</FormLabel>
                               <FormControl>
-                                <Textarea 
-                                  placeholder="Enter plan description" 
-                                  {...field} 
-                                />
+                                <Input type="date" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
+                      </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="dismissal_time"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Dismissal Time</FormLabel>
-                              <FormControl>
-                                <TimePicker
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  placeholder={schoolDismissalTime || "Pick dismissal time"}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                      <FormField
+                        control={form.control}
+                        name="is_default"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Set as default plan
+                              </FormLabel>
+                              <p className="text-sm text-muted-foreground">
+                                This plan will be used as the default dismissal plan
+                              </p>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
 
-                          <FormField
-                            control={form.control}
-                            name="status"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Status</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="inactive">Inactive</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowAddDialog(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit">
+                          {editingPlan ? 'Update Plan' : 'Create Plan'}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="start_date"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Start Date</FormLabel>
-                                <FormControl>
-                                  <Input type="date" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name="end_date"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>End Date</FormLabel>
-                                <FormControl>
-                                  <Input type="date" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <FormField
-                          control={form.control}
-                          name="is_default"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <div className="space-y-1 leading-none">
-                                <FormLabel>
-                                  Set as default plan
-                                </FormLabel>
-                                <p className="text-sm text-muted-foreground">
-                                  This plan will be used as the default dismissal plan
-                                </p>
-                              </div>
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setShowAddDialog(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button type="submit">
-                            {editingPlan ? 'Update Plan' : 'Create Plan'}
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              <div className="flex gap-4 mt-4">
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
                 <Input
                   placeholder="Search plans..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="max-w-sm"
+                  className="w-full sm:max-w-sm"
                 />
                 <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-full sm:w-32">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -917,67 +980,22 @@ export default function DismissalPlans() {
                   </SelectContent>
                 </Select>
               </div>
-            </CardHeader>
 
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => {
-                        if (sortBy === 'name') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('name');
-                          setSortOrder('asc');
-                        }
-                      }}
-                    >
-                      Plan Name
-                    </TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Dismissal Time</TableHead>
-                    <TableHead>Date Range</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Groups</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentPlans.map((plan) => (
-                    <TableRow key={plan.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          {plan.name}
+              {/* Mobile Card Layout */}
+              <div className="md:hidden space-y-3">
+                {currentPlans.map((plan) => (
+                  <Card key={plan.id} className="overflow-hidden">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-base">{plan.name}</CardTitle>
                           {plan.is_default && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Default Plan
-                            </div>
+                            <Badge variant="outline" className="mt-1">Default Plan</Badge>
                           )}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {getStatusBadge(plan.status)}
+                          </div>
                         </div>
-                      </TableCell>
-                      <TableCell>{plan.description || '-'}</TableCell>
-                      <TableCell>
-                        {plan.dismissal_time ? (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {format(new Date(`2000-01-01T${plan.dismissal_time}`), 'h:mm a')}
-                          </div>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {plan.start_date && plan.end_date ? (
-                          <div className="text-sm">
-                            {format(parseISO(plan.start_date), 'MMM dd')} - {format(parseISO(plan.end_date), 'MMM dd, yyyy')}
-                          </div>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(plan.status)}
-                      </TableCell>
-                      <TableCell>{plan.groups_count || 0}</TableCell>
-                      <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -985,38 +1003,149 @@ export default function DismissalPlans() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(plan)}
-                            >
+                            <DropdownMenuItem onClick={() => handleEdit(plan)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDuplicate(plan)}
-                            >
+                            <DropdownMenuItem onClick={() => handleDuplicate(plan)}>
                               <Copy className="mr-2 h-4 w-4" />
                               Duplicate
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => navigate(`/dashboard/dismissal-plans/${plan.id}/groups`)}
-                            >
+                            <DropdownMenuItem onClick={() => navigate(`/dashboard/dismissal-plans/${plan.id}/groups`)}>
                               <Settings className="mr-2 h-4 w-4" />
                               Manage Groups
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(plan.id)}
-                              className="text-destructive"
-                            >
+                            <DropdownMenuItem onClick={() => handleDelete(plan.id)} className="text-destructive">
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </TableCell>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">Description</div>
+                          <div>{plan.description || '-'}</div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-muted-foreground">Dismissal Time</div>
+                            <div className="font-medium">
+                              {plan.dismissal_time ? format(new Date(`2000-01-01T${plan.dismissal_time}`), 'h:mm a') : '-'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Groups</div>
+                            <div className="font-medium">{plan.groups_count || 0}</div>
+                          </div>
+                        </div>
+                        {plan.start_date && plan.end_date && (
+                          <div>
+                            <div className="text-muted-foreground">Date Range</div>
+                            <div className="text-xs">
+                              {format(parseISO(plan.start_date), 'MMM dd')} - {format(parseISO(plan.end_date), 'MMM dd, yyyy')}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden md:block border rounded-lg bg-background overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead 
+                        className="cursor-pointer"
+                        onClick={() => {
+                          if (sortBy === 'name') {
+                            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortBy('name');
+                            setSortOrder('asc');
+                          }
+                        }}
+                      >
+                        Plan Name
+                      </TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Dismissal Time</TableHead>
+                      <TableHead>Date Range</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Groups</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {currentPlans.map((plan) => (
+                      <TableRow key={plan.id}>
+                        <TableCell className="font-medium">
+                          <div>
+                            {plan.name}
+                            {plan.is_default && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Default Plan
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{plan.description || '-'}</TableCell>
+                        <TableCell>
+                          {plan.dismissal_time ? (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {format(new Date(`2000-01-01T${plan.dismissal_time}`), 'h:mm a')}
+                            </div>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {plan.start_date && plan.end_date ? (
+                            <div className="text-sm">
+                              {format(parseISO(plan.start_date), 'MMM dd')} - {format(parseISO(plan.end_date), 'MMM dd, yyyy')}
+                            </div>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(plan.status)}
+                        </TableCell>
+                        <TableCell>{plan.groups_count || 0}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(plan)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicate(plan)}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/dashboard/dismissal-plans/${plan.id}/groups`)}>
+                                <Settings className="mr-2 h-4 w-4" />
+                                Manage Groups
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(plan.id)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
               {filteredPlans.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
@@ -1026,18 +1155,19 @@ export default function DismissalPlans() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between space-x-2 py-4">
-                  <div className="text-sm text-muted-foreground">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4">
+                  <div className="text-sm text-muted-foreground w-full sm:w-auto text-center sm:text-left">
                     Showing {startIndex + 1} to {Math.min(endIndex, filteredPlans.length)} of {filteredPlans.length} plans
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 w-full sm:w-auto justify-center">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
                     >
-                      Previous
+                      <span className="hidden sm:inline">Previous</span>
+                      <span className="sm:hidden">Prev</span>
                     </Button>
                     <div className="text-sm">
                       Page {currentPage} of {totalPages}
