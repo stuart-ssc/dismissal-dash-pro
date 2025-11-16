@@ -15,11 +15,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Reports = () => {
   const SEO = useSEO();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [dateRange, setDateRange] = useState<number>(14); // Default to 14 days
   const [currentPage, setCurrentPage] = useState(1);
   const [schoolId, setSchoolId] = useState<number | null>(null);
