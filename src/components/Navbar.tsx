@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Menu } from "lucide-react";
@@ -119,11 +119,6 @@ const Navbar = () => {
                     </Link>
                   )}
                 </div>
-                <SheetClose asChild>
-                  <Button variant="outline" className="w-full mt-4">
-                    Close Menu
-                  </Button>
-                </SheetClose>
               </nav>
             </SheetContent>
           </Sheet>
