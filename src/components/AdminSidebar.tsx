@@ -1,4 +1,4 @@
-import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar, RefreshCw, GitMerge, LogOut, GraduationCap } from "lucide-react";
+import { Home, Users, UserCog, Settings, Menu, Bus, Shield, Building2, BarChart3, CalendarDays, ClipboardList, HelpCircle, UserX, Plane, Calendar, RefreshCw, GitMerge, LogOut, GraduationCap, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.svg";
@@ -81,6 +81,20 @@ export function AdminSidebar() {
         collapsible="icon"
       >
       <SidebarContent>
+        {/* Mobile close button */}
+        {isMobile && (
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <span className="text-sm font-medium">Menu</span>
+            <button
+              onClick={() => setOpenMobile(false)}
+              className="p-2 hover:bg-muted rounded-md transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        )}
+        
         <SidebarGroup>
           <div className={`flex items-center py-3 ${state === 'collapsed' ? 'justify-center px-1' : 'px-4'}`}>
             {state === 'collapsed' ? (
