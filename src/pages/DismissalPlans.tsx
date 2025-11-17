@@ -779,14 +779,202 @@ export default function DismissalPlans() {
           {/* Plans Management */}
           <Card>
             <CardHeader>
-              <CardTitle>Dismissal Plans</CardTitle>
-              <CardDescription>
-                Create and manage dismissal plans for your school
-              </CardDescription>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <CardTitle>Dismissal Plans</CardTitle>
+                  <CardDescription className="mt-2">
+                    Create and manage dismissal plans for your school
+                  </CardDescription>
+                </div>
+                
+                {/* Desktop button - shown on md and up */}
+                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                  <DialogTrigger asChild>
+                    <Button
+                      className="hidden md:flex shrink-0"
+                      onClick={() => {
+                        setEditingPlan(null);
+                        form.reset({
+                          name: "",
+                          description: "",
+                          dismissal_time: schoolDismissalTime,
+                          is_default: false,
+                          status: 'active',
+                          start_date: "",
+                          end_date: "",
+                        });
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Plan
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingPlan ? 'Edit Dismissal Plan' : 'Add New Dismissal Plan'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Create a new dismissal plan with specific settings and schedules.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Plan Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter plan name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Description</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Enter plan description" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="dismissal_time"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Dismissal Time</FormLabel>
+                              <FormControl>
+                                <TimePicker
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="status"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Status</FormLabel>
+                              <Select 
+                                value={field.value} 
+                                onValueChange={field.onChange}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="active">Active</SelectItem>
+                                  <SelectItem value="inactive">Inactive</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="start_date"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Start Date</FormLabel>
+                                <FormControl>
+                                  <Input type="date" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="end_date"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>End Date</FormLabel>
+                                <FormControl>
+                                  <Input type="date" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="is_default"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                  Set as Default Plan
+                                </FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                  This plan will be used for all dismissals unless another plan is specified
+                                </p>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex justify-end gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setShowAddDialog(false);
+                              setEditingPlan(null);
+                              form.reset();
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit">
+                            {editingPlan ? 'Update Plan' : 'Create Plan'}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              {/* Mobile button - shown below md only */}
               <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                 <DialogTrigger asChild>
                   <Button
-                    className="w-full sm:w-auto mt-3"
+                    className="md:hidden w-full mt-3"
                     onClick={() => {
                       setEditingPlan(null);
                       form.reset({
@@ -804,160 +992,6 @@ export default function DismissalPlans() {
                     Add Plan
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px]">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingPlan ? 'Edit Dismissal Plan' : 'Add New Dismissal Plan'}
-                    </DialogTitle>
-                    <DialogDescription>
-                      Create a new dismissal plan with specific settings and schedules.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Plan Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter plan name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Description</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                placeholder="Enter plan description" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="dismissal_time"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Dismissal Time</FormLabel>
-                            <FormControl>
-                              <TimePicker
-                                value={field.value}
-                                onChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Status</FormLabel>
-                            <Select 
-                              value={field.value} 
-                              onValueChange={field.onChange}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="start_date"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Start Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="end_date"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>End Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="is_default"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel>
-                                Set as default plan
-                              </FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                This plan will be used as the default dismissal plan
-                              </p>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowAddDialog(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button type="submit">
-                          {editingPlan ? 'Update Plan' : 'Create Plan'}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </DialogContent>
               </Dialog>
             </CardHeader>
 
