@@ -82,8 +82,8 @@ export function AdminSidebar() {
       >
       <SidebarContent>
         <SidebarGroup>
-          <div className={`flex items-center py-3 ${state === 'collapsed' ? 'justify-center px-1' : 'justify-between px-4'}`}>
-            {state === 'collapsed' ? (
+          <div className={`flex items-center py-3 ${state === 'collapsed' && !isMobile ? 'justify-center px-1' : 'justify-between px-4'}`}>
+            {state === 'collapsed' && !isMobile ? (
               <img 
                 src={logoMark}
                 alt="Dismissal Pro" 
@@ -99,7 +99,7 @@ export function AdminSidebar() {
             )}
             
             {/* Close button - right side, mobile only */}
-            {isMobile && state !== 'collapsed' && (
+            {isMobile && (
               <button
                 onClick={() => setOpenMobile(false)}
                 className="p-2 hover:bg-muted rounded-md transition-colors"
