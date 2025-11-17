@@ -15,7 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 
-import { Bus, PersonStanding, Car, Users, Plus, Search, MoreHorizontal, Edit, UserPlus, Trash2, GraduationCap } from "lucide-react";
+import { Bus, PersonStanding, Car, Users, Plus, Search, MoreHorizontal, Edit, UserPlus, Trash2, GraduationCap, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -138,6 +141,8 @@ const Transportation = () => {
   const { user, userRole, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const SEO = useSEO();
+  const isMobile = useIsMobile();
+  const [statsOpen, setStatsOpen] = useState(false);
   const [transportation, setTransportation] = useState<TransportationRecord[]>([]);
   const [filteredTransportation, setFilteredTransportation] = useState<TransportationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -2124,63 +2129,131 @@ const Transportation = () => {
         <div className="flex-1 flex flex-col">
           <main className="flex-1 p-6 space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Buses</CardTitle>
-                  <Bus className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{transportation.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Total buses in fleet
-                  </p>
-                </CardContent>
-              </Card>
+            {isMobile ? (
+              <Collapsible open={statsOpen} onOpenChange={setStatsOpen}>
+                <CollapsibleTrigger asChild>
+                  <button className="flex items-center justify-between w-full px-4 py-3 bg-card border rounded-lg hover:bg-accent transition-colors shadow-elevated">
+                    <span className="font-semibold text-lg">Stats</span>
+                    <ChevronDown className={`h-5 w-5 transition-transform ${statsOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 space-y-3">
+                  <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Total Buses</CardTitle>
+                      <Bus className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{transportation.length}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Total buses in fleet
+                      </p>
+                    </CardContent>
+                  </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Walker Locations</CardTitle>
-                  <PersonStanding className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{walkerLocations.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Total walker pickup locations
-                  </p>
-                </CardContent>
-              </Card>
+                  <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Walker Locations</CardTitle>
+                      <PersonStanding className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{walkerLocations.length}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Total walker pickup locations
+                      </p>
+                    </CardContent>
+                  </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Car Lines</CardTitle>
-                  <Car className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{carLines.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Total car pickup lines
-                  </p>
-                </CardContent>
-              </Card>
+                  <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Car Lines</CardTitle>
+                      <Car className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{carLines.length}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Total car pickup lines
+                      </p>
+                    </CardContent>
+                  </Card>
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Assigned Students</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {transportation.filter(bus => bus.status === 'active').reduce((sum, bus) => sum + bus.students_count, 0) +
-                     walkerLocations.filter(location => location.status === 'active').reduce((sum, location) => sum + location.students_count, 0) +
-                     carLines.filter(line => line.status === 'active').reduce((sum, line) => sum + line.students_count, 0)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Total students with transportation
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                  <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur w-full">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Assigned Students</CardTitle>
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {transportation.filter(bus => bus.status === 'active').reduce((sum, bus) => sum + bus.students_count, 0) +
+                         walkerLocations.filter(location => location.status === 'active').reduce((sum, location) => sum + location.students_count, 0) +
+                         carLines.filter(line => line.status === 'active').reduce((sum, line) => sum + line.students_count, 0)}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Total students with transportation
+                      </p>
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Buses</CardTitle>
+                    <Bus className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{transportation.length}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Total buses in fleet
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Walker Locations</CardTitle>
+                    <PersonStanding className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{walkerLocations.length}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Total walker pickup locations
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Car Lines</CardTitle>
+                    <Car className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{carLines.length}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Total car pickup lines
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Assigned Students</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {transportation.filter(bus => bus.status === 'active').reduce((sum, bus) => sum + bus.students_count, 0) +
+                       walkerLocations.filter(location => location.status === 'active').reduce((sum, location) => sum + location.students_count, 0) +
+                       carLines.filter(line => line.status === 'active').reduce((sum, line) => sum + line.students_count, 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Total students with transportation
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Transportation Management with Tabs */}
             <Tabs defaultValue="buses" className="space-y-0">
@@ -2188,34 +2261,38 @@ const Transportation = () => {
               <div className="bg-card border border-border rounded-lg shadow-elevated overflow-hidden">
                 {/* Tab List positioned at top of container */}
                 <div className="bg-muted/30 border-b border-border px-6 py-4">
-                  <TabsList className="grid w-full max-w-[660px] grid-cols-4 h-12 p-1 bg-background/80 border border-border/50 rounded-md shadow-sm">
+                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto sm:h-12 p-1 bg-background/80 border border-border/50 rounded-md shadow-sm">
                     <TabsTrigger 
                       value="buses" 
-                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                      className="flex items-center justify-center gap-2 h-10 px-2 sm:px-4 text-xs sm:text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
                     >
                       <Bus className="h-4 w-4" />
-                      Buses
+                      <span className="hidden sm:inline">Buses</span>
+                      <span className="sm:hidden">Bus</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="walkers" 
-                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                      className="flex items-center justify-center gap-2 h-10 px-2 sm:px-4 text-xs sm:text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
                     >
                       <PersonStanding className="h-4 w-4" />
-                      Walkers
+                      <span className="hidden sm:inline">Walkers</span>
+                      <span className="sm:hidden">Walk</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="car-lines" 
-                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                      className="flex items-center justify-center gap-2 h-10 px-2 sm:px-4 text-xs sm:text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
                     >
                       <Car className="h-4 w-4" />
-                      Car Lines
+                      <span className="hidden sm:inline">Car Lines</span>
+                      <span className="sm:hidden">Car</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="activities" 
-                      className="flex items-center gap-2 h-10 px-4 text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
+                      className="flex items-center justify-center gap-2 h-10 px-2 sm:px-4 text-xs sm:text-sm font-semibold rounded-sm transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md hover:bg-accent/60 hover:text-accent-foreground"
                     >
                       <GraduationCap className="h-4 w-4" />
-                      Activities
+                      <span className="hidden sm:inline">Activities</span>
+                      <span className="sm:hidden">Act</span>
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -2223,35 +2300,35 @@ const Transportation = () => {
                 {/* Buses Tab */}
                 <TabsContent value="buses" className="m-0 border-0 p-0">
                   <div className="p-6">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
                       <div>
                         <h3 className="text-lg font-semibold">Bus Management</h3>
                         <p className="text-sm text-muted-foreground">
                           Manage buses, drivers, and student assignments
                         </p>
                       </div>
-                      <Button onClick={() => setShowAddDialog(true)}>
+                      <Button onClick={() => setShowAddDialog(true)} className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Bus
                       </Button>
                     </div>
                     <div className="space-y-4">
                       {/* Search and Filters */}
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1 w-full">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                           <Input
                             placeholder="Search buses..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10"
+                            className="pl-10 w-full"
                           />
                         </div>
                         <Select 
                           value={filterStatus} 
                           onValueChange={(value) => setFilterStatus(value as 'all' | 'active' | 'inactive' | 'maintenance')}
                         >
-                          <SelectTrigger className="w-[180px]">
+                          <SelectTrigger className="w-full sm:w-[180px]">
                             <SelectValue placeholder="Filter by status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -2263,8 +2340,64 @@ const Transportation = () => {
                         </Select>
                       </div>
 
-                      {/* Bus Table */}
-                      <div className="border rounded-md">
+                      {/* Mobile Card Layout */}
+                      <div className="md:hidden space-y-3">
+                        {filteredTransportation.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((bus) => (
+                          <Card key={bus.id}>
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <CardTitle className="text-base">Bus {bus.bus_number}</CardTitle>
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    <Badge variant={bus.status === 'active' ? 'default' : bus.status === 'maintenance' ? 'destructive' : 'secondary'}
+                                           className={bus.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}>
+                                      {bus.status === 'active' ? 'Active' : bus.status.charAt(0).toUpperCase() + bus.status.slice(1)}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0 shrink-0">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setEditingRecord(bus)}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleManageStudents(bus)}>
+                                      <UserPlus className="mr-2 h-4 w-4" />
+                                      Manage Students
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDeleteBus(bus)} className="text-destructive">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="space-y-2 text-sm">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <div className="text-muted-foreground">Driver</div>
+                                    <div className="font-medium">{`${bus.driver_first_name || ''} ${bus.driver_last_name || ''}`.trim() || "Not assigned"}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Students</div>
+                                    <div className="font-medium">{bus.students_count || 0}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Desktop Table */}
+                      <div className="hidden md:block border rounded-md">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -2326,34 +2459,34 @@ const Transportation = () => {
                 {/* Walkers Tab */}
                 <TabsContent value="walkers" className="m-0 border-0 p-0">
                   <div className="p-6">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
                       <div>
                         <h3 className="text-lg font-semibold">Walker Locations Management</h3>
                         <p className="text-sm text-muted-foreground">
                           Organize and manage your school's walker pickup locations
                         </p>
                       </div>
-                      <Button onClick={() => setShowAddWalkerDialog(true)}>
+                      <Button onClick={() => setShowAddWalkerDialog(true)} className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Walker Location
                       </Button>
                     </div>
                     <div className="space-y-4">
                       {/* Search and Filters */}
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1 w-full">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                           <Input
                             placeholder="Search walker locations..."
                             value={walkerSearchTerm}
                             onChange={(e) => setWalkerSearchTerm(e.target.value)}
-                            className="pl-10"
+                            className="pl-10 w-full"
                           />
                         </div>
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="gap-2">
+                            <Button variant="outline" className="gap-2 w-full sm:w-auto">
                               Status: {walkerFilterStatus === 'all' ? 'All' : walkerFilterStatus}
                             </Button>
                           </DropdownMenuTrigger>
@@ -2371,8 +2504,58 @@ const Transportation = () => {
                         </DropdownMenu>
                       </div>
 
-                      {/* Walker Locations Table */}
-                      <div className="border rounded-md">
+                      {/* Mobile Card Layout */}
+                      <div className="md:hidden space-y-3">
+                        {filteredWalkerLocations.slice((walkerCurrentPage - 1) * itemsPerPage, walkerCurrentPage * itemsPerPage).map((location) => (
+                          <Card key={location.id}>
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <CardTitle className="text-base">{location.location_name}</CardTitle>
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    <Badge variant={location.status === 'active' ? 'default' : 'secondary'} 
+                                           className={location.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}>
+                                      {location.status === 'active' ? 'Active' : location.status.charAt(0).toUpperCase() + location.status.slice(1)}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0 shrink-0">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setEditingWalkerRecord(location)}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleManageWalkerStudents(location)}>
+                                      <UserPlus className="mr-2 h-4 w-4" />
+                                      Manage Students
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDeleteWalkerLocation(location)} className="text-destructive">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <div className="text-muted-foreground">Students</div>
+                                  <div className="font-medium">{location.students_count || 0}</div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Desktop Table */}
+                      <div className="hidden md:block border rounded-md">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -2432,34 +2615,34 @@ const Transportation = () => {
                 {/* Car Lines Tab */}
                 <TabsContent value="car-lines" className="m-0 border-0 p-0">
                   <div className="p-6">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
                       <div>
                         <h3 className="text-lg font-semibold">Car Lines Management</h3>
                         <p className="text-sm text-muted-foreground">
                           Organize and manage your school's car line pickup areas
                         </p>
                       </div>
-                      <Button onClick={() => setShowAddCarDialog(true)}>
+                      <Button onClick={() => setShowAddCarDialog(true)} className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Car Line
                       </Button>
                     </div>
                     <div className="space-y-4">
                       {/* Search and Filters */}
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1 w-full">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                           <Input
                             placeholder="Search car lines..."
                             value={carSearchTerm}
                             onChange={(e) => setCarSearchTerm(e.target.value)}
-                            className="pl-10"
+                            className="pl-10 w-full"
                           />
                         </div>
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="gap-2">
+                            <Button variant="outline" className="gap-2 w-full sm:w-auto">
                               Status: {carFilterStatus === 'all' ? 'All' : carFilterStatus}
                             </Button>
                           </DropdownMenuTrigger>
@@ -2477,8 +2660,64 @@ const Transportation = () => {
                         </DropdownMenu>
                       </div>
 
-                      {/* Car Lines Table */}
-                      <div className="border rounded-md">
+                      {/* Mobile Card Layout */}
+                      <div className="md:hidden space-y-3">
+                        {filteredCarLines.slice((carCurrentPage - 1) * itemsPerPage, carCurrentPage * itemsPerPage).map((carLine) => (
+                          <Card key={carLine.id}>
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <CardTitle className="text-base">{carLine.line_name}</CardTitle>
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    <Badge variant={carLine.status === 'active' ? 'default' : 'secondary'}
+                                           className={carLine.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}>
+                                      {carLine.status === 'active' ? 'Active' : carLine.status.charAt(0).toUpperCase() + carLine.status.slice(1)}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0 shrink-0">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setEditingCarRecord(carLine)}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleManageCarStudents(carLine)}>
+                                      <UserPlus className="mr-2 h-4 w-4" />
+                                      Manage Students
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDeleteCarLine(carLine)} className="text-destructive">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="space-y-2 text-sm">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <div className="text-muted-foreground">Zone</div>
+                                    <div className="font-medium">{carLine.pickup_location || "No zone"}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Students</div>
+                                    <div className="font-medium">{carLine.students_count || 0}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Desktop Table */}
+                      <div className="hidden md:block border rounded-md">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -2540,20 +2779,88 @@ const Transportation = () => {
                 {/* Activities Tab */}
                 <TabsContent value="activities" className="m-0 border-0 p-0">
                   <div className="p-6">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
                       <div>
                         <h3 className="text-lg font-semibold">After School Activities</h3>
                         <p className="text-sm text-muted-foreground">
                           Manage after school activities and student assignments
                         </p>
                       </div>
-                      <Button onClick={() => setShowAddActivityDialog(true)}>
+                      <Button onClick={() => setShowAddActivityDialog(true)} className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Activity
                       </Button>
                     </div>
                     <div className="space-y-4">
-                      <div className="border rounded-md">
+                      {/* Mobile Card Layout */}
+                      <div className="md:hidden space-y-3">
+                        {filteredAfterSchoolActivities.map((activity) => (
+                          <Card key={activity.id}>
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <CardTitle className="text-base">{activity.activity_name}</CardTitle>
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    <Badge variant={activity.status === 'active' ? 'default' : 'secondary'}>
+                                      {activity.status}
+                                    </Badge>
+                                    <Badge variant="secondary">{activity.students_count} students</Badge>
+                                  </div>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0 shrink-0">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setManagingActivity(activity)}>
+                                      <Users className="mr-2 h-4 w-4" />
+                                      Manage Students
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => {
+                                      setEditingActivityRecord(activity);
+                                      activityForm.reset({
+                                        activity_name: activity.activity_name,
+                                        description: activity.description || '',
+                                        location: activity.location || '',
+                                        supervisor_name: activity.supervisor_name || '',
+                                        capacity: activity.capacity || undefined,
+                                        status: activity.status,
+                                      });
+                                      setShowAddActivityDialog(true);
+                                    }}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteActivity(activity)}>
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="space-y-2 text-sm">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <div className="text-muted-foreground">Location</div>
+                                    <div className="font-medium">{activity.location || '-'}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Supervisor</div>
+                                    <div className="font-medium">{activity.supervisor_name || '-'}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      {/* Desktop Table */}
+                      <div className="hidden md:block border rounded-md">
                         <Table>
                           <TableHeader>
                             <TableRow>
