@@ -243,9 +243,11 @@ export default function SpecialUseRuns() {
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
+          
+          {/* Settings button - Desktop only (with text) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="hidden sm:flex">
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>
@@ -284,13 +286,73 @@ export default function SpecialUseRuns() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => {
-            setSelectedRun(null);
-            setDialogOpen(true);
-          }}>
+          
+          {/* Desktop: New Run button shown separately */}
+          <Button 
+            onClick={() => {
+              setSelectedRun(null);
+              setDialogOpen(true);
+            }}
+            className="hidden sm:flex"
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Run
           </Button>
+          
+          {/* Mobile only: New Run + Settings icon in same row */}
+          <div className="flex sm:hidden gap-2">
+            <Button 
+              onClick={() => {
+                setSelectedRun(null);
+                setDialogOpen(true);
+              }}
+              className="flex-1"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Run
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[280px]">
+                <DropdownMenuLabel>Administrative Functions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="p-2">
+                  <Label htmlFor="settings-session-select-mobile" className="text-sm font-medium">
+                    Academic Year
+                  </Label>
+                  <Select
+                    value={selectedSessionId || undefined}
+                    onValueChange={setSelectedSessionId}
+                  >
+                    <SelectTrigger id="settings-session-select-mobile" className="w-full mt-2">
+                      <SelectValue placeholder="Select session..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {academicSessions.map((session) => (
+                        <SelectItem key={session.id} value={session.id}>
+                          {session.session_name}
+                          {session.is_active && " (Active)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleExportCSV}
+                  disabled={filteredRuns.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export to CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* Main Data Card */}
