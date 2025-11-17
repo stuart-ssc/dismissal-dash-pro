@@ -38,6 +38,7 @@ import { format } from "date-fns";
 import { SpecialUseRunDialog } from "@/components/SpecialUseRunDialog";
 import { toast } from "sonner";
 import { convertToCSV, downloadCSV, formatTimeForCSV } from "@/lib/csvExport";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const formatTimeString = (timeString: string | null): string => {
   if (!timeString) return "-";
@@ -78,6 +79,7 @@ export default function SpecialUseRuns() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [groupTypeFilter, setGroupTypeFilter] = useState<string>("all");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -307,44 +309,38 @@ export default function SpecialUseRuns() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Table or Empty States */}
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading runs...</div>
+              <div className="text-center py-8 text-muted-foreground">
+                Loading runs...
+              </div>
             ) : filteredRuns.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 {searchQuery ? "No runs found matching your search" : "No runs scheduled yet"}
               </div>
             ) : (
-              <ScrollArea className="border rounded-lg">
-                <Table className="min-w-[800px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Run Name</TableHead>
-                      <TableHead>Group</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="hidden md:table-cell">Departure</TableHead>
-                      <TableHead className="hidden md:table-cell">Return</TableHead>
-                      <TableHead className="hidden sm:table-cell">Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRuns.map((run) => (
-                      <TableRow key={run.id}>
-                        <TableCell className="font-medium">{run.run_name}</TableCell>
-                        <TableCell>{run.group.name}</TableCell>
-                        <TableCell>{format(new Date(run.run_date), "MMM d, yyyy")}</TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {formatTimeString(run.scheduled_departure_time)}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {formatTimeString(run.scheduled_return_time)}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">{getStatusBadge(run.status)}</TableCell>
-                        <TableCell className="text-right">
+              <>
+                {/* MOBILE CARD LAYOUT */}
+                <div className="md:hidden space-y-3">
+                  {filteredRuns.map((run) => (
+                    <Card key={run.id}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-base">{run.run_name}</CardTitle>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {getStatusBadge(run.status)}
+                              <Badge variant="outline" className="text-xs">
+                                {run.group.group_type === 'field_trip' ? 'Field Trip' :
+                                 run.group.group_type === 'athletics' ? 'Athletics' :
+                                 run.group.group_type === 'club' ? 'Club' :
+                                 run.group.group_type === 'afterschool' ? 'After School' :
+                                 'Other'}
+                              </Badge>
+                            </div>
+                          </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" className="h-8 w-8 p-0 shrink-0">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -377,12 +373,100 @@ export default function SpecialUseRuns() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </TableCell>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-3 text-sm">
+                          <div>
+                            <div className="text-muted-foreground">Group</div>
+                            <div className="font-medium">{run.group.name}</div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <div className="text-muted-foreground">Date</div>
+                              <div className="font-medium">{format(new Date(run.run_date), "MMM d, yyyy")}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Departure</div>
+                              <div className="font-medium">{formatTimeString(run.scheduled_departure_time)}</div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">Return Time</div>
+                            <div className="font-medium">{formatTimeString(run.scheduled_return_time)}</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* DESKTOP TABLE LAYOUT */}
+                <div className="hidden md:block border rounded-lg bg-background overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Run Name</TableHead>
+                        <TableHead>Group</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Departure</TableHead>
+                        <TableHead>Return</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRuns.map((run) => (
+                        <TableRow key={run.id}>
+                          <TableCell className="font-medium">{run.run_name}</TableCell>
+                          <TableCell>{run.group.name}</TableCell>
+                          <TableCell>{format(new Date(run.run_date), "MMM d, yyyy")}</TableCell>
+                          <TableCell>{formatTimeString(run.scheduled_departure_time)}</TableCell>
+                          <TableCell>{formatTimeString(run.scheduled_return_time)}</TableCell>
+                          <TableCell>{getStatusBadge(run.status)}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {run.status === "scheduled" && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => {
+                                      setSelectedRun(run);
+                                      setDialogOpen(true);
+                                    }}>
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleLaunch(run.id)}>
+                                      <Play className="h-4 w-4 mr-2" />
+                                      Launch
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {(run.status === "outbound_active" || run.status === "at_destination" || run.status === "return_active") && (
+                                  <DropdownMenuItem onClick={() => handleLaunch(run.id)}>
+                                    <Play className="h-4 w-4 mr-2" />
+                                    Continue
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
