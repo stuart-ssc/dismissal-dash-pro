@@ -358,12 +358,21 @@ export default function SpecialUseRuns() {
         {/* Main Data Card */}
         <Card className="shadow-elevated border-0 bg-card backdrop-blur">
         <CardHeader>
-          <CardTitle>Special Use Runs</CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle>Special Use Runs</CardTitle>
+            {/* Desktop: Badge inline with title */}
+            {selectedSessionId && academicSessions.length > 0 && (
+              <Badge variant="secondary" className="font-normal hidden md:inline-flex">
+                Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+              </Badge>
+            )}
+          </div>
           <CardDescription className="mt-2">
             Schedule and manage special trips, field trips, athletic events, and after-school activities
           </CardDescription>
+          {/* Mobile: Badge below description */}
           {selectedSessionId && academicSessions.length > 0 && (
-            <Badge variant="secondary" className="font-normal mt-3">
+            <Badge variant="secondary" className="font-normal mt-3 md:hidden">
               Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
             </Badge>
           )}
