@@ -388,8 +388,8 @@ export default function SpecialUseRuns() {
               </div>
             ) : (
               <>
-                {/* MOBILE CARD LAYOUT */}
-                <div className="md:hidden space-y-3">
+                {/* MOBILE & TABLET CARD LAYOUT */}
+                <div className="lg:hidden space-y-3">
                   {filteredRuns.map((run) => (
                     <Card key={run.id}>
                       <CardHeader className="pb-3">
@@ -471,7 +471,7 @@ export default function SpecialUseRuns() {
                 </div>
 
                 {/* DESKTOP TABLE LAYOUT */}
-                <div className="hidden md:block border rounded-lg bg-background overflow-hidden">
+                <div className="hidden lg:block border rounded-lg bg-background overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
