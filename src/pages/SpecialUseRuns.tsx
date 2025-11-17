@@ -357,19 +357,17 @@ export default function SpecialUseRuns() {
 
         {/* Main Data Card */}
         <Card className="shadow-elevated border-0 bg-card backdrop-blur">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <CardTitle>Special Use Runs</CardTitle>
-              {selectedSessionId && academicSessions.length > 0 && (
-                <Badge variant="secondary" className="font-normal">
-                  Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-                </Badge>
-              )}
-            </div>
-            <CardDescription className="mt-2">
-              Schedule and manage special trips, field trips, athletic events, and after-school activities
-            </CardDescription>
-          </CardHeader>
+        <CardHeader>
+          <CardTitle>Special Use Runs</CardTitle>
+          <CardDescription className="mt-2">
+            Schedule and manage special trips, field trips, athletic events, and after-school activities
+          </CardDescription>
+          {selectedSessionId && academicSessions.length > 0 && (
+            <Badge variant="secondary" className="font-normal mt-3">
+              Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+            </Badge>
+          )}
+        </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
