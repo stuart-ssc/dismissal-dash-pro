@@ -81,22 +81,8 @@ export function AdminSidebar() {
         collapsible="icon"
       >
       <SidebarContent>
-        {/* Mobile close button */}
-        {isMobile && (
-          <div className="flex items-center justify-between px-4 py-3 border-b">
-            <span className="text-sm font-medium">Menu</span>
-            <button
-              onClick={() => setOpenMobile(false)}
-              className="p-2 hover:bg-muted rounded-md transition-colors"
-              aria-label="Close menu"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        )}
-        
         <SidebarGroup>
-          <div className={`flex items-center py-3 ${state === 'collapsed' ? 'justify-center px-1' : 'px-4'}`}>
+          <div className={`flex items-center py-3 ${state === 'collapsed' ? 'justify-center px-1' : 'justify-between px-4'}`}>
             {state === 'collapsed' ? (
               <img 
                 src={logoMark}
@@ -110,6 +96,17 @@ export function AdminSidebar() {
                 alt="Dismissal Pro" 
                 className="h-8"
               />
+            )}
+            
+            {/* Close button - right side, mobile only */}
+            {isMobile && state !== 'collapsed' && (
+              <button
+                onClick={() => setOpenMobile(false)}
+                className="p-2 hover:bg-muted rounded-md transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
             )}
           </div>
 
