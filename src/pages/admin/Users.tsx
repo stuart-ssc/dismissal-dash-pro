@@ -105,15 +105,6 @@ export default function AdminUsers() {
     }
   });
 
-  const { data: districts } = useQuery<District[]>({
-    queryKey: ['districts-min'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('districts').select('id, district_name').order('district_name');
-      if (error) throw error;
-      return data as District[];
-    }
-  });
-
   const { data: userDistricts } = useQuery<UserDistrict[]>({
     queryKey: ['user_districts'],
     queryFn: async () => {
@@ -140,14 +131,52 @@ export default function AdminUsers() {
     defaultValues: { first_name: '', last_name: '', email: '', role: 'teacher', school_id: null, district_id: undefined }
   });
 
+  // Server-side district search - only queries when user types 2+ characters
+  const { data: districts, isLoading: loadingDistricts } = useQuery<District[]>({
+    queryKey: ['districts-search', districtSearchQuery],
+    queryFn: async () => {
+      if (!districtSearchQuery || districtSearchQuery.length < 2) {
+        return [];
+      }
+      
+      const { data, error } = await supabase
+        .from('districts')
+        .select('id, district_name')
+        .ilike('district_name', `%${districtSearchQuery}%`)
+        .order('district_name')
+        .limit(100);
+      
+      if (error) throw error;
+      return data as District[];
+    },
+    enabled: districtSearchQuery.length >= 2,
+  });
+
+  // Fetch selected district details for display
+  const { data: selectedDistrict } = useQuery<District>({
+    queryKey: ['district-detail', form.watch('district_id')],
+    queryFn: async () => {
+      const districtId = form.watch('district_id');
+      if (!districtId) return null;
+      
+      const { data, error } = await supabase
+        .from('districts')
+        .select('id, district_name')
+        .eq('id', districtId)
+        .single();
+      
+      if (error) throw error;
+      return data as District;
+    },
+    enabled: !!form.watch('district_id'),
+  });
+
   const filteredDistricts = useMemo(() => {
-    if (!districts) return [];
-    if (!districtSearchQuery) return districts;
-    
-    const query = districtSearchQuery.toLowerCase();
-    return districts.filter(d => 
-      d.district_name.toLowerCase().includes(query)
-    );
+    // Don't show anything until user types at least 2 characters
+    if (!districtSearchQuery || districtSearchQuery.length < 2) {
+      return [];
+    }
+    return districts || [];
   }, [districts, districtSearchQuery]);
 
   useEffect(() => {
@@ -339,9 +368,9 @@ export default function AdminUsers() {
                         aria-expanded={districtSearchOpen}
                         className="w-full justify-between"
                       >
-                        {form.watch('district_id') 
-                          ? districts?.find(d => d.id === form.watch('district_id'))?.district_name 
-                          : "Select a district..."}
+          {form.watch('district_id') 
+            ? selectedDistrict?.district_name || "Loading..." 
+            : "Select a district..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
@@ -353,14 +382,14 @@ export default function AdminUsers() {
                           onValueChange={setDistrictSearchQuery}
                         />
                         <CommandList>
-                          {filteredDistricts.length === 0 && districtSearchQuery && (
-                            <CommandEmpty>No districts found.</CommandEmpty>
-                          )}
-                          {filteredDistricts.length === 0 && !districtSearchQuery && (
-                            <div className="p-4 text-center text-sm text-muted-foreground">
-                              Type to search districts
-                            </div>
-                          )}
+            {filteredDistricts.length === 0 && districtSearchQuery && districtSearchQuery.length >= 2 && (
+              <CommandEmpty>No districts found.</CommandEmpty>
+            )}
+            {(!districtSearchQuery || districtSearchQuery.length < 2) && (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                Type at least 2 characters to search districts
+              </div>
+            )}
                           {filteredDistricts.length > 0 && (
                             <CommandGroup>
                               {filteredDistricts.map((district) => (
