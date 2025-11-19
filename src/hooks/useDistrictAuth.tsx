@@ -20,20 +20,35 @@ interface DistrictAuthContextType {
 const DistrictAuthContext = createContext<DistrictAuthContextType | undefined>(undefined);
 
 export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
-  const { user, userRole } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const [district, setDistrict] = useState<District | null>(null);
   const [districtSchools, setDistrictSchools] = useState<{ id: number; school_name: string }[]>([]);
   const [impersonatedSchoolId, setImpersonatedSchoolId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDistrict = async () => {
+    console.log('[useDistrictAuth] fetchDistrict called', { 
+      user: user?.id, 
+      userRole, 
+      authLoading 
+    });
+
+    // Wait for auth to finish loading before deciding
+    if (authLoading) {
+      console.log('[useDistrictAuth] Auth still loading, waiting...');
+      return;
+    }
+
     if (!user || userRole !== 'district_admin') {
+      console.log('[useDistrictAuth] Early return - user:', user?.id, 'userRole:', userRole);
       setDistrict(null);
       setDistrictSchools([]);
       setImpersonatedSchoolId(null);
       setIsLoading(false);
       return;
     }
+
+    console.log('[useDistrictAuth] Fetching district data for user:', user.id);
 
     try {
       setIsLoading(true);
@@ -48,7 +63,10 @@ export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (userDistrictError) throw userDistrictError;
 
+      console.log('[useDistrictAuth] User district query result:', userDistrict);
+
       if (userDistrict?.districts) {
+        console.log('[useDistrictAuth] Setting district:', userDistrict.districts);
         setDistrict(userDistrict.districts as District);
 
         // Fetch schools in this district
@@ -59,6 +77,7 @@ export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
           .order('school_name');
 
         if (schoolsError) throw schoolsError;
+        console.log('[useDistrictAuth] Fetched schools:', schools?.length || 0);
         setDistrictSchools(schools || []);
 
         // Check for impersonation session
@@ -76,7 +95,7 @@ export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     fetchDistrict();
-  }, [user, userRole]);
+  }, [user, userRole, authLoading]);
 
   const switchSchool = async (schoolId: number | null) => {
     setImpersonatedSchoolId(schoolId);
