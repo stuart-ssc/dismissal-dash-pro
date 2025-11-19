@@ -10,6 +10,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -17,8 +27,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDistrictSchools, useSchoolMutations } from "@/hooks/useDistrictSchools";
+import { useDistrictSchools, useSchoolMutations, type DistrictSchool } from "@/hooks/useDistrictSchools";
 import { useDistrictAuth } from "@/hooks/useDistrictAuth";
+import { DistrictSchoolDialog } from "@/components/DistrictSchoolDialog";
 import { MoreHorizontal, Plus, Search, Building2, MapPin } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -28,6 +39,10 @@ export default function DistrictSchools() {
   const { switchSchool } = useDistrictAuth();
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState<DistrictSchool | null>(null);
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [schoolToDeactivate, setSchoolToDeactivate] = useState<DistrictSchool | null>(null);
 
   const filteredSchools = schools?.filter((school) =>
     school.school_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -36,6 +51,37 @@ export default function DistrictSchools() {
 
   const activeCount = schools?.filter((s) => s.verification_status === "verified").length || 0;
   const inactiveCount = schools?.filter((s) => s.verification_status !== "verified").length || 0;
+
+  const getStatusVariant = (status: string | null) => {
+    switch (status) {
+      case "verified":
+        return "default";
+      case "unverified":
+        return "secondary";
+      case "flagged":
+        return "destructive";
+      case "inactive":
+        return "outline";
+      default:
+        return "secondary";
+    }
+  };
+
+  const handleDeactivateClick = (school: DistrictSchool) => {
+    setSchoolToDeactivate(school);
+    setDeactivateDialogOpen(true);
+  };
+
+  const handleDeactivateConfirm = () => {
+    if (schoolToDeactivate) {
+      updateSchoolStatus.mutate({
+        id: schoolToDeactivate.id,
+        verification_status: "inactive",
+      });
+      setDeactivateDialogOpen(false);
+      setSchoolToDeactivate(null);
+    }
+  };
 
   if (isLoading) {
     return <div className="p-6">Loading schools...</div>;
@@ -54,7 +100,13 @@ export default function DistrictSchools() {
             className="pl-9"
           />
         </div>
-        <Button className="w-full sm:w-auto">
+        <Button
+          className="w-full sm:w-auto"
+          onClick={() => {
+            setSelectedSchool(null);
+            setDialogOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add School
         </Button>
@@ -105,9 +157,9 @@ export default function DistrictSchools() {
                           {school.school_name}
                         </CardTitle>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Badge variant={school.verification_status === "verified" ? "default" : "secondary"}>
-                            {school.verification_status || "unverified"}
-                          </Badge>
+                        <Badge variant={getStatusVariant(school.verification_status)}>
+                          {school.verification_status || "unverified"}
+                        </Badge>
                         </div>
                       </div>
                       <DropdownMenu>
@@ -120,7 +172,20 @@ export default function DistrictSchools() {
                           <DropdownMenuItem onClick={() => switchSchool(school.id)}>
                             View School
                           </DropdownMenuItem>
-                          <DropdownMenuItem>Edit School</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedSchool(school);
+                              setDialogOpen(true);
+                            }}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeactivateClick(school)}
+                          >
+                            Deactivate
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -166,7 +231,7 @@ export default function DistrictSchools() {
                         : "N/A"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={school.verification_status === "verified" ? "default" : "secondary"}>
+                      <Badge variant={getStatusVariant(school.verification_status)}>
                         {school.verification_status || "unverified"}
                       </Badge>
                     </TableCell>
@@ -181,7 +246,20 @@ export default function DistrictSchools() {
                           <DropdownMenuItem onClick={() => switchSchool(school.id)}>
                             View School
                           </DropdownMenuItem>
-                          <DropdownMenuItem>Edit School</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedSchool(school);
+                              setDialogOpen(true);
+                            }}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeactivateClick(school)}
+                          >
+                            Deactivate
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -192,6 +270,39 @@ export default function DistrictSchools() {
           </div>
         </CardContent>
       </Card>
+
+      <DistrictSchoolDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        school={selectedSchool}
+        onSuccess={() => {
+          setDialogOpen(false);
+          setSelectedSchool(null);
+        }}
+      />
+
+      <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate School?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate <strong>{schoolToDeactivate?.school_name}</strong>?
+              This school will be marked as inactive and users will no longer be able to access it.
+              You can reactivate it later by editing the school.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeactivateConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
