@@ -51,12 +51,14 @@ import ClassroomMode from "./pages/modes/ClassroomMode";
 import BusMode from "./pages/modes/BusMode";
 import CarLineMode from "./pages/modes/CarLineMode";
 import WalkerMode from "./pages/modes/WalkerMode";
-import { RouteGuard } from "./components/RouteGuard";
+import { RouteGuard, DistrictRouteGuard } from "./components/RouteGuard";
 import TeacherCoverage from "./pages/TeacherCoverage";
 import Help from "./pages/Help";
 import Absences from "./pages/Absences";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
+import DistrictLayout from "./layouts/DistrictLayout";
+import DistrictDashboard from "./pages/district/Dashboard";
 
 
 const queryClient = new QueryClient();
