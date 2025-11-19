@@ -228,11 +228,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const effectiveRole =
         roles.includes('system_admin')
           ? 'system_admin'
-          : roles.includes('school_admin')
-            ? 'school_admin'
-            : roles.includes('teacher')
-              ? 'teacher'
-              : null;
+          : roles.includes('district_admin')
+            ? 'district_admin'
+            : roles.includes('school_admin')
+              ? 'school_admin'
+              : roles.includes('teacher')
+                ? 'teacher'
+                : null;
       setUserRole(effectiveRole);
     } catch (err) {
       const secureError = handleError(err, 'user roles fetch');
