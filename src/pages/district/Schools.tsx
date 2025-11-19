@@ -67,6 +67,11 @@ export default function DistrictSchools() {
     }
   };
 
+  const formatStatus = (status: string | null) => {
+    if (!status) return "Unverified";
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
   const handleDeactivateClick = (school: DistrictSchool) => {
     setSchoolToDeactivate(school);
     setDeactivateDialogOpen(true);
@@ -158,7 +163,7 @@ export default function DistrictSchools() {
                         </CardTitle>
                         <div className="flex flex-wrap gap-2 mt-2">
                         <Badge variant={getStatusVariant(school.verification_status)}>
-                          {school.verification_status || "unverified"}
+                          {formatStatus(school.verification_status)}
                         </Badge>
                         </div>
                       </div>
@@ -232,7 +237,7 @@ export default function DistrictSchools() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(school.verification_status)}>
-                        {school.verification_status || "unverified"}
+                        {formatStatus(school.verification_status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
