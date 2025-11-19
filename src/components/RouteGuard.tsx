@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useTodayDismissalRun } from "@/hooks/useTodayDismissalRun";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
 interface RouteGuardProps {
@@ -187,6 +188,25 @@ export function RouteGuard({ children, mode }: RouteGuardProps) {
   
   if (mode === "classroom" && run?.status === "completed") {
     return null;
+  }
+
+  return <>{children}</>;
+}
+
+export function DistrictRouteGuard({ children }: { children: React.ReactNode }) {
+  const { user, userRole, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  if (userRole !== 'district_admin') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

@@ -1220,6 +1220,114 @@ export type Database = {
           },
         ]
       }
+      district_admin_verification_requests: {
+        Row: {
+          created_at: string | null
+          district_name: string
+          email: string
+          expires_at: string
+          first_name: string
+          id: string
+          last_name: string
+          phone_number: string | null
+          rejection_reason: string | null
+          role_title: string | null
+          status: string | null
+          verification_token: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          district_name: string
+          email: string
+          expires_at?: string
+          first_name: string
+          id?: string
+          last_name: string
+          phone_number?: string | null
+          rejection_reason?: string | null
+          role_title?: string | null
+          status?: string | null
+          verification_token: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          district_name?: string
+          email?: string
+          expires_at?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone_number?: string | null
+          rejection_reason?: string | null
+          role_title?: string | null
+          status?: string | null
+          verification_token?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
+      districts: {
+        Row: {
+          allow_school_colors_override: boolean | null
+          allow_school_dismissal_time_override: boolean | null
+          allow_school_timezone_override: boolean | null
+          city: string | null
+          created_at: string | null
+          created_by: string | null
+          district_name: string
+          email: string | null
+          id: string
+          phone_number: string | null
+          state: string | null
+          street_address: string | null
+          timezone: string | null
+          updated_at: string | null
+          website: string | null
+          zipcode: string | null
+        }
+        Insert: {
+          allow_school_colors_override?: boolean | null
+          allow_school_dismissal_time_override?: boolean | null
+          allow_school_timezone_override?: boolean | null
+          city?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          district_name: string
+          email?: string | null
+          id?: string
+          phone_number?: string | null
+          state?: string | null
+          street_address?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          website?: string | null
+          zipcode?: string | null
+        }
+        Update: {
+          allow_school_colors_override?: boolean | null
+          allow_school_dismissal_time_override?: boolean | null
+          allow_school_timezone_override?: boolean | null
+          city?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          district_name?: string
+          email?: string | null
+          id?: string
+          phone_number?: string | null
+          state?: string | null
+          street_address?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          website?: string | null
+          zipcode?: string | null
+        }
+        Relationships: []
+      }
       email_change_requests: {
         Row: {
           approved_by: string | null
@@ -1985,6 +2093,8 @@ export type Database = {
         Row: {
           client_key: string
           client_secret: string
+          configured_by: string | null
+          configured_by_role: string | null
           created_at: string | null
           created_by: string | null
           host_url: string
@@ -2003,6 +2113,8 @@ export type Database = {
         Insert: {
           client_key: string
           client_secret: string
+          configured_by?: string | null
+          configured_by_role?: string | null
           created_at?: string | null
           created_by?: string | null
           host_url: string
@@ -2021,6 +2133,8 @@ export type Database = {
         Update: {
           client_key?: string
           client_secret?: string
+          configured_by?: string | null
+          configured_by_role?: string | null
           created_at?: string | null
           created_by?: string | null
           host_url?: string
@@ -2294,6 +2408,7 @@ export type Database = {
           created_at_ip: string | null
           created_by: string | null
           dismissal_time: string | null
+          district_id: string | null
           email_notifications_enabled: boolean | null
           emergency_alerts_enabled: boolean | null
           flagged_reason: string | null
@@ -2333,6 +2448,7 @@ export type Database = {
           created_at_ip?: string | null
           created_by?: string | null
           dismissal_time?: string | null
+          district_id?: string | null
           email_notifications_enabled?: boolean | null
           emergency_alerts_enabled?: boolean | null
           flagged_reason?: string | null
@@ -2372,6 +2488,7 @@ export type Database = {
           created_at_ip?: string | null
           created_by?: string | null
           dismissal_time?: string | null
+          district_id?: string | null
           email_notifications_enabled?: boolean | null
           emergency_alerts_enabled?: boolean | null
           flagged_reason?: string | null
@@ -2404,6 +2521,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schools_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
             referencedColumns: ["id"]
           },
           {
@@ -3333,6 +3457,41 @@ export type Database = {
           },
         ]
       }
+      user_districts: {
+        Row: {
+          created_at: string | null
+          district_id: string
+          id: string
+          is_primary: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          district_id: string
+          id?: string
+          is_primary?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          district_id?: string
+          id?: string
+          is_primary?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_districts_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -3801,6 +3960,10 @@ export type Database = {
           total_teachers: number
         }[]
       }
+      can_manage_district_data: {
+        Args: { target_district_id: string }
+        Returns: boolean
+      }
       can_manage_school_data: {
         Args: { target_school_id: number }
         Returns: boolean
@@ -3816,6 +3979,10 @@ export type Database = {
       }
       can_operate_school_data: {
         Args: { target_school_id: number }
+        Returns: boolean
+      }
+      can_view_district_data: {
+        Args: { target_district_id: string }
         Returns: boolean
       }
       can_view_school_data: {
@@ -3899,6 +4066,7 @@ export type Database = {
         Returns: string
       }
       get_current_user_school_id: { Args: never; Returns: number }
+      get_district_school_ids: { Args: never; Returns: number[] }
       get_group_school_id: { Args: { p_group_id: string }; Returns: number }
       get_impersonated_school_id: { Args: never; Returns: number }
       get_people_paginated: {
@@ -4043,9 +4211,11 @@ export type Database = {
       }
       get_teacher_school_id: { Args: { p_teacher_id: string }; Returns: number }
       get_user_accessible_school_ids: { Args: never; Returns: number[] }
+      get_user_district_id: { Args: { user_id: string }; Returns: string }
       get_user_school_id: { Args: { user_uuid: string }; Returns: number }
       get_user_school_ids: { Args: { user_uuid: string }; Returns: number[] }
       get_user_taught_class_ids: { Args: never; Returns: string[] }
+      has_district_admin_role: { Args: { user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4109,7 +4279,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "system_admin" | "school_admin" | "teacher"
+      app_role: "system_admin" | "school_admin" | "teacher" | "district_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4237,7 +4407,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["system_admin", "school_admin", "teacher"],
+      app_role: ["system_admin", "school_admin", "teacher", "district_admin"],
     },
   },
 } as const
