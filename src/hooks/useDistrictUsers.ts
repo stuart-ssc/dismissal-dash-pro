@@ -67,13 +67,15 @@ export const useDistrictUsers = (schoolFilter?: number | "all") => {
       if (rolesError) throw rolesError;
 
       // Get last sign in from auth metadata
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
       if (authError) throw authError;
+      
+      const authUsers = authData?.users || [];
 
       // Combine data
       const users: DistrictUser[] = profiles.map((profile) => {
         const userRole = roles?.find((r) => r.user_id === profile.id);
-        const authUser = authUsers.users.find((u) => u.id === profile.id);
+        const authUser = authUsers.find((u) => u.id === profile.id);
         const school = schools?.find((s) => s.id === profile.school_id);
 
         return {
