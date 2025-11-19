@@ -59,6 +59,11 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsConditions from "./pages/TermsConditions";
 import DistrictLayout from "./layouts/DistrictLayout";
 import DistrictDashboard from "./pages/district/Dashboard";
+import DistrictSchools from "./pages/district/Schools";
+import DistrictUsers from "./pages/district/Users";
+import DistrictICIntegrations from "./pages/district/ICIntegrations";
+import DistrictReports from "./pages/district/Reports";
+import DistrictSettings from "./pages/district/Settings";
 
 
 const queryClient = new QueryClient();
@@ -166,6 +171,23 @@ const AppContent = () => {
           
           {/* Special Use Run Mode (fullscreen) */}
           <Route path="/modes/special-use-run/:runId" element={<SpecialUseRunMode />} />
+
+          {/* District Dashboard Routes */}
+          <Route
+            path="/district-dash"
+            element={
+              <DistrictRouteGuard>
+                <DistrictLayout />
+              </DistrictRouteGuard>
+            }
+          >
+            <Route index element={<DistrictDashboard />} />
+            <Route path="schools" element={<DistrictSchools />} />
+            <Route path="users" element={<DistrictUsers />} />
+            <Route path="ic-integrations" element={<DistrictICIntegrations />} />
+            <Route path="reports" element={<DistrictReports />} />
+            <Route path="settings" element={<DistrictSettings />} />
+          </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
