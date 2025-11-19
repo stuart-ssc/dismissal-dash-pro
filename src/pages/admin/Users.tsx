@@ -26,11 +26,15 @@ interface ProfileRow {
   created_at?: string | null;
 }
 
-interface UserRoleRow { user_id: string; role: 'teacher' | 'school_admin' | 'system_admin' }
+interface UserRoleRow { user_id: string; role: 'teacher' | 'school_admin' | 'system_admin' | 'district_admin' }
 
 interface School { id: number; school_name: string | null }
 
-const roleOptions: UserRoleRow["role"][] = ["teacher", "school_admin", "system_admin"];
+interface District { id: string; district_name: string }
+
+interface UserDistrict { user_id: string; district_id: string }
+
+const roleOptions: UserRoleRow["role"][] = ["teacher", "school_admin", "district_admin", "system_admin"];
 
 const getRoleLabel = (r: UserRoleRow["role"]) =>
   r.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -39,11 +43,15 @@ const schema = z.object({
   first_name: z.string().min(1, "First name required"),
   last_name: z.string().min(1, "Last name required"),
   email: z.string().email(),
-  role: z.enum(["teacher", "school_admin", "system_admin"]),
+  role: z.enum(["teacher", "school_admin", "district_admin", "system_admin"]),
   school_id: z.union([z.coerce.number(), z.null()]).optional(),
+  district_id: z.string().uuid().optional(),
 }).superRefine((val, ctx) => {
   if ((val.role === 'teacher' || val.role === 'school_admin') && (!val.school_id && val.school_id !== 0)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'School is required for teacher or school admin', path: ['school_id'] });
+  }
+  if (val.role === 'district_admin' && !val.district_id) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'District is required for district admin', path: ['district_id'] });
   }
 });
 
@@ -94,6 +102,24 @@ export default function AdminUsers() {
     }
   });
 
+  const { data: districts } = useQuery<District[]>({
+    queryKey: ['districts-min'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('districts').select('id, district_name').order('district_name');
+      if (error) throw error;
+      return data as District[];
+    }
+  });
+
+  const { data: userDistricts } = useQuery<UserDistrict[]>({
+    queryKey: ['user_districts'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('user_districts').select('user_id, district_id');
+      if (error) throw error;
+      return data as UserDistrict[];
+    }
+  });
+
   const byUserRole = useMemo(() => {
     const map = new Map<string, UserRoleRow["role"]>();
     (roles || []).forEach(r => map.set(r.user_id, r.role));
@@ -106,22 +132,26 @@ export default function AdminUsers() {
   const [schoolFilter, setSchoolFilter] = useState<string>('all');
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { first_name: '', last_name: '', email: '', role: 'teacher', school_id: null }
+    defaultValues: { first_name: '', last_name: '', email: '', role: 'teacher', school_id: null, district_id: undefined }
   });
 
   useEffect(() => {
     if (editing) {
+      const userRole = byUserRole.get(editing.id) || 'teacher';
+      const userDistrictId = userDistricts?.find(ud => ud.user_id === editing.id)?.district_id;
+      
       form.reset({
         first_name: editing.first_name || '',
         last_name: editing.last_name || '',
         email: editing.email || '',
-        role: byUserRole.get(editing.id) || 'teacher',
+        role: userRole,
         school_id: editing.school_id ?? null,
+        district_id: userDistrictId,
       });
     } else {
-      form.reset({ first_name: '', last_name: '', email: '', role: 'teacher', school_id: null });
+      form.reset({ first_name: '', last_name: '', email: '', role: 'teacher', school_id: null, district_id: undefined });
     }
-  }, [editing]);
+  }, [editing, byUserRole, userDistricts]);
 
   const filteredProfiles = useMemo(() => {
     const list = (profiles || []).filter(p => {
@@ -141,7 +171,8 @@ export default function AdminUsers() {
           firstName: values.first_name,
           lastName: values.last_name,
           role: values.role,
-          schoolId: values.role === 'system_admin' ? null : values.school_id,
+          schoolId: (values.role === 'system_admin' || values.role === 'district_admin') ? null : values.school_id,
+          districtId: values.role === 'district_admin' ? values.district_id : null,
           sendInvite: true,
         },
         headers: { Authorization: `Bearer ${session?.access_token}` }
@@ -169,19 +200,35 @@ export default function AdminUsers() {
         first_name: values.first_name,
         last_name: values.last_name,
         email: values.email,
-        school_id: values.role === 'system_admin' ? null : (values.school_id ?? null),
+        school_id: (values.role === 'system_admin' || values.role === 'district_admin') ? null : (values.school_id ?? null),
       };
       const { error: upErr } = await supabase.from('profiles').update(profilePayload).eq('id', editing.id);
       if (upErr) throw upErr;
-      // reset role
+      
+      // Reset role
       await supabase.from('user_roles').delete().eq('user_id', editing.id);
       const { error: insErr } = await supabase.from('user_roles').insert({ user_id: editing.id, role: values.role });
       if (insErr) throw insErr;
+
+      // Handle district assignment for district_admin
+      if (values.role === 'district_admin' && values.district_id) {
+        await supabase.from('user_districts').delete().eq('user_id', editing.id);
+        const { error: distErr } = await supabase.from('user_districts').insert({ 
+          user_id: editing.id, 
+          district_id: values.district_id,
+          is_primary: true 
+        });
+        if (distErr) throw distErr;
+      } else {
+        // Remove district assignment if role changed from district_admin
+        await supabase.from('user_districts').delete().eq('user_id', editing.id);
+      }
     },
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['profiles'] }),
         qc.invalidateQueries({ queryKey: ['user_roles'] }),
+        qc.invalidateQueries({ queryKey: ['user_districts'] }),
       ]);
       toast({ title: 'Updated', description: 'User details have been updated.' });
       setShowForm(false);
@@ -266,6 +313,19 @@ export default function AdminUsers() {
                   </Select>
                 </div>
               )}
+              {form.watch('role') === 'district_admin' && (
+                <div className="space-y-2">
+                  <Label htmlFor="district_id">District</Label>
+                  <Select value={form.watch('district_id') || ''} onValueChange={(v: any) => form.setValue('district_id', v, { shouldDirty: true })}>
+                    <SelectTrigger id="district_id"><SelectValue placeholder="Select a district" /></SelectTrigger>
+                    <SelectContent className="z-[60] bg-background">
+                      {(districts || []).map(d => (
+                        <SelectItem key={d.id} value={d.id}>{d.district_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="col-span-1 md:col-span-2 flex gap-3 justify-end pt-2">
                 <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
@@ -313,20 +373,23 @@ export default function AdminUsers() {
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden lg:table-cell">Email</TableHead>
                   <TableHead className="hidden lg:table-cell">Role</TableHead>
-                  <TableHead className="hidden lg:table-cell">School</TableHead>
+                  <TableHead className="hidden lg:table-cell">School/District</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProfiles.map((p) => {
                   const role = byUserRole.get(p.id) || '—';
+                  const userDistrictId = userDistricts?.find(ud => ud.user_id === p.id)?.district_id;
+                  const districtName = districts?.find(d => d.id === userDistrictId)?.district_name;
                   const schoolName = schools?.find(s => s.id === (p.school_id ?? -1))?.school_name || (p.school_id ? `#${p.school_id}` : '—');
+                  const orgName = role === 'district_admin' && districtName ? districtName : schoolName;
                   return (
                     <TableRow key={p.id}>
                       <TableCell>{[p.first_name, p.last_name].filter(Boolean).join(' ') || '—'}</TableCell>
                       <TableCell className="hidden lg:table-cell">{p.email || '—'}</TableCell>
                       <TableCell className="hidden lg:table-cell">{role === '—' ? '—' : getRoleLabel(role as UserRoleRow["role"])}</TableCell>
-                      <TableCell className="hidden lg:table-cell">{schoolName}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{orgName}</TableCell>
                       <TableCell className="text-right">
                         {/* Desktop actions */}
                         <div className="hidden lg:flex justify-end gap-2">

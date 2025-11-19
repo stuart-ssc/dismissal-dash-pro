@@ -10,8 +10,9 @@ interface CreateUserRequest {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'teacher' | 'school_admin' | 'system_admin';
+  role: 'teacher' | 'school_admin' | 'system_admin' | 'district_admin';
   schoolId?: number | null;
+  districtId?: string | null;
   sendInvite?: boolean;
 }
 
@@ -51,7 +52,7 @@ serve(async (req) => {
 
     const isSystemAdmin = userRoles?.some(r => r.role === 'system_admin');
 
-    const { email, firstName, lastName, role, schoolId, sendInvite = true } = await req.json() as CreateUserRequest;
+    const { email, firstName, lastName, role, schoolId, districtId, sendInvite = true } = await req.json() as CreateUserRequest;
 
     if (!email || !firstName || !lastName || !role) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -59,6 +60,10 @@ serve(async (req) => {
 
     if ((role === 'teacher' || role === "school_admin") && !schoolId) {
       return new Response(JSON.stringify({ error: 'schoolId is required for teacher and school_admin roles' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (role === 'district_admin' && !districtId) {
+      return new Response(JSON.stringify({ error: 'districtId is required for district_admin role' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // For school_admin role creation, allow teachers to invite if no admin exists
@@ -159,6 +164,18 @@ serve(async (req) => {
     const { error: insertRoleError } = await supabase.from('user_roles').insert({ user_id: newUserId, role });
     if (insertRoleError) {
       return new Response(JSON.stringify({ error: insertRoleError.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // If district_admin, assign to district
+    if (role === 'district_admin' && districtId) {
+      const { error: districtAssignError } = await supabase.from('user_districts').insert({ 
+        user_id: newUserId, 
+        district_id: districtId,
+        is_primary: true 
+      });
+      if (districtAssignError) {
+        return new Response(JSON.stringify({ error: districtAssignError.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     return new Response(JSON.stringify({ success: true, userId: newUserId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
