@@ -1,15 +1,32 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle, Clock, Shield, Users, BarChart3, Briefcase } from "lucide-react";
+import { useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import heroImage from "@/assets/hero-dismissal.jpg";
 import { useSEO } from "@/hooks/useSEO";
+import { useAuth } from "@/hooks/useAuth";
 import InfiniteCampusLogo from "@/components/InfiniteCampusLogo";
 
 const Index = () => {
   const SEO = useSEO();
+  const { user, userRole, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect logged-in users to their appropriate dashboard
+  useEffect(() => {
+    if (!loading && user && userRole) {
+      if (userRole === 'system_admin') {
+        navigate('/admin');
+      } else if (userRole === 'district_admin') {
+        navigate('/district-dash');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [user, userRole, loading, navigate]);
   
   const features = [
     {
