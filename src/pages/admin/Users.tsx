@@ -10,7 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft, KeyRound, MoreVertical } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft, KeyRound, MoreVertical, Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -130,10 +133,22 @@ export default function AdminUsers() {
   const [editing, setEditing] = useState<ProfileRow | null>(null);
   const [search, setSearch] = useState('');
   const [schoolFilter, setSchoolFilter] = useState<string>('all');
+  const [districtSearchOpen, setDistrictSearchOpen] = useState(false);
+  const [districtSearchQuery, setDistrictSearchQuery] = useState("");
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { first_name: '', last_name: '', email: '', role: 'teacher', school_id: null, district_id: undefined }
   });
+
+  const filteredDistricts = useMemo(() => {
+    if (!districts) return [];
+    if (!districtSearchQuery) return districts;
+    
+    const query = districtSearchQuery.toLowerCase();
+    return districts.filter(d => 
+      d.district_name.toLowerCase().includes(query)
+    );
+  }, [districts, districtSearchQuery]);
 
   useEffect(() => {
     if (editing) {
@@ -316,18 +331,74 @@ export default function AdminUsers() {
               {form.watch('role') === 'district_admin' && (
                 <div className="space-y-2">
                   <Label htmlFor="district_id">District</Label>
-                  <Select value={form.watch('district_id') || ''} onValueChange={(v: any) => form.setValue('district_id', v, { shouldDirty: true })}>
-                    <SelectTrigger id="district_id"><SelectValue placeholder="Select a district" /></SelectTrigger>
-                    <SelectContent className="z-[60] bg-background">
-                      {(districts || []).map(d => (
-                        <SelectItem key={d.id} value={d.id}>{d.district_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={districtSearchOpen} onOpenChange={setDistrictSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={districtSearchOpen}
+                        className="w-full justify-between"
+                      >
+                        {form.watch('district_id') 
+                          ? districts?.find(d => d.id === form.watch('district_id'))?.district_name 
+                          : "Select a district..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput 
+                          placeholder="Search districts..." 
+                          value={districtSearchQuery}
+                          onValueChange={setDistrictSearchQuery}
+                        />
+                        <CommandList>
+                          {filteredDistricts.length === 0 && districtSearchQuery && (
+                            <CommandEmpty>No districts found.</CommandEmpty>
+                          )}
+                          {filteredDistricts.length === 0 && !districtSearchQuery && (
+                            <div className="p-4 text-center text-sm text-muted-foreground">
+                              Type to search districts
+                            </div>
+                          )}
+                          {filteredDistricts.length > 0 && (
+                            <CommandGroup>
+                              {filteredDistricts.map((district) => (
+                                <CommandItem
+                                  key={district.id}
+                                  value={district.id}
+                                  onSelect={() => {
+                                    form.setValue('district_id', district.id, { shouldDirty: true });
+                                    setDistrictSearchOpen(false);
+                                    setDistrictSearchQuery("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      form.watch('district_id') === district.id 
+                                        ? "opacity-100" 
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  {district.district_name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  {form.formState.errors.district_id && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.district_id.message}
+                    </p>
+                  )}
                 </div>
               )}
               <div className="col-span-1 md:col-span-2 flex gap-3 justify-end pt-2">
-                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); setDistrictSearchQuery(""); }}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
                   {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editing ? 'Update' : 'Create & Invite'}
