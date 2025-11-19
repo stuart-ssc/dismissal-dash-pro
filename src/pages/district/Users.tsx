@@ -15,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Table,
@@ -24,15 +25,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDistrictUsers, useUserMutations } from "@/hooks/useDistrictUsers";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useDistrictUsers, useUserMutations, type DistrictUser } from "@/hooks/useDistrictUsers";
 import { useDistrictSchools } from "@/hooks/useDistrictSchools";
-import { MoreHorizontal, Plus, Search, UserPlus } from "lucide-react";
+import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import InviteUserDialog from "@/components/InviteUserDialog";
+import TransferUserDialog from "@/components/TransferUserDialog";
 
 export default function DistrictUsers() {
   const [schoolFilter, setSchoolFilter] = useState<number | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: users, isLoading } = useDistrictUsers(schoolFilter);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<DistrictUser | null>(null);
+
+  const { data: users, isLoading, refetch } = useDistrictUsers(schoolFilter);
   const { data: schools } = useDistrictSchools();
   const { archiveUser } = useUserMutations();
   const isMobile = useIsMobile();
@@ -44,6 +62,24 @@ export default function DistrictUsers() {
 
   const schoolAdminCount = users?.filter((u) => u.role === "school_admin").length || 0;
   const teacherCount = users?.filter((u) => u.role === "teacher").length || 0;
+
+  const handleTransferClick = (user: DistrictUser) => {
+    setSelectedUser(user);
+    setTransferDialogOpen(true);
+  };
+
+  const handleArchiveClick = (user: DistrictUser) => {
+    setSelectedUser(user);
+    setArchiveDialogOpen(true);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (selectedUser) {
+      await archiveUser.mutateAsync(selectedUser.id);
+      setArchiveDialogOpen(false);
+      setSelectedUser(null);
+    }
+  };
 
   if (isLoading) {
     return <div className="p-6">Loading users...</div>;
@@ -63,7 +99,7 @@ export default function DistrictUsers() {
               className="pl-9"
             />
           </div>
-          <Button className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto" onClick={() => setInviteDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Invite User
           </Button>
@@ -139,10 +175,14 @@ export default function DistrictUsers() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Edit User</DropdownMenuItem>
-                          <DropdownMenuItem>Transfer School</DropdownMenuItem>
-                          <DropdownMenuItem>Reset Password</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => archiveUser.mutate(user.id)}>
+                          <DropdownMenuItem onClick={() => handleTransferClick(user)}>
+                            Transfer School
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleArchiveClick(user)}
+                            className="text-destructive"
+                          >
                             Archive User
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -190,10 +230,14 @@ export default function DistrictUsers() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Edit User</DropdownMenuItem>
-                          <DropdownMenuItem>Transfer School</DropdownMenuItem>
-                          <DropdownMenuItem>Reset Password</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => archiveUser.mutate(user.id)}>
+                          <DropdownMenuItem onClick={() => handleTransferClick(user)}>
+                            Transfer School
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleArchiveClick(user)}
+                            className="text-destructive"
+                          >
                             Archive User
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -206,6 +250,43 @@ export default function DistrictUsers() {
           </div>
         </CardContent>
       </Card>
+
+      <InviteUserDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        onSuccess={() => refetch()}
+      />
+
+      {selectedUser && (
+        <TransferUserDialog
+          open={transferDialogOpen}
+          onOpenChange={setTransferDialogOpen}
+          userId={selectedUser.id}
+          userName={`${selectedUser.first_name} ${selectedUser.last_name}`}
+          currentSchoolName={selectedUser.school_name || "Unknown"}
+        />
+      )}
+
+      <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive {selectedUser?.first_name} {selectedUser?.last_name}? 
+              This will remove their access to the system. This action can be reversed by a system administrator.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleArchiveConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Archive User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
