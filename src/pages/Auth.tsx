@@ -215,6 +215,8 @@ const prefetchSchools = useCallback(async () => {
     if (!loading && user && userRole) {
       if (userRole === 'system_admin') {
         navigate('/admin');
+      } else if (userRole === 'district_admin') {
+        navigate('/district-dash');
       } else {
         navigate('/dashboard');
       }
