@@ -256,6 +256,18 @@ export const contactFormSchema = z.object({
   message: z.string().trim().min(10, "Message must be at least 10 characters").max(2000, "Message must be less than 2000 characters")
 });
 
+// District school management schema
+export const districtSchoolSchema = z.object({
+  school_name: z.string().min(1, "School name is required").max(200, "School name must be less than 200 characters"),
+  street_address: z.string().max(200, "Address must be less than 200 characters").optional().or(z.literal('')),
+  city: z.string().min(1, "City is required").max(100, "City must be less than 100 characters"),
+  state: z.string().length(2, "State must be 2 characters"),
+  zipcode: z.string().regex(/^\d{5}(-\d{4})?$/, "Invalid zipcode format").optional().or(z.literal('')),
+  phone_number: z.string().regex(/^\(\d{3}\)\d{3}-\d{4}$/, "Phone must be (XXX)XXX-XXXX format").optional().or(z.literal('')),
+  timezone: z.string().min(1, "Timezone is required"),
+  verification_status: z.enum(["unverified", "verified", "flagged", "inactive"]),
+});
+
 // Export type inference helpers
 export type SignInFormData = z.infer<typeof signInSchema>;
 export type SignUpFormData = z.infer<typeof signUpSchema>;
@@ -274,3 +286,4 @@ export type DismissalPlanFormData = z.infer<typeof dismissalPlanSchema>;
 export type URLFormData = z.infer<typeof urlSchema>;
 export type FileFormData = z.infer<typeof fileSchema>;
 export type ContactFormData = z.infer<typeof contactFormSchema>;
+export type DistrictSchoolFormData = z.infer<typeof districtSchoolSchema>;
