@@ -49,11 +49,6 @@ const Dismissals = () => {
     }
   }, [user, loading, navigate]);
 
-  useEffect(() => {
-    if (!loading && user && userRole !== 'school_admin') {
-      navigate('/dashboard');
-    }
-  }, [user, userRole, loading, navigate]);
 
   useEffect(() => {
     fetchDismissals();

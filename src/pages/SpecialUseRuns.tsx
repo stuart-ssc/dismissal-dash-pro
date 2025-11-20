@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ type SpecialUseRun = {
 
 export default function SpecialUseRuns() {
   const { user } = useAuth();
+  const { schoolId, isLoading: isLoadingSchool } = useActiveSchoolId();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -83,31 +85,23 @@ export default function SpecialUseRuns() {
 
   useEffect(() => {
     const fetchSessions = async () => {
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", user?.id)
-        .single();
+      if (!schoolId) return;
 
-      if (profileData?.school_id) {
-        const { data: sessions } = await supabase
-          .from("academic_sessions")
-          .select("*")
-          .eq("school_id", profileData.school_id)
-          .order("start_date", { ascending: false });
+      const { data: sessions } = await supabase
+        .from("academic_sessions")
+        .select("*")
+        .eq("school_id", schoolId)
+        .order("start_date", { ascending: false });
 
-        if (sessions) {
-          setAcademicSessions(sessions);
-          const activeSession = sessions.find((s) => s.is_active);
-          setSelectedSessionId(activeSession?.id || sessions[0]?.id || null);
-        }
+      if (sessions) {
+        setAcademicSessions(sessions);
+        const activeSession = sessions.find((s) => s.is_active);
+        setSelectedSessionId(activeSession?.id || sessions[0]?.id || null);
       }
     };
 
-    if (user?.id) {
-      fetchSessions();
-    }
-  }, [user?.id]);
+    fetchSessions();
+  }, [schoolId]);
 
   const { data: runs = [], isLoading, refetch } = useQuery<SpecialUseRun[]>({
     queryKey: ["special-use-runs", user?.id, selectedSessionId],
@@ -141,7 +135,7 @@ export default function SpecialUseRuns() {
         buses: run.buses.map((b: any) => b.bus)
       })) as SpecialUseRun[];
     },
-    enabled: !!user && !!selectedSessionId,
+    enabled: !!user && !!selectedSessionId && !isLoadingSchool,
   });
 
   const filteredRuns = runs.filter((run) => {
