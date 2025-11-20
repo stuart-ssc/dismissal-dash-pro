@@ -4098,6 +4098,7 @@ export type Database = {
           weekday_pattern: string[]
         }[]
       }
+      get_any_impersonated_school_id: { Args: never; Returns: number }
       get_app_secret: { Args: { p_key: string }; Returns: string }
       get_current_academic_session: {
         Args: { p_school_id: number }
