@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,37 +77,27 @@ export default function SpecialUseGroups() {
   const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
-  const [schoolId, setSchoolId] = useState<number | null>(null);
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
 
   useEffect(() => {
     const fetchSessions = async () => {
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", user?.id)
-        .single();
+      if (!schoolId) return;
+      
+      const { data: sessions } = await supabase
+        .from("academic_sessions")
+        .select("*")
+        .eq("school_id", schoolId)
+        .order("start_date", { ascending: false });
 
-      if (profileData?.school_id) {
-        setSchoolId(profileData.school_id);
-        
-        const { data: sessions } = await supabase
-          .from("academic_sessions")
-          .select("*")
-          .eq("school_id", profileData.school_id)
-          .order("start_date", { ascending: false });
-
-        if (sessions) {
-          setAcademicSessions(sessions);
-          const activeSession = sessions.find((s) => s.is_active);
-          setSelectedSessionId(activeSession?.id || sessions[0]?.id || null);
-        }
+      if (sessions) {
+        setAcademicSessions(sessions);
+        const activeSession = sessions.find((s) => s.is_active);
+        setSelectedSessionId(activeSession?.id || sessions[0]?.id || null);
       }
     };
 
-    if (user?.id) {
-      fetchSessions();
-    }
-  }, [user?.id]);
+    fetchSessions();
+  }, [schoolId]);
 
   const { data: groups = [], isLoading, refetch } = useQuery<SpecialUseGroup[]>({
     queryKey: ["special-use-groups", user?.id, selectedSessionId],

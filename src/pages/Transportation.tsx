@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSEO } from "@/hooks/useSEO";
@@ -170,7 +171,7 @@ const Transportation = () => {
   });
   const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; class_name: string }>>([]);
   
-  const [schoolId, setSchoolId] = useState<number | null>(null);
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   
   // Walker locations state
   const [walkerLocations, setWalkerLocations] = useState<WalkerLocationRecord[]>([]);
@@ -257,37 +258,22 @@ const Transportation = () => {
     fetchWalkerLocations();
     fetchCarLines();
     fetchAfterSchoolActivities();
-  }, [user]);
+  }, [schoolId]);
 
   const fetchTransportation = async () => {
-    if (!user) return;
+    if (!schoolId) return;
 
     try {
       setIsLoading(true);
-
-      // Get user's school to scope the query and avoid any RLS ambiguity
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (!profile?.school_id) {
-        setTransportation([]);
-        setFilteredTransportation([]);
-        return;
-      }
-
-      setSchoolId(profile.school_id);
       
       // Fetch buses without nested aggregation to avoid RLS issues
       const { data: buses, error: busesError } = await supabase
         .from('buses')
         .select('*')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', schoolId)
         .order('bus_number', { ascending: true });
 
-      console.log('Buses query result:', { buses, error: busesError, schoolId: profile.school_id });
+      console.log('Buses query result:', { buses, error: busesError, schoolId });
 
       if (busesError) {
         console.error('Error fetching buses:', busesError);

@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,7 @@ interface WalkerLocationRecord {
 const WalkerLocations = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   const [walkerLocations, setWalkerLocations] = useState<WalkerLocationRecord[]>([]);
   const [filteredWalkerLocations, setFilteredWalkerLocations] = useState<WalkerLocationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,33 +68,19 @@ const WalkerLocations = () => {
 
   useEffect(() => {
     fetchWalkerLocations();
-  }, [user]);
+  }, [schoolId]);
 
   const fetchWalkerLocations = async () => {
-    if (!user) return;
+    if (!schoolId) return;
 
     try {
       setIsLoading(true);
-      
-      // Get user's school_id first
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) {
-        console.error('No school_id found for user');
-        setWalkerLocations([]);
-        setFilteredWalkerLocations([]);
-        return;
-      }
 
       // Fetch walker locations for the school
       const { data: walkerLocationsData, error } = await supabase
         .from('walker_locations')
         .select('*')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', schoolId)
         .order('location_name');
 
       if (error) {

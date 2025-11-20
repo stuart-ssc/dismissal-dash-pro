@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSEO } from "@/hooks/useSEO";
@@ -35,7 +36,7 @@ const People = () => {
   const SEO = useSEO();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [schoolId, setSchoolId] = useState<number | null>(null);
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<PersonData | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -105,44 +106,33 @@ const People = () => {
   }, [user, loading, navigate, session]);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) return;
+    const fetchAcademicSessions = async () => {
+      if (!schoolId) return;
       
       try {
-        // Get user's profile to get school_id
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('school_id')
-          .eq('id', user.id)
-          .single();
+        // Fetch academic sessions
+        const { data: sessions } = await supabase
+          .from('academic_sessions')
+          .select('id, session_name, is_active')
+          .eq('school_id', schoolId)
+          .order('is_active', { ascending: false })
+          .order('start_date', { ascending: false });
 
-        if (profile?.school_id) {
-          setSchoolId(profile.school_id);
-
-          // Fetch academic sessions
-          const { data: sessions } = await supabase
-            .from('academic_sessions')
-            .select('id, session_name, is_active')
-            .eq('school_id', profile.school_id)
-            .order('is_active', { ascending: false })
-            .order('start_date', { ascending: false });
-
-          if (sessions) {
-            setAcademicSessions(sessions);
-            // Pre-select active session
-            const activeSession = sessions.find(s => s.is_active);
-            if (activeSession) {
-              setSelectedSessionId(activeSession.id);
-            }
+        if (sessions) {
+          setAcademicSessions(sessions);
+          // Pre-select active session
+          const activeSession = sessions.find(s => s.is_active);
+          if (activeSession) {
+            setSelectedSessionId(activeSession.id);
           }
         }
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching academic sessions:', error);
       }
     };
 
-    fetchUserData();
-  }, [user]);
+    fetchAcademicSessions();
+  }, [schoolId]);
 
   // Fetch classes for teacher users
   useEffect(() => {

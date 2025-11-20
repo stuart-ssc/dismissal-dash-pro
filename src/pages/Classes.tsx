@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSEO } from "@/hooks/useSEO";
@@ -243,7 +244,7 @@ const Classes = () => {
   const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
   const [teacherSearchResults, setTeacherSearchResults] = useState<Teacher[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
-  const [schoolId, setSchoolId] = useState<number | null>(null);
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   const [managingClass, setManagingClass] = useState<ClassRecord | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const itemsPerPage = 10;
@@ -263,30 +264,13 @@ const Classes = () => {
   useEffect(() => {
     fetchClasses();
     fetchTeachers();
-  }, [user]);
+  }, [schoolId]);
 
   const fetchClasses = async () => {
-    if (!user) return;
+    if (!schoolId) return;
 
     try {
       setIsLoading(true);
-      
-      // Get user's school_id first
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      console.log('User profile for classes:', profile);
-
-      if (!profile?.school_id) {
-        console.log('No school_id found for user');
-        setClasses([]);
-        setFilteredClasses([]);
-        setIsLoading(false);
-        return;
-      }
 
       // Fetch classes without nested class_rosters query to avoid RLS recursion
       const { data: classesData, error } = await supabase
@@ -297,9 +281,9 @@ const Classes = () => {
             teachers(first_name, last_name)
           )
         `)
-        .eq('school_id', profile.school_id);
+        .eq('school_id', schoolId);
 
-      console.log('Classes query result:', { classesData, error, schoolId: profile.school_id });
+      console.log('Classes query result:', { classesData, error, schoolId });
 
       if (error) {
         console.error('Error fetching classes:', error);
@@ -343,43 +327,35 @@ const Classes = () => {
 
 
   const fetchTeachers = async () => {
-    if (!user) return;
+    if (!schoolId) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
+      // Query profiles with teacher role
+      const { data: userRoles, error } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          profiles!inner(
+            id,
+            first_name,
+            last_name,
+            email,
+            school_id,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('role', 'teacher')
+        .eq('profiles.school_id', schoolId);
 
-      if (profile?.school_id) {
-        // Query profiles with teacher role
-        const { data: userRoles, error } = await supabase
-          .from('user_roles')
-          .select(`
-            user_id,
-            profiles!inner(
-              id,
-              first_name,
-              last_name,
-              email,
-              school_id,
-              created_at,
-              updated_at
-            )
-          `)
-          .eq('role', 'teacher')
-          .eq('profiles.school_id', profile.school_id);
-
-        if (error) {
-          console.error('Error fetching teachers:', error);
-          return;
-        }
-
-        // Map the results to Teacher[] format
-        const teachers = userRoles?.map(ur => ur.profiles).filter(Boolean) || [];
-        setAvailableTeachers(teachers);
+      if (error) {
+        console.error('Error fetching teachers:', error);
+        return;
       }
+
+      // Map the results to Teacher[] format
+      const teachers = userRoles?.map(ur => ur.profiles).filter(Boolean) || [];
+      setAvailableTeachers(teachers);
     } catch (error) {
       console.error('Error fetching teachers:', error);
     }
