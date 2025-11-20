@@ -12,13 +12,25 @@ export function useImpersonation() {
   useEffect(() => {
     const fetchImpersonationStatus = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('get-impersonation-status');
+        // Check system admin impersonation first
+        const { data: systemData, error: systemError } = await supabase.functions.invoke('get-impersonation-status');
 
-        if (error) {
-          console.error('Failed to fetch impersonation status:', error);
+        if (systemError) {
+          console.error('Failed to fetch system admin impersonation status:', systemError);
+        } else if (systemData?.isImpersonating) {
+          setSchoolId(systemData.schoolId);
+          setIsLoading(false);
+          return;
+        }
+
+        // Check district admin impersonation
+        const { data: districtData, error: districtError } = await supabase.functions.invoke('get-district-impersonation-status');
+
+        if (districtError) {
+          console.error('Failed to fetch district admin impersonation status:', districtError);
           setSchoolId(null);
-        } else if (data?.isImpersonating) {
-          setSchoolId(data.schoolId);
+        } else if (districtData?.isDistrictImpersonating) {
+          setSchoolId(districtData.schoolId);
         } else {
           setSchoolId(null);
         }
