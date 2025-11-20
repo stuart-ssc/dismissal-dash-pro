@@ -11,6 +11,7 @@ import { Home } from "lucide-react";
 
 const routeNameMap: Record<string, string> = {
   dashboard: "Dashboard",
+  "district-dash": "Dashboard",
   people: "People",
   dismissals: "Dismissals",
   classes: "Classes",
