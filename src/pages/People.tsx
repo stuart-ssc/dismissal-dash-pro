@@ -530,7 +530,7 @@ const People = () => {
   }
 
   // For school admins, show the sidebar layout
-  if (userRole === 'school_admin') {
+  if (userRole === 'school_admin' || userRole === 'district_admin') {
     return (
       <>
         <SEO />

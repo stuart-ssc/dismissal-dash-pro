@@ -256,7 +256,7 @@ const Classes = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (!loading && user && userRole !== 'school_admin') {
+    if (!loading && user && userRole !== 'school_admin' && userRole !== 'district_admin') {
       navigate('/dashboard');
     }
   }, [user, userRole, loading, navigate]);
