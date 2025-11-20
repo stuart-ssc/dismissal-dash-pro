@@ -72,8 +72,8 @@ export const useDistrictUsers = (schoolFilter?: number | "all") => {
 
       if (districtAdminError) throw districtAdminError;
 
-      // Flatten district admin profiles
-      const districtAdmins = districtAdminProfiles?.map((da: any) => da.profiles).flat() || [];
+      // Extract district admin profiles
+      const districtAdmins = districtAdminProfiles?.map((da: any) => da.profiles) || [];
 
       // Combine both arrays, removing duplicates
       const allProfilesMap = new Map();
