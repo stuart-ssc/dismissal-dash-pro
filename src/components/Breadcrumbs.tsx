@@ -25,6 +25,7 @@ const routeNameMap: Record<string, string> = {
   reports: "Reports",
   settings: "Settings",
   integrations: "Integrations",
+  "ic-integrations": "Infinite Campus",
   "infinite-campus": "Infinite Campus",
   help: "Help & Support",
 };
