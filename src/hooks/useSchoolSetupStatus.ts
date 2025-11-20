@@ -28,13 +28,30 @@ export const useSchoolSetupStatus = () => {
       setLoading(true);
       setError(null);
       try {
-        const { data: profile, error: profileErr } = await supabase
-          .from("profiles")
-          .select("school_id")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (profileErr) throw profileErr;
-        const schoolId = profile?.school_id;
+        // Check for impersonation first (system or district admin)
+        let schoolId: number | null = null;
+        
+        // Check system admin impersonation
+        const { data: systemImpersonation } = await supabase.functions.invoke('get-impersonation-status');
+        if (systemImpersonation?.isImpersonating && systemImpersonation?.schoolId) {
+          schoolId = systemImpersonation.schoolId;
+        } else {
+          // Check district admin impersonation
+          const { data: districtImpersonation } = await supabase.functions.invoke('get-district-impersonation-status');
+          if (districtImpersonation?.isDistrictImpersonating && districtImpersonation?.schoolId) {
+            schoolId = districtImpersonation.schoolId;
+          } else {
+            // Fall back to user's profile school_id
+            const { data: profile, error: profileErr } = await supabase
+              .from("profiles")
+              .select("school_id")
+              .eq("id", user.id)
+              .maybeSingle();
+            if (profileErr) throw profileErr;
+            schoolId = profile?.school_id ?? null;
+          }
+        }
+        
         if (!schoolId) {
           setStatuses({
             transportationReady: false,

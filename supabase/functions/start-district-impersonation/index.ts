@@ -135,7 +135,12 @@ Deno.serve(async (req) => {
     console.log(`District admin ${user.id} started impersonating school ${schoolId}`);
 
     return new Response(
-      JSON.stringify({ success: true, session }),
+      JSON.stringify({ 
+        success: true, 
+        schoolName: school.school_name,
+        schoolId: schoolId,
+        session 
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
