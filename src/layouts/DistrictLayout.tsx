@@ -3,11 +3,14 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { DistrictSidebar } from "@/components/DistrictSidebar";
 import { DistrictHeader } from "@/components/DistrictHeader";
 import { DistrictAuthProvider } from "@/hooks/useDistrictAuth";
+import { useIsTablet } from "@/hooks/use-tablet";
 
 export default function DistrictLayout() {
+  const isTablet = useIsTablet();
   return (
     <DistrictAuthProvider>
       <SidebarProvider
+        defaultOpen={!isTablet}
         style={{
           "--sidebar-width": "14rem",
         } as React.CSSProperties}
