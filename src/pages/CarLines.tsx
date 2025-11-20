@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,7 @@ interface CarLineRecord {
 const CarLines = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   const [carLines, setCarLines] = useState<CarLineRecord[]>([]);
   const [filteredCarLines, setFilteredCarLines] = useState<CarLineRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,33 +68,19 @@ const CarLines = () => {
 
   useEffect(() => {
     fetchCarLines();
-  }, [user]);
+  }, [schoolId]);
 
   const fetchCarLines = async () => {
-    if (!user) return;
+    if (!schoolId) return;
 
     try {
       setIsLoading(true);
-      
-      // Get user's school_id first
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) {
-        console.error('No school_id found for user');
-        setCarLines([]);
-        setFilteredCarLines([]);
-        return;
-      }
 
       // Fetch car lines for the school
       const { data: carLinesData, error } = await supabase
         .from('car_lines')
         .select('*')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', schoolId)
         .order('line_name');
 
       if (error) {

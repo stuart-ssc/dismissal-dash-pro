@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -49,7 +50,7 @@ export default function Absences() {
   const navigate = useNavigate();
   const SEO = useSEO();
   const isMobile = useIsMobile();
-  const [schoolId, setSchoolId] = useState<number | null>(null);
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   
   // Form state
   const [students, setStudents] = useState<Student[]>([]);
@@ -72,25 +73,6 @@ export default function Absences() {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
-
-  // Fetch school ID
-  useEffect(() => {
-    const fetchSchoolId = async () => {
-      if (!user) return;
-      
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .maybeSingle();
-      
-      if (profile?.school_id) {
-        setSchoolId(profile.school_id);
-      }
-    };
-    
-    fetchSchoolId();
-  }, [user]);
 
   // Fetch students
   useEffect(() => {

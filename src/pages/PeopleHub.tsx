@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -10,7 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 export default function PeopleHub() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-  const [schoolId, setSchoolId] = useState<number | null>(null);
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   const [statsOpen, setStatsOpen] = useState(false);
   const [stats, setStats] = useState({
     totalPeople: 0,
@@ -21,17 +22,7 @@ export default function PeopleHub() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-      
-      const sid = profile?.school_id ?? null;
-      setSchoolId(sid);
-      
-      if (!sid) return;
+      if (!schoolId) return;
 
       const today = new Date().toISOString().split('T')[0];
       
@@ -39,19 +30,19 @@ export default function PeopleHub() {
       const peopleRes = await supabase
         .from('students')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', sid);
+        .eq('school_id', schoolId);
       
       // @ts-ignore - Avoid deep type instantiation
       const classesRes = await supabase
         .from('classes')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', sid);
+        .eq('school_id', schoolId);
       
       // @ts-ignore - Avoid deep type instantiation
       const groupsRes = await supabase
         .from('special_use_groups')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', sid)
+        .eq('school_id', schoolId)
         .eq('is_active', true);
       
       // @ts-ignore - Avoid deep type instantiation
@@ -68,7 +59,7 @@ export default function PeopleHub() {
       });
     };
     fetchData();
-  }, [user]);
+  }, [schoolId]);
 
   const navigationCards = [
     {
