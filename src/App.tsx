@@ -62,6 +62,7 @@ import DistrictDashboard from "./pages/district/Dashboard";
 import DistrictSchools from "./pages/district/Schools";
 import DistrictUsers from "./pages/district/Users";
 import DistrictICIntegrations from "./pages/district/ICIntegrations";
+import ICIntegrationDetail from "./pages/district/ICIntegrationDetail";
 import DistrictReports from "./pages/district/Reports";
 import DistrictSettings from "./pages/district/Settings";
 
@@ -185,6 +186,7 @@ const AppContent = () => {
             <Route path="schools" element={<DistrictSchools />} />
             <Route path="users" element={<DistrictUsers />} />
             <Route path="ic-integrations" element={<DistrictICIntegrations />} />
+            <Route path="ic-integrations/:schoolId" element={<ICIntegrationDetail />} />
             <Route path="reports" element={<DistrictReports />} />
             <Route path="settings" element={<DistrictSettings />} />
           </Route>

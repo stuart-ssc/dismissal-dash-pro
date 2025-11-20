@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { formatDistanceToNow } from "date-fns";
 
 export default function DistrictICIntegrations() {
+  const navigate = useNavigate();
   const { data: connections, isLoading } = useDistrictICConnections();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const isMobile = useIsMobile();
@@ -137,13 +139,23 @@ export default function DistrictICIntegrations() {
                         <DropdownMenuContent align="end">
                           {conn.is_connected ? (
                             <>
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem>Test Connection</DropdownMenuItem>
-                              <DropdownMenuItem>View Sync Logs</DropdownMenuItem>
-                              <DropdownMenuItem>Edit Connection</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}`)}>
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}?tab=sync`)}>
+                                Sync Now
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}?tab=settings`)}>
+                                Test Connection
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}?tab=settings`)}>
+                                Settings
+                              </DropdownMenuItem>
                             </>
                           ) : (
-                            <DropdownMenuItem>Configure Integration</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}`)}>
+                              Configure Integration
+                            </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -236,13 +248,23 @@ export default function DistrictICIntegrations() {
                         <DropdownMenuContent align="end">
                           {conn.is_connected ? (
                             <>
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem>Test Connection</DropdownMenuItem>
-                              <DropdownMenuItem>View Sync Logs</DropdownMenuItem>
-                              <DropdownMenuItem>Edit Connection</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}`)}>
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}?tab=sync`)}>
+                                Sync Now
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}?tab=settings`)}>
+                                Test Connection
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}?tab=settings`)}>
+                                Settings
+                              </DropdownMenuItem>
                             </>
                           ) : (
-                            <DropdownMenuItem>Configure Integration</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/district-dash/ic-integrations/${conn.school_id}`)}>
+                              Configure Integration
+                            </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
