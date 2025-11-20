@@ -13,7 +13,8 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -21,9 +22,10 @@ import { z } from "zod";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TimePicker } from "@/components/ui/time-picker";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search, Filter, CheckCircle, Clock, AlertTriangle, XCircle, FileText, Edit, RefreshCw } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft, MoreVertical, Search, Filter, CheckCircle, Clock, AlertTriangle, XCircle, FileText, Edit, RefreshCw, ChevronsUpDown, Check } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
+import { cn } from "@/lib/utils";
 
 // US States for dropdown filter
 const US_STATES = [
@@ -44,8 +46,7 @@ interface School {
   zipcode: string | null;
   phone_number: string | null;
   school_logo: string | null;
-  primary_color: string | null;
-  secondary_color: string | null;
+  district_id: string | null;
   dismissal_time: string | null; // HH:MM:SS
   preparation_time_minutes: number | null;
   auto_dismissal_enabled: boolean | null;
@@ -61,6 +62,11 @@ interface School {
   flagged_reason?: string | null;
   created_at?: string;
 }
+
+interface District {
+  id: string;
+  district_name: string;
+}
 const schema = z.object({
   school_name: z.string().min(1, "Name is required"),
   street_address: z.string().optional().nullable(),
@@ -69,8 +75,7 @@ const schema = z.object({
   zipcode: z.string().optional().nullable(),
   phone_number: z.string().optional().nullable(),
   school_logo: z.union([z.string().url(), z.literal("")]).optional().nullable(),
-  primary_color: z.string().optional().nullable(),
-  secondary_color: z.string().optional().nullable(),
+  district_id: z.string().uuid().optional().nullable(),
   dismissal_time: z.string().optional().nullable(),
   preparation_time_minutes: z.coerce.number().int().min(0).optional().nullable(),
   auto_dismissal_enabled: z.boolean().optional().nullable(),
@@ -106,8 +111,7 @@ function SchoolForm({
       zipcode: initial?.zipcode ?? "",
       phone_number: initial?.phone_number ?? "",
       school_logo: initial?.school_logo ?? "",
-      primary_color: initial?.primary_color ?? "#3B82F6",
-      secondary_color: initial?.secondary_color ?? "#EF4444",
+      district_id: initial?.district_id ?? null,
       dismissal_time: (initial?.dismissal_time ?? "")?.slice(0, 5) || "",
       preparation_time_minutes: initial?.preparation_time_minutes ?? 5,
       auto_dismissal_enabled: initial?.auto_dismissal_enabled ?? false,
@@ -121,7 +125,54 @@ function SchoolForm({
       audit_logs_enabled: initial?.audit_logs_enabled ?? true
     }
   });
+  
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [districtSearchOpen, setDistrictSearchOpen] = useState(false);
+  const [districtSearchQuery, setDistrictSearchQuery] = useState("");
+
+  // District search query
+  const { data: districts, isLoading: loadingDistricts } = useQuery<District[]>({
+    queryKey: ['districts-search', districtSearchQuery],
+    queryFn: async () => {
+      if (!districtSearchQuery || districtSearchQuery.length < 2) {
+        return [];
+      }
+      
+      const { data, error } = await supabase
+        .from('districts')
+        .select('id, district_name')
+        .ilike('district_name', `%${districtSearchQuery}%`)
+        .order('district_name')
+        .limit(100);
+      
+      if (error) throw error;
+      return data as District[];
+    },
+    enabled: true,
+  });
+
+  // Selected district display
+  const { data: selectedDistrict } = useQuery<District>({
+    queryKey: ['district', form.watch('district_id')],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('districts')
+        .select('id, district_name')
+        .eq('id', form.watch('district_id'))
+        .single();
+      
+      if (error) throw error;
+      return data as District;
+    },
+    enabled: !!form.watch('district_id'),
+  });
+
+  const filteredDistricts = useMemo(() => {
+    if (!districtSearchQuery || districtSearchQuery.length < 2) {
+      return [];
+    }
+    return districts || [];
+  }, [districts, districtSearchQuery]);
   const upsertMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const payload = {
@@ -264,6 +315,70 @@ function SchoolForm({
       </div>
 
       <div className="space-y-2 md:col-span-2">
+        <Label htmlFor="district_id">District (Optional)</Label>
+        <Popover open={districtSearchOpen} onOpenChange={setDistrictSearchOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={districtSearchOpen}
+              className="w-full justify-between"
+            >
+              {form.watch('district_id') 
+                ? selectedDistrict?.district_name || "Loading..." 
+                : "Select district (optional)"}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-full p-0" align="start">
+            <Command shouldFilter={false}>
+              <CommandInput 
+                placeholder="Search districts..." 
+                value={districtSearchQuery}
+                onValueChange={setDistrictSearchQuery}
+              />
+              <CommandList>
+                {filteredDistricts.length === 0 && districtSearchQuery && districtSearchQuery.length >= 2 && (
+                  <CommandEmpty>No districts found.</CommandEmpty>
+                )}
+                {(!districtSearchQuery || districtSearchQuery.length < 2) && (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Type at least 2 characters to search districts
+                  </div>
+                )}
+                {filteredDistricts.length > 0 && (
+                  <CommandGroup>
+                    {filteredDistricts.map((district) => (
+                      <CommandItem
+                        key={district.id}
+                        value={district.id}
+                        onSelect={(currentValue) => {
+                          form.setValue('district_id', currentValue === form.watch('district_id') ? null : currentValue);
+                          setDistrictSearchOpen(false);
+                          setDistrictSearchQuery("");
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            form.watch('district_id') === district.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {district.district_name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        <p className="text-sm text-muted-foreground">
+          Assign this school to a district for centralized management
+        </p>
+      </div>
+
+      <div className="space-y-2 md:col-span-2">
         <Label htmlFor="school_logo">Logo</Label>
         {form.watch("school_logo") && (
           <img
@@ -290,16 +405,6 @@ function SchoolForm({
             </div>
           )}
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="primary_color">Primary Color</Label>
-        <Input id="primary_color" type="color" {...form.register("primary_color")} />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="secondary_color">Secondary Color</Label>
-        <Input id="secondary_color" type="color" {...form.register("secondary_color")} />
       </div>
 
       <div className="space-y-2">
