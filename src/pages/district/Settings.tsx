@@ -42,7 +42,6 @@ const defaultSettingsSchema = z.object({
 const overridePermissionsSchema = z.object({
   allow_school_timezone_override: z.boolean(),
   allow_school_dismissal_time_override: z.boolean(),
-  allow_school_colors_override: z.boolean(),
 });
 
 type DistrictInfoFormValues = z.infer<typeof districtInfoSchema>;
@@ -83,7 +82,6 @@ export default function DistrictSettings() {
     defaultValues: {
       allow_school_timezone_override: true,
       allow_school_dismissal_time_override: true,
-      allow_school_colors_override: true,
     },
   });
 
@@ -131,7 +129,6 @@ export default function DistrictSettings() {
           overridePermissionsForm.reset({
             allow_school_timezone_override: data.allow_school_timezone_override ?? true,
             allow_school_dismissal_time_override: data.allow_school_dismissal_time_override ?? true,
-            allow_school_colors_override: data.allow_school_colors_override ?? true,
           });
         }
       } catch (error) {
@@ -228,7 +225,6 @@ export default function DistrictSettings() {
         .update({
           allow_school_timezone_override: values.allow_school_timezone_override,
           allow_school_dismissal_time_override: values.allow_school_dismissal_time_override,
-          allow_school_colors_override: values.allow_school_colors_override,
           updated_at: new Date().toISOString(),
         })
         .eq("id", district.id);
@@ -504,24 +500,6 @@ export default function DistrictSettings() {
                         <FormLabel className="text-base">Allow schools to set dismissal preparation times</FormLabel>
                         <FormDescription>
                           Schools can configure their own dismissal timing and preparation schedules
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={overridePermissionsForm.control}
-                  name="allow_school_colors_override"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Allow schools to customize branding colors</FormLabel>
-                        <FormDescription>
-                          Schools can set their own school colors for the dismissal interface
                         </FormDescription>
                       </div>
                       <FormControl>
