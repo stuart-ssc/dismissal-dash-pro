@@ -7,7 +7,11 @@ import { DistrictAuthProvider } from "@/hooks/useDistrictAuth";
 export default function DistrictLayout() {
   return (
     <DistrictAuthProvider>
-      <SidebarProvider>
+      <SidebarProvider
+        style={{
+          "--sidebar-width": "14rem",
+        } as React.CSSProperties}
+      >
         <div className="flex min-h-screen w-full overflow-x-hidden">
           <DistrictSidebar />
           
