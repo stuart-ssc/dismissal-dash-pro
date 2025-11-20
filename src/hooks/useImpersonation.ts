@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 export function useImpersonation() {
   const [schoolId, setSchoolId] = useState<number | null>(null);
+  const [adminType, setAdminType] = useState<'system_admin' | 'district_admin' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -19,6 +20,7 @@ export function useImpersonation() {
           console.error('Failed to fetch system admin impersonation status:', systemError);
         } else if (systemData?.isImpersonating) {
           setSchoolId(systemData.schoolId);
+          setAdminType('system_admin');
           setIsLoading(false);
           return;
         }
@@ -29,10 +31,13 @@ export function useImpersonation() {
         if (districtError) {
           console.error('Failed to fetch district admin impersonation status:', districtError);
           setSchoolId(null);
+          setAdminType(null);
         } else if (districtData?.isDistrictImpersonating) {
           setSchoolId(districtData.schoolId);
+          setAdminType('district_admin');
         } else {
           setSchoolId(null);
+          setAdminType(null);
         }
       } catch (error) {
         console.error('Error fetching impersonation status:', error);
@@ -50,8 +55,12 @@ export function useImpersonation() {
 
     try {
       if (id === null) {
-        // End impersonation
-        const { error } = await supabase.functions.invoke('end-impersonation');
+        // End impersonation - call appropriate endpoint based on admin type
+        const functionName = adminType === 'system_admin' 
+          ? 'end-impersonation' 
+          : 'end-district-impersonation';
+        
+        const { error } = await supabase.functions.invoke(functionName);
 
         if (error) {
           console.error('Failed to end impersonation:', error);
@@ -61,8 +70,12 @@ export function useImpersonation() {
         }
 
         setSchoolId(null);
+        setAdminType(null);
         toast.success('Stopped impersonating school');
-        navigate('/admin');
+        
+        // Navigate to correct dashboard based on admin type
+        const returnPath = adminType === 'system_admin' ? '/admin' : '/district-dash';
+        navigate(returnPath);
       } else {
         // Start impersonation
         const { data, error } = await supabase.functions.invoke('start-impersonation', {
