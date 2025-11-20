@@ -61,28 +61,44 @@ const Dashboard = () => {
       if (!user) return;
       
       try {
-        // Get user's profile to get school_id, first_name, and last_name
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('school_id, first_name, last_name')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (profile) {
-          setFirstName(profile.first_name || '');
-          setLastName(profile.last_name || '');
-
-          if (profile.school_id) {
-            // Get school name
-            const { data: school } = await supabase
-              .from('schools')
-              .select('school_name')
-              .eq('id', profile.school_id)
+        // Check for impersonation first (system or district admin)
+        let schoolId: number | null = null;
+        
+        // Check system admin impersonation
+        const { data: systemImpersonation } = await supabase.functions.invoke('get-impersonation-status');
+        if (systemImpersonation?.isImpersonating && systemImpersonation?.schoolId) {
+          schoolId = systemImpersonation.schoolId;
+        } else {
+          // Check district admin impersonation
+          const { data: districtImpersonation } = await supabase.functions.invoke('get-district-impersonation-status');
+          if (districtImpersonation?.isDistrictImpersonating && districtImpersonation?.schoolId) {
+            schoolId = districtImpersonation.schoolId;
+          } else {
+            // Fall back to user's profile school_id
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('school_id, first_name, last_name')
+              .eq('id', user.id)
               .maybeSingle();
 
-            if (school?.school_name) {
-              setSchoolName(school.school_name);
+            if (profile) {
+              setFirstName(profile.first_name || '');
+              setLastName(profile.last_name || '');
+              schoolId = profile.school_id ?? null;
             }
+          }
+        }
+
+        if (schoolId) {
+          // Get school name
+          const { data: school } = await supabase
+            .from('schools')
+            .select('school_name')
+            .eq('id', schoolId)
+            .maybeSingle();
+
+          if (school?.school_name) {
+            setSchoolName(school.school_name);
           }
         }
       } catch (error) {
