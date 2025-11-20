@@ -1271,6 +1271,44 @@ export type Database = {
         }
         Relationships: []
       }
+      district_impersonation_sessions: {
+        Row: {
+          created_at: string
+          district_admin_user_id: string
+          expires_at: string
+          id: string
+          impersonated_school_id: number
+          ip_address: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          district_admin_user_id: string
+          expires_at?: string
+          id?: string
+          impersonated_school_id: number
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          district_admin_user_id?: string
+          expires_at?: string
+          id?: string
+          impersonated_school_id?: number
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "district_impersonation_sessions_impersonated_school_id_fkey"
+            columns: ["impersonated_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       districts: {
         Row: {
           allow_school_colors_override: boolean | null
