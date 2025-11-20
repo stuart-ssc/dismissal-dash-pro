@@ -4227,6 +4227,10 @@ export type Database = {
         Args: { p_group_id: string; p_user_id: string }
         Returns: boolean
       }
+      is_impersonating_school: {
+        Args: { check_school_id: number }
+        Returns: boolean
+      }
       is_run_manager: {
         Args: { p_run_id: string; p_user_id: string }
         Returns: boolean

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function useImpersonation() {
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Fetch current impersonation status on mount
   useEffect(() => {
@@ -48,9 +50,7 @@ export function useImpersonation() {
 
         setSchoolId(null);
         toast.success('Stopped impersonating school');
-        
-        // Refresh the page to clear any cached data
-        window.location.reload();
+        navigate('/admin');
       } else {
         // Start impersonation
         const { data, error } = await supabase.functions.invoke('start-impersonation', {
@@ -65,14 +65,13 @@ export function useImpersonation() {
         }
 
         setSchoolId(id);
-        toast.success(`Now impersonating: ${data.schoolName}`);
-        
-        // Refresh the page to load data for the impersonated school
-        window.location.reload();
+        toast.success(`Now viewing ${data.schoolName}`);
+        navigate('/dashboard');
       }
     } catch (error) {
       console.error('Error managing impersonation:', error);
       toast.error('An error occurred while managing school impersonation');
+    } finally {
       setIsLoading(false);
     }
   };
