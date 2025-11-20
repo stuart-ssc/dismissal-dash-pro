@@ -23,6 +23,7 @@ import { Plus, MoreHorizontal, Edit, Trash2, Settings, CalendarDays, Users, Cloc
 import { TimePicker } from "@/components/ui/time-picker";
 import { format, parseISO } from "date-fns";
 import { useImpersonation } from "@/hooks/useImpersonation";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -56,6 +57,7 @@ export default function DismissalPlans() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { impersonatedSchoolId } = useImpersonation();
+  const { schoolId: activeSchoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
 
   const [plans, setPlans] = useState<DismissalPlan[]>([]);
   const [filteredPlans, setFilteredPlans] = useState<DismissalPlan[]>([]);
@@ -93,7 +95,7 @@ export default function DismissalPlans() {
       navigate('/auth');
       return;
     }
-    const canAccess = userRole === 'school_admin' || (userRole === 'system_admin' && !!impersonatedSchoolId);
+    const canAccess = userRole === 'school_admin' || userRole === 'district_admin' || (userRole === 'system_admin' && !!impersonatedSchoolId);
     if (!canAccess) {
       navigate('/dashboard');
       return;
@@ -101,11 +103,11 @@ export default function DismissalPlans() {
   }, [user, userRole, impersonatedSchoolId, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (activeSchoolId && !isLoadingSchoolId) {
       fetchSchoolInfo();
       fetchPlans();
     }
-  }, [user]);
+  }, [activeSchoolId, isLoadingSchoolId]);
 
   useEffect(() => {
     let filtered = [...plans];
@@ -142,37 +144,16 @@ export default function DismissalPlans() {
   }, [plans, searchTerm, filterStatus, sortBy, sortOrder]);
 
   const fetchSchoolInfo = async () => {
-    if (!user) return;
+    if (!activeSchoolId) return;
 
     try {
-      if (userRole === 'system_admin' && impersonatedSchoolId) {
-        const { data: school } = await supabase
-          .from('schools')
-          .select('school_name, dismissal_time')
-          .eq('id', impersonatedSchoolId)
-          .single();
-        if (school) {
-          setSchoolDismissalTime(school.dismissal_time || '');
-        }
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
+      const { data: school } = await supabase
+        .from('schools')
+        .select('school_name, dismissal_time')
+        .eq('id', activeSchoolId)
         .single();
-
-      if (profile?.school_id) {
-        const { data: school } = await supabase
-          .from('schools')
-          .select('school_name, dismissal_time')
-          .eq('id', profile.school_id)
-          .single();
-
-        if (school) {
-          setSchoolDismissalTime(school.dismissal_time || '');
-        }
+      if (school) {
+        setSchoolDismissalTime(school.dismissal_time || '');
       }
     } catch (error) {
       console.error('Error fetching school info:', error);
@@ -180,24 +161,10 @@ export default function DismissalPlans() {
   };
 
   const fetchPlans = async () => {
-    if (!user) return;
+    if (!activeSchoolId) return;
 
     try {
       setLoading(true);
-
-      const effectiveSchoolId = (userRole === 'system_admin' && impersonatedSchoolId) ? impersonatedSchoolId : null;
-      let schoolIdToUse: number | null = effectiveSchoolId;
-
-      if (!schoolIdToUse) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('school_id')
-          .eq('id', user.id)
-          .single();
-        schoolIdToUse = profile?.school_id ?? null;
-      }
-
-      if (!schoolIdToUse) return;
 
       const { data, error } = await supabase
         .from('dismissal_plans')
@@ -205,7 +172,7 @@ export default function DismissalPlans() {
           *,
           dismissal_groups(id)
         `)
-        .eq('school_id', schoolIdToUse)
+        .eq('school_id', activeSchoolId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -230,20 +197,10 @@ export default function DismissalPlans() {
   };
 
   const onSubmit = async (data: PlanFormData) => {
-    if (!user) return;
+    if (!user || !activeSchoolId) return;
 
     try {
-      let schoolIdToUse: number | null = (userRole === 'system_admin' && impersonatedSchoolId) ? impersonatedSchoolId : null;
-      if (!schoolIdToUse) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('school_id')
-          .eq('id', user.id)
-          .single();
-        schoolIdToUse = profile?.school_id ?? null;
-      }
-
-      if (!schoolIdToUse) return;
+      const schoolIdToUse = activeSchoolId;
 
       const planData = {
         name: data.name,
@@ -405,24 +362,10 @@ export default function DismissalPlans() {
   };
 
   const handleDuplicate = async (plan: DismissalPlan) => {
-    if (!user) return;
+    if (!user || !activeSchoolId) return;
     
     try {
-      // Get the school ID
-      let schoolIdToUse: number | null = (userRole === 'system_admin' && impersonatedSchoolId) 
-        ? impersonatedSchoolId 
-        : null;
-        
-      if (!schoolIdToUse) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('school_id')
-          .eq('id', user.id)
-          .single();
-        schoolIdToUse = profile?.school_id ?? null;
-      }
-      
-      if (!schoolIdToUse) return;
+      const schoolIdToUse = activeSchoolId;
       
       // Step 1: Create the duplicated plan
       const duplicatedPlanData = {
@@ -600,7 +543,7 @@ export default function DismissalPlans() {
   const endIndex = startIndex + itemsPerPage;
   const currentPlans = filteredPlans.slice(startIndex, endIndex);
 
-  if (!user || (userRole !== 'school_admin' && !(userRole === 'system_admin' && impersonatedSchoolId))) {
+  if (!user || (userRole !== 'school_admin' && userRole !== 'district_admin' && !(userRole === 'system_admin' && impersonatedSchoolId))) {
     return null;
   }
 
@@ -632,19 +575,9 @@ export default function DismissalPlans() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
-              if (pendingPlanData) {
+              if (pendingPlanData && activeSchoolId) {
                 setShowTimeWarningDialog(false);
-                const schoolIdToUse = (userRole === 'system_admin' && impersonatedSchoolId) ? impersonatedSchoolId : null;
-                let schoolId = schoolIdToUse;
-                
-                if (!schoolId) {
-                  const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('school_id')
-                    .eq('id', user!.id)
-                    .single();
-                  schoolId = profile?.school_id ?? null;
-                }
+                const schoolId = activeSchoolId;
 
                 if (schoolId) {
                   const planData = {
