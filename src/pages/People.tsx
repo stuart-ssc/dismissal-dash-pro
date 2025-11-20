@@ -60,6 +60,12 @@ const People = () => {
   const isMobile = useIsMobile();
   const [isTabletOrMobile, setIsTabletOrMobile] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [stats, setStats] = useState({
+    totalTeachers: 0,
+    activeTeachers: 0,
+    pendingInvites: 0,
+    totalStudents: 0,
+  });
 
   useEffect(() => {
     const tabletMql = window.matchMedia("(min-width: 768px) and (max-width: 1024px)");
@@ -133,6 +139,53 @@ const People = () => {
 
     fetchAcademicSessions();
   }, [schoolId]);
+
+  // Fetch aggregate statistics for summary cards
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!schoolId || !selectedSessionId) return;
+
+      try {
+        // Count total teachers for this school
+        const { count: totalTeachers } = await supabase
+          .from('teachers')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId);
+
+        // Count active teachers (with completed accounts)
+        const { count: activeTeachers } = await supabase
+          .from('teachers')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId)
+          .eq('invitation_status', 'completed');
+
+        // Count pending teacher invites
+        const { count: pendingInvites } = await supabase
+          .from('teachers')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId)
+          .eq('invitation_status', 'pending');
+
+        // Count total students for this school and session
+        const { count: totalStudents } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId)
+          .eq('academic_session_id', selectedSessionId);
+
+        setStats({
+          totalTeachers: totalTeachers ?? 0,
+          activeTeachers: activeTeachers ?? 0,
+          pendingInvites: pendingInvites ?? 0,
+          totalStudents: totalStudents ?? 0,
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, [schoolId, selectedSessionId]);
 
   // Fetch classes for teacher users
   useEffect(() => {
@@ -553,7 +606,7 @@ const People = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {people.filter(p => p.role === 'Teacher').length}
+                      {stats.totalTeachers}
                     </div>
                   </CardContent>
                 </Card>
@@ -564,7 +617,7 @@ const People = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-green-600">
-                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'completed').length}
+                      {stats.activeTeachers}
                     </div>
                   </CardContent>
                 </Card>
@@ -578,7 +631,7 @@ const People = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-blue-600">
-                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'pending').length}
+                      {stats.pendingInvites}
                     </div>
                   </CardContent>
                 </Card>
@@ -589,7 +642,7 @@ const People = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {people.filter(p => p.role === 'Student').length}
+                      {stats.totalStudents}
                     </div>
                   </CardContent>
                 </Card>
@@ -603,7 +656,7 @@ const People = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {people.filter(p => p.role === 'Teacher').length}
+                      {stats.totalTeachers}
                     </div>
                   </CardContent>
                 </Card>
@@ -614,7 +667,7 @@ const People = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-green-600">
-                      {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'completed').length}
+                      {stats.activeTeachers}
                     </div>
                   </CardContent>
                 </Card>
@@ -628,7 +681,7 @@ const People = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {people.filter(p => p.role === 'Teacher' && p.invitationStatus === 'pending').length}
+                {stats.pendingInvites}
               </div>
             </CardContent>
           </Card>
@@ -639,7 +692,7 @@ const People = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {people.filter(p => p.role === 'Student').length}
+                      {stats.totalStudents}
                     </div>
                   </CardContent>
                 </Card>
