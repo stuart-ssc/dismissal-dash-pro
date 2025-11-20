@@ -66,11 +66,19 @@ export const useDistrictUsers = (schoolFilter?: number | "all") => {
 
       if (rolesError) throw rolesError;
 
-      // Get last sign in from auth metadata
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
-      
-      const authUsers = authData?.users || [];
+      // Get last sign in from auth metadata (requires admin access)
+      // If this fails (district admin doesn't have service role), we'll just omit this data
+      let authUsers: any[] = [];
+      try {
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        if (authData && !authError) {
+          authUsers = authData.users || [];
+        }
+      } catch (error) {
+        // Silently fail - district admins don't have admin API access
+        // Users will be shown without last_sign_in_at data
+        console.log("Unable to fetch auth metadata (requires service role access)");
+      }
 
       // Combine data
       const users: DistrictUser[] = profiles.map((profile) => {
