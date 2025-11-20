@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 interface District {
   id: string;
@@ -21,6 +23,7 @@ const DistrictAuthContext = createContext<DistrictAuthContextType | undefined>(u
 
 export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
   const { user, userRole, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [district, setDistrict] = useState<District | null>(null);
   const [districtSchools, setDistrictSchools] = useState<{ id: number; school_name: string }[]>([]);
   const [impersonatedSchoolId, setImpersonatedSchoolId] = useState<number | null>(null);
@@ -79,12 +82,6 @@ export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
         if (schoolsError) throw schoolsError;
         console.log('[useDistrictAuth] Fetched schools:', schools?.length || 0);
         setDistrictSchools(schools || []);
-
-        // Check for impersonation session
-        const savedSchoolId = localStorage.getItem('district_impersonated_school_id');
-        if (savedSchoolId && schools?.find(s => s.id === Number(savedSchoolId))) {
-          setImpersonatedSchoolId(Number(savedSchoolId));
-        }
       }
     } catch (error) {
       console.error('Error fetching district:', error);
@@ -98,14 +95,46 @@ export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, userRole, authLoading]);
 
   const switchSchool = async (schoolId: number | null) => {
-    setImpersonatedSchoolId(schoolId);
-    if (schoolId) {
-      localStorage.setItem('district_impersonated_school_id', String(schoolId));
-    } else {
-      localStorage.removeItem('district_impersonated_school_id');
+    setIsLoading(true);
+
+    try {
+      if (schoolId === null) {
+        // End impersonation
+        const { error } = await supabase.functions.invoke('end-district-impersonation');
+
+        if (error) {
+          console.error('Failed to end impersonation:', error);
+          toast.error('Failed to stop impersonating school');
+          setIsLoading(false);
+          return;
+        }
+
+        setImpersonatedSchoolId(null);
+        toast.success('Stopped impersonating school');
+        navigate('/district-dash');
+      } else {
+        // Start impersonation
+        const { data, error } = await supabase.functions.invoke('start-district-impersonation', {
+          body: { schoolId }
+        });
+
+        if (error) {
+          console.error('Failed to start impersonation:', error);
+          toast.error('Failed to impersonate school');
+          setIsLoading(false);
+          return;
+        }
+
+        setImpersonatedSchoolId(schoolId);
+        toast.success(`Now viewing ${data.schoolName}`);
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Error managing impersonation:', error);
+      toast.error('An error occurred while managing school impersonation');
+    } finally {
+      setIsLoading(false);
     }
-    // Reload to refresh context
-    window.location.reload();
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useImpersonation } from "@/hooks/useImpersonation";
@@ -19,7 +19,7 @@ export default function SystemAdminSchoolSwitcher() {
     })();
   }, []);
 
-  const value = useMemo(() => (impersonatedSchoolId ? String(impersonatedSchoolId) : ''), [impersonatedSchoolId]);
+  const value = impersonatedSchoolId ? String(impersonatedSchoolId) : '';
 
   return (
     <div className="w-56">
