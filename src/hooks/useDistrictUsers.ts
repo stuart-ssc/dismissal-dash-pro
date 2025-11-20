@@ -54,10 +54,46 @@ export const useDistrictUsers = (schoolFilter?: number | "all") => {
 
       const { data: profiles, error: profilesError } = await query;
       if (profilesError) throw profilesError;
-      if (!profiles || profiles.length === 0) return [];
+
+      // Get district admin users for this district
+      const { data: districtAdminProfiles, error: districtAdminError } = await supabase
+        .from("user_districts")
+        .select(`
+          user_id,
+          profiles!inner (
+            id,
+            first_name,
+            last_name,
+            email,
+            school_id
+          )
+        `)
+        .eq("district_id", district.id);
+
+      if (districtAdminError) throw districtAdminError;
+
+      // Flatten district admin profiles
+      const districtAdmins = districtAdminProfiles?.map((da: any) => da.profiles).flat() || [];
+
+      // Combine both arrays, removing duplicates
+      const allProfilesMap = new Map();
+
+      // Add school-based users first
+      profiles?.forEach(p => allProfilesMap.set(p.id, p));
+
+      // Add district admins (won't overwrite if already exists)
+      districtAdmins.forEach((p: any) => {
+        if (!allProfilesMap.has(p.id)) {
+          allProfilesMap.set(p.id, p);
+        }
+      });
+
+      const allProfiles = Array.from(allProfilesMap.values());
+
+      if (allProfiles.length === 0) return [];
 
       // Get roles for each user
-      const userIds = profiles.map((p) => p.id);
+      const userIds = allProfiles.map((p: any) => p.id);
       
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
@@ -81,7 +117,7 @@ export const useDistrictUsers = (schoolFilter?: number | "all") => {
       }
 
       // Combine data
-      const users: DistrictUser[] = profiles.map((profile) => {
+      const users: DistrictUser[] = allProfiles.map((profile: any) => {
         const userRole = roles?.find((r) => r.user_id === profile.id);
         const authUser = authUsers.find((u) => u.id === profile.id);
         const school = schools?.find((s) => s.id === profile.school_id);

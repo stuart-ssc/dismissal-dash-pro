@@ -191,7 +191,9 @@ export default function DistrictUsers() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="text-sm text-muted-foreground">
-                      {user.school_name || "No school assigned"}
+                      {user.school_name || (
+                        <Badge variant="secondary" className="text-xs">District Office</Badge>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -221,7 +223,11 @@ export default function DistrictUsers() {
                     <TableCell>
                       <Badge variant="outline">{user.role}</Badge>
                     </TableCell>
-                    <TableCell>{user.school_name || "N/A"}</TableCell>
+                    <TableCell>
+                      {user.school_name || (
+                        <Badge variant="secondary">District Office</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
