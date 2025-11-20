@@ -22,7 +22,7 @@ export const useDistrictUsers = (schoolFilter?: number | "all") => {
     queryFn: async () => {
       if (!district?.id) return [];
 
-      // Get all schools in district
+      // Step 1: Get all schools in district
       const { data: schools, error: schoolsError } = await supabase
         .from("schools")
         .select("id, school_name")
@@ -33,77 +33,53 @@ export const useDistrictUsers = (schoolFilter?: number | "all") => {
       const schoolIds = schools?.map((s) => s.id) || [];
       if (schoolIds.length === 0) return [];
 
-      // Build query for profiles
-      let query = supabase
+      // Step 2: Get school-based user IDs (with school filter if specified)
+      let schoolUsersQuery = supabase
         .from("profiles")
-        .select(
-          `
-          id,
-          first_name,
-          last_name,
-          email,
-          school_id
-        `
-        )
+        .select("id")
         .in("school_id", schoolIds);
 
-      // Apply school filter if specific school selected
       if (schoolFilter && schoolFilter !== "all") {
-        query = query.eq("school_id", schoolFilter);
+        schoolUsersQuery = schoolUsersQuery.eq("school_id", schoolFilter);
       }
 
-      const { data: profiles, error: profilesError } = await query;
-      if (profilesError) throw profilesError;
+      const { data: schoolProfiles, error: schoolProfilesError } = await schoolUsersQuery;
+      if (schoolProfilesError) throw schoolProfilesError;
 
-      // Get district admin users for this district
-      const { data: districtAdminProfiles, error: districtAdminError } = await supabase
+      // Step 3: Get district admin user IDs
+      const { data: districtAdminIds, error: districtAdminError } = await supabase
         .from("user_districts")
-        .select(`
-          user_id,
-          profiles!inner (
-            id,
-            first_name,
-            last_name,
-            email,
-            school_id
-          )
-        `)
+        .select("user_id")
         .eq("district_id", district.id);
 
       if (districtAdminError) throw districtAdminError;
 
-      // Extract district admin profiles
-      const districtAdmins = districtAdminProfiles?.map((da: any) => da.profiles) || [];
+      // Step 4: Combine all user IDs (removing duplicates)
+      const allUserIds = Array.from(new Set([
+        ...(schoolProfiles?.map(p => p.id) || []),
+        ...(districtAdminIds?.map(da => da.user_id) || [])
+      ]));
 
-      // Combine both arrays, removing duplicates
-      const allProfilesMap = new Map();
+      if (allUserIds.length === 0) return [];
 
-      // Add school-based users first
-      profiles?.forEach(p => allProfilesMap.set(p.id, p));
+      // Step 5: Query all profiles at once
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, email, school_id")
+        .in("id", allUserIds);
 
-      // Add district admins (won't overwrite if already exists)
-      districtAdmins.forEach((p: any) => {
-        if (!allProfilesMap.has(p.id)) {
-          allProfilesMap.set(p.id, p);
-        }
-      });
+      if (profilesError) throw profilesError;
+      if (!profiles || profiles.length === 0) return [];
 
-      const allProfiles = Array.from(allProfilesMap.values());
-
-      if (allProfiles.length === 0) return [];
-
-      // Get roles for each user
-      const userIds = allProfiles.map((p: any) => p.id);
-      
+      // Step 6: Get roles for all users
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id, role")
-        .in("user_id", userIds);
+        .in("user_id", allUserIds);
 
       if (rolesError) throw rolesError;
 
-      // Get last sign in from auth metadata (requires admin access)
-      // If this fails (district admin doesn't have service role), we'll just omit this data
+      // Step 7: Get last sign in from auth metadata (optional, requires service role)
       let authUsers: any[] = [];
       try {
         const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
@@ -111,13 +87,11 @@ export const useDistrictUsers = (schoolFilter?: number | "all") => {
           authUsers = authData.users || [];
         }
       } catch (error) {
-        // Silently fail - district admins don't have admin API access
-        // Users will be shown without last_sign_in_at data
         console.log("Unable to fetch auth metadata (requires service role access)");
       }
 
-      // Combine data
-      const users: DistrictUser[] = allProfiles.map((profile: any) => {
+      // Step 8: Combine all data
+      const users: DistrictUser[] = profiles.map((profile) => {
         const userRole = roles?.find((r) => r.user_id === profile.id);
         const authUser = authUsers.find((u) => u.id === profile.id);
         const school = schools?.find((s) => s.id === profile.school_id);
