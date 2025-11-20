@@ -18,7 +18,7 @@ const navigation = [
   { name: 'Dashboard', href: '/district-dash', icon: Home },
   { name: 'Schools', href: '/district-dash/schools', icon: School },
   { name: 'Users', href: '/district-dash/users', icon: Users },
-  { name: 'IC Integrations', href: '/district-dash/ic-integrations', icon: Database },
+  { name: 'Infinite Campus', href: '/district-dash/ic-integrations', icon: Database },
   { name: 'Reports', href: '/district-dash/reports', icon: BarChart3 },
   { name: 'Settings', href: '/district-dash/settings', icon: Settings },
 ];
