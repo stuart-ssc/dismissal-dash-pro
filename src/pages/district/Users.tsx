@@ -42,8 +42,33 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import InviteUserDialog from "@/components/InviteUserDialog";
 import TransferUserDialog from "@/components/TransferUserDialog";
 
+// Format role for display (capitalize first letter, format underscores)
+const formatRole = (role: string) => {
+  return role
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+// Get badge variant based on role
+const getRoleBadgeVariant = (role: string): "default" | "secondary" | "destructive" | "success" | "outline" => {
+  switch (role) {
+    case 'system_admin':
+      return 'destructive'; // Red for highest privilege
+    case 'district_admin':
+      return 'default'; // Blue/primary for district level
+    case 'school_admin':
+      return 'success'; // Green for school admins
+    case 'teacher':
+      return 'secondary'; // Gray for teachers
+    default:
+      return 'outline';
+  }
+};
+
 export default function DistrictUsers() {
   const [schoolFilter, setSchoolFilter] = useState<number | "all">("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
@@ -55,10 +80,12 @@ export default function DistrictUsers() {
   const { archiveUser } = useUserMutations();
   const isMobile = useIsMobile();
 
-  const filteredUsers = users?.filter((user) =>
-    `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users?.filter((user) => {
+    const matchesSearch = `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   const schoolAdminCount = users?.filter((u) => u.role === "school_admin").length || 0;
   const teacherCount = users?.filter((u) => u.role === "teacher").length || 0;
@@ -104,19 +131,34 @@ export default function DistrictUsers() {
             Invite User
           </Button>
         </div>
-        <Select value={String(schoolFilter)} onValueChange={(v) => setSchoolFilter(v === "all" ? "all" : Number(v))}>
-          <SelectTrigger className="w-full sm:w-60">
-            <SelectValue placeholder="Filter by school" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Schools</SelectItem>
-            {schools?.map((school) => (
-              <SelectItem key={school.id} value={String(school.id)}>
-                {school.school_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Select value={String(schoolFilter)} onValueChange={(v) => setSchoolFilter(v === "all" ? "all" : Number(v))}>
+            <SelectTrigger className="w-full sm:w-60">
+              <SelectValue placeholder="Filter by school" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Schools</SelectItem>
+              {schools?.map((school) => (
+                <SelectItem key={school.id} value={String(school.id)}>
+                  {school.school_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-full sm:w-60">
+              <SelectValue placeholder="Filter by role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="district_admin">District Admin</SelectItem>
+              <SelectItem value="school_admin">School Admin</SelectItem>
+              <SelectItem value="teacher">Teacher</SelectItem>
+              <SelectItem value="system_admin">System Admin</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -165,7 +207,7 @@ export default function DistrictUsers() {
                         </CardTitle>
                         <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <Badge variant="outline">{user.role}</Badge>
+                          <Badge variant={getRoleBadgeVariant(user.role)}>{formatRole(user.role)}</Badge>
                         </div>
                       </div>
                       <DropdownMenu>
@@ -221,7 +263,7 @@ export default function DistrictUsers() {
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{user.role}</Badge>
+                      <Badge variant={getRoleBadgeVariant(user.role)}>{formatRole(user.role)}</Badge>
                     </TableCell>
                     <TableCell>
                       {user.school_name || (
