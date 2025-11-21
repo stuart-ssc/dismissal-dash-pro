@@ -2062,7 +2062,7 @@ const Transportation = () => {
     );
   }
 
-  if (!user || userRole !== 'school_admin') {
+  if (!user || (userRole !== 'school_admin' && userRole !== 'district_admin')) {
     return null;
   }
 
