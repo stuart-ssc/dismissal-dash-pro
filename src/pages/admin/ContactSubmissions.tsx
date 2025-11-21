@@ -211,7 +211,7 @@ export default function ContactSubmissions() {
               <TabsTrigger value="archived">Archived</TabsTrigger>
             </TabsList>
 
-            <TabsContent value={statusFilter} className="mt-4">
+            <TabsContent value={statusFilter} className="mt-4 relative">
               {isLoading ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
