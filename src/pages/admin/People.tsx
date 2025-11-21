@@ -9,12 +9,6 @@ const Users = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!loading && (!user || userRole !== 'school_admin')) {
-      navigate('/dashboard');
-    }
-  }, [user, userRole, loading, navigate]);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
@@ -23,7 +17,7 @@ const Users = () => {
     );
   }
 
-  if (!user || userRole !== 'school_admin') {
+  if (!user) {
     return null;
   }
 

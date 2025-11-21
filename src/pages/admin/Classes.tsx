@@ -32,12 +32,6 @@ const Classes = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && (!user || userRole !== 'school_admin')) {
-      navigate('/dashboard');
-    }
-  }, [user, userRole, loading, navigate]);
-
-  useEffect(() => {
     const fetchSchoolData = async () => {
       if (!user) return;
       
@@ -149,7 +143,7 @@ const Classes = () => {
     );
   }
 
-  if (!user || userRole !== 'school_admin') {
+  if (!user) {
     return null;
   }
 
