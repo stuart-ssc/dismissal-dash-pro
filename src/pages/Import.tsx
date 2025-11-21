@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -75,50 +76,50 @@ const Import = () => {
     }
   }, [user, loading, navigate]);
 
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
+
   useEffect(() => {
     const fetchSchoolData = async () => {
-      if (!user) return;
+      if (!user || !schoolId || isLoadingSchoolId) return;
       
       try {
-        // Get user's profile to get school_id, first_name, and last_name
+        // Get user's profile for first_name and last_name
         const { data: profile } = await supabase
           .from('profiles')
-          .select('school_id, first_name, last_name')
+          .select('first_name, last_name')
           .eq('id', user.id)
           .single();
 
         if (profile) {
           setFirstName(profile.first_name || '');
           setLastName(profile.last_name || '');
+        }
 
-          if (profile.school_id) {
-            // Get school name
-            const { data: school } = await supabase
-              .from('schools')
-              .select('school_name')
-              .eq('id', profile.school_id)
-              .single();
+        // Get school name
+        const { data: school } = await supabase
+          .from('schools')
+          .select('school_name')
+          .eq('id', schoolId)
+          .single();
 
-            if (school?.school_name) {
-              setSchoolName(school.school_name);
-            }
+        if (school?.school_name) {
+          setSchoolName(school.school_name);
+        }
 
-            // Fetch academic sessions
-            const { data: sessions } = await supabase
-              .from('academic_sessions')
-              .select('id, session_name, is_active')
-              .eq('school_id', profile.school_id)
-              .order('is_active', { ascending: false })
-              .order('start_date', { ascending: false });
+        // Fetch academic sessions
+        const { data: sessions } = await supabase
+          .from('academic_sessions')
+          .select('id, session_name, is_active')
+          .eq('school_id', schoolId)
+          .order('is_active', { ascending: false })
+          .order('start_date', { ascending: false });
 
-            if (sessions) {
-              setAcademicSessions(sessions);
-              // Pre-select active session
-              const activeSession = sessions.find(s => s.is_active);
-              if (activeSession) {
-                setSelectedSessionId(activeSession.id);
-              }
-            }
+        if (sessions) {
+          setAcademicSessions(sessions);
+          // Pre-select active session
+          const activeSession = sessions.find(s => s.is_active);
+          if (activeSession) {
+            setSelectedSessionId(activeSession.id);
           }
         }
       } catch (error) {
@@ -127,7 +128,7 @@ const Import = () => {
     };
 
     fetchSchoolData();
-  }, [user]);
+  }, [user, schoolId, isLoadingSchoolId]);
 
   const parseCSVContent = (content: string): RosterRow[] => {
     const lines = content.split('\n').filter(line => line.trim());

@@ -2,6 +2,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useActiveSchoolId } from '@/hooks/useActiveSchoolId';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +13,8 @@ import { Clock, Loader2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 
 const ICSyncHistory = () => {
-  const { user, userRole, loading } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [schoolId, setSchoolId] = useState<number | null>(null);
   const [syncLogs, setSyncLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<any>(null);
@@ -23,34 +23,19 @@ const ICSyncHistory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
+
   useEffect(() => {
-    if (!loading && (!user || userRole !== 'school_admin')) {
+    if (!loading && !user) {
       navigate('/dashboard');
     }
-  }, [user, userRole, loading, navigate]);
+  }, [user, loading, navigate]);
 
   useEffect(() => {
-    fetchSchoolId();
-  }, [user]);
-
-  useEffect(() => {
-    if (schoolId) {
+    if (schoolId && !isLoadingSchoolId) {
       fetchSyncLogs();
     }
-  }, [schoolId, statusFilter]);
-
-  const fetchSchoolId = async () => {
-    if (!user) return;
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('school_id')
-      .eq('id', user.id)
-      .single();
-    
-    if (profile?.school_id) {
-      setSchoolId(profile.school_id);
-    }
-  };
+  }, [schoolId, isLoadingSchoolId, statusFilter]);
 
   const fetchSyncLogs = async () => {
     if (!schoolId) return;

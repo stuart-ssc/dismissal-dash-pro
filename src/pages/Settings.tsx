@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSEO } from "@/hooks/useSEO";
 import { supabase } from "@/integrations/supabase/client";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -165,9 +166,13 @@ const Settings = () => {
     }
   }, [user, loading, navigate]);
 
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
+
   useEffect(() => {
-    fetchSchoolData();
-  }, [user]);
+    if (schoolId && !isLoadingSchoolId) {
+      fetchSchoolData();
+    }
+  }, [schoolId, isLoadingSchoolId]);
 
   useEffect(() => {
     if (schoolData) {
@@ -176,68 +181,55 @@ const Settings = () => {
   }, [schoolData]);
 
   const fetchSchoolData = async () => {
-    if (!user) return;
+    if (!schoolId) return;
 
     try {
       setIsLoading(true);
       
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
+      const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('id', schoolId)
         .maybeSingle();
 
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
+      if (schoolError) {
+        console.error('Error fetching school:', schoolError);
         return;
       }
 
-      if (profile?.school_id) {
-        const { data: school, error: schoolError } = await supabase
-          .from('schools')
-          .select('*')
-          .eq('id', profile.school_id)
-          .maybeSingle();
+      if (school) {
+        setSchoolData(school as SchoolData);
+        form.reset({
+          school_name: school.school_name || "",
+          address: school.address || "",
+          phone_number: school.phone_number || "",
+        });
 
-        if (schoolError) {
-          console.error('Error fetching school:', schoolError);
-          return;
-        }
+        dismissalForm.reset({
+          timezone: school.timezone || getBrowserTimezone(),
+          preparation_time_minutes: school.preparation_time_minutes || 5,
+          auto_dismissal_enabled: school.auto_dismissal_enabled || false,
+        });
 
-        if (school) {
-          setSchoolData(school as SchoolData);
-          form.reset({
-            school_name: school.school_name || "",
-            address: school.address || "",
-            phone_number: school.phone_number || "",
-          });
+        notificationForm.reset({
+          email_notifications_enabled: school.email_notifications_enabled !== false,
+          sms_notifications_enabled: school.sms_notifications_enabled || false,
+          parent_notifications_enabled: school.parent_notifications_enabled !== false,
+          emergency_alerts_enabled: school.emergency_alerts_enabled !== false,
+        });
 
-          dismissalForm.reset({
-            timezone: school.timezone || getBrowserTimezone(),
-            preparation_time_minutes: school.preparation_time_minutes || 5,
-            auto_dismissal_enabled: school.auto_dismissal_enabled || false,
-          });
+        securityForm.reset({
+          two_factor_required: school.two_factor_required || false,
+          session_timeout_enabled: school.session_timeout_enabled || false,
+          audit_logs_enabled: school.audit_logs_enabled !== false,
+        });
 
-          notificationForm.reset({
-            email_notifications_enabled: school.email_notifications_enabled !== false,
-            sms_notifications_enabled: school.sms_notifications_enabled || false,
-            parent_notifications_enabled: school.parent_notifications_enabled !== false,
-            emergency_alerts_enabled: school.emergency_alerts_enabled !== false,
-          });
-
-          securityForm.reset({
-            two_factor_required: school.two_factor_required || false,
-            session_timeout_enabled: school.session_timeout_enabled || false,
-            audit_logs_enabled: school.audit_logs_enabled !== false,
-          });
-
-          // Set logo URL if exists
-          if (school.school_logo) {
-            const { data } = supabase.storage
-              .from('school-logos')
-              .getPublicUrl(school.school_logo);
-            setLogoUrl(data.publicUrl);
-          }
+        // Set logo URL if exists
+        if (school.school_logo) {
+          const { data } = supabase.storage
+            .from('school-logos')
+            .getPublicUrl(school.school_logo);
+          setLogoUrl(data.publicUrl);
         }
       }
     } catch (error) {
