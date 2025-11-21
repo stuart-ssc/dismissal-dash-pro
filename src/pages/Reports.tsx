@@ -1,4 +1,5 @@
 import { useSEO } from "@/hooks/useSEO";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart-secure";
@@ -24,51 +25,42 @@ const Reports = () => {
   const isMobile = useIsMobile();
   const [dateRange, setDateRange] = useState<number>(14); // Default to 14 days
   const [currentPage, setCurrentPage] = useState(1);
-  const [schoolId, setSchoolId] = useState<number | null>(null);
   const [academicSessions, setAcademicSessions] = useState<Array<{ id: string; session_name: string; is_active: boolean }>>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [compareEnabled, setCompareEnabled] = useState(false);
   const [compareSessionId, setCompareSessionId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
+
   useEffect(() => {
-    const fetchSchoolData = async () => {
-      if (!user) return;
+    const fetchAcademicSessions = async () => {
+      if (!schoolId || isLoadingSchoolId) return;
       
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('school_id')
-          .eq('id', user.id)
-          .single();
+        // Fetch academic sessions
+        const { data: sessions } = await supabase
+          .from('academic_sessions')
+          .select('id, session_name, is_active')
+          .eq('school_id', schoolId)
+          .order('is_active', { ascending: false })
+          .order('start_date', { ascending: false });
 
-        if (profile?.school_id) {
-          setSchoolId(profile.school_id);
-
-          // Fetch academic sessions
-          const { data: sessions } = await supabase
-            .from('academic_sessions')
-            .select('id, session_name, is_active')
-            .eq('school_id', profile.school_id)
-            .order('is_active', { ascending: false })
-            .order('start_date', { ascending: false });
-
-          if (sessions) {
-            setAcademicSessions(sessions);
-            // Pre-select active session
-            const activeSession = sessions.find(s => s.is_active);
-            if (activeSession) {
-              setSelectedSessionId(activeSession.id);
-            }
+        if (sessions) {
+          setAcademicSessions(sessions);
+          // Pre-select active session
+          const activeSession = sessions.find(s => s.is_active);
+          if (activeSession) {
+            setSelectedSessionId(activeSession.id);
           }
         }
       } catch (error) {
-        console.error('Error fetching school data:', error);
+        console.error('Error fetching academic sessions:', error);
       }
     };
 
-    fetchSchoolData();
-  }, [user]);
+    fetchAcademicSessions();
+  }, [schoolId, isLoadingSchoolId]);
 
   const { chartData, compareChartData, dismissalLogs, isLoading, error } = useReportsData({
     dateRangeDays: dateRange,

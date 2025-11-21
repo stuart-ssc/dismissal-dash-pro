@@ -2,6 +2,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useActiveSchoolId } from '@/hooks/useActiveSchoolId';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +22,12 @@ import { MergePreviewDialog } from '@/components/MergePreviewDialog';
 import { ManualMergeCreationDialog } from '@/components/ManualMergeCreationDialog';
 
 const ICPendingMerges = ({ embedded = false }: { embedded?: boolean }) => {
-  const { user, userRole, loading } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [schoolId, setSchoolId] = useState<number | null>(null);
   const [pendingMerges, setPendingMerges] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [filterType, setFilterType] = useState('all');
   const [selectedMerges, setSelectedMerges] = useState<Set<string>>(new Set());
@@ -45,33 +47,16 @@ const ICPendingMerges = ({ embedded = false }: { embedded?: boolean }) => {
   const [focusedRowIndex, setFocusedRowIndex] = useState<number>(0);
 
   useEffect(() => {
-    if (!loading && (!user || userRole !== 'school_admin')) {
+    if (!loading && !user) {
       navigate('/dashboard');
     }
-  }, [user, userRole, loading, navigate]);
+  }, [user, loading, navigate]);
 
   useEffect(() => {
-    fetchSchoolId();
-  }, [user]);
-
-  useEffect(() => {
-    if (schoolId) {
+    if (schoolId && !isLoadingSchoolId) {
       fetchPendingMerges();
     }
-  }, [schoolId]);
-
-  const fetchSchoolId = async () => {
-    if (!user) return;
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('school_id')
-      .eq('id', user.id)
-      .single();
-    
-    if (profile?.school_id) {
-      setSchoolId(profile.school_id);
-    }
-  };
+  }, [schoolId, isLoadingSchoolId]);
 
   const fetchPendingMerges = async () => {
     if (!schoolId) return;

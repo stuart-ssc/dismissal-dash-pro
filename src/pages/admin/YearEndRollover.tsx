@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,6 @@ export default function YearEndRollover() {
 
   // Current session data
   const [currentSession, setCurrentSession] = useState<any>(null);
-  const [schoolId, setSchoolId] = useState<number | null>(null);
   const [sessionStats, setSessionStats] = useState({
     students: 0,
     teachers: 0,
@@ -52,6 +52,8 @@ export default function YearEndRollover() {
     groups: 0,
     runs: 0,
   });
+
+  const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
 
   // New session data
   const [newSessionName, setNewSessionName] = useState("");
@@ -63,32 +65,22 @@ export default function YearEndRollover() {
   const [validationPassed, setValidationPassed] = useState(false);
 
   useEffect(() => {
-    fetchCurrentSession();
-  }, [user?.id]);
+    if (schoolId && !isLoadingSchoolId) {
+      fetchCurrentSession();
+    }
+  }, [schoolId, isLoadingSchoolId]);
 
   const fetchCurrentSession = async () => {
+    if (!schoolId) return;
+
     try {
       setLoading(true);
-
-      // Get school ID
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("school_id")
-        .eq("id", user?.id)
-        .single();
-
-      if (!profile?.school_id) {
-        toast.error("School not found");
-        return;
-      }
-
-      setSchoolId(profile.school_id);
 
       // Get active session
       const { data: session } = await supabase
         .from("academic_sessions")
         .select("*")
-        .eq("school_id", profile.school_id)
+        .eq("school_id", schoolId)
         .eq("is_active", true)
         .maybeSingle();
 
@@ -112,26 +104,26 @@ export default function YearEndRollover() {
         supabase
           .from("students")
           .select("*", { count: "exact", head: true })
-          .eq("school_id", profile.school_id)
+          .eq("school_id", schoolId)
           .eq("academic_session_id", session.id),
         supabase
           .from("teachers")
           .select("*", { count: "exact", head: true })
-          .eq("school_id", profile.school_id),
+          .eq("school_id", schoolId),
         supabase
           .from("classes")
           .select("*", { count: "exact", head: true })
-          .eq("school_id", profile.school_id)
+          .eq("school_id", schoolId)
           .eq("academic_session_id", session.id),
         supabase
           .from("special_use_groups")
           .select("*", { count: "exact", head: true })
-          .eq("school_id", profile.school_id)
+          .eq("school_id", schoolId)
           .eq("academic_session_id", session.id),
         supabase
           .from("special_use_runs")
           .select("*", { count: "exact", head: true })
-          .eq("school_id", profile.school_id)
+          .eq("school_id", schoolId)
           .eq("academic_session_id", session.id),
       ]);
 
