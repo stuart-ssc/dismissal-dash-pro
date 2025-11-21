@@ -166,12 +166,6 @@ const Settings = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (!loading && user && userRole !== 'school_admin') {
-      navigate('/dashboard');
-    }
-  }, [user, userRole, loading, navigate]);
-
-  useEffect(() => {
     fetchSchoolData();
   }, [user]);
 

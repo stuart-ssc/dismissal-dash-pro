@@ -61,12 +61,6 @@ const CarLines = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (!loading && user && userRole !== 'school_admin') {
-      navigate('/dashboard');
-    }
-  }, [user, userRole, loading, navigate]);
-
-  useEffect(() => {
     fetchCarLines();
   }, [schoolId]);
 
@@ -270,7 +264,7 @@ const CarLines = () => {
     );
   }
 
-  if (!user || userRole !== 'school_admin') {
+  if (!user) {
     return null;
   }
 

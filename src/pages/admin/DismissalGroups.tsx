@@ -117,11 +117,6 @@ export default function DismissalGroups() {
       return;
     }
 
-    if (userRole !== 'school_admin' && userRole !== 'district_admin') {
-      navigate('/dashboard');
-      return;
-    }
-
     if (planId) {
       fetchAcademicSessions();
       fetchWalkerLocations();
@@ -129,7 +124,7 @@ export default function DismissalGroups() {
       fetchCarLines();
       fetchSchoolName();
     }
-  }, [user, userRole, planId, navigate, activeSchoolId, isLoadingSchoolId]);
+  }, [user, planId, navigate, activeSchoolId, isLoadingSchoolId]);
 
   // Fetch plan and groups when session changes
   useEffect(() => {
@@ -757,7 +752,7 @@ export default function DismissalGroups() {
     return count;
   };
 
-  if (!user || (userRole !== 'school_admin' && userRole !== 'district_admin')) {
+  if (!user) {
     return null;
   }
 

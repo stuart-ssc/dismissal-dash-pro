@@ -61,12 +61,6 @@ const WalkerLocations = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (!loading && user && userRole !== 'school_admin') {
-      navigate('/dashboard');
-    }
-  }, [user, userRole, loading, navigate]);
-
-  useEffect(() => {
     fetchWalkerLocations();
   }, [schoolId]);
 
@@ -273,7 +267,7 @@ const WalkerLocations = () => {
     );
   }
 
-  if (!user || userRole !== 'school_admin') {
+  if (!user) {
     return null;
   }
 
