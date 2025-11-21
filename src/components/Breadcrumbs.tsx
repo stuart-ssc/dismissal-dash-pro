@@ -30,9 +30,13 @@ const routeNameMap: Record<string, string> = {
   help: "Help & Support",
 };
 
+const isUuid = (str: string) => {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
 export function Breadcrumbs() {
   const location = useLocation();
-  const pathnames = location.pathname.split("/").filter((x) => x);
+  const pathnames = location.pathname.split("/").filter((x) => x && !isUuid(x));
 
   // Don't show breadcrumbs on root pages
   if (pathnames.length <= 1) return null;
