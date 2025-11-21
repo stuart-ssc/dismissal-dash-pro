@@ -492,7 +492,7 @@ const Dashboard = () => {
   };
 
   // For school admins and teachers, show the sidebar layout
-  if (userRole === 'school_admin' || userRole === 'teacher') {
+  if (userRole === 'school_admin' || userRole === 'teacher' || userRole === 'district_admin') {
     return (
       <>
         <SEO />
