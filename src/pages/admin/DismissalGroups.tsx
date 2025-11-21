@@ -757,7 +757,7 @@ export default function DismissalGroups() {
     return count;
   };
 
-  if (!user || userRole !== 'school_admin') {
+  if (!user || (userRole !== 'school_admin' && userRole !== 'district_admin')) {
     return null;
   }
 
