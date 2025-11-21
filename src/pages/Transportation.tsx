@@ -310,26 +310,14 @@ const Transportation = () => {
   };
 
   const fetchWalkerLocations = async () => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) {
-        setWalkerLocations([]);
-        setFilteredWalkerLocations([]);
-        return;
-      }
-
       // Fetch walker locations without nested aggregation to avoid RLS issues
       const { data: walkerLocationsData, error: walkerError } = await supabase
         .from('walker_locations')
         .select('*')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', schoolId)
         .order('location_name');
 
       if (walkerError) {
@@ -362,26 +350,14 @@ const Transportation = () => {
   };
 
   const fetchCarLines = async () => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) {
-        setCarLines([]);
-        setFilteredCarLines([]);
-        return;
-      }
-
       // Fetch car lines without nested aggregation to avoid RLS issues
       const { data: carLinesData, error: carError } = await supabase
         .from('car_lines')
         .select('*')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', schoolId)
         .order('line_name');
 
       if (carError) {
@@ -524,26 +500,14 @@ const Transportation = () => {
   };
 
   const fetchAfterSchoolActivities = async () => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) {
-        setAfterSchoolActivities([]);
-        setFilteredAfterSchoolActivities([]);
-        return;
-      }
-
       // Fetch after school activities without nested aggregation to avoid RLS issues
       const { data: activitiesData, error: activitiesError } = await supabase
         .from('after_school_activities')
         .select('*')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', schoolId)
         .order('activity_name');
 
       if (activitiesError) {
