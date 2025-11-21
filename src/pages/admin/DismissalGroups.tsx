@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveSchoolId } from "@/hooks/useActiveSchoolId";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +92,8 @@ export default function DismissalGroups() {
   const [schoolName, setSchoolName] = useState<string>("");
   const [academicSessions, setAcademicSessions] = useState<{ id: string; session_name: string; is_active: boolean }[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  
+  const { schoolId: activeSchoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
 
   const form = useForm<GroupFormData>({
     resolver: zodResolver(groupFormSchema),
@@ -114,7 +117,7 @@ export default function DismissalGroups() {
       return;
     }
 
-    if (userRole !== 'school_admin') {
+    if (userRole !== 'school_admin' && userRole !== 'district_admin') {
       navigate('/dashboard');
       return;
     }
@@ -126,7 +129,7 @@ export default function DismissalGroups() {
       fetchCarLines();
       fetchSchoolName();
     }
-  }, [user, userRole, planId, navigate]);
+  }, [user, userRole, planId, navigate, activeSchoolId, isLoadingSchoolId]);
 
   // Fetch plan and groups when session changes
   useEffect(() => {
@@ -138,21 +141,13 @@ export default function DismissalGroups() {
   }, [planId, selectedSessionId]);
 
   const fetchAcademicSessions = async () => {
-    if (!user) return;
+    if (!activeSchoolId) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) return;
-
       const { data, error } = await supabase
         .from('academic_sessions')
         .select('id, session_name, is_active')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', activeSchoolId)
         .order('start_date', { ascending: false });
 
       if (error) throw error;
@@ -318,21 +313,13 @@ export default function DismissalGroups() {
   };
 
   const fetchWalkerLocations = async () => {
-    if (!user) return;
+    if (!activeSchoolId) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) return;
-
       const { data, error } = await supabase
         .from('walker_locations')
         .select('id, location_name')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', activeSchoolId)
         .eq('status', 'active');
 
       if (error) throw error;
@@ -343,21 +330,13 @@ export default function DismissalGroups() {
   };
 
   const fetchBuses = async () => {
-    if (!user) return;
+    if (!activeSchoolId) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) return;
-
       const { data, error } = await supabase
         .from('buses')
         .select('id, bus_number')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', activeSchoolId)
         .eq('status', 'active')
         .order('bus_number');
 
@@ -369,21 +348,13 @@ export default function DismissalGroups() {
   };
 
   const fetchCarLines = async () => {
-    if (!user) return;
+    if (!activeSchoolId) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) return;
-
       const { data, error } = await supabase
         .from('car_lines')
         .select('id, line_name')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', activeSchoolId)
         .eq('status', 'active')
         .order('line_name');
 
@@ -395,21 +366,13 @@ export default function DismissalGroups() {
   };
 
   const fetchClasses = async () => {
-    if (!user || selectedSessionId === null) return;
+    if (!activeSchoolId || selectedSessionId === null) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) return;
-
       const { data, error } = await supabase
         .from('classes')
         .select('id, class_name, grade_level')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', activeSchoolId)
         .eq('academic_session_id', selectedSessionId)
         .order('grade_level, class_name');
 
@@ -421,20 +384,12 @@ export default function DismissalGroups() {
   };
 
   const fetchSchoolName = async () => {
-    if (!user) return;
+    if (!activeSchoolId) return;
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) return;
-
       const { data: school, error } = await supabase
         .from('schools')
         .select('school_name')
-        .eq('id', profile.school_id)
+        .eq('id', activeSchoolId)
         .single();
 
       if (error) throw error;
@@ -445,22 +400,14 @@ export default function DismissalGroups() {
   };
 
   const fetchActivities = async () => {
-    if (!user || selectedSessionId === null) return;
+    if (!activeSchoolId || selectedSessionId === null) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.school_id) return;
-
       // Activities themselves aren't session-specific, but we still filter for consistency
       const { data, error } = await supabase
         .from('after_school_activities')
         .select('id, activity_name')
-        .eq('school_id', profile.school_id)
+        .eq('school_id', activeSchoolId)
         .eq('status', 'active')
         .order('activity_name');
 
