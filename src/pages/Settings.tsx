@@ -583,7 +583,7 @@ const Settings = () => {
     );
   }
 
-  if (!user || userRole !== 'school_admin') {
+  if (!user) {
     return null;
   }
 
