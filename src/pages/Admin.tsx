@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, School, Users, Settings, BarChart3, Database } from "lucide-react";
+import { Shield, School, Users, Settings, BarChart3, Database, MessageSquare } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 const Admin = () => {
@@ -147,6 +147,10 @@ const navigate = useNavigate();
               <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/email-management')}>
                 <Shield className="mr-2 h-4 w-4" />
                 Email Management
+              </Button>
+              <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/contact-submissions')}>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Contact Submissions
               </Button>
               <Button className="w-full justify-start" variant="outline">
                 <Database className="mr-2 h-4 w-4" />
