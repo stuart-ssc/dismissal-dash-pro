@@ -492,7 +492,7 @@ const Dashboard = () => {
   };
 
   // For school admins and teachers, show the sidebar layout
-  if (userRole === 'school_admin' || userRole === 'teacher' || userRole === 'district_admin') {
+  if (userRole === 'school_admin' || userRole === 'teacher' || userRole === 'district_admin' || userRole === 'system_admin') {
     return (
       <>
         <SEO />
@@ -690,7 +690,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {userRole === 'school_admin' && (
+          {(userRole === 'school_admin' || userRole === 'district_admin' || userRole === 'system_admin') && (
             <div className="relative">
               {!setupLoading && !isReady && (
                 <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
