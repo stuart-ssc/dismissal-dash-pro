@@ -978,7 +978,7 @@ export default function DismissalPlans() {
                               <Copy className="mr-2 h-4 w-4" />
                               Duplicate
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/dashboard/dismissal-plans/${plan.id}/groups`)}>
+                            <DropdownMenuItem onClick={() => navigate(`/dashboard/dismissals/plans/${plan.id}/groups`)}>
                               <Settings className="mr-2 h-4 w-4" />
                               Manage Groups
                             </DropdownMenuItem>
@@ -1097,7 +1097,7 @@ export default function DismissalPlans() {
                                 <Copy className="mr-2 h-4 w-4" />
                                 Duplicate
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/dashboard/dismissal-plans/${plan.id}/groups`)}>
+                              <DropdownMenuItem onClick={() => navigate(`/dashboard/dismissals/plans/${plan.id}/groups`)}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 Manage Groups
                               </DropdownMenuItem>
