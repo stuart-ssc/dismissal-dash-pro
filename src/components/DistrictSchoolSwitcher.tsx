@@ -29,6 +29,11 @@ export default function DistrictSchoolSwitcher() {
           {districtSchools.map((school) => (
             <SelectItem key={school.id} value={String(school.id)}>
               {school.school_name}
+              {school.district_name && school.district_state && (
+                <span className="text-muted-foreground ml-2">
+                  ({school.district_name} - {school.district_state})
+                </span>
+              )}
             </SelectItem>
           ))}
         </SelectContent>

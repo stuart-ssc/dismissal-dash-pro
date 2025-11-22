@@ -1366,6 +1366,63 @@ export type Database = {
         }
         Relationships: []
       }
+      districts_backup_pre_split: {
+        Row: {
+          allow_school_colors_override: boolean | null
+          allow_school_dismissal_time_override: boolean | null
+          allow_school_timezone_override: boolean | null
+          city: string | null
+          created_at: string | null
+          created_by: string | null
+          district_name: string | null
+          email: string | null
+          id: string | null
+          phone_number: string | null
+          state: string | null
+          street_address: string | null
+          timezone: string | null
+          updated_at: string | null
+          website: string | null
+          zipcode: string | null
+        }
+        Insert: {
+          allow_school_colors_override?: boolean | null
+          allow_school_dismissal_time_override?: boolean | null
+          allow_school_timezone_override?: boolean | null
+          city?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          district_name?: string | null
+          email?: string | null
+          id?: string | null
+          phone_number?: string | null
+          state?: string | null
+          street_address?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          website?: string | null
+          zipcode?: string | null
+        }
+        Update: {
+          allow_school_colors_override?: boolean | null
+          allow_school_dismissal_time_override?: boolean | null
+          allow_school_timezone_override?: boolean | null
+          city?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          district_name?: string | null
+          email?: string | null
+          id?: string | null
+          phone_number?: string | null
+          state?: string | null
+          street_address?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          website?: string | null
+          zipcode?: string | null
+        }
+        Relationships: []
+      }
       email_change_requests: {
         Row: {
           approved_by: string | null
@@ -2577,6 +2634,21 @@ export type Database = {
           },
         ]
       }
+      schools_backup_pre_split: {
+        Row: {
+          district_id: string | null
+          id: number | null
+        }
+        Insert: {
+          district_id?: string | null
+          id?: number | null
+        }
+        Update: {
+          district_id?: string | null
+          id?: number | null
+        }
+        Relationships: []
+      }
       special_use_group_managers: {
         Row: {
           assigned_at: string
@@ -3529,6 +3601,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_districts_backup_pre_split: {
+        Row: {
+          created_at: string | null
+          district_id: string | null
+          id: string | null
+          is_primary: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          district_id?: string | null
+          id?: string | null
+          is_primary?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          district_id?: string | null
+          id?: string | null
+          is_primary?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

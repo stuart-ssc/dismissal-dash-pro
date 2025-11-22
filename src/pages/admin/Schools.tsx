@@ -66,7 +66,7 @@ interface School {
 interface District {
   id: string;
   district_name: string;
-  state?: string | null;
+  state: string | null;
 }
 const schema = z.object({
   school_name: z.string().min(1, "Name is required"),
@@ -141,7 +141,7 @@ function SchoolForm({
       
       const { data, error } = await supabase
         .from('districts')
-        .select('id, district_name')
+        .select('id, district_name, state')
         .ilike('district_name', `%${districtSearchQuery}%`)
         .order('district_name')
         .limit(100);
@@ -158,7 +158,7 @@ function SchoolForm({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('districts')
-        .select('id, district_name')
+        .select('id, district_name, state')
         .eq('id', form.watch('district_id'))
         .single();
       
@@ -326,7 +326,9 @@ function SchoolForm({
               className="w-full justify-between"
             >
               {form.watch('district_id') 
-                ? selectedDistrict?.district_name || "Loading..." 
+                ? (selectedDistrict 
+                    ? `${selectedDistrict.district_name}${selectedDistrict.state ? ` (${selectedDistrict.state})` : ''}`
+                    : "Loading...") 
                 : "Select district (optional)"}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
@@ -366,6 +368,11 @@ function SchoolForm({
                           )}
                         />
                         {district.district_name}
+                        {district.state && (
+                          <span className="text-muted-foreground ml-2">
+                            ({district.state})
+                          </span>
+                        )}
                       </CommandItem>
                     ))}
                   </CommandGroup>
