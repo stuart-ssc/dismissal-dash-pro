@@ -309,8 +309,14 @@ const Districts = () => {
     }
   }, [user, userRole, loading, navigate]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedState]);
+
   const { data: districts, isLoading } = useQuery({
     queryKey: ['districts', searchQuery, selectedState, page],
+    enabled: !!user && userRole === 'system_admin' && (selectedState !== 'all' || searchQuery.length >= 2),
     queryFn: async () => {
       let query = supabase
         .from('districts')
@@ -341,7 +347,6 @@ const Districts = () => {
 
       return { data: districtsWithCount, count: count || 0 };
     },
-    enabled: !!user && userRole === 'system_admin',
   });
 
   const deleteMutation = useMutation({
@@ -443,7 +448,7 @@ const Districts = () => {
               <div className="relative flex-1 sm:w-[300px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, city, or state..."
+                  placeholder="Search districts (min 2 characters)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -469,7 +474,12 @@ const Districts = () => {
 
             {isMobile ? (
               <div className="space-y-4">
-                {isLoading ? (
+                {selectedState === 'all' && searchQuery.length < 2 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p className="text-lg font-medium mb-2">Select a state or search to view districts</p>
+                    <p className="text-sm">Choose a state from the dropdown above or enter at least 2 characters in the search box</p>
+                  </div>
+                ) : isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin" />
                   </div>
@@ -566,7 +576,14 @@ const Districts = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
+                  {selectedState === 'all' && searchQuery.length < 2 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-12">
+                        <p className="text-lg font-medium mb-2 text-muted-foreground">Select a state or search to view districts</p>
+                        <p className="text-sm text-muted-foreground">Choose a state from the dropdown above or enter at least 2 characters in the search box</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : isLoading ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin mx-auto" />
