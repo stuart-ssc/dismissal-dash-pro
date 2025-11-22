@@ -3,7 +3,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useImpersonation } from "@/hooks/useImpersonation";
 
-interface School { id: number; school_name: string | null }
+interface School { 
+  id: number; 
+  school_name: string | null;
+  district?: {
+    district_name: string;
+    state: string | null;
+  } | null;
+}
 
 export default function SystemAdminSchoolSwitcher() {
   const { impersonatedSchoolId, setImpersonatedSchoolId, isLoadingImpersonation } = useImpersonation();
@@ -13,7 +20,11 @@ export default function SystemAdminSchoolSwitcher() {
     (async () => {
       const { data, error } = await supabase
         .from('schools')
-        .select('id, school_name')
+        .select(`
+          id, 
+          school_name,
+          district:districts(district_name, state)
+        `)
         .order('school_name');
       if (!error) setSchools(data as School[]);
     })();
@@ -43,6 +54,11 @@ export default function SystemAdminSchoolSwitcher() {
           {schools.map((s) => (
             <SelectItem key={s.id} value={String(s.id)}>
               {s.school_name || `School #${s.id}`}
+              {s.district?.district_name && s.district?.state && (
+                <span className="text-muted-foreground ml-2">
+                  ({s.district.district_name} - {s.district.state})
+                </span>
+              )}
             </SelectItem>
           ))}
         </SelectContent>

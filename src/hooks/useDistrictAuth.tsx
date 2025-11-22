@@ -12,7 +12,12 @@ interface District {
 
 interface DistrictAuthContextType {
   district: District | null;
-  districtSchools: { id: number; school_name: string }[];
+  districtSchools: { 
+    id: number; 
+    school_name: string;
+    district_name?: string;
+    district_state?: string | null;
+  }[];
   impersonatedSchoolId: number | null;
   isLoading: boolean;
   switchSchool: (schoolId: number | null) => Promise<void>;
@@ -25,7 +30,12 @@ export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
   const { user, userRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [district, setDistrict] = useState<District | null>(null);
-  const [districtSchools, setDistrictSchools] = useState<{ id: number; school_name: string }[]>([]);
+  const [districtSchools, setDistrictSchools] = useState<{ 
+    id: number; 
+    school_name: string;
+    district_name?: string;
+    district_state?: string | null;
+  }[]>([]);
   const [impersonatedSchoolId, setImpersonatedSchoolId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -75,13 +85,26 @@ export const DistrictAuthProvider = ({ children }: { children: ReactNode }) => {
         // Fetch schools in this district
         const { data: schools, error: schoolsError } = await supabase
           .from('schools')
-          .select('id, school_name')
+          .select(`
+            id, 
+            school_name,
+            district:districts(district_name, state)
+          `)
           .eq('district_id', userDistrict.district_id)
           .order('school_name');
 
         if (schoolsError) throw schoolsError;
         console.log('[useDistrictAuth] Fetched schools:', schools?.length || 0);
-        setDistrictSchools(schools || []);
+        
+        // Transform the data to flatten district info
+        const transformedSchools = schools?.map(s => ({
+          id: s.id,
+          school_name: s.school_name,
+          district_name: (s.district as any)?.district_name,
+          district_state: (s.district as any)?.state
+        })) || [];
+        
+        setDistrictSchools(transformedSchools);
       }
     } catch (error) {
       console.error('Error fetching district:', error);
