@@ -535,7 +535,11 @@ const Districts = () => {
                             {district.timezone}
                           </div>
                           <div>
-                            <Badge variant="secondary">
+                            <Badge 
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                              onClick={() => navigate(`/admin/schools?districtId=${district.id}`)}
+                            >
                               {district.schools_count} school{district.schools_count !== 1 ? 's' : ''}
                             </Badge>
                           </div>
@@ -594,7 +598,11 @@ const Districts = () => {
                         </TableCell>
                         <TableCell>{district.timezone}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary">
+                          <Badge 
+                            variant="secondary"
+                            className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                            onClick={() => navigate(`/admin/schools?districtId=${district.id}`)}
+                          >
                             {district.schools_count}
                           </Badge>
                         </TableCell>

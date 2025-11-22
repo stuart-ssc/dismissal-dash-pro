@@ -593,6 +593,14 @@ export default function AdminSchools() {
   const [districtSearchOpen, setDistrictSearchOpen] = useState(false);
   const [districtSearchQuery, setDistrictSearchQuery] = useState("");
 
+  // Read districtId from URL parameters on mount
+  useEffect(() => {
+    const districtId = searchParams.get('districtId');
+    if (districtId) {
+      setSelectedDistrictId(districtId);
+    }
+  }, [searchParams]);
+
   // District search query with state-aware filtering
   const { data: districts, isLoading: loadingDistricts } = useQuery<District[]>({
     queryKey: ['districts-filter', districtSearchQuery, selectedState],
