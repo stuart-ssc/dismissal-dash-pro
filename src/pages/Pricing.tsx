@@ -65,8 +65,8 @@ const Pricing = () => {
       answer: "All schools get priority email support. We typically respond within 24 hours on business days.",
     },
     {
-      question: "Do you offer discounts for multiple schools?",
-      answer: "Yes! Contact us for district-wide pricing if you're managing multiple schools.",
+      question: "Do you offer district pricing?",
+      answer: "Yes! We provide district-level pricing discounts and only charge for schools in your district that actively use the platform. For example, high schools typically don't need our platform since their students are more independent—however, they can still use it especially for bus dismissals and team/club travel. Contact us to discuss pricing for your district.",
     },
     {
       question: "Can our PTO/PTA cover the cost?",
