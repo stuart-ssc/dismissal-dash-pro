@@ -66,6 +66,7 @@ interface School {
 interface District {
   id: string;
   district_name: string;
+  state?: string | null;
 }
 const schema = z.object({
   school_name: z.string().min(1, "Name is required"),
@@ -581,6 +582,52 @@ export default function AdminSchools() {
   const [selectedState, setSelectedState] = useState<string>("all");
   const [verificationFilter, setVerificationFilter] = useState<string>("all");
   const [highlightedSchoolId, setHighlightedSchoolId] = useState<number | null>(null);
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(null);
+  const [districtSearchOpen, setDistrictSearchOpen] = useState(false);
+  const [districtSearchQuery, setDistrictSearchQuery] = useState("");
+
+  // District search query with state-aware filtering
+  const { data: districts, isLoading: loadingDistricts } = useQuery<District[]>({
+    queryKey: ['districts-filter', districtSearchQuery, selectedState],
+    queryFn: async () => {
+      if (!districtSearchQuery || districtSearchQuery.length < 2) {
+        return [];
+      }
+      
+      let query = supabase
+        .from('districts')
+        .select('id, district_name, state')
+        .ilike('district_name', `%${districtSearchQuery}%`)
+        .order('district_name')
+        .limit(100);
+      
+      // Filter by state if selected
+      if (selectedState !== 'all') {
+        query = query.eq('state', selectedState);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as District[];
+    },
+    enabled: true,
+  });
+
+  // Query to get selected district name for display
+  const { data: selectedDistrict } = useQuery<District>({
+    queryKey: ['district-filter', selectedDistrictId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('districts')
+        .select('id, district_name')
+        .eq('id', selectedDistrictId)
+        .single();
+      
+      if (error) throw error;
+      return data as District;
+    },
+    enabled: !!selectedDistrictId,
+  });
   
   // Server-side paginated query with filtering
   const {
@@ -589,14 +636,15 @@ export default function AdminSchools() {
     error,
     refetch
   } = useQuery<{ data: School[], count: number }>({
-    queryKey: ["schools", searchQuery, selectedState, verificationFilter, currentPage, itemsPerPage],
+    queryKey: ["schools", searchQuery, selectedState, verificationFilter, selectedDistrictId, currentPage, itemsPerPage],
     queryFn: async () => {
-      // Only fetch if there's a search query (min 3 chars) or state filter or verification filter
+      // Only fetch if there's a search query (min 3 chars) or state filter or verification filter or district filter
       const hasSearch = searchQuery.trim().length >= 3;
       const hasStateFilter = selectedState !== "all";
       const hasVerificationFilter = verificationFilter !== "all";
+      const hasDistrictFilter = !!selectedDistrictId;
       
-      if (!hasSearch && !hasStateFilter && !hasVerificationFilter) {
+      if (!hasSearch && !hasStateFilter && !hasVerificationFilter && !hasDistrictFilter) {
         return { data: [], count: 0 };
       }
 
@@ -614,6 +662,12 @@ export default function AdminSchools() {
       if (hasVerificationFilter) {
         dataQuery = dataQuery.eq("verification_status", verificationFilter);
         countQuery = countQuery.eq("verification_status", verificationFilter);
+      }
+      
+      // Apply district filter
+      if (hasDistrictFilter) {
+        dataQuery = dataQuery.eq("district_id", selectedDistrictId);
+        countQuery = countQuery.eq("district_id", selectedDistrictId);
       }
       
       // Apply search filter (min 3 characters)
@@ -638,7 +692,7 @@ export default function AdminSchools() {
       
       return { data: data as School[], count: count || 0 };
     },
-    enabled: searchQuery.trim().length >= 3 || selectedState !== "all" || verificationFilter !== "all"
+    enabled: searchQuery.trim().length >= 3 || selectedState !== "all" || verificationFilter !== "all" || !!selectedDistrictId
   });
 
   const data = queryResult?.data || [];
@@ -650,12 +704,20 @@ export default function AdminSchools() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   
   // Check if search/filter is active
-  const isFilterActive = searchQuery.trim().length >= 3 || selectedState !== "all" || verificationFilter !== "all";
+  const isFilterActive = searchQuery.trim().length >= 3 || selectedState !== "all" || verificationFilter !== "all" || !!selectedDistrictId;
 
-  // Reset to page 1 when search query or state filter or verification filter changes
+  // Reset to page 1 when search query or state filter or verification filter or district filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedState, verificationFilter]);
+  }, [searchQuery, selectedState, verificationFilter, selectedDistrictId]);
+
+  // Clear district filter when state changes
+  useEffect(() => {
+    if (selectedState !== 'all') {
+      setSelectedDistrictId(null);
+      setDistrictSearchQuery("");
+    }
+  }, [selectedState]);
 
   // Reset to page 1 when changing items per page
   const handleItemsPerPageChange = (value: string) => {
@@ -865,6 +927,90 @@ export default function AdminSchools() {
                   ))}
                 </SelectContent>
               </Select>
+              <Popover open={districtSearchOpen} onOpenChange={setDistrictSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={districtSearchOpen}
+                    className="w-full sm:w-[200px] justify-between"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Filter className="h-4 w-4 shrink-0" />
+                      <span className="truncate">
+                        {selectedDistrictId 
+                          ? (selectedDistrict?.district_name || "Loading...") 
+                          : "All Districts"}
+                      </span>
+                    </div>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput 
+                      placeholder="Search districts..." 
+                      value={districtSearchQuery}
+                      onValueChange={setDistrictSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandGroup>
+                        <CommandItem
+                          value="__clear__"
+                          onSelect={() => {
+                            setSelectedDistrictId(null);
+                            setDistrictSearchOpen(false);
+                            setDistrictSearchQuery("");
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              !selectedDistrictId ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          All Districts
+                        </CommandItem>
+                      </CommandGroup>
+                      {(!districtSearchQuery || districtSearchQuery.length < 2) && (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          Type at least 2 characters to search
+                          {selectedState !== 'all' && <div className="mt-1 text-xs">Searching in {selectedState} only</div>}
+                        </div>
+                      )}
+                      {districtSearchQuery && districtSearchQuery.length >= 2 && districts && districts.length === 0 && (
+                        <CommandEmpty>
+                          No districts found
+                          {selectedState !== 'all' && ` in ${selectedState}`}.
+                        </CommandEmpty>
+                      )}
+                      {districts && districts.length > 0 && (
+                        <CommandGroup>
+                          {districts.map((district) => (
+                            <CommandItem
+                              key={district.id}
+                              value={district.id}
+                              onSelect={(value) => {
+                                setSelectedDistrictId(value === selectedDistrictId ? null : value);
+                                setDistrictSearchOpen(false);
+                                setDistrictSearchQuery("");
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedDistrictId === district.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {district.district_name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <Select value={verificationFilter} onValueChange={setVerificationFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <div className="flex items-center gap-2">
