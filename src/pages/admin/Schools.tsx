@@ -946,7 +946,7 @@ export default function AdminSchools() {
                       <Filter className="h-4 w-4 shrink-0" />
                       <span className="truncate">
                         {selectedDistrictId 
-                          ? (selectedDistrict?.district_name || "Loading...") 
+                          ? (selectedDistrict ? `${selectedDistrict.district_name}${selectedDistrict.state ? ` (${selectedDistrict.state})` : ''}` : "Loading...") 
                           : "All Districts"}
                       </span>
                     </div>
@@ -1010,6 +1010,11 @@ export default function AdminSchools() {
                                 )}
                               />
                               {district.district_name}
+                              {district.state && (
+                                <span className="text-muted-foreground ml-2">
+                                  ({district.state})
+                                </span>
+                              )}
                             </CommandItem>
                           ))}
                         </CommandGroup>
