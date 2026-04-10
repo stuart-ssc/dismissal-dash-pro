@@ -1,52 +1,43 @@
 
 
-# Fix: IC OAuth Token URL Missing `appName` Parameter
+# Fix: Filter Academic Sessions by Selected School
 
-## Root Cause
-Infinite Campus requires `?appName={appName}` on the OAuth token endpoint. The logs confirm:
-- Token URL sent: `https://jessamineky.infinitecampus.org/campus/oauth2/token`
-- IC response: "No Campus Application selected"
-- Required: `https://jessamineky.infinitecampus.org/campus/oauth2/token?appName=jessamine`
+## Problem
+The IC wizard's "Academic Sessions" preview fetches **all** sessions from the entire district via the OneRoster `/academicSessions` endpoint. When you select a specific school (e.g., East Jessamine Middle School), it should only show sessions relevant to that school.
 
-This was always the underlying bug. The previous cached-results behavior masked it by never re-testing.
+## Solution
 
-## Fix (2 changes)
-
-### 1. `oneroster-client.ts` -- Append appName to token URL
-In the `authenticate()` method, if `appName` is set and the token URL doesn't already contain it, append `?appName={appName}`:
-
+### 1. Add school-scoped session fetch to `oneroster-client.ts`
+OneRoster supports `/schools/{sourcedId}/terms` to get academic sessions for a specific school. Add a new method:
 ```typescript
-async authenticate(): Promise<void> {
-  const credentials = btoa(`${this.config.clientId}:${this.config.clientSecret}`);
-  
-  // IC requires appName on the token endpoint
-  let tokenUrl = this.config.tokenUrl;
-  if (this.config.appName && !tokenUrl.includes('appName=')) {
-    const separator = tokenUrl.includes('?') ? '&' : '?';
-    tokenUrl = `${tokenUrl}${separator}appName=${this.config.appName}`;
-  }
-  
-  const response = await fetch(tokenUrl, { ... });
+async getAcademicSessionsForSchool(schoolSourcedId: string): Promise<OneRosterAcademicSession[]> {
+  return this.paginate<OneRosterAcademicSession>(`schools/${schoolSourcedId}/terms`);
 }
 ```
 
-### 2. `ICTestConnectionStep.tsx` -- Guard auto-test
-Only auto-test on mount if we have valid credentials OR a district connection ID, preventing errors when state is incomplete:
+### 2. Update `test-ic-connection/index.ts`
+After the school list is fetched and a `suggestedMatch` is identified, fetch sessions scoped to that school instead of all district sessions. Fall back to all sessions if the school-scoped call fails (not all IC instances support it).
 
-```typescript
-useEffect(() => {
-  const hasCredentials = state.districtAlreadyConnected 
-    ? !!state.connectionId
-    : !!(state.credentials.clientId && state.credentials.clientSecret);
-  if (hasCredentials) {
-    testConnection();
-  }
-}, []);
-```
+### 3. Update `ICTestConnectionStep.tsx` -- Re-fetch sessions on school selection
+When the user selects a different school from the dropdown, trigger a new request to get sessions for that specific school. This means:
+- Store sessions in local state, not just from the initial test result
+- When `selectedSchool` changes, call the edge function again (or a lighter endpoint) to get that school's sessions
+- Show a loading indicator while fetching
 
-### 3. Redeploy
-Deploy `test-ic-connection`, `get-ic-district-schools`, `connect-ic-district`, and `sync-infinite-campus` (all share the updated client).
+### Alternative (simpler, recommended)
+Since the OneRoster `/schools/{id}/terms` endpoint may not be universally supported, a simpler approach: just filter the display. The academic sessions data from IC includes `parent` references. We can filter sessions whose `parent.sourcedId` matches the selected school. If no parent filtering is available, we show all sessions with a note that they are district-wide.
 
-## Why this will work
-The IC error message explicitly says "No Campus Application selected." Adding `appName` to the token URL is how IC identifies which OneRoster app context to authenticate against. Once auth succeeds, the existing school-fetching logic (with the broadened org filter) will return schools.
+### Implementation approach
+Given this is a preview/informational display in the wizard, the simplest effective fix is:
+1. Keep fetching all sessions in the test endpoint (already working)
+2. In the UI (`ICTestConnectionStep.tsx`), only display sessions after a school is selected, and label them as "District Academic Sessions" so it's clear they apply broadly
+3. Optionally add the school-scoped fetch as an enhancement
+
+This keeps the wizard functional without adding complexity to an already fragile IC integration flow.
+
+## Files to change
+- `supabase/functions/_shared/oneroster-client.ts` -- Add `getAcademicSessionsForSchool()` method
+- `supabase/functions/test-ic-connection/index.ts` -- Use school-scoped session fetch when suggested match exists
+- `src/components/wizard-steps/ICTestConnectionStep.tsx` -- Only show sessions after school selection; update display when school changes
+- Redeploy: `test-ic-connection`
 
