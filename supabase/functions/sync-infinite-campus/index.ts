@@ -121,11 +121,12 @@ async function syncTeachers(
   client: OneRosterClient,
   supabase: SupabaseClient,
   schoolId: number,
-  syncLogId: string
+  syncLogId: string,
+  icSchoolSourcedId: string
 ): Promise<{ created: number; updated: number; pending: number }> {
   console.log('Syncing teachers...');
   
-  const teachers = await client.getUsers('teacher');
+  const teachers = await client.getTeachersForSchool(icSchoolSourcedId);
   let created = 0;
   let updated = 0;
   let pending = 0;
@@ -265,11 +266,12 @@ async function syncStudents(
   client: OneRosterClient,
   supabase: SupabaseClient,
   schoolId: number,
-  syncLogId: string
+  syncLogId: string,
+  icSchoolSourcedId: string
 ): Promise<{ created: number; updated: number; pending: number }> {
   console.log('Syncing students...');
   
-  const students = await client.getUsers('student');
+  const students = await client.getStudentsForSchool(icSchoolSourcedId);
   let created = 0;
   let updated = 0;
   let pending = 0;
@@ -815,14 +817,29 @@ serve(async (req) => {
       await syncAcademicSessions(client, supabaseAdmin, schoolId);
     }
 
+    // Determine IC school sourcedId
+    const icSchoolSourcedId = schoolMapping?.ic_school_sourced_id || null;
+    if (!icSchoolSourcedId) {
+      // Fallback: discover from API
+      const schools = await client.getSchools();
+      if (schools.length === 0) {
+        throw new Error('No schools found in OneRoster API');
+      }
+      console.log('No ic_school_sourced_id in mapping, using first school from API:', schools[0].sourcedId);
+    }
+    const effectiveSchoolSourcedId = icSchoolSourcedId || (await client.getSchools())[0]?.sourcedId;
+    if (!effectiveSchoolSourcedId) {
+      throw new Error('Could not determine IC school sourcedId for school-scoped sync');
+    }
+
     // Sync teachers if enabled
     if (shouldSyncTeachers) {
-      teacherStats = await syncTeachers(client, supabaseAdmin, schoolId, syncLogId);
+      teacherStats = await syncTeachers(client, supabaseAdmin, schoolId, syncLogId, effectiveSchoolSourcedId);
     }
 
     // Sync students if enabled
     if (shouldSyncStudents) {
-      studentStats = await syncStudents(client, supabaseAdmin, schoolId, syncLogId);
+      studentStats = await syncStudents(client, supabaseAdmin, schoolId, syncLogId, effectiveSchoolSourcedId);
     }
 
     // Sync classes if enabled
@@ -836,8 +853,8 @@ serve(async (req) => {
     }
 
     // Archive missing records
-    const students = await client.getUsers('student');
-    const teachers = await client.getUsers('teacher');
+    const students = await client.getStudentsForSchool(effectiveSchoolSourcedId);
+    const teachers = await client.getTeachersForSchool(effectiveSchoolSourcedId);
     const classes = await client.getClasses();
 
     const archiveStats = await archiveMissing(supabaseAdmin, schoolId, {
