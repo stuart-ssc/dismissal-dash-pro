@@ -34,9 +34,14 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
   const [isTesting, setIsTesting] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState<ICSchoolOption | null>(state.selectedICSchool);
 
-  // Always fetch fresh data when entering this step
+  // Only auto-test on mount if we have valid credentials or a district connection
   useEffect(() => {
-    testConnection();
+    const hasCredentials = state.districtAlreadyConnected 
+      ? !!state.connectionId
+      : !!(state.credentials.clientId && state.credentials.clientSecret);
+    if (hasCredentials) {
+      testConnection();
+    }
   }, []);
 
   const testConnection = async () => {

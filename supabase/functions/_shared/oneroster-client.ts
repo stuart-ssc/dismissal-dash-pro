@@ -90,7 +90,15 @@ export class OneRosterClient {
   async authenticate(): Promise<void> {
     const credentials = btoa(`${this.config.clientId}:${this.config.clientSecret}`);
     
-    const response = await fetch(this.config.tokenUrl, {
+    // IC requires appName on the token endpoint
+    let tokenUrl = this.config.tokenUrl;
+    if (this.config.appName && !tokenUrl.includes('appName=')) {
+      const separator = tokenUrl.includes('?') ? '&' : '?';
+      tokenUrl = `${tokenUrl}${separator}appName=${this.config.appName}`;
+    }
+    console.log(`Authenticating with token URL: ${tokenUrl}`);
+    
+    const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${credentials}`,
