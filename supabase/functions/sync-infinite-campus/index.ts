@@ -772,13 +772,15 @@ serve(async (req) => {
       .from('ic_sync_logs')
       .insert({
         school_id: schoolId,
-        connection_id: connectionId,
         sync_type: syncType,
-        status: 'running',
+        status: 'in_progress',
         triggered_by: triggeredBy || null,
-        config_snapshot: syncConfig || null,
-        skipped_data_types: skippedDataTypes.length > 0 ? skippedDataTypes : null,
-        sync_reason: syncType === 'manual' ? 'manual' : 'scheduled',
+        metadata: {
+          connection_id: connectionId,
+          config_snapshot: syncConfig || null,
+          skipped_data_types: skippedDataTypes.length > 0 ? skippedDataTypes : null,
+          sync_reason: syncType === 'manual' ? 'manual' : 'scheduled',
+        },
       })
       .select()
       .single();
@@ -862,10 +864,20 @@ serve(async (req) => {
     await supabaseAdmin
       .from('ic_sync_logs')
       .update({
-        status: 'success',
+        status: 'completed',
         completed_at: new Date().toISOString(),
-        ...stats,
-        details: {
+        students_created: stats.studentsCreated,
+        students_updated: stats.studentsUpdated,
+        students_archived: stats.studentsArchived,
+        teachers_created: stats.teachersCreated,
+        teachers_updated: stats.teachersUpdated,
+        teachers_archived: stats.teachersArchived,
+        classes_created: stats.classesCreated,
+        classes_updated: stats.classesUpdated,
+        classes_archived: stats.classesArchived,
+        enrollments_created: stats.enrollmentsCreated,
+        enrollments_updated: stats.enrollmentsUpdated,
+        metadata: {
           period_data_available: classStats.withPeriods > 0,
           classes_with_periods: classStats.withPeriods,
           classes_without_periods: classStats.withoutPeriods,
@@ -952,7 +964,7 @@ serve(async (req) => {
       await supabaseAdmin
         .from('ic_sync_logs')
         .update({
-          status: 'error',
+          status: 'failed',
           completed_at: new Date().toISOString(),
           error_message: error instanceof Error ? error.message : 'Unknown error',
           error_details: { stack: error instanceof Error ? error.stack : undefined },
