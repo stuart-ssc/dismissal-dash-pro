@@ -35,12 +35,23 @@ export function ICSettingsTab({ connection, schoolId }: ICSettingsTabProps) {
     setTestResult(null);
 
     try {
+      // Look up the district connection ID via ic_school_mappings
+      let districtConnectionId = connection.district_connection_id;
+      if (!districtConnectionId) {
+        const { data: mapping } = await supabase
+          .from('ic_school_mappings' as any)
+          .select('district_connection_id')
+          .eq('school_id', schoolId)
+          .maybeSingle();
+        districtConnectionId = (mapping as any)?.district_connection_id || connection.id;
+      }
+
       // Use stored credentials server-side — never send encrypted values from the client
       const { data, error } = await supabase.functions.invoke('test-ic-connection', {
         body: {
           schoolId,
           useStoredCredentials: true,
-          districtConnectionId: connection.district_connection_id || connection.id,
+          districtConnectionId,
           // Provide baseUrl/appName/tokenUrl for non-stored-credential fallback
           baseUrl: connection.base_url || connection.host_url,
           appName: connection.app_name || '',

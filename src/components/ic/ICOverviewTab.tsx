@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Clock,
   GitMerge,
+  Loader2,
   Settings,
   TrendingUp,
   XCircle,
@@ -33,6 +34,7 @@ interface ICOverviewTabProps {
 
 export function ICOverviewTab({ connection, schoolId }: ICOverviewTabProps) {
   const [showWizard, setShowWizard] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -87,6 +89,28 @@ export function ICOverviewTab({ connection, schoolId }: ICOverviewTabProps) {
     await queryClient.invalidateQueries({ queryKey: ['ic-connection', schoolId] });
     toast.success('Infinite Campus connected successfully!');
     setSearchParams({ tab: 'sync' });
+  };
+
+  const handleSyncNow = async () => {
+    if (!schoolId) return;
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('trigger-manual-sync', {
+        body: { schoolId }
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success('Sync started successfully');
+        await queryClient.invalidateQueries({ queryKey: ['recent-syncs', schoolId] });
+      }
+    } catch (error: any) {
+      console.error('Error triggering sync:', error);
+      toast.error(error.message || 'Failed to trigger sync');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Calculate statistics
@@ -286,7 +310,21 @@ export function ICOverviewTab({ connection, schoolId }: ICOverviewTabProps) {
           <CardDescription>Common tasks and management tools</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <Button
+              variant="default"
+              className="h-auto flex-col py-4"
+              onClick={handleSyncNow}
+              disabled={isSyncing}
+            >
+              {isSyncing ? (
+                <Loader2 className="h-5 w-5 mb-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-5 w-5 mb-2" />
+              )}
+              <span className="text-sm">{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+            </Button>
+
             <Button
               variant="outline"
               className="h-auto flex-col py-4"
