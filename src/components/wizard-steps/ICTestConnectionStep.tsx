@@ -325,11 +325,15 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
 
         {/* School Selection */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <School className="h-5 w-5 text-primary" />
               Select Your School
             </CardTitle>
+            <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isTesting}>
+              {isTesting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Refresh
+            </Button>
           </CardHeader>
           <CardContent>
             {suggestedMatch && (
@@ -371,9 +375,14 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
                   </button>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No schools found in the IC system. Please verify your credentials and App Name.
-                </p>
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    No schools found in the IC system. Please verify your credentials and App Name.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isTesting}>
+                    Try Again
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>
