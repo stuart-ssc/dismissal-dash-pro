@@ -259,14 +259,31 @@ export class OneRosterClient {
     try {
       const schools = await this.paginate<OneRosterSchool>('schools');
       if (schools.length > 0) return schools;
-      console.log('getSchools() returned 0 results, falling back to orgs filtered by type=school');
+      console.log('getSchools() returned 0, falling back to orgs');
     } catch (error) {
-      console.log('getSchools() failed, falling back to orgs filtered by type=school:', error);
+      console.log('getSchools() failed, falling back to orgs:', error);
     }
     const orgs = await this.paginate<OneRosterOrg>('orgs');
-    return orgs
-      .filter(o => o.type?.toLowerCase() === 'school')
-      .map(o => ({ sourcedId: o.sourcedId, name: o.name, type: o.type }));
+    console.log('Org types found:', orgs.map(o => `${o.name}: ${o.type}`));
+
+    // Accept 'school' or 'local' (common IC type for schools)
+    const schoolTypes = ['school', 'local'];
+    let filtered = orgs.filter(o => schoolTypes.includes(o.type?.toLowerCase()));
+
+    // If still empty, return all orgs that aren't district/national/state
+    if (filtered.length === 0) {
+      const excludeTypes = ['district', 'national', 'state'];
+      filtered = orgs.filter(o => !excludeTypes.includes(o.type?.toLowerCase()));
+    }
+
+    // Last resort: return ALL orgs so the user can pick
+    if (filtered.length === 0) {
+      filtered = orgs;
+    }
+
+    return filtered.map(o => ({
+      sourcedId: o.sourcedId, name: o.name, type: o.type
+    }));
   }
 
   async getAcademicSessions(): Promise<OneRosterAcademicSession[]> {
