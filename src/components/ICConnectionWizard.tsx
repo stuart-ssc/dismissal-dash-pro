@@ -10,33 +10,40 @@ import { ICSyncConfigStep } from './wizard-steps/ICSyncConfigStep';
 import { ICReviewStep } from './wizard-steps/ICReviewStep';
 import { ICSuccessStep } from './wizard-steps/ICSuccessStep';
 
+export interface ICSchoolOption {
+  sourcedId: string;
+  name: string;
+  type: string;
+}
+
 export interface WizardState {
   currentStep: number;
   credentials: {
-    hostUrl: string;
-    clientKey: string;
+    baseUrl: string;
+    clientId: string;
     clientSecret: string;
     tokenUrl: string;
+    appName: string;
   };
   testResults: {
     valid: boolean;
     version?: '1.1' | '1.2';
+    schools?: ICSchoolOption[];
+    suggestedMatch?: {
+      sourcedId: string;
+      name: string;
+      confidence: number;
+    };
     preview?: {
       orgName: string;
-      schoolName: string;
       studentCount: number;
       teacherCount: number;
       classCount: number;
       academicSessions: Array<{ name: string; start: string; end: string; isActive: boolean }>;
-      sampleStudents: Array<{ firstName: string; lastName: string; grade: string }>;
-      sampleTeachers: Array<{ firstName: string; lastName: string; email: string }>;
-      potentialDuplicates: {
-        students: number;
-        teachers: number;
-      };
     };
     error?: string;
   } | null;
+  selectedICSchool: ICSchoolOption | null;
   syncConfig: {
     intervalType: 'hourly' | 'daily' | 'weekly' | 'custom';
     intervalValue: number;
@@ -52,7 +59,9 @@ export interface WizardState {
     blackoutDates: string[];
     skipWeekends: boolean;
   };
-  connectionId: number | null;
+  connectionId: string | null;
+  districtId: string | null;
+  districtAlreadyConnected: boolean;
 }
 
 const STORAGE_KEY = 'ic-wizard-state';
@@ -60,7 +69,7 @@ const STORAGE_KEY = 'ic-wizard-state';
 const STEPS = [
   { id: 1, name: 'Welcome', component: ICWelcomeStep },
   { id: 2, name: 'Credentials', component: ICCredentialsStep },
-  { id: 3, name: 'Test Connection', component: ICTestConnectionStep },
+  { id: 3, name: 'Test & Select', component: ICTestConnectionStep },
   { id: 4, name: 'Sync Config', component: ICSyncConfigStep },
   { id: 5, name: 'Review', component: ICReviewStep },
   { id: 6, name: 'Success', component: ICSuccessStep },
@@ -75,12 +84,10 @@ interface ICConnectionWizardProps {
 export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnectionWizardProps) {
   
   const getInitialState = (): WizardState => {
-    // Try to load from localStorage
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Validate it's for the same school
         if (parsed.schoolId === schoolId) {
           return parsed.state;
         }
@@ -89,16 +96,17 @@ export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnect
       }
     }
     
-    // Default state
     return {
       currentStep: 1,
       credentials: {
-        hostUrl: '',
-        clientKey: '',
+        baseUrl: '',
+        clientId: '',
         clientSecret: '',
         tokenUrl: '',
+        appName: '',
       },
       testResults: null,
+      selectedICSchool: null,
       syncConfig: {
         intervalType: 'daily',
         intervalValue: 1,
@@ -115,12 +123,13 @@ export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnect
         skipWeekends: true,
       },
       connectionId: null,
+      districtId: null,
+      districtAlreadyConnected: false,
     };
   };
 
   const [state, setState] = useState<WizardState>(getInitialState);
 
-  // Save state to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ schoolId, state }));
   }, [state, schoolId]);
@@ -160,11 +169,9 @@ export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnect
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
-      {/* Header with progress */}
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Infinite Campus Setup</h2>
 
-        {/* Progress bar with step labels */}
         <div className="space-y-2">
           <Progress value={progress} className="h-2" />
           <div className="flex items-center justify-between text-sm">
@@ -197,7 +204,6 @@ export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnect
         </div>
       </div>
 
-      {/* Step content */}
       <Card>
         <CardContent className="p-6 min-h-[500px]">
           <CurrentStepComponent
@@ -212,7 +218,6 @@ export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnect
         </CardContent>
       </Card>
 
-      {/* Navigation footer */}
       {!isLastStep && (
         <div className="flex items-center justify-between pt-4">
           <Button
