@@ -90,6 +90,28 @@ export function ICOverviewTab({ connection, schoolId }: ICOverviewTabProps) {
     setSearchParams({ tab: 'sync' });
   };
 
+  const handleSyncNow = async () => {
+    if (!schoolId) return;
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('trigger-manual-sync', {
+        body: { schoolId }
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success('Sync started successfully');
+        await queryClient.invalidateQueries({ queryKey: ['recent-syncs', schoolId] });
+      }
+    } catch (error: any) {
+      console.error('Error triggering sync:', error);
+      toast.error(error.message || 'Failed to trigger sync');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Calculate statistics
   const pendingCount = pendingMerges?.length || 0;
   const highConfidencePending = pendingMerges?.filter((m) => m.match_confidence >= 0.9).length || 0;
