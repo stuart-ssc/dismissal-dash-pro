@@ -1,43 +1,56 @@
 
 
-# Fix: Filter Academic Sessions by Selected School
+# Fix: Sync Crash + Better Error Handling
 
-## Problem
-The IC wizard's "Academic Sessions" preview fetches **all** sessions from the entire district via the OneRoster `/academicSessions` endpoint. When you select a specific school (e.g., East Jessamine Middle School), it should only show sessions relevant to that school.
+## Root Cause
+In `sync-infinite-campus/index.ts` line 884, the auto-merge processing uses `connection.school_id` -- but `connection` is not defined in this scope. It should be `schoolId`. This causes a `ReferenceError` crash after the sync data is written but before the sync log is marked as complete.
 
-## Solution
+The result:
+1. Sync data actually gets partially written
+2. The sync log stays in "running" status forever (never marked complete or error)
+3. `trigger-manual-sync` gets a 500 from `sync-infinite-campus`, throws a generic "non-2xx" error to the client
+4. The UI shows a vague error toast with no way to retry or see what happened
 
-### 1. Add school-scoped session fetch to `oneroster-client.ts`
-OneRoster supports `/schools/{sourcedId}/terms` to get academic sessions for a specific school. Add a new method:
+## Fix (2 changes)
+
+### 1. Fix the variable reference in `sync-infinite-campus/index.ts`
+Line 884: Change `connection.school_id` to `schoolId`
+
 ```typescript
-async getAcademicSessionsForSchool(schoolSourcedId: string): Promise<OneRosterAcademicSession[]> {
-  return this.paginate<OneRosterAcademicSession>(`schools/${schoolSourcedId}/terms`);
+// Before (line 884)
+body: { schoolId: connection.school_id, syncLogId },
+
+// After
+body: { schoolId, syncLogId },
+```
+
+### 2. Better error handling in `trigger-manual-sync/index.ts`
+The `supabaseAdmin.functions.invoke()` call on line ~95 can fail with a non-2xx. Wrap it to extract the actual error message from the response body instead of just showing "non-2xx":
+
+```typescript
+const { data: syncResult, error: syncError } = await supabaseAdmin.functions.invoke(...);
+
+if (syncError) {
+  // Try to extract meaningful error from the response
+  const errorMessage = syncError.message || 'Sync failed';
+  console.error('Manual sync error:', errorMessage);
+  return new Response(JSON.stringify({ 
+    error: errorMessage,
+    details: 'Check sync history for more details' 
+  }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 ```
 
-### 2. Update `test-ic-connection/index.ts`
-After the school list is fetched and a `suggestedMatch` is identified, fetch sessions scoped to that school instead of all district sessions. Fall back to all sessions if the school-scoped call fails (not all IC instances support it).
+Using HTTP 200 with `{ error: ... }` ensures the Supabase SDK doesn't throw and the client can read the actual error details.
 
-### 3. Update `ICTestConnectionStep.tsx` -- Re-fetch sessions on school selection
-When the user selects a different school from the dropdown, trigger a new request to get sessions for that specific school. This means:
-- Store sessions in local state, not just from the initial test result
-- When `selectedSchool` changes, call the edge function again (or a lighter endpoint) to get that school's sessions
-- Show a loading indicator while fetching
-
-### Alternative (simpler, recommended)
-Since the OneRoster `/schools/{id}/terms` endpoint may not be universally supported, a simpler approach: just filter the display. The academic sessions data from IC includes `parent` references. We can filter sessions whose `parent.sourcedId` matches the selected school. If no parent filtering is available, we show all sessions with a note that they are district-wide.
-
-### Implementation approach
-Given this is a preview/informational display in the wizard, the simplest effective fix is:
-1. Keep fetching all sessions in the test endpoint (already working)
-2. In the UI (`ICTestConnectionStep.tsx`), only display sessions after a school is selected, and label them as "District Academic Sessions" so it's clear they apply broadly
-3. Optionally add the school-scoped fetch as an enhancement
-
-This keeps the wizard functional without adding complexity to an already fragile IC integration flow.
+### 3. Redeploy both functions
+- `sync-infinite-campus`
+- `trigger-manual-sync`
 
 ## Files to change
-- `supabase/functions/_shared/oneroster-client.ts` -- Add `getAcademicSessionsForSchool()` method
-- `supabase/functions/test-ic-connection/index.ts` -- Use school-scoped session fetch when suggested match exists
-- `src/components/wizard-steps/ICTestConnectionStep.tsx` -- Only show sessions after school selection; update display when school changes
-- Redeploy: `test-ic-connection`
+- `supabase/functions/sync-infinite-campus/index.ts` -- Fix `connection.school_id` to `schoolId` on line 884
+- `supabase/functions/trigger-manual-sync/index.ts` -- Improve error handling for the inner function call
+
+## Why this will work
+The crash is definitively caused by the undefined `connection` variable reference. Fixing it allows the sync to complete normally. The improved error handling ensures future failures surface meaningful messages instead of "non-2xx."
 
