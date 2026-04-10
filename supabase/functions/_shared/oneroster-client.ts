@@ -217,7 +217,9 @@ export class OneRosterClient {
       }
 
       const data = await response.json();
-      const results = this.config.version === '1.2' ? data : data[endpoint] || [];
+      // OneRoster wraps results in a key matching the resource name (e.g., { "orgs": [...] })
+      const resourceKey = endpoint.split('/').pop() || endpoint;
+      const results = data[resourceKey] || data[endpoint] || (Array.isArray(data) ? data : []);
       
       allResults = allResults.concat(results);
       
