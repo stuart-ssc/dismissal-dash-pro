@@ -33,6 +33,7 @@ interface ICOverviewTabProps {
 
 export function ICOverviewTab({ connection, schoolId }: ICOverviewTabProps) {
   const [showWizard, setShowWizard] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
