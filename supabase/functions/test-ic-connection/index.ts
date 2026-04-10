@@ -2,34 +2,58 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { OneRosterClient } from '../_shared/oneroster-client.ts';
-import { findStudentMatch, findTeacherMatch } from '../_shared/fuzzy-matcher.ts';
 
 interface TestRequest {
-  hostUrl: string;
-  clientKey: string;
+  baseUrl: string;
+  clientId: string;
   clientSecret: string;
   tokenUrl: string;
+  appName: string;
   schoolId: number;
+}
+
+interface ICSchool {
+  sourcedId: string;
+  name: string;
+  type: string;
 }
 
 interface TestResponse {
   valid: boolean;
   version?: '1.1' | '1.2';
+  schools?: ICSchool[];
+  suggestedMatch?: {
+    sourcedId: string;
+    name: string;
+    confidence: number;
+  };
   preview?: {
     orgName: string;
-    schoolName: string;
     studentCount: number;
     teacherCount: number;
     classCount: number;
     academicSessions: Array<{ name: string; start: string; end: string; isActive: boolean }>;
-    sampleStudents: Array<{ firstName: string; lastName: string; grade: string }>;
-    sampleTeachers: Array<{ firstName: string; lastName: string; email: string }>;
-    potentialDuplicates: {
-      students: number;
-      teachers: number;
-    };
   };
   error?: string;
+}
+
+/**
+ * Simple fuzzy match score between two strings (0-1)
+ */
+function fuzzyMatchScore(a: string, b: string): number {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const na = normalize(a);
+  const nb = normalize(b);
+  
+  if (na === nb) return 1.0;
+  if (na.includes(nb) || nb.includes(na)) return 0.8;
+  
+  // Simple word overlap
+  const wordsA = a.toLowerCase().split(/\s+/);
+  const wordsB = b.toLowerCase().split(/\s+/);
+  const common = wordsA.filter(w => wordsB.some(wb => wb.includes(w) || w.includes(wb)));
+  const score = (common.length * 2) / (wordsA.length + wordsB.length);
+  return score;
 }
 
 serve(async (req) => {
@@ -38,7 +62,6 @@ serve(async (req) => {
   }
 
   try {
-    // Get authenticated user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization' }), {
@@ -61,11 +84,10 @@ serve(async (req) => {
       });
     }
 
-    // Parse request body
     const body: TestRequest = await req.json();
-    const { hostUrl, clientKey, clientSecret, tokenUrl, schoolId } = body;
+    const { baseUrl, clientId, clientSecret, tokenUrl, appName, schoolId } = body;
 
-    // Verify user is school admin for this school
+    // Verify user has access to this school
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -77,15 +99,15 @@ serve(async (req) => {
       .eq('user_id', user.id);
 
     const isSystemAdmin = userRoles?.some(r => r.role === 'system_admin');
+    const isDistrictAdmin = userRoles?.some(r => r.role === 'district_admin');
     
-    if (!isSystemAdmin) {
+    if (!isSystemAdmin && !isDistrictAdmin) {
       const { data: userSchools } = await supabaseAdmin
         .from('user_schools')
         .select('school_id')
         .eq('user_id', user.id);
 
       const hasAccess = userSchools?.some(us => us.school_id === schoolId);
-      
       if (!hasAccess) {
         return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
           status: 403,
@@ -96,104 +118,85 @@ serve(async (req) => {
 
     // Auto-detect OneRoster version
     console.log('Detecting OneRoster version...');
-    const version = await OneRosterClient.detectVersion(hostUrl, clientKey, clientSecret, tokenUrl);
+    const version = await OneRosterClient.detectVersion(baseUrl, clientId, clientSecret, tokenUrl, appName);
     console.log(`Detected version: ${version}`);
 
-    // Initialize client with detected version
+    // Initialize client
     const client = new OneRosterClient({
-      hostUrl,
-      clientKey,
+      baseUrl,
+      clientId,
       clientSecret,
       tokenUrl,
       version,
+      appName,
     });
 
-    // Test authentication
     await client.authenticate();
 
-    // Fetch preview data
+    // Fetch data for preview
     console.log('Fetching preview data...');
-    const [orgs, schools, sessions, students, teachers, classes] = await Promise.all([
+    const [orgs, schools, sessions] = await Promise.all([
       client.getOrgs(),
       client.getSchools(),
       client.getAcademicSessions(),
-      client.getUsers('student'),
-      client.getUsers('teacher'),
-      client.getClasses(),
     ]);
 
-    // Get current date for determining active session
+    // Get the registered school name for fuzzy matching
+    const { data: registeredSchool } = await supabaseAdmin
+      .from('schools')
+      .select('school_name')
+      .eq('id', schoolId)
+      .single();
+
+    const schoolName = registeredSchool?.school_name || '';
+
+    // Find best match among IC schools
+    let suggestedMatch: TestResponse['suggestedMatch'] = undefined;
+    if (schoolName && schools.length > 0) {
+      let bestScore = 0;
+      let bestSchool: any = null;
+      for (const s of schools) {
+        const score = fuzzyMatchScore(schoolName, s.name);
+        if (score > bestScore) {
+          bestScore = score;
+          bestSchool = s;
+        }
+      }
+      if (bestSchool && bestScore > 0.3) {
+        suggestedMatch = {
+          sourcedId: bestSchool.sourcedId,
+          name: bestSchool.name,
+          confidence: bestScore,
+        };
+      }
+    }
+
     const currentDate = new Date();
-
-    // Count potential duplicates
-    let studentDuplicates = 0;
-    let teacherDuplicates = 0;
-
-    // Check first 20 students for duplicates
-    const studentsToCheck = students.slice(0, 20);
-    for (const student of studentsToCheck) {
-      const match = await findStudentMatch(supabaseAdmin, schoolId, {
-        sourcedId: student.sourcedId,
-        givenName: student.givenName,
-        familyName: student.familyName,
-        grade: student.grade,
-      });
-      
-      if (match.confidence > 0 && match.confidence < 1.0) {
-        studentDuplicates++;
-      }
-    }
-
-    // Check first 10 teachers for duplicates
-    const teachersToCheck = teachers.slice(0, 10);
-    for (const teacher of teachersToCheck) {
-      const match = await findTeacherMatch(supabaseAdmin, schoolId, {
-        sourcedId: teacher.sourcedId,
-        givenName: teacher.givenName,
-        familyName: teacher.familyName,
-        email: teacher.email,
-      });
-      
-      if (match.confidence > 0 && match.confidence < 1.0) {
-        teacherDuplicates++;
-      }
-    }
 
     const response: TestResponse = {
       valid: true,
       version,
+      schools: schools.map(s => ({
+        sourcedId: s.sourcedId,
+        name: s.name,
+        type: s.type,
+      })),
+      suggestedMatch,
       preview: {
         orgName: orgs[0]?.name || 'Unknown',
-        schoolName: schools[0]?.name || 'Unknown',
-        studentCount: students.length,
-        teacherCount: teachers.length,
-        classCount: classes.length,
+        studentCount: 0, // We'll get counts per-school later
+        teacherCount: 0,
+        classCount: 0,
         academicSessions: sessions.slice(0, 5).map(session => {
           const start = new Date(session.startDate);
           const end = new Date(session.endDate);
-          const isActive = currentDate >= start && currentDate <= end;
-          
           return {
             name: session.title,
             start: session.startDate,
             end: session.endDate,
-            isActive,
+            isActive: currentDate >= start && currentDate <= end,
           };
         }),
-        sampleStudents: students.slice(0, 5).map(s => ({
-          firstName: s.givenName,
-          lastName: s.familyName,
-          grade: s.grade || 'N/A',
-        })),
-        sampleTeachers: teachers.slice(0, 5).map(t => ({
-          firstName: t.givenName,
-          lastName: t.familyName,
-          email: t.email || 'No email',
-        })),
-        potentialDuplicates: {
-          students: studentDuplicates,
-          teachers: teacherDuplicates,
-        },
       },
     };
 
@@ -204,12 +207,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Test connection error:', error);
     
-    const response: TestResponse = {
+    return new Response(JSON.stringify({
       valid: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
-    };
-
-    return new Response(JSON.stringify(response), {
+    }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
