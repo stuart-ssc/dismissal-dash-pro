@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, Edit, Server, Database, Clock, AlertTriangle, Users, BookOpen, Calendar, School } from 'lucide-react';
+import { Loader2, CheckCircle2, Edit, Server, Database, Clock, Calendar, School } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { WizardState } from '../ICConnectionWizard';
@@ -33,18 +32,12 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
 
   const getFrequencyDisplay = () => {
     const { intervalType, syncWindowStart } = state.syncConfig;
-    
     switch (intervalType) {
-      case 'hourly':
-        return 'Every hour';
-      case 'daily':
-        return `Daily at ${syncWindowStart}`;
-      case 'weekly':
-        return `Weekly on Sunday at ${syncWindowStart}`;
-      case 'custom':
-        return 'Custom schedule';
-      default:
-        return intervalType;
+      case 'hourly': return 'Every hour';
+      case 'daily': return `Daily at ${syncWindowStart}`;
+      case 'weekly': return `Weekly on Sunday at ${syncWindowStart}`;
+      case 'custom': return 'Custom schedule';
+      default: return intervalType;
     }
   };
 
@@ -58,7 +51,7 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
   };
 
   const maskCredential = (value: string): string => {
-    if (value.length <= 8) return '••••••••';
+    if (!value || value.length <= 8) return '••••••••';
     return value.substring(0, 4) + '••••••••' + value.substring(value.length - 4);
   };
 
@@ -66,40 +59,49 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
     setIsConnecting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('connect-ic-district', {
-        body: {
-          baseUrl: state.credentials.baseUrl,
-          clientId: state.credentials.clientId,
-          clientSecret: state.credentials.clientSecret,
-          tokenUrl: state.credentials.tokenUrl,
-          appName: state.credentials.appName,
-          version: state.testResults?.version || '1.2',
-          districtId: state.districtId,
-          schoolId,
-          icSchoolSourcedId: state.selectedICSchool?.sourcedId || '',
-          icSchoolName: state.selectedICSchool?.name || '',
-          syncConfig: {
-            enabled: true,
-            interval_type: state.syncConfig.intervalType,
-            interval_value: state.syncConfig.intervalValue,
-            sync_window_start: state.syncConfig.syncWindowStart,
-            sync_window_end: state.syncConfig.syncWindowEnd,
-            timezone: state.syncConfig.timezone,
-            sync_students: state.syncConfig.dataTypes.students,
-            sync_teachers: state.syncConfig.dataTypes.teachers,
-            sync_classes: state.syncConfig.dataTypes.classes,
-            sync_enrollments: state.syncConfig.dataTypes.enrollments,
-            skip_weekends: state.syncConfig.skipWeekends,
-          },
+      // For already-connected districts, we only need to create the school mapping
+      // The edge function handles both cases
+      const body: any = {
+        baseUrl: state.credentials.baseUrl,
+        tokenUrl: state.credentials.tokenUrl,
+        appName: state.credentials.appName,
+        version: state.testResults?.version || '1.2',
+        districtId: state.districtId,
+        schoolId,
+        icSchoolSourcedId: state.selectedICSchool?.sourcedId || '',
+        icSchoolName: state.selectedICSchool?.name || '',
+        syncConfig: {
+          enabled: true,
+          interval_type: state.syncConfig.intervalType,
+          interval_value: state.syncConfig.intervalValue,
+          sync_window_start: state.syncConfig.syncWindowStart,
+          sync_window_end: state.syncConfig.syncWindowEnd,
+          timezone: state.syncConfig.timezone,
+          sync_students: state.syncConfig.dataTypes.students,
+          sync_teachers: state.syncConfig.dataTypes.teachers,
+          sync_classes: state.syncConfig.dataTypes.classes,
+          sync_enrollments: state.syncConfig.dataTypes.enrollments,
+          skip_weekends: state.syncConfig.skipWeekends,
         },
-      });
+      };
+
+      // Only include credentials for fresh setups (not already-connected districts)
+      if (!state.districtAlreadyConnected) {
+        body.clientId = state.credentials.clientId;
+        body.clientSecret = state.credentials.clientSecret;
+      } else {
+        // For already-connected districts, pass empty strings 
+        // The edge function will detect existingConnection and skip credential storage
+        body.clientId = '';
+        body.clientSecret = '';
+      }
+
+      const { data, error } = await supabase.functions.invoke('connect-ic-district', { body });
 
       if (error) throw error;
 
       if (data?.connectionId) {
-        updateState({
-          connectionId: data.connectionId,
-        });
+        updateState({ connectionId: data.connectionId });
         toast.success('Connection created successfully!');
         nextStep();
       } else {
@@ -133,7 +135,9 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
               Connection Details
             </CardTitle>
             <CardDescription className="mt-2">
-              Your Infinite Campus connection information
+              {state.districtAlreadyConnected
+                ? 'Using existing district connection'
+                : 'Your Infinite Campus connection information'}
             </CardDescription>
           </div>
           {!state.districtAlreadyConnected && (
@@ -299,11 +303,7 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
       </Card>
 
       <div className="flex items-center justify-end pt-4">
-        <Button
-          size="lg"
-          onClick={handleConnect}
-          disabled={isConnecting}
-        >
+        <Button size="lg" onClick={handleConnect} disabled={isConnecting}>
           {isConnecting ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
