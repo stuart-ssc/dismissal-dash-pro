@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Clock,
   GitMerge,
+  Loader2,
   Settings,
   TrendingUp,
   XCircle,
