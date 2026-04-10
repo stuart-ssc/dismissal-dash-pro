@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle2, XCircle, AlertTriangle, Building2, Calendar, AlertCircle, School } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, AlertTriangle, Calendar, AlertCircle, School } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { WizardState, ICSchoolOption } from '../ICConnectionWizard';
@@ -35,7 +35,7 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
   const [selectedSchool, setSelectedSchool] = useState<ICSchoolOption | null>(state.selectedICSchool);
 
   useEffect(() => {
-    if (state.credentials.baseUrl && state.credentials.clientId && !state.testResults) {
+    if (!state.testResults) {
       testConnection();
     }
   }, []);
@@ -49,20 +49,43 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
       setTimeout(() => setLoadingPhase('detecting'), 1500);
       setTimeout(() => setLoadingPhase('fetching'), 2500);
 
-      const { data, error } = await supabase.functions.invoke('test-ic-connection', {
-        body: {
-          baseUrl: state.credentials.baseUrl,
-          clientId: state.credentials.clientId,
-          clientSecret: state.credentials.clientSecret,
-          tokenUrl: state.credentials.tokenUrl,
-          appName: state.credentials.appName,
-          schoolId,
-        },
-      });
+      let data: any;
+      let error: any;
 
-      if (error) throw error;
+      if (state.districtAlreadyConnected && state.connectionId) {
+        // PATH B: District already connected — use server-side credentials
+        console.log('Using stored district credentials via get-ic-district-schools');
+        const result = await supabase.functions.invoke('get-ic-district-schools', {
+          body: {
+            districtConnectionId: state.connectionId,
+            schoolId,
+          },
+        });
+        data = result.data;
+        error = result.error;
+      } else {
+        // PATH A: Fresh setup — send real credentials
+        console.log('Testing with user-provided credentials');
+        const result = await supabase.functions.invoke('test-ic-connection', {
+          body: {
+            baseUrl: state.credentials.baseUrl,
+            clientId: state.credentials.clientId,
+            clientSecret: state.credentials.clientSecret,
+            tokenUrl: state.credentials.tokenUrl,
+            appName: state.credentials.appName,
+            schoolId,
+          },
+        });
+        data = result.data;
+        error = result.error;
+      }
 
-      if (data.valid) {
+      if (error) {
+        // Supabase client error (network, etc.)
+        throw error;
+      }
+
+      if (data?.valid) {
         setLoadingPhase('complete');
         updateState({
           testResults: {
@@ -87,14 +110,15 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
 
         toast.success('Connection successful!');
       } else {
+        // Structured error from our edge function
         setLoadingPhase('error');
         updateState({
           testResults: {
             valid: false,
-            error: data.error || 'Connection test failed',
+            error: data?.error || 'Connection test failed',
           },
         });
-        toast.error('Connection failed');
+        toast.error(data?.error || 'Connection failed');
       }
     } catch (error: any) {
       console.error('Connection test error:', error);
@@ -102,7 +126,7 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
       updateState({
         testResults: {
           valid: false,
-          error: error.message || 'Failed to test connection',
+          error: error.message || 'Failed to test connection. Please check your network and try again.',
         },
       });
       toast.error('Connection test failed');
@@ -128,11 +152,24 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
     if (!error) return [];
     const lowerError = error.toLowerCase();
     
-    if (lowerError.includes('authentication') || lowerError.includes('unauthorized')) {
+    if (lowerError.includes('authentication') || lowerError.includes('unauthorized') || lowerError.includes('oauth')) {
       return [
         'Double-check your Client ID and Client Secret for typos',
         'Verify that the API credentials are active in Infinite Campus',
-        'Make sure the App Name is correct',
+        'Make sure the App Name is correct and case-sensitive',
+        'Confirm the Token URL is correct',
+      ];
+    }
+    if (lowerError.includes('permission')) {
+      return [
+        'Your account may not have access to this school',
+        'Contact your administrator to verify your school assignment',
+      ];
+    }
+    if (lowerError.includes('decrypt')) {
+      return [
+        'The stored credentials may need to be re-entered',
+        'Contact your district administrator to reconfigure the connection',
       ];
     }
     if (lowerError.includes('network') || lowerError.includes('timeout')) {
@@ -142,9 +179,15 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
         'Try again in a few minutes',
       ];
     }
+    if (lowerError.includes('placeholder') || lowerError.includes('masked')) {
+      return [
+        'This is a system error — please go back and re-enter your credentials',
+        'If the problem persists, clear the wizard and start over',
+      ];
+    }
     return [
       'Verify all credentials are correct',
-      'Check that the Base URL uses HTTPS',
+      'Make sure the Base URL does NOT include "/campus" — we add that automatically',
       'Ensure your App Name matches the IC API documentation',
       'Contact your IT administrator for assistance',
     ];
@@ -161,7 +204,9 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
         </div>
 
         <div className="text-center space-y-2">
-          <h3 className="text-xl font-semibold">Testing Connection</h3>
+          <h3 className="text-xl font-semibold">
+            {state.districtAlreadyConnected ? 'Fetching Schools' : 'Testing Connection'}
+          </h3>
           <p className="text-muted-foreground">{PHASE_MESSAGES[loadingPhase]}</p>
         </div>
 
@@ -358,7 +403,7 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
 
         <div className="flex items-center justify-between pt-4">
           <Button variant="outline" onClick={() => goToStep(2)}>
-            Edit Credentials
+            {state.districtAlreadyConnected ? 'Back' : 'Edit Credentials'}
           </Button>
           <Button size="lg" onClick={handleContinue} disabled={!selectedSchool}>
             Continue to Sync Configuration

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Eye, EyeOff, HelpCircle, ChevronDown, ExternalLink, AlertCircle, Info } from 'lucide-react';
+import { Eye, EyeOff, HelpCircle, ChevronDown, AlertCircle, Info } from 'lucide-react';
 import { WizardState } from '../ICConnectionWizard';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -64,7 +64,6 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
   useEffect(() => {
     async function checkDistrictConnection() {
       try {
-        // Get the school's district
         const { data: school } = await supabase
           .from('schools')
           .select('district_id')
@@ -74,25 +73,24 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
         if (school?.district_id) {
           updateState({ districtId: school.district_id });
 
-          // Check for existing district connection
           const { data: existingConn } = await supabase
             .from('ic_district_connections')
-            .select('*')
+            .select('id, base_url, app_name, token_url')
             .eq('district_id', school.district_id)
             .maybeSingle();
 
           if (existingConn) {
-            // District already connected! Skip credentials
+            // District already connected — store connection ID only, NO masked credentials
             updateState({
               districtAlreadyConnected: true,
+              connectionId: existingConn.id,
               credentials: {
                 baseUrl: existingConn.base_url,
                 appName: existingConn.app_name,
-                clientId: '••••••••', // Placeholder - encrypted
-                clientSecret: '••••••••',
+                clientId: '', // Empty — never send masked placeholders
+                clientSecret: '', // Empty — never send masked placeholders
                 tokenUrl: existingConn.token_url,
               },
-              connectionId: existingConn.id,
             });
           }
         }
@@ -137,7 +135,7 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
     nextStep();
   };
 
-  // If district already connected, show simplified view
+  // If district already connected, show simplified view — skip straight to school selection
   if (state.districtAlreadyConnected) {
     return (
       <div className="space-y-6">
@@ -219,7 +217,7 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
             <p className="text-sm text-destructive">{form.formState.errors.baseUrl.message}</p>
           )}
           <p className="text-sm text-muted-foreground">
-            Your district's Infinite Campus URL (must start with https://)
+            Your district's Infinite Campus URL (must start with https://, do NOT include /campus)
           </p>
 
           <Collapsible open={baseUrlHelp} onOpenChange={setBaseUrlHelp}>
@@ -239,6 +237,9 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
                   <li><code className="text-xs bg-background px-1 py-0.5 rounded">https://jessamineky.infinitecampus.org</code></li>
                   <li><code className="text-xs bg-background px-1 py-0.5 rounded">https://district.infinitecampus.org</code></li>
                 </ul>
+                <p className="text-sm text-amber-600 font-medium">
+                  ⚠️ Do not include "/campus" at the end — we add that automatically.
+                </p>
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -304,9 +305,6 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
           {form.formState.errors.clientId && (
             <p className="text-sm text-destructive">{form.formState.errors.clientId.message}</p>
           )}
-          <p className="text-sm text-muted-foreground">
-            The API Client ID provided by your IT administrator
-          </p>
         </div>
 
         {/* Client Secret */}
@@ -336,9 +334,6 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
           {form.formState.errors.clientSecret && (
             <p className="text-sm text-destructive">{form.formState.errors.clientSecret.message}</p>
           )}
-          <p className="text-sm text-muted-foreground">
-            The API Client Secret (keep this confidential!)
-          </p>
         </div>
 
         {/* Token URL */}
@@ -362,11 +357,7 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
         </div>
 
         <div className="flex items-center justify-between pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-          >
+          <Button type="button" variant="outline" onClick={() => form.reset()}>
             Clear Form
           </Button>
           <Button type="submit">
@@ -393,6 +384,7 @@ export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: St
           <h4 className="text-sm font-semibold">Common Issues:</h4>
           <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
             <li>Make sure your Base URL uses HTTPS (not HTTP)</li>
+            <li>Do NOT include "/campus" in the Base URL — we add it automatically</li>
             <li>The App Name is case-sensitive and usually lowercase</li>
             <li>The Client Secret is case-sensitive</li>
             <li>Ensure the API has OneRoster permissions enabled</li>

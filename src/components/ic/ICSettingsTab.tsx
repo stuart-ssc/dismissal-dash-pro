@@ -35,24 +35,29 @@ export function ICSettingsTab({ connection, schoolId }: ICSettingsTabProps) {
     setTestResult(null);
 
     try {
+      // Use stored credentials server-side — never send encrypted values from the client
       const { data, error } = await supabase.functions.invoke('test-ic-connection', {
         body: {
           schoolId,
-          hostUrl: connection.host_url,
-          clientKey: connection.client_key,
-          clientSecret: connection.client_secret,
+          useStoredCredentials: true,
+          districtConnectionId: connection.district_connection_id || connection.id,
+          // Provide baseUrl/appName/tokenUrl for non-stored-credential fallback
+          baseUrl: connection.base_url || connection.host_url,
+          appName: connection.app_name || '',
           tokenUrl: connection.token_url,
+          clientId: '', // Empty — server will use stored credentials
+          clientSecret: '', // Empty — server will use stored credentials
         }
       });
 
       if (error) throw error;
 
-      if (data.isValid) {
+      if (data?.valid) {
         setTestResult({ success: true, message: 'Connection successful!' });
         toast.success('Connection test passed');
       } else {
-        setTestResult({ success: false, message: data.error || 'Connection failed' });
-        toast.error('Connection test failed');
+        setTestResult({ success: false, message: data?.error || 'Connection failed' });
+        toast.error(data?.error || 'Connection test failed');
       }
     } catch (error: any) {
       console.error('Error testing connection:', error);
@@ -76,7 +81,7 @@ export function ICSettingsTab({ connection, schoolId }: ICSettingsTabProps) {
       if (error) throw error;
 
       toast.success('Infinite Campus disconnected successfully');
-      window.location.reload(); // Refresh to show no connection state
+      window.location.reload();
     } catch (error: any) {
       console.error('Error disconnecting:', error);
       toast.error(error.message || 'Failed to disconnect');
@@ -97,6 +102,11 @@ export function ICSettingsTab({ connection, schoolId }: ICSettingsTabProps) {
       </Alert>
     );
   }
+
+  // Support both legacy (host_url) and new (base_url) field names
+  const displayUrl = connection.base_url || connection.host_url || 'Unknown';
+  const displayTokenUrl = connection.token_url || 'Unknown';
+  const displayVersion = connection.oneroster_version || connection.version || 'Unknown';
 
   return (
     <div className="space-y-6">
@@ -135,14 +145,14 @@ export function ICSettingsTab({ connection, schoolId }: ICSettingsTabProps) {
 
             <div>
               <p className="text-sm font-medium text-muted-foreground">API Version</p>
-              <p className="mt-1 font-medium">{connection.version}</p>
+              <p className="mt-1 font-medium">{displayVersion}</p>
             </div>
 
             <div className="col-span-2">
-              <p className="text-sm font-medium text-muted-foreground">Host URL</p>
+              <p className="text-sm font-medium text-muted-foreground">Base URL</p>
               <div className="flex items-center gap-2 mt-1">
                 <Globe className="h-4 w-4 text-muted-foreground" />
-                <p className="font-mono text-sm">{connection.host_url}</p>
+                <p className="font-mono text-sm">{displayUrl}</p>
               </div>
             </div>
 
@@ -150,18 +160,20 @@ export function ICSettingsTab({ connection, schoolId }: ICSettingsTabProps) {
               <p className="text-sm font-medium text-muted-foreground">Token URL</p>
               <div className="flex items-center gap-2 mt-1">
                 <Key className="h-4 w-4 text-muted-foreground" />
-                <p className="font-mono text-sm">{connection.token_url}</p>
+                <p className="font-mono text-sm">{displayTokenUrl}</p>
               </div>
             </div>
 
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Client Key</p>
-              <p className="mt-1 font-mono text-sm">•••••••••••••••••</p>
-            </div>
+            {connection.app_name && (
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-muted-foreground">App Name</p>
+                <p className="mt-1 font-medium">{connection.app_name}</p>
+              </div>
+            )}
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Client Secret</p>
-              <p className="mt-1 font-mono text-sm">•••••••••••••••••</p>
+              <p className="text-sm font-medium text-muted-foreground">Credentials</p>
+              <p className="mt-1 font-mono text-sm text-muted-foreground">Encrypted & stored securely</p>
             </div>
           </div>
         </CardContent>
