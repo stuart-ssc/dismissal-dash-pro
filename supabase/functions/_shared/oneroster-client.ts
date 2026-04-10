@@ -1,14 +1,16 @@
 /**
  * OneRoster API Client
  * Implements OAuth2 Client Credentials Flow for OneRoster 1.1 and 1.2
+ * Supports Infinite Campus appName-based URL routing
  */
 
 export interface OneRosterConfig {
-  hostUrl: string;
-  clientKey: string;
+  baseUrl: string;
+  clientId: string;
   clientSecret: string;
   tokenUrl: string;
   version: '1.1' | '1.2';
+  appName?: string;
 }
 
 export interface OneRosterOrg {
@@ -58,7 +60,7 @@ export interface OneRosterClass {
     sourcedId: string;
   };
   terms?: Array<{ sourcedId: string }>;
-  metadata?: Record<string, any>; // Catch-all for IC custom fields and period data
+  metadata?: Record<string, any>;
 }
 
 export interface OneRosterEnrollment {
@@ -86,7 +88,7 @@ export class OneRosterClient {
    * Authenticate using OAuth2 Client Credentials Flow
    */
   async authenticate(): Promise<void> {
-    const credentials = btoa(`${this.config.clientKey}:${this.config.clientSecret}`);
+    const credentials = btoa(`${this.config.clientId}:${this.config.clientSecret}`);
     
     const response = await fetch(this.config.tokenUrl, {
       method: 'POST',
@@ -117,27 +119,44 @@ export class OneRosterClient {
   }
 
   /**
+   * Build the API base URL based on config
+   * For IC with appName: {baseUrl}/campus/api/oneroster/{versionPath}/{appName}/ims/oneroster/rostering/{versionPath}
+   * Without appName (generic OneRoster): {baseUrl}/ims/oneroster/{versionPath}
+   */
+  private getApiBaseUrl(): string {
+    const versionPath = this.config.version === '1.2' ? 'v1p2' : 'v1p1';
+    
+    if (this.config.appName) {
+      return `${this.config.baseUrl}/campus/api/oneroster/${versionPath}/${this.config.appName}/ims/oneroster/rostering/${versionPath}`;
+    }
+    
+    return `${this.config.baseUrl}/ims/oneroster/${versionPath}`;
+  }
+
+  /**
    * Auto-detect OneRoster version by checking API endpoints
    */
   static async detectVersion(
-    hostUrl: string,
-    clientKey: string,
+    baseUrl: string,
+    clientId: string,
     clientSecret: string,
-    tokenUrl: string
+    tokenUrl: string,
+    appName?: string
   ): Promise<'1.1' | '1.2'> {
     const client = new OneRosterClient({
-      hostUrl,
-      clientKey,
+      baseUrl,
+      clientId,
       clientSecret,
       tokenUrl,
-      version: '1.2', // Try 1.2 first
+      version: '1.2',
+      appName,
     });
 
     try {
       await client.authenticate();
       
-      // Try to fetch orgs with 1.2 endpoint
-      const response = await fetch(`${hostUrl}/ims/oneroster/v1p2/orgs?limit=1`, {
+      const apiBase = client.getApiBaseUrl();
+      const response = await fetch(`${apiBase}/orgs?limit=1`, {
         headers: {
           'Authorization': `Bearer ${client.accessToken}`,
           'Accept': 'application/json',
@@ -148,11 +167,10 @@ export class OneRosterClient {
         return '1.2';
       }
       
-      // Fall back to 1.1
       return '1.1';
     } catch (error) {
       console.error('Version detection error:', error);
-      return '1.1'; // Default to 1.1
+      return '1.1';
     }
   }
 
@@ -162,12 +180,11 @@ export class OneRosterClient {
   private async paginate<T>(endpoint: string, params: Record<string, string> = {}): Promise<T[]> {
     await this.ensureAuthenticated();
 
-    const versionPath = this.config.version === '1.2' ? 'v1p2' : 'v1p1';
-    const baseUrl = `${this.config.hostUrl}/ims/oneroster/${versionPath}`;
+    const baseUrl = this.getApiBaseUrl();
     
     let allResults: T[] = [];
     let offset = 0;
-    const limit = 100; // OneRoster standard page size
+    const limit = 100;
     let hasMore = true;
 
     while (hasMore) {
@@ -203,52 +220,52 @@ export class OneRosterClient {
     return allResults;
   }
 
-  /**
-   * Fetch organizations
-   */
   async getOrgs(): Promise<OneRosterOrg[]> {
     return this.paginate<OneRosterOrg>('orgs');
   }
 
-  /**
-   * Fetch schools
-   */
   async getSchools(): Promise<OneRosterSchool[]> {
     return this.paginate<OneRosterSchool>('schools');
   }
 
-  /**
-   * Fetch academic sessions
-   */
   async getAcademicSessions(): Promise<OneRosterAcademicSession[]> {
     return this.paginate<OneRosterAcademicSession>('academicSessions');
   }
 
-  /**
-   * Fetch courses
-   */
   async getCourses(): Promise<any[]> {
     return this.paginate('courses');
   }
 
-  /**
-   * Fetch classes
-   */
   async getClasses(): Promise<OneRosterClass[]> {
     return this.paginate<OneRosterClass>('classes');
   }
 
   /**
-   * Fetch users with optional role filter
+   * Fetch classes for a specific school
    */
+  async getClassesForSchool(schoolSourcedId: string): Promise<OneRosterClass[]> {
+    return this.paginate<OneRosterClass>(`schools/${schoolSourcedId}/classes`);
+  }
+
   async getUsers(role?: 'student' | 'teacher'): Promise<OneRosterUser[]> {
     const params = role ? { filter: `role='${role}'` } : {};
     return this.paginate<OneRosterUser>('users', params);
   }
 
   /**
-   * Fetch enrollments for a specific class
+   * Fetch students for a specific school
    */
+  async getStudentsForSchool(schoolSourcedId: string): Promise<OneRosterUser[]> {
+    return this.paginate<OneRosterUser>(`schools/${schoolSourcedId}/students`);
+  }
+
+  /**
+   * Fetch teachers for a specific school
+   */
+  async getTeachersForSchool(schoolSourcedId: string): Promise<OneRosterUser[]> {
+    return this.paginate<OneRosterUser>(`schools/${schoolSourcedId}/teachers`);
+  }
+
   async getEnrollments(classId?: string): Promise<OneRosterEnrollment[]> {
     if (classId) {
       return this.paginate<OneRosterEnrollment>(`classes/${classId}/enrollments`);
@@ -256,10 +273,6 @@ export class OneRosterClient {
     return this.paginate<OneRosterEnrollment>('enrollments');
   }
 
-  /**
-   * Fetch resources (may contain schedule data)
-   * Note: Not all IC implementations support this endpoint
-   */
   async getResources(): Promise<any[]> {
     try {
       return await this.paginate('resources');
@@ -269,9 +282,6 @@ export class OneRosterClient {
     }
   }
 
-  /**
-   * Test connection by fetching a small amount of data
-   */
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
       await this.authenticate();

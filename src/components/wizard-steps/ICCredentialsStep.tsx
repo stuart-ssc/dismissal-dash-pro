@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Eye, EyeOff, HelpCircle, ChevronDown, ExternalLink, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, HelpCircle, ChevronDown, ExternalLink, AlertCircle, Info } from 'lucide-react';
 import { WizardState } from '../ICConnectionWizard';
+import { supabase } from '@/integrations/supabase/client';
 
 interface StepProps {
   state: WizardState;
@@ -21,13 +22,15 @@ interface StepProps {
 }
 
 const credentialsSchema = z.object({
-  hostUrl: z.string()
-    .min(1, 'Host URL is required')
+  baseUrl: z.string()
+    .min(1, 'Base URL is required')
     .url('Must be a valid URL')
     .refine((url) => url.startsWith('https://'), 'Must use HTTPS'),
-  clientKey: z.string()
-    .min(1, 'Client Key is required')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Client Key must be alphanumeric'),
+  appName: z.string()
+    .min(1, 'App Name is required')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'App Name must be alphanumeric (letters, numbers, hyphens, underscores)'),
+  clientId: z.string()
+    .min(1, 'Client ID is required'),
   clientSecret: z.string()
     .min(1, 'Client Secret is required'),
   tokenUrl: z.string()
@@ -38,62 +41,157 @@ const credentialsSchema = z.object({
 
 type CredentialsForm = z.infer<typeof credentialsSchema>;
 
-export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
+export function ICCredentialsStep({ state, updateState, nextStep, schoolId }: StepProps) {
   const [showSecret, setShowSecret] = useState(false);
-  const [hostUrlHelp, setHostUrlHelp] = useState(false);
-  const [clientKeyHelp, setClientKeyHelp] = useState(false);
-  const [clientSecretHelp, setClientSecretHelp] = useState(false);
-  const [tokenUrlHelp, setTokenUrlHelp] = useState(false);
+  const [baseUrlHelp, setBaseUrlHelp] = useState(false);
+  const [appNameHelp, setAppNameHelp] = useState(false);
+  const [checkingDistrict, setCheckingDistrict] = useState(true);
 
   const form = useForm<CredentialsForm>({
     resolver: zodResolver(credentialsSchema),
     defaultValues: {
-      hostUrl: state.credentials.hostUrl || '',
-      clientKey: state.credentials.clientKey || '',
+      baseUrl: state.credentials.baseUrl || '',
+      appName: state.credentials.appName || '',
+      clientId: state.credentials.clientId || '',
       clientSecret: state.credentials.clientSecret || '',
       tokenUrl: state.credentials.tokenUrl || '',
     },
   });
 
-  const watchHostUrl = form.watch('hostUrl');
+  const watchBaseUrl = form.watch('baseUrl');
 
-  // Auto-fill token URL when host URL changes
+  // Check if district already has an IC connection
   useEffect(() => {
-    if (watchHostUrl && watchHostUrl.startsWith('https://')) {
+    async function checkDistrictConnection() {
       try {
-        const url = new URL(watchHostUrl);
-        const tokenUrl = `${url.protocol}//${url.host}/oauth/token`;
-        form.setValue('tokenUrl', tokenUrl);
+        // Get the school's district
+        const { data: school } = await supabase
+          .from('schools')
+          .select('district_id')
+          .eq('id', schoolId)
+          .single();
+
+        if (school?.district_id) {
+          updateState({ districtId: school.district_id });
+
+          // Check for existing district connection
+          const { data: existingConn } = await supabase
+            .from('ic_district_connections')
+            .select('*')
+            .eq('district_id', school.district_id)
+            .maybeSingle();
+
+          if (existingConn) {
+            // District already connected! Skip credentials
+            updateState({
+              districtAlreadyConnected: true,
+              credentials: {
+                baseUrl: existingConn.base_url,
+                appName: existingConn.app_name,
+                clientId: '••••••••', // Placeholder - encrypted
+                clientSecret: '••••••••',
+                tokenUrl: existingConn.token_url,
+              },
+              connectionId: existingConn.id,
+            });
+          }
+        }
       } catch (e) {
-        // Invalid URL, don't auto-fill
+        console.error('Error checking district connection:', e);
+      } finally {
+        setCheckingDistrict(false);
       }
     }
-  }, [watchHostUrl, form]);
+    checkDistrictConnection();
+  }, [schoolId]);
 
-  // Focus on Host URL field when component mounts
+  // Auto-fill token URL when base URL changes
   useEffect(() => {
-    form.setFocus('hostUrl');
-  }, [form]);
+    if (watchBaseUrl && watchBaseUrl.startsWith('https://')) {
+      try {
+        const url = new URL(watchBaseUrl);
+        const tokenUrl = `${url.protocol}//${url.host}/campus/oauth2/token`;
+        form.setValue('tokenUrl', tokenUrl);
+      } catch (e) {
+        // Invalid URL
+      }
+    }
+  }, [watchBaseUrl, form]);
+
+  useEffect(() => {
+    if (!checkingDistrict && !state.districtAlreadyConnected) {
+      form.setFocus('baseUrl');
+    }
+  }, [form, checkingDistrict, state.districtAlreadyConnected]);
 
   const onSubmit = (data: CredentialsForm) => {
     updateState({
       credentials: {
-        hostUrl: data.hostUrl,
-        clientKey: data.clientKey,
+        baseUrl: data.baseUrl,
+        clientId: data.clientId,
         clientSecret: data.clientSecret,
         tokenUrl: data.tokenUrl,
+        appName: data.appName,
       },
     });
     nextStep();
   };
+
+  // If district already connected, show simplified view
+  if (state.districtAlreadyConnected) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold">District Already Connected</h2>
+          <p className="text-muted-foreground">
+            Your district already has Infinite Campus credentials configured. 
+            You just need to select which school you are from the IC system.
+          </p>
+        </div>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Credentials were configured by another administrator in your district. 
+            Click "Continue" to select your school from Infinite Campus.
+          </AlertDescription>
+        </Alert>
+
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Base URL:</span>
+            <span className="font-medium">{state.credentials.baseUrl}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">App Name:</span>
+            <span className="font-medium">{state.credentials.appName}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end pt-4">
+          <Button onClick={nextStep}>
+            Continue to School Selection
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (checkingDistrict) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-muted-foreground">Checking district connection...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">Enter Your Infinite Campus Credentials</h2>
         <p className="text-muted-foreground">
-          We'll need your Infinite Campus API credentials to establish the connection. 
-          These can be obtained from your district's IT administrator.
+          These credentials are for your entire district and only need to be entered once. 
+          Other schools in your district will be able to connect automatically.
         </p>
       </div>
 
@@ -105,105 +203,110 @@ export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
       </Alert>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Host URL */}
+        {/* Base URL */}
         <div className="space-y-2">
-          <Label htmlFor="hostUrl" className="flex items-center gap-2">
-            Host URL
+          <Label htmlFor="baseUrl" className="flex items-center gap-2">
+            Base URL
             <span className="text-destructive">*</span>
           </Label>
           <Input
-            id="hostUrl"
+            id="baseUrl"
             placeholder="https://your-district.infinitecampus.org"
-            {...form.register('hostUrl')}
-            className={form.formState.errors.hostUrl ? 'border-destructive' : ''}
+            {...form.register('baseUrl')}
+            className={form.formState.errors.baseUrl ? 'border-destructive' : ''}
           />
-          {form.formState.errors.hostUrl && (
-            <p className="text-sm text-destructive">{form.formState.errors.hostUrl.message}</p>
+          {form.formState.errors.baseUrl && (
+            <p className="text-sm text-destructive">{form.formState.errors.baseUrl.message}</p>
           )}
           <p className="text-sm text-muted-foreground">
             Your district's Infinite Campus URL (must start with https://)
           </p>
 
-          <Collapsible open={hostUrlHelp} onOpenChange={setHostUrlHelp}>
+          <Collapsible open={baseUrlHelp} onOpenChange={setBaseUrlHelp}>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" type="button" className="gap-2">
                 <HelpCircle className="h-4 w-4" />
                 Where do I find this?
-                <ChevronDown className={`h-4 w-4 transition-transform ${hostUrlHelp ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 transition-transform ${baseUrlHelp ? 'rotate-180' : ''}`} />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
                 <p className="text-sm">
-                  The Host URL is your district's Infinite Campus web address. It typically looks like:
+                  The Base URL is your district's Infinite Campus web address. Examples:
                 </p>
                 <ul className="text-sm space-y-1 list-disc list-inside ml-2">
+                  <li><code className="text-xs bg-background px-1 py-0.5 rounded">https://jessamineky.infinitecampus.org</code></li>
                   <li><code className="text-xs bg-background px-1 py-0.5 rounded">https://district.infinitecampus.org</code></li>
-                  <li><code className="text-xs bg-background px-1 py-0.5 rounded">https://district.ic.edu</code></li>
-                  <li><code className="text-xs bg-background px-1 py-0.5 rounded">https://campus.schoolname.org</code></li>
                 </ul>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+        {/* App Name */}
+        <div className="space-y-2">
+          <Label htmlFor="appName" className="flex items-center gap-2">
+            App Name
+            <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="appName"
+            placeholder="e.g. jessamine"
+            {...form.register('appName')}
+            className={form.formState.errors.appName ? 'border-destructive' : ''}
+          />
+          {form.formState.errors.appName && (
+            <p className="text-sm text-destructive">{form.formState.errors.appName.message}</p>
+          )}
+          <p className="text-sm text-muted-foreground">
+            The district identifier in the IC API URL (e.g., "jessamine" from the API docs URL)
+          </p>
+
+          <Collapsible open={appNameHelp} onOpenChange={setAppNameHelp}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" type="button" className="gap-2">
+                <HelpCircle className="h-4 w-4" />
+                Where do I find this?
+                <ChevronDown className={`h-4 w-4 transition-transform ${appNameHelp ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
                 <p className="text-sm">
-                  This is the same URL your staff uses to log into Infinite Campus. If you're unsure, 
-                  contact your district's IT department or system administrator.
+                  The App Name is found in your IC API documentation URL. For example:
+                </p>
+                <p className="text-sm">
+                  <code className="text-xs bg-background px-1 py-0.5 rounded">
+                    /campus/api/oneroster/v1p2/<strong>jessamine</strong>/ims/oneroster/...
+                  </code>
+                </p>
+                <p className="text-sm">
+                  The bold part is your App Name. It's usually your district's short name.
                 </p>
               </div>
             </CollapsibleContent>
           </Collapsible>
         </div>
 
-        {/* Client Key */}
+        {/* Client ID */}
         <div className="space-y-2">
-          <Label htmlFor="clientKey" className="flex items-center gap-2">
-            Client Key
+          <Label htmlFor="clientId" className="flex items-center gap-2">
+            Client ID
             <span className="text-destructive">*</span>
           </Label>
           <Input
-            id="clientKey"
-            placeholder="your-client-key"
-            {...form.register('clientKey')}
-            className={form.formState.errors.clientKey ? 'border-destructive' : ''}
+            id="clientId"
+            placeholder="your-client-id"
+            {...form.register('clientId')}
+            className={form.formState.errors.clientId ? 'border-destructive' : ''}
           />
-          {form.formState.errors.clientKey && (
-            <p className="text-sm text-destructive">{form.formState.errors.clientKey.message}</p>
+          {form.formState.errors.clientId && (
+            <p className="text-sm text-destructive">{form.formState.errors.clientId.message}</p>
           )}
           <p className="text-sm text-muted-foreground">
-            The API client key provided by your IT administrator
+            The API Client ID provided by your IT administrator
           </p>
-
-          <Collapsible open={clientKeyHelp} onOpenChange={setClientKeyHelp}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" type="button" className="gap-2">
-                <HelpCircle className="h-4 w-4" />
-                Where do I find this?
-                <ChevronDown className={`h-4 w-4 transition-transform ${clientKeyHelp ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-2">
-              <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
-                <p className="text-sm font-semibold">For IT Administrators:</p>
-                <ol className="text-sm space-y-2 list-decimal list-inside ml-2">
-                  <li>Log into Infinite Campus as an administrator</li>
-                  <li>Navigate to: <strong>System Administration → Security → API</strong></li>
-                  <li>Click <strong>"Add API"</strong> or select an existing API configuration</li>
-                  <li>Find the <strong>Client ID</strong> or <strong>Client Key</strong> field</li>
-                  <li>Copy this value</li>
-                </ol>
-                <p className="text-sm">
-                  The client key is typically a long alphanumeric string. If you need to create a new API, 
-                  ensure it has permissions for OneRoster data access.
-                </p>
-                <a 
-                  href="https://kb.infinitecampus.com/help/oneroster-api" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline flex items-center gap-1"
-                >
-                  View Infinite Campus documentation
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
         </div>
 
         {/* Client Secret */}
@@ -234,40 +337,8 @@ export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
             <p className="text-sm text-destructive">{form.formState.errors.clientSecret.message}</p>
           )}
           <p className="text-sm text-muted-foreground">
-            The API client secret (keep this confidential!)
+            The API Client Secret (keep this confidential!)
           </p>
-
-          <Collapsible open={clientSecretHelp} onOpenChange={setClientSecretHelp}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" type="button" className="gap-2">
-                <HelpCircle className="h-4 w-4" />
-                Where do I find this?
-                <ChevronDown className={`h-4 w-4 transition-transform ${clientSecretHelp ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-2">
-              <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
-                <p className="text-sm font-semibold">For IT Administrators:</p>
-                <p className="text-sm">
-                  The Client Secret is found in the same location as the Client Key:
-                </p>
-                <ol className="text-sm space-y-2 list-decimal list-inside ml-2">
-                  <li>System Administration → Security → API</li>
-                  <li>Select your API configuration</li>
-                  <li>Find the <strong>Client Secret</strong> field</li>
-                  <li>Copy this value (you may need to reveal it first)</li>
-                </ol>
-                <Alert className="border-amber-500/50 bg-amber-500/10">
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
-                  <AlertDescription className="text-sm">
-                    <strong>Security Note:</strong> The client secret is sensitive information. 
-                    Never share it publicly or store it in an unsecured location. 
-                    If compromised, regenerate it in Infinite Campus immediately.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
         </div>
 
         {/* Token URL */}
@@ -278,7 +349,7 @@ export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
           </Label>
           <Input
             id="tokenUrl"
-            placeholder="https://your-district.infinitecampus.org/oauth/token"
+            placeholder="https://your-district.infinitecampus.org/campus/oauth2/token"
             {...form.register('tokenUrl')}
             className={form.formState.errors.tokenUrl ? 'border-destructive' : ''}
           />
@@ -286,31 +357,8 @@ export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
             <p className="text-sm text-destructive">{form.formState.errors.tokenUrl.message}</p>
           )}
           <p className="text-sm text-muted-foreground">
-            OAuth token endpoint (auto-filled based on Host URL)
+            OAuth token endpoint (auto-filled based on Base URL)
           </p>
-
-          <Collapsible open={tokenUrlHelp} onOpenChange={setTokenUrlHelp}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" type="button" className="gap-2">
-                <HelpCircle className="h-4 w-4" />
-                Where do I find this?
-                <ChevronDown className={`h-4 w-4 transition-transform ${tokenUrlHelp ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-2">
-              <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
-                <p className="text-sm">
-                  The Token URL is typically your Host URL with <code className="text-xs bg-background px-1 py-0.5 rounded">/oauth/token</code> appended.
-                </p>
-                <p className="text-sm">
-                  We've automatically filled this in based on your Host URL. In most cases, you won't need to change it.
-                </p>
-                <p className="text-sm">
-                  If your district uses a custom OAuth endpoint, your IT administrator will provide the correct URL.
-                </p>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
         </div>
 
         <div className="flex items-center justify-between pt-4">
@@ -327,7 +375,6 @@ export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
         </div>
       </form>
 
-      {/* Side help panel */}
       <div className="mt-8 rounded-lg border bg-muted/30 p-6 space-y-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -336,9 +383,8 @@ export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
           <div className="space-y-2">
             <h3 className="font-semibold">Need Help?</h3>
             <p className="text-sm text-muted-foreground">
-              If you don't have your API credentials, contact your district's IT department 
-              or system administrator. They can create API credentials in Infinite Campus 
-              and provide them to you.
+              If you don't have your API credentials, contact your district's IT department. 
+              These credentials apply to the entire district — not just one school.
             </p>
           </div>
         </div>
@@ -346,8 +392,8 @@ export function ICCredentialsStep({ state, updateState, nextStep }: StepProps) {
         <div className="space-y-2 pt-2 border-t">
           <h4 className="text-sm font-semibold">Common Issues:</h4>
           <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-            <li>Make sure your Host URL uses HTTPS (not HTTP)</li>
-            <li>Verify the Client Key has no extra spaces</li>
+            <li>Make sure your Base URL uses HTTPS (not HTTP)</li>
+            <li>The App Name is case-sensitive and usually lowercase</li>
             <li>The Client Secret is case-sensitive</li>
             <li>Ensure the API has OneRoster permissions enabled</li>
           </ul>

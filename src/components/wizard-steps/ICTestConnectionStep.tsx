@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle2, XCircle, AlertTriangle, Building2, Users, BookOpen, Calendar, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, AlertTriangle, Building2, Calendar, AlertCircle, School } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { WizardState } from '../ICConnectionWizard';
+import { WizardState, ICSchoolOption } from '../ICConnectionWizard';
 
 interface StepProps {
   state: WizardState;
@@ -24,7 +24,7 @@ const PHASE_MESSAGES: Record<LoadingPhase, string> = {
   connecting: 'Connecting to Infinite Campus...',
   authenticating: 'Authenticating credentials...',
   detecting: 'Detecting OneRoster version...',
-  fetching: 'Fetching preview data...',
+  fetching: 'Fetching schools and preview data...',
   complete: 'Connection successful!',
   error: 'Connection failed',
 };
@@ -32,10 +32,10 @@ const PHASE_MESSAGES: Record<LoadingPhase, string> = {
 export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, schoolId }: StepProps) {
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('connecting');
   const [isTesting, setIsTesting] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState<ICSchoolOption | null>(state.selectedICSchool);
 
   useEffect(() => {
-    // Auto-test when entering this step if credentials are provided
-    if (state.credentials.hostUrl && state.credentials.clientKey && !state.testResults) {
+    if (state.credentials.baseUrl && state.credentials.clientId && !state.testResults) {
       testConnection();
     }
   }, []);
@@ -45,17 +45,17 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
     setLoadingPhase('connecting');
 
     try {
-      // Simulate phases for better UX
       setTimeout(() => setLoadingPhase('authenticating'), 500);
       setTimeout(() => setLoadingPhase('detecting'), 1500);
       setTimeout(() => setLoadingPhase('fetching'), 2500);
 
       const { data, error } = await supabase.functions.invoke('test-ic-connection', {
         body: {
-          hostUrl: state.credentials.hostUrl,
-          clientKey: state.credentials.clientKey,
+          baseUrl: state.credentials.baseUrl,
+          clientId: state.credentials.clientId,
           clientSecret: state.credentials.clientSecret,
           tokenUrl: state.credentials.tokenUrl,
+          appName: state.credentials.appName,
           schoolId,
         },
       });
@@ -68,9 +68,23 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
           testResults: {
             valid: true,
             version: data.version,
+            schools: data.schools,
+            suggestedMatch: data.suggestedMatch,
             preview: data.preview,
           },
         });
+
+        // Auto-select suggested match
+        if (data.suggestedMatch && data.suggestedMatch.confidence > 0.5) {
+          const matchedSchool = data.schools?.find(
+            (s: ICSchoolOption) => s.sourcedId === data.suggestedMatch.sourcedId
+          );
+          if (matchedSchool) {
+            setSelectedSchool(matchedSchool);
+            updateState({ selectedICSchool: matchedSchool });
+          }
+        }
+
         toast.success('Connection successful!');
       } else {
         setLoadingPhase('error');
@@ -97,55 +111,47 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
     }
   };
 
+  const handleSchoolSelect = (school: ICSchoolOption) => {
+    setSelectedSchool(school);
+    updateState({ selectedICSchool: school });
+  };
+
+  const handleContinue = () => {
+    if (!selectedSchool) {
+      toast.error('Please select your school from the list');
+      return;
+    }
+    nextStep();
+  };
+
   const getTroubleshootingTips = (error?: string): string[] => {
     if (!error) return [];
-
     const lowerError = error.toLowerCase();
     
-    if (lowerError.includes('authentication') || lowerError.includes('unauthorized') || lowerError.includes('credentials')) {
+    if (lowerError.includes('authentication') || lowerError.includes('unauthorized')) {
       return [
-        'Double-check your Client Key and Client Secret for typos',
+        'Double-check your Client ID and Client Secret for typos',
         'Verify that the API credentials are active in Infinite Campus',
-        'Ensure the API has not expired or been revoked',
-        'Contact your IT administrator to verify the credentials',
+        'Make sure the App Name is correct',
       ];
     }
-    
-    if (lowerError.includes('network') || lowerError.includes('timeout') || lowerError.includes('connection')) {
+    if (lowerError.includes('network') || lowerError.includes('timeout')) {
       return [
-        'Verify that the Host URL is correct and accessible',
+        'Verify that the Base URL is correct and accessible',
         'Check if your firewall is blocking the connection',
-        'Ensure Infinite Campus is not experiencing downtime',
         'Try again in a few minutes',
       ];
     }
-    
-    if (lowerError.includes('token') || lowerError.includes('oauth')) {
-      return [
-        'Verify the Token URL is correct (usually Host URL + /oauth/token)',
-        'Check that OAuth is enabled for your API in Infinite Campus',
-        'Ensure the API has proper permissions',
-      ];
-    }
-    
-    if (lowerError.includes('permission') || lowerError.includes('access')) {
-      return [
-        'Verify the API has OneRoster data access permissions',
-        'Check that the API is enabled for your school/district',
-        'Contact your IT administrator to grant necessary permissions',
-      ];
-    }
-
     return [
       'Verify all credentials are correct',
-      'Check that the Host URL uses HTTPS',
-      'Ensure your Infinite Campus instance is accessible',
+      'Check that the Base URL uses HTTPS',
+      'Ensure your App Name matches the IC API documentation',
       'Contact your IT administrator for assistance',
     ];
   };
 
   // Loading state
-  if (isTesting || loadingPhase === 'connecting' || loadingPhase === 'authenticating' || loadingPhase === 'detecting' || loadingPhase === 'fetching') {
+  if (isTesting || (!state.testResults && loadingPhase !== 'error')) {
     return (
       <div className="flex flex-col items-center justify-center space-y-8 py-12">
         <div className="relative">
@@ -177,9 +183,7 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
                   <span className="text-xs">{index + 1}</span>
                 )}
               </div>
-              <span className={`text-sm ${
-                loadingPhase === phase ? 'font-semibold' : ''
-              }`}>
+              <span className={`text-sm ${loadingPhase === phase ? 'font-semibold' : ''}`}>
                 {PHASE_MESSAGES[phase]}
               </span>
             </div>
@@ -192,7 +196,6 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
   // Error state
   if (state.testResults && !state.testResults.valid) {
     const tips = getTroubleshootingTips(state.testResults.error);
-
     return (
       <div className="space-y-6">
         <div className="flex flex-col items-center space-y-4 py-8">
@@ -237,7 +240,7 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
           <Button variant="outline" onClick={() => goToStep(2)}>
             Edit Credentials
           </Button>
-          <Button onClick={testConnection}>
+          <Button onClick={() => { updateState({ testResults: null }); testConnection(); }}>
             Try Again
           </Button>
         </div>
@@ -245,10 +248,9 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
     );
   }
 
-  // Success state with preview
-  if (state.testResults && state.testResults.valid && state.testResults.preview) {
-    const { preview, version } = state.testResults;
-    const hasDuplicates = preview.potentialDuplicates.students > 0 || preview.potentialDuplicates.teachers > 0;
+  // Success state with school selection
+  if (state.testResults && state.testResults.valid) {
+    const { preview, version, schools, suggestedMatch } = state.testResults;
 
     return (
       <div className="space-y-6">
@@ -259,84 +261,76 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
           <div className="text-center space-y-2">
             <h3 className="text-2xl font-bold">Connection Successful!</h3>
             <p className="text-muted-foreground">
-              We've successfully connected to your Infinite Campus instance.
+              Now select your school from the list below.
             </p>
           </div>
         </div>
 
         <div className="flex items-center justify-center gap-4">
-          <Badge variant="outline" className="text-sm">
-            OneRoster {version}
-          </Badge>
+          <Badge variant="outline" className="text-sm">OneRoster {version}</Badge>
+          {preview && (
+            <Badge variant="outline" className="text-sm">{preview.orgName}</Badge>
+          )}
         </div>
 
-        {/* Organization Info */}
+        {/* School Selection */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              Organization Information
+              <School className="h-5 w-5 text-primary" />
+              Select Your School
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Organization:</span>
-              <span className="font-medium">{preview.orgName}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">School:</span>
-              <span className="font-medium">{preview.schoolName}</span>
+          <CardContent>
+            {suggestedMatch && (
+              <Alert className="mb-4">
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertDescription>
+                  We found a likely match: <strong>{suggestedMatch.name}</strong> 
+                  {suggestedMatch.confidence >= 0.8 ? ' (high confidence)' : ' (partial match)'}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {schools && schools.length > 0 ? (
+                schools.map((school) => (
+                  <button
+                    key={school.sourcedId}
+                    onClick={() => handleSchoolSelect(school)}
+                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                      selectedSchool?.sourcedId === school.sourcedId
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : suggestedMatch?.sourcedId === school.sourcedId
+                        ? 'border-primary/50 bg-primary/5'
+                        : 'border-border hover:border-primary/30 hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{school.name}</p>
+                        <p className="text-xs text-muted-foreground">ID: {school.sourcedId}</p>
+                      </div>
+                      {selectedSchool?.sourcedId === school.sourcedId && (
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                      )}
+                      {suggestedMatch?.sourcedId === school.sourcedId && selectedSchool?.sourcedId !== school.sourcedId && (
+                        <Badge variant="secondary" className="text-xs">Suggested</Badge>
+                      )}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No schools found in the IC system. Please verify your credentials and App Name.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Data Counts */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{preview.studentCount}</p>
-                  <p className="text-sm text-muted-foreground">Students</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{preview.teacherCount}</p>
-                  <p className="text-sm text-muted-foreground">Teachers</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <BookOpen className="h-6 w-6 text-purple-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{preview.classCount}</p>
-                  <p className="text-sm text-muted-foreground">Classes</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Academic Sessions */}
-        {preview.academicSessions.length > 0 && (
+        {preview && preview.academicSessions.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -354,9 +348,7 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
                         {new Date(session.start).toLocaleDateString()} - {new Date(session.end).toLocaleDateString()}
                       </p>
                     </div>
-                    {session.isActive && (
-                      <Badge variant="default">Active</Badge>
-                    )}
+                    {session.isActive && <Badge variant="default">Active</Badge>}
                   </div>
                 ))}
               </div>
@@ -364,55 +356,11 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
           </Card>
         )}
 
-        {/* Sample Data */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Sample Students</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {preview.sampleStudents.slice(0, 3).map((student, index) => (
-                  <div key={index} className="flex justify-between text-sm">
-                    <span>{student.firstName} {student.lastName}</span>
-                    <span className="text-muted-foreground">{student.grade}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Sample Teachers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {preview.sampleTeachers.slice(0, 3).map((teacher, index) => (
-                  <div key={index} className="text-sm">
-                    <p>{teacher.firstName} {teacher.lastName}</p>
-                    <p className="text-xs text-muted-foreground">{teacher.email}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Duplicate Warning */}
-        {hasDuplicates && (
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Potential Duplicates Detected:</strong> We found {preview.potentialDuplicates.students} potential duplicate students 
-              and {preview.potentialDuplicates.teachers} potential duplicate teachers in your existing data. 
-              Our smart merge system will help you review and resolve these after the initial sync.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="flex items-center justify-end pt-4">
-          <Button size="lg" onClick={nextStep}>
+        <div className="flex items-center justify-between pt-4">
+          <Button variant="outline" onClick={() => goToStep(2)}>
+            Edit Credentials
+          </Button>
+          <Button size="lg" onClick={handleContinue} disabled={!selectedSchool}>
             Continue to Sync Configuration
           </Button>
         </div>

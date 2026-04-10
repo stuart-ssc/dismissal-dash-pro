@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, Edit, Server, Database, Clock, AlertTriangle, Users, BookOpen, Calendar } from 'lucide-react';
+import { Loader2, CheckCircle2, Edit, Server, Database, Clock, AlertTriangle, Users, BookOpen, Calendar, School } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { WizardState } from '../ICConnectionWizard';
@@ -66,15 +66,18 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
     setIsConnecting(true);
 
     try {
-      // Call connect-ic edge function
-      const { data, error } = await supabase.functions.invoke('connect-ic', {
+      const { data, error } = await supabase.functions.invoke('connect-ic-district', {
         body: {
-          hostUrl: state.credentials.hostUrl,
-          clientKey: state.credentials.clientKey,
+          baseUrl: state.credentials.baseUrl,
+          clientId: state.credentials.clientId,
           clientSecret: state.credentials.clientSecret,
           tokenUrl: state.credentials.tokenUrl,
-          version: state.testResults?.version || '1.1',
+          appName: state.credentials.appName,
+          version: state.testResults?.version || '1.2',
+          districtId: state.districtId,
           schoolId,
+          icSchoolSourcedId: state.selectedICSchool?.sourcedId || '',
+          icSchoolName: state.selectedICSchool?.name || '',
           syncConfig: {
             enabled: true,
             interval_type: state.syncConfig.intervalType,
@@ -111,7 +114,6 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
   };
 
   const preview = state.testResults?.preview;
-  const hasDuplicates = preview && (preview.potentialDuplicates.students > 0 || preview.potentialDuplicates.teachers > 0);
 
   return (
     <div className="space-y-6">
@@ -134,24 +136,34 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
               Your Infinite Campus connection information
             </CardDescription>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => goToStep(2)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
+          {!state.districtAlreadyConnected && (
+            <Button variant="ghost" size="sm" onClick={() => goToStep(2)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Host URL</span>
-            <span className="text-sm font-medium">{state.credentials.hostUrl}</span>
+            <span className="text-sm text-muted-foreground">Base URL</span>
+            <span className="text-sm font-medium">{state.credentials.baseUrl}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Client Key</span>
-            <span className="text-sm font-mono">{maskCredential(state.credentials.clientKey)}</span>
+            <span className="text-sm text-muted-foreground">App Name</span>
+            <span className="text-sm font-medium">{state.credentials.appName}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Client Secret</span>
-            <span className="text-sm font-mono">••••••••</span>
-          </div>
+          {!state.districtAlreadyConnected && (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Client ID</span>
+                <span className="text-sm font-mono">{maskCredential(state.credentials.clientId)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Client Secret</span>
+                <span className="text-sm font-mono">••••••••</span>
+              </div>
+            </>
+          )}
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">OneRoster Version</span>
             <Badge variant="outline">{state.testResults?.version || 'Unknown'}</Badge>
@@ -159,58 +171,47 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
         </CardContent>
       </Card>
 
-      {/* Data Preview */}
-      {preview && (
+      {/* Selected School */}
+      {state.selectedICSchool && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5 text-primary" />
-                Data Preview
+                <School className="h-5 w-5 text-primary" />
+                Selected School
               </CardTitle>
-              <CardDescription className="mt-2">
-                Overview of data available from Infinite Campus
-              </CardDescription>
             </div>
             <Button variant="ghost" size="sm" onClick={() => goToStep(3)}>
               <Edit className="h-4 w-4 mr-2" />
-              Retest
+              Change
             </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">IC School Name</span>
+              <span className="text-sm font-medium">{state.selectedICSchool.name}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">IC School ID</span>
+              <span className="text-sm font-mono text-muted-foreground">{state.selectedICSchool.sourcedId}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Data Preview */}
+      {preview && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              Organization
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Organization</span>
               <span className="text-sm font-medium">{preview.orgName}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">School</span>
-              <span className="text-sm font-medium">{preview.schoolName}</span>
-            </div>
-
-            <div className="pt-2 border-t">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <Users className="h-4 w-4 text-blue-500" />
-                    <p className="text-2xl font-bold text-blue-500">{preview.studentCount}</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Students</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <Users className="h-4 w-4 text-green-500" />
-                    <p className="text-2xl font-bold text-green-500">{preview.teacherCount}</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Teachers</p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <BookOpen className="h-4 w-4 text-purple-500" />
-                    <p className="text-2xl font-bold text-purple-500">{preview.classCount}</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Classes</p>
-                </div>
-              </div>
             </div>
 
             {preview.academicSessions.length > 0 && (
@@ -280,19 +281,7 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
         </CardContent>
       </Card>
 
-      {/* Duplicate Warning */}
-      {hasDuplicates && preview && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Potential Duplicates:</strong> We detected {preview.potentialDuplicates.students} potential duplicate students 
-            and {preview.potentialDuplicates.teachers} potential duplicate teachers. After the initial sync completes, 
-            you'll be guided to review and merge these records.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Success Preview */}
+      {/* Ready Card */}
       <Card className="bg-success/5 border-success/20">
         <CardContent className="pt-6">
           <div className="flex items-start gap-3">
@@ -302,8 +291,7 @@ export function ICReviewStep({ state, updateState, nextStep, goToStep, schoolId 
             <div>
               <p className="font-semibold mb-1">Ready to Connect</p>
               <p className="text-sm text-muted-foreground">
-                Once you click "Connect & Start Syncing", we'll establish the connection and begin your first sync. 
-                This process may take a few minutes depending on the amount of data.
+                Once you click "Connect & Start Syncing", we'll establish the connection and begin your first sync.
               </p>
             </div>
           </div>

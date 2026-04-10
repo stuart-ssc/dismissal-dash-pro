@@ -1853,6 +1853,68 @@ export type Database = {
           },
         ]
       }
+      ic_district_connections: {
+        Row: {
+          app_name: string
+          base_url: string
+          client_id: string
+          client_secret: string
+          configured_by: string | null
+          configured_by_role: string | null
+          created_at: string
+          district_id: string
+          id: string
+          last_test_status: string | null
+          last_tested_at: string | null
+          oneroster_version: string
+          status: string
+          token_url: string
+          updated_at: string
+        }
+        Insert: {
+          app_name: string
+          base_url: string
+          client_id: string
+          client_secret: string
+          configured_by?: string | null
+          configured_by_role?: string | null
+          created_at?: string
+          district_id: string
+          id?: string
+          last_test_status?: string | null
+          last_tested_at?: string | null
+          oneroster_version?: string
+          status?: string
+          token_url: string
+          updated_at?: string
+        }
+        Update: {
+          app_name?: string
+          base_url?: string
+          client_id?: string
+          client_secret?: string
+          configured_by?: string | null
+          configured_by_role?: string | null
+          created_at?: string
+          district_id?: string
+          id?: string
+          last_test_status?: string | null
+          last_tested_at?: string | null
+          oneroster_version?: string
+          status?: string
+          token_url?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_district_connections_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: true
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ic_merge_audit_log: {
         Row: {
           auto_approved: boolean
@@ -2058,6 +2120,60 @@ export type Database = {
           total_schools_processed?: number
         }
         Relationships: []
+      }
+      ic_school_mappings: {
+        Row: {
+          created_at: string
+          district_connection_id: string
+          ic_school_name: string
+          ic_school_sourced_id: string
+          id: string
+          mapped_at: string
+          mapped_by: string | null
+          school_id: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          district_connection_id: string
+          ic_school_name: string
+          ic_school_sourced_id: string
+          id?: string
+          mapped_at?: string
+          mapped_by?: string | null
+          school_id: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          district_connection_id?: string
+          ic_school_name?: string
+          ic_school_sourced_id?: string
+          id?: string
+          mapped_at?: string
+          mapped_by?: string | null
+          school_id?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_school_mappings_district_connection_id_fkey"
+            columns: ["district_connection_id"]
+            isOneToOne: false
+            referencedRelation: "ic_district_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ic_school_mappings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ic_sync_logs: {
         Row: {
