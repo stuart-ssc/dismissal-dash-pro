@@ -7,11 +7,24 @@ export interface DistrictICConnection {
   school_name: string;
   is_connected: boolean;
   connection_id?: string;
-  last_sync_at?: string | null;
-  last_sync_status?: string | null;
-  configured_by?: string | null;
-  configured_by_role?: string | null;
-  configured_by_name?: string;
+  ic_school_name?: string;
+  ic_school_sourced_id?: string;
+  mapped_at?: string | null;
+  mapped_by?: string | null;
+}
+
+export interface DistrictICDistrictConnection {
+  id: string;
+  district_id: string;
+  base_url: string;
+  app_name: string;
+  token_url: string;
+  oneroster_version: string;
+  status: string;
+  configured_by: string | null;
+  configured_by_role: string | null;
+  last_tested_at: string | null;
+  last_test_status: string | null;
 }
 
 export const useDistrictICConnections = () => {
@@ -20,7 +33,16 @@ export const useDistrictICConnections = () => {
   return useQuery({
     queryKey: ["district-ic-connections", district?.id],
     queryFn: async () => {
-      if (!district?.id) return [];
+      if (!district?.id) return { districtConnection: null, schoolMappings: [] as DistrictICConnection[] };
+
+      // Get district-level IC connection
+      const { data: districtConn, error: districtConnError } = await supabase
+        .from("ic_district_connections")
+        .select("*")
+        .eq("district_id", district.id)
+        .maybeSingle();
+
+      if (districtConnError) throw districtConnError;
 
       // Get all schools in district
       const { data: schools, error: schoolsError } = await supabase
@@ -31,52 +53,38 @@ export const useDistrictICConnections = () => {
 
       if (schoolsError) throw schoolsError;
 
-      // Get IC connections for all schools
-      const schoolIds = schools?.map((s) => s.id) || [];
-      const { data: connections, error: connectionsError } = await supabase
-        .from("infinite_campus_connections")
-        .select("*")
-        .in("school_id", schoolIds);
+      // Get school mappings if district connection exists
+      let mappings: any[] = [];
+      if (districtConn) {
+        const { data: mappingsData, error: mappingsError } = await supabase
+          .from("ic_school_mappings")
+          .select("*")
+          .eq("district_connection_id", districtConn.id);
 
-      if (connectionsError) throw connectionsError;
-
-      // Get configured_by user names
-      const configuredByIds = connections
-        ?.map((c) => c.configured_by)
-        .filter(Boolean) || [];
-      
-      const { data: profiles, error: profilesError } = configuredByIds.length > 0
-        ? await supabase
-            .from("profiles")
-            .select("id, first_name, last_name")
-            .in("id", configuredByIds)
-        : { data: [], error: null };
-
-      if (profilesError) throw profilesError;
+        if (mappingsError) throw mappingsError;
+        mappings = mappingsData || [];
+      }
 
       // Combine data
-      const icConnections: DistrictICConnection[] = schools?.map((school) => {
-        const connection = connections?.find((c) => c.school_id === school.id);
-        const configuredByProfile = connection?.configured_by
-          ? profiles?.find((p) => p.id === connection.configured_by)
-          : null;
+      const schoolMappings: DistrictICConnection[] = schools?.map((school) => {
+        const mapping = mappings.find((m) => m.school_id === school.id);
 
         return {
           school_id: school.id,
           school_name: school.school_name || "Unknown",
-          is_connected: !!connection,
-          connection_id: connection?.id,
-          last_sync_at: connection?.last_sync_at,
-          last_sync_status: connection?.last_sync_status,
-          configured_by: connection?.configured_by,
-          configured_by_role: connection?.configured_by_role,
-          configured_by_name: configuredByProfile
-            ? `${configuredByProfile.first_name || ""} ${configuredByProfile.last_name || ""}`.trim()
-            : undefined,
+          is_connected: !!mapping,
+          connection_id: mapping?.id,
+          ic_school_name: mapping?.ic_school_name,
+          ic_school_sourced_id: mapping?.ic_school_sourced_id,
+          mapped_at: mapping?.mapped_at,
+          mapped_by: mapping?.mapped_by,
         };
       }) || [];
 
-      return icConnections;
+      return {
+        districtConnection: districtConn as DistrictICDistrictConnection | null,
+        schoolMappings,
+      };
     },
     enabled: !!district?.id,
   });
