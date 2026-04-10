@@ -323,6 +323,13 @@ export function ICOverviewTab({ connection, schoolId }: ICOverviewTabProps) {
               )}
               <span className="text-sm">{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
             </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto flex-col py-4"
+              onClick={() => setSearchParams({ tab: 'merges' })}
+              disabled={pendingCount === 0}
+            >
               <GitMerge className="h-5 w-5 mb-2" />
               <span className="text-sm">Review Merges</span>
               {pendingCount > 0 && (
