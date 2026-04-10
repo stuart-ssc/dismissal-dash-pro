@@ -35,14 +35,16 @@ export default function DistrictICIntegrations() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const isMobile = useIsMobile();
 
-  const filteredConnections = connections?.filter((conn) => {
+  const schoolMappings = connections?.schoolMappings || [];
+
+  const filteredConnections = schoolMappings.filter((conn) => {
     if (statusFilter === "connected") return conn.is_connected;
     if (statusFilter === "not-connected") return !conn.is_connected;
     return true;
   });
 
-  const connectedCount = connections?.filter((c) => c.is_connected).length || 0;
-  const notConnectedCount = connections?.filter((c) => !c.is_connected).length || 0;
+  const connectedCount = schoolMappings.filter((c) => c.is_connected).length || 0;
+  const notConnectedCount = schoolMappings.filter((c) => !c.is_connected).length || 0;
 
   if (isLoading) {
     return <div className="p-6">Loading IC integrations...</div>;
