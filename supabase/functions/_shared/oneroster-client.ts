@@ -143,6 +143,12 @@ export class OneRosterClient {
     tokenUrl: string,
     appName?: string
   ): Promise<'1.1' | '1.2'> {
+    // IC with appName always uses v1.2
+    if (appName) {
+      console.log('appName provided, defaulting to OneRoster v1.2');
+      return '1.2';
+    }
+
     const client = new OneRosterClient({
       baseUrl,
       clientId,
@@ -156,6 +162,7 @@ export class OneRosterClient {
       await client.authenticate();
       
       const apiBase = client.getApiBaseUrl();
+      console.log(`Version detection: trying v1.2 at ${apiBase}/orgs?limit=1`);
       const response = await fetch(`${apiBase}/orgs?limit=1`, {
         headers: {
           'Authorization': `Bearer ${client.accessToken}`,
@@ -167,6 +174,7 @@ export class OneRosterClient {
         return '1.2';
       }
       
+      console.log(`v1.2 returned ${response.status}, falling back to v1.1`);
       return '1.1';
     } catch (error) {
       console.error('Version detection error:', error);
