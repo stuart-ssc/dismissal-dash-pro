@@ -118,6 +118,7 @@ serve(async (req) => {
 
     // Auto-detect OneRoster version
     console.log('Detecting OneRoster version...');
+    console.log(`Input baseUrl: "${baseUrl}", appName: "${appName}", tokenUrl: "${tokenUrl}"`);
     const version = await OneRosterClient.detectVersion(baseUrl, clientId, clientSecret, tokenUrl, appName);
     console.log(`Detected version: ${version}`);
 
@@ -132,14 +133,16 @@ serve(async (req) => {
     });
 
     await client.authenticate();
+    console.log('Authentication successful');
 
     // Fetch data for preview
-    console.log('Fetching preview data...');
+    console.log('Fetching preview data (orgs, schools, sessions)...');
     const [orgs, schools, sessions] = await Promise.all([
       client.getOrgs(),
       client.getSchools(),
       client.getAcademicSessions(),
     ]);
+    console.log(`Results: ${orgs.length} orgs, ${schools.length} schools, ${sessions.length} sessions`);
 
     // Get the registered school name for fuzzy matching
     const { data: registeredSchool } = await supabaseAdmin
