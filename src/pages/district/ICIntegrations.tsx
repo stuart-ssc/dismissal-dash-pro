@@ -71,7 +71,7 @@ export default function DistrictICIntegrations() {
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardDescription>Total Schools</CardDescription>
-            <CardTitle className="text-3xl">{connections?.length || 0}</CardTitle>
+            <CardTitle className="text-3xl">{schoolMappings.length}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="bg-card border-border">
@@ -127,8 +127,8 @@ export default function DistrictICIntegrations() {
                               </>
                             )}
                           </Badge>
-                          {conn.last_sync_status && (
-                            <Badge variant="outline">{conn.last_sync_status}</Badge>
+                          {conn.ic_school_name && (
+                            <Badge variant="outline">{conn.ic_school_name}</Badge>
                           )}
                         </div>
                       </div>
@@ -166,14 +166,14 @@ export default function DistrictICIntegrations() {
                   {conn.is_connected && (
                     <CardContent className="pt-0">
                       <div className="grid grid-cols-1 gap-2 text-sm">
-                        {conn.last_sync_at && (
+                        {conn.mapped_at && (
                           <div className="text-muted-foreground">
-                            Last sync: {formatDistanceToNow(new Date(conn.last_sync_at), { addSuffix: true })}
+                            Mapped: {formatDistanceToNow(new Date(conn.mapped_at), { addSuffix: true })}
                           </div>
                         )}
-                        {conn.configured_by_name && (
+                        {conn.ic_school_name && (
                           <div className="text-muted-foreground">
-                            Configured by: {conn.configured_by_name} ({conn.configured_by_role})
+                            IC School: {conn.ic_school_name}
                           </div>
                         )}
                       </div>
@@ -224,16 +224,16 @@ export default function DistrictICIntegrations() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {conn.last_sync_at
-                        ? formatDistanceToNow(new Date(conn.last_sync_at), { addSuffix: true })
+                      {conn.mapped_at
+                        ? formatDistanceToNow(new Date(conn.mapped_at), { addSuffix: true })
                         : "Never"}
                     </TableCell>
                     <TableCell>
-                      {conn.configured_by_name ? (
+                      {conn.ic_school_name ? (
                         <div className="text-sm">
-                          <div>{conn.configured_by_name}</div>
+                          <div>{conn.ic_school_name}</div>
                           <div className="text-muted-foreground text-xs">
-                            {conn.configured_by_role}
+                            {conn.ic_school_sourced_id}
                           </div>
                         </div>
                       ) : (
