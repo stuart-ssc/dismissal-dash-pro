@@ -1,36 +1,42 @@
 
 
-# Fix: IC Sync Fails Due to Unsupported `role` Filter
+# Fix: CPU Time Exceeded -- Scope Classes and Enrollments to School
 
 ## Problem
-The sync crashes with: `OneRoster API error (users): 400 - Invalid filter field: role`
+The sync function times out ("CPU Time exceeded") because `syncClasses()` calls `client.getClasses()` which fetches **all 6,700+ classes across the entire district** (67+ paginated API calls). The same issue affects `syncEnrollments()` and the archive section.
 
-The `syncTeachers` function calls `client.getUsers('teacher')`, which constructs the request `GET /users?filter=role='teacher'`. This Infinite Campus instance does not support filtering by `role` on the `/users` endpoint.
-
-The OneRoster client already has dedicated methods -- `getTeachersForSchool(sourcedId)` and `getStudentsForSchool(sourcedId)` -- that use the proper endpoints (`/schools/{sourcedId}/teachers` and `/schools/{sourcedId}/students`). These endpoints return the correct data without any filter parameter.
+Teachers and students were already fixed to use school-scoped endpoints, but classes and enrollments were missed.
 
 ## Fix
 
-### `supabase/functions/sync-infinite-campus/index.ts`
+### 1. `supabase/functions/sync-infinite-campus/index.ts`
 
-1. **Extract `icSchoolSourcedId`** from `schoolMapping.ic_school_sourced_id` (already available in scope from line 732-736). For legacy connections, fall back to discovering it via `client.getSchools()`.
+**syncClasses function (line 435-439)**
+- Add `icSchoolSourcedId` parameter
+- Replace `client.getClasses()` with `client.getClassesForSchool(icSchoolSourcedId)`
 
-2. **Replace all 4 `getUsers()` calls** with school-scoped endpoints:
-   - Line 128: `client.getUsers('teacher')` → `client.getTeachersForSchool(icSchoolSourcedId)`
-   - Line 272: `client.getUsers('student')` → `client.getStudentsForSchool(icSchoolSourcedId)`
-   - Line 839: `client.getUsers('student')` → `client.getStudentsForSchool(icSchoolSourcedId)`
-   - Line 840: `client.getUsers('teacher')` → `client.getTeachersForSchool(icSchoolSourcedId)`
+**syncEnrollments function (line 519-523)**
+- Instead of `client.getEnrollments()` (all district enrollments), iterate over only the classes that were synced for this school and call `client.getEnrollments(classId)` per class
+- Alternative: add a `getEnrollmentsForSchool` method to the OneRoster client if the `/schools/{id}/enrollments` endpoint is supported
 
-3. **Pass `icSchoolSourcedId`** into `syncTeachers()` and `syncStudents()` as a new parameter.
+**Archive section (line 858)**
+- Replace `client.getClasses()` with `client.getClassesForSchool(effectiveSchoolSourcedId)`
 
-### Redeploy
-Redeploy `sync-infinite-campus`.
+**Call sites (lines 847, 852)**
+- Pass `effectiveSchoolSourcedId` to both `syncClasses` and `syncEnrollments`
+
+### 2. `supabase/functions/_shared/oneroster-client.ts`
+- Add `getEnrollmentsForSchool(schoolSourcedId)` method using the standard OneRoster endpoint `/schools/{sourcedId}/enrollments` (if supported), with a fallback to per-class enrollment fetching
+
+### 3. Redeploy
+- Redeploy `sync-infinite-campus`
 
 ## Why this works
-- The `/schools/{sourcedId}/teachers` and `/schools/{sourcedId}/students` endpoints are standard OneRoster endpoints that return only the relevant users for that school -- no filter needed.
-- The school's IC `sourcedId` is already stored in `ic_school_mappings.ic_school_sourced_id` from the setup process.
-- This also improves correctness: previously, `getUsers('teacher')` would return teachers from ALL schools in the district, not just the mapped school.
+- School-scoped endpoints return only classes/enrollments for the mapped school (likely hundreds, not thousands)
+- Dramatically reduces API calls and CPU time
+- Matches the pattern already applied for teachers and students
 
 ## Files to change
-- `supabase/functions/sync-infinite-campus/index.ts` -- Replace `getUsers()` calls with school-scoped endpoints
+- `supabase/functions/sync-infinite-campus/index.ts` -- scope classes and enrollments to school
+- `supabase/functions/_shared/oneroster-client.ts` -- add school-scoped enrollments method
 
