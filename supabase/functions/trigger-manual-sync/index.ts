@@ -46,7 +46,7 @@ serve(async (req) => {
     );
 
     // Check if user has permission to manage this school
-    const { data: canManage } = await supabaseAdmin.rpc('can_manage_school_data', {
+    const { data: canManage } = await supabaseClient.rpc('can_manage_school_data', {
       target_school_id: schoolId
     });
 
