@@ -720,26 +720,59 @@ serve(async (req) => {
       });
     }
 
-    // Get IC connection
-    const { data: connection, error: connError } = await supabaseAdmin
-      .from('infinite_campus_connections')
-      .select('*')
-      .eq('school_id', schoolId)
-      .single();
+    // Try district connection first, fall back to legacy per-school connection
+    let clientId: string;
+    let clientSecretDecrypted: string;
+    let baseUrl: string;
+    let tokenUrlValue: string;
+    let onerosterVersion: '1.1' | '1.2';
+    let appName: string | undefined;
+    let connectionId: string;
 
-    if (connError || !connection) {
-      return new Response(JSON.stringify({ error: 'IC connection not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const { data: schoolMapping } = await supabaseAdmin
+      .from('ic_school_mappings')
+      .select('*, ic_district_connections(*)')
+      .eq('school_id', schoolId)
+      .maybeSingle();
+
+    if (schoolMapping?.ic_district_connections) {
+      const districtConn = schoolMapping.ic_district_connections;
+      clientId = await decrypt(districtConn.client_id);
+      clientSecretDecrypted = await decrypt(districtConn.client_secret);
+      baseUrl = districtConn.base_url;
+      tokenUrlValue = districtConn.token_url;
+      onerosterVersion = districtConn.oneroster_version as '1.1' | '1.2';
+      appName = districtConn.app_name;
+      connectionId = districtConn.id;
+    } else {
+      // Fallback to legacy connection
+      const { data: connection, error: connError } = await supabaseAdmin
+        .from('infinite_campus_connections')
+        .select('*')
+        .eq('school_id', schoolId)
+        .single();
+
+      if (connError || !connection) {
+        return new Response(JSON.stringify({ error: 'IC connection not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      clientId = await decrypt(connection.client_key);
+      clientSecretDecrypted = await decrypt(connection.client_secret);
+      baseUrl = connection.host_url;
+      tokenUrlValue = connection.token_url;
+      onerosterVersion = connection.oneroster_version as '1.1' | '1.2';
+      connectionId = connection.id;
     }
 
-    // Create sync log with configuration snapshot
+    // Create sync log
     const { data: syncLog, error: logError } = await supabaseAdmin
       .from('ic_sync_logs')
       .insert({
         school_id: schoolId,
-        connection_id: connection.id,
+        connection_id: connectionId,
         sync_type: syncType,
         status: 'running',
         triggered_by: triggeredBy || null,
@@ -756,17 +789,14 @@ serve(async (req) => {
 
     syncLogId = syncLog.id;
 
-    // Decrypt credentials
-    const clientKey = await decrypt(connection.client_key);
-    const clientSecret = await decrypt(connection.client_secret);
-
     // Initialize OneRoster client
     const client = new OneRosterClient({
-      hostUrl: connection.host_url,
-      clientKey,
-      clientSecret,
-      tokenUrl: connection.token_url,
-      version: connection.oneroster_version as '1.1' | '1.2',
+      baseUrl,
+      clientId,
+      clientSecret: clientSecretDecrypted,
+      tokenUrl: tokenUrlValue,
+      version: onerosterVersion,
+      appName,
     });
 
     // Authenticate
@@ -864,16 +894,25 @@ serve(async (req) => {
       // Don't fail the sync if auto-merge processing fails
     }
 
-    // Update connection
+    // Update connection status
+    if (schoolMapping?.ic_district_connections) {
+      await supabaseAdmin
+        .from('ic_district_connections')
+        .update({
+          last_tested_at: new Date().toISOString(),
+          last_test_status: 'success',
+        })
+        .eq('id', connectionId);
+    }
+    // Also update legacy table if it exists
     await supabaseAdmin
       .from('infinite_campus_connections')
       .update({
         last_sync_at: new Date().toISOString(),
         last_sync_status: 'success',
         last_sync_error: null,
-        sync_count: connection.sync_count + 1,
       })
-      .eq('id', connection.id);
+      .eq('school_id', schoolId);
 
     const pendingMerges = studentStats.pending + teacherStats.pending;
 
