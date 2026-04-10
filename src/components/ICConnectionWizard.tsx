@@ -83,49 +83,53 @@ interface ICConnectionWizardProps {
 
 export function ICConnectionWizard({ schoolId, onComplete, onCancel }: ICConnectionWizardProps) {
   
+  const DEFAULT_STATE: WizardState = {
+    currentStep: 1,
+    credentials: {
+      baseUrl: '',
+      clientId: '',
+      clientSecret: '',
+      tokenUrl: '',
+      appName: '',
+    },
+    testResults: null,
+    selectedICSchool: null,
+    syncConfig: {
+      intervalType: 'daily',
+      intervalValue: 1,
+      syncWindowStart: '02:00',
+      syncWindowEnd: '06:00',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      dataTypes: {
+        students: true,
+        teachers: true,
+        classes: true,
+        enrollments: true,
+      },
+      blackoutDates: [],
+      skipWeekends: true,
+    },
+    connectionId: null,
+    districtId: null,
+    districtAlreadyConnected: false,
+  };
+
   const getInitialState = (): WizardState => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.schoolId === schoolId) {
-          return parsed.state;
+          // Never restore testResults or selectedICSchool from cache —
+          // always re-fetch fresh data from the server on Step 3
+          const { testResults, selectedICSchool, ...rest } = parsed.state;
+          return { ...DEFAULT_STATE, ...rest, testResults: null, selectedICSchool: null };
         }
       } catch (e) {
         console.error('Failed to parse saved wizard state:', e);
       }
     }
-    
-    return {
-      currentStep: 1,
-      credentials: {
-        baseUrl: '',
-        clientId: '',
-        clientSecret: '',
-        tokenUrl: '',
-        appName: '',
-      },
-      testResults: null,
-      selectedICSchool: null,
-      syncConfig: {
-        intervalType: 'daily',
-        intervalValue: 1,
-        syncWindowStart: '02:00',
-        syncWindowEnd: '06:00',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        dataTypes: {
-          students: true,
-          teachers: true,
-          classes: true,
-          enrollments: true,
-        },
-        blackoutDates: [],
-        skipWeekends: true,
-      },
-      connectionId: null,
-      districtId: null,
-      districtAlreadyConnected: false,
-    };
+    return { ...DEFAULT_STATE };
   };
 
   const [state, setState] = useState<WizardState>(getInitialState);
