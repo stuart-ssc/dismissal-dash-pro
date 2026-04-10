@@ -232,15 +232,7 @@ serve(async (req) => {
       });
     }
 
-    try {
-      console.log('Fetching academic sessions...');
-      sessions = await client.getAcademicSessions();
-      console.log(`Got ${sessions.length} sessions`);
-    } catch (sessionErr) {
-      console.error('Sessions fetch error:', sessionErr);
-      // Sessions are non-critical — continue without them
-      sessions = [];
-    }
+    // Defer session fetching — will attempt school-scoped fetch after match is identified
 
     // Get the registered school name for fuzzy matching
     const { data: registeredSchool } = await supabaseAdmin
@@ -269,6 +261,33 @@ serve(async (req) => {
           name: bestSchool.name,
           confidence: bestScore,
         };
+      }
+    }
+
+    // Fetch sessions scoped to the matched/selected school, fallback to all sessions
+    const sessionSchoolId = suggestedMatch?.sourcedId;
+    if (sessionSchoolId) {
+      try {
+        console.log(`Fetching sessions for school: ${sessionSchoolId}`);
+        sessions = await client.getAcademicSessionsForSchool(sessionSchoolId);
+        console.log(`Got ${sessions.length} school-scoped sessions`);
+      } catch (scopedErr) {
+        console.log('School-scoped sessions failed, falling back to all sessions:', scopedErr);
+        try {
+          sessions = await client.getAcademicSessions();
+          console.log(`Got ${sessions.length} district-wide sessions`);
+        } catch (allErr) {
+          console.error('All sessions fetch failed:', allErr);
+          sessions = [];
+        }
+      }
+    } else {
+      try {
+        sessions = await client.getAcademicSessions();
+        console.log(`Got ${sessions.length} district-wide sessions`);
+      } catch (sessionErr) {
+        console.error('Sessions fetch error:', sessionErr);
+        sessions = [];
       }
     }
 

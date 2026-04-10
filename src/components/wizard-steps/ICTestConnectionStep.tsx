@@ -393,14 +393,17 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
           </CardContent>
         </Card>
 
-        {/* Academic Sessions */}
-        {preview && preview.academicSessions.length > 0 && (
+        {/* Academic Sessions — only show after a school is selected */}
+        {selectedSchool && preview && preview.academicSessions.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
                 Academic Sessions
               </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Sessions available for {selectedSchool.name}
+              </p>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">

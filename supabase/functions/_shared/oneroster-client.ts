@@ -298,6 +298,13 @@ export class OneRosterClient {
     return this.paginate<OneRosterAcademicSession>('academicSessions');
   }
 
+  /**
+   * Fetch academic sessions (terms) for a specific school
+   */
+  async getAcademicSessionsForSchool(schoolSourcedId: string): Promise<OneRosterAcademicSession[]> {
+    return this.paginate<OneRosterAcademicSession>(`schools/${schoolSourcedId}/terms`);
+  }
+
   async getCourses(): Promise<any[]> {
     return this.paginate('courses');
   }
