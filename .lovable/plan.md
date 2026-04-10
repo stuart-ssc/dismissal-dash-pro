@@ -1,56 +1,34 @@
 
 
-# Fix: Sync Crash + Better Error Handling
+# Fix: Missing `ic_sync_configuration` Table + Sync Now Error
 
-## Root Cause
-In `sync-infinite-campus/index.ts` line 884, the auto-merge processing uses `connection.school_id` -- but `connection` is not defined in this scope. It should be `schoolId`. This causes a `ReferenceError` crash after the sync data is written but before the sync log is marked as complete.
+## Problem
+The `ic_sync_configuration` table was never created via migration, but both `trigger-manual-sync` (edge function) and `ICSyncControlPanel` (client) query it. This causes:
+1. The edge function returns HTTP 404 ("Sync configuration not found"), which the SDK surfaces as "non-2xx status code"
+2. The client-side control panel logs errors every 30 seconds in the console
 
-The result:
-1. Sync data actually gets partially written
-2. The sync log stays in "running" status forever (never marked complete or error)
-3. `trigger-manual-sync` gets a 500 from `sync-infinite-campus`, throws a generic "non-2xx" error to the client
-4. The UI shows a vague error toast with no way to retry or see what happened
+## Solution: Two-part fix
 
-## Fix (2 changes)
+### 1. Update `trigger-manual-sync` to work without `ic_sync_configuration`
+Instead of requiring sync config, make it optional. If the table/row doesn't exist, skip the config check and invoke `sync-infinite-campus` directly without passing `syncConfig`. This is the right approach because sync config (scheduling, pause/resume) is an optional feature -- manual sync should always work if the IC connection exists.
 
-### 1. Fix the variable reference in `sync-infinite-campus/index.ts`
-Line 884: Change `connection.school_id` to `schoolId`
+Changes to `trigger-manual-sync/index.ts`:
+- Replace the `ic_sync_configuration` query with a check for an active IC connection (via `ic_school_mappings` + `ic_district_connections`)
+- If sync config exists, check pause status; if not, proceed anyway
+- Remove hard dependency on `ic_sync_configuration` for the sync to trigger
+- Skip the `calculate_next_sync_time` RPC if no config exists
 
-```typescript
-// Before (line 884)
-body: { schoolId: connection.school_id, syncLogId },
+### 2. Update `ICSyncControlPanel` to handle missing table gracefully
+- Catch the PGRST205 error ("table not found") and treat it the same as "no config found"
+- Show a simplified control panel that just has the "Sync Now" button without pause/schedule controls when no config table exists
+- Stop the 30-second polling error spam
 
-// After
-body: { schoolId, syncLogId },
-```
-
-### 2. Better error handling in `trigger-manual-sync/index.ts`
-The `supabaseAdmin.functions.invoke()` call on line ~95 can fail with a non-2xx. Wrap it to extract the actual error message from the response body instead of just showing "non-2xx":
-
-```typescript
-const { data: syncResult, error: syncError } = await supabaseAdmin.functions.invoke(...);
-
-if (syncError) {
-  // Try to extract meaningful error from the response
-  const errorMessage = syncError.message || 'Sync failed';
-  console.error('Manual sync error:', errorMessage);
-  return new Response(JSON.stringify({ 
-    error: errorMessage,
-    details: 'Check sync history for more details' 
-  }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-}
-```
-
-Using HTTP 200 with `{ error: ... }` ensures the Supabase SDK doesn't throw and the client can read the actual error details.
-
-### 3. Redeploy both functions
-- `sync-infinite-campus`
-- `trigger-manual-sync`
+### 3. Redeploy `trigger-manual-sync`
 
 ## Files to change
-- `supabase/functions/sync-infinite-campus/index.ts` -- Fix `connection.school_id` to `schoolId` on line 884
-- `supabase/functions/trigger-manual-sync/index.ts` -- Improve error handling for the inner function call
+- `supabase/functions/trigger-manual-sync/index.ts` -- Remove hard dependency on `ic_sync_configuration`; look up IC connection from `ic_school_mappings` + `ic_district_connections` instead
+- `src/components/ICSyncControlPanel.tsx` -- Handle missing table gracefully, suppress PGRST205 errors
 
-## Why this will work
-The crash is definitively caused by the undefined `connection` variable reference. Fixing it allows the sync to complete normally. The improved error handling ensures future failures surface meaningful messages instead of "non-2xx."
+## Technical detail
+The `sync-infinite-campus` function already receives `syncConfig` as optional (`syncConfig?: any`), so passing `undefined` is safe. The actual sync logic uses the IC connection credentials from `ic_district_connections`, not from sync config.
 
