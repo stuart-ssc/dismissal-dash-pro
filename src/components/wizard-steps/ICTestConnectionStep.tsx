@@ -34,10 +34,9 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
   const [isTesting, setIsTesting] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState<ICSchoolOption | null>(state.selectedICSchool);
 
+  // Always fetch fresh data when entering this step
   useEffect(() => {
-    if (!state.testResults) {
-      testConnection();
-    }
+    testConnection();
   }, []);
 
   const testConnection = async () => {
