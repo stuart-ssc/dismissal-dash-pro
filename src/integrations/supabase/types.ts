@@ -4048,30 +4048,30 @@ export type Database = {
     Functions: {
       calculate_dismissal_times:
         | {
+            Args: { plan_dismissal_time: string; preparation_minutes?: number }
+            Returns: {
+              dismissal_start_time: string
+              preparation_start_time: string
+            }[]
+          }
+        | {
+            Args: {
+              plan_dismissal_time: string
+              preparation_minutes?: number
+              school_timezone?: string
+            }
+            Returns: {
+              dismissal_start_time: string
+              preparation_start_time: string
+            }[]
+          }
+        | {
             Args: {
               plan_dismissal_time: string
               preparation_minutes?: number
               school_timezone?: string
               target_date?: string
             }
-            Returns: {
-              dismissal_start_time: string
-              preparation_start_time: string
-            }[]
-          }
-        | {
-            Args: {
-              plan_dismissal_time: string
-              preparation_minutes?: number
-              school_timezone?: string
-            }
-            Returns: {
-              dismissal_start_time: string
-              preparation_start_time: string
-            }[]
-          }
-        | {
-            Args: { plan_dismissal_time: string; preparation_minutes?: number }
             Returns: {
               dismissal_start_time: string
               preparation_start_time: string
