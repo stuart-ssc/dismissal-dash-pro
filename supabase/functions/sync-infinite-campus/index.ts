@@ -880,7 +880,7 @@ serve(async (req) => {
       const { data: autoMergeResult, error: autoMergeError } = await supabaseAdmin.functions.invoke(
         'process-auto-merge-rules',
         {
-          body: { schoolId: connection.school_id, syncLogId },
+          body: { schoolId, syncLogId },
         }
       );
       

@@ -100,12 +100,13 @@ serve(async (req) => {
     );
 
     if (syncError) {
-      console.error('Manual sync error:', syncError);
+      const errorMessage = syncError.message || 'Sync failed';
+      console.error('Manual sync error:', errorMessage);
       return new Response(JSON.stringify({ 
-        error: 'Sync failed',
-        details: syncError.message 
+        error: errorMessage,
+        details: 'Check sync history for more details'
       }), {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
