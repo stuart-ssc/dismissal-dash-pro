@@ -8,14 +8,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const formSchema = z.object({
-  hostUrl: z.string().url('Must be a valid URL').min(1, 'Host URL is required'),
-  clientKey: z.string().min(1, 'Client key is required'),
+  baseUrl: z.string().url('Must be a valid URL').min(1, 'Base URL is required'),
+  appName: z.string().min(1, 'App Name is required'),
+  clientId: z.string().min(1, 'Client ID is required'),
   clientSecret: z.string().min(1, 'Client secret is required'),
   tokenUrl: z.string().url('Must be a valid URL').min(1, 'Token URL is required'),
 });
@@ -30,14 +30,15 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
   const [isConnecting, setIsConnecting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
-  const [showClientKey, setShowClientKey] = useState(false);
+  const [showClientId, setShowClientId] = useState(false);
   const [showClientSecret, setShowClientSecret] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      hostUrl: '',
-      clientKey: '',
+      baseUrl: '',
+      appName: '',
+      clientId: '',
       clientSecret: '',
       tokenUrl: '',
     },
@@ -48,21 +49,22 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
     try {
       const { data, error } = await supabase.functions.invoke('test-ic-connection', {
         body: {
-          hostUrl: values.hostUrl,
-          clientKey: values.clientKey,
+          baseUrl: values.baseUrl,
+          clientId: values.clientId,
           clientSecret: values.clientSecret,
           tokenUrl: values.tokenUrl,
+          appName: values.appName,
           schoolId,
         },
       });
 
       if (error) throw error;
 
-      if (data.valid) {
+      if (data?.valid) {
         setPreviewData(data);
         setShowPreview(true);
       } else {
-        toast.error(data.error || 'Connection test failed');
+        toast.error(data?.error || 'Connection test failed');
       }
     } catch (error: any) {
       console.error('Connection test error:', error);
@@ -79,10 +81,11 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
     try {
       const { data, error } = await supabase.functions.invoke('connect-ic', {
         body: {
-          hostUrl: values.hostUrl,
-          clientKey: values.clientKey,
+          baseUrl: values.baseUrl,
+          clientId: values.clientId,
           clientSecret: values.clientSecret,
           tokenUrl: values.tokenUrl,
+          appName: values.appName,
           version: previewData.version,
           schoolId,
         },
@@ -108,13 +111,29 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
         <form onSubmit={form.handleSubmit(handleTestConnection)} className="space-y-4">
           <FormField
             control={form.control}
-            name="hostUrl"
+            name="baseUrl"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>OneRoster Host URL</FormLabel>
+                <FormLabel>Base URL</FormLabel>
                 <FormControl>
                   <Input placeholder="https://your-district.infinitecampus.org" {...field} />
                 </FormControl>
+                <FormDescription>Do not include "/campus" — it's added automatically</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="appName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>App Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. jessamine" {...field} />
+                </FormControl>
+                <FormDescription>Your district's OneRoster app name</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -127,7 +146,7 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
               <FormItem>
                 <FormLabel>Token URL</FormLabel>
                 <FormControl>
-                  <Input placeholder="https://your-district.infinitecampus.org/campus/oauth/token" {...field} />
+                  <Input placeholder="https://your-district.infinitecampus.org/campus/oauth2/token" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -136,15 +155,15 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
 
           <FormField
             control={form.control}
-            name="clientKey"
+            name="clientId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Client/Consumer Key</FormLabel>
+                <FormLabel>Client ID</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Input
-                      type={showClientKey ? 'text' : 'password'}
-                      placeholder="Enter client key"
+                      type={showClientId ? 'text' : 'password'}
+                      placeholder="Enter client ID"
                       {...field}
                     />
                     <Button
@@ -152,9 +171,9 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowClientKey(!showClientKey)}
+                      onClick={() => setShowClientId(!showClientId)}
                     >
-                      {showClientKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showClientId ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
                 </FormControl>
@@ -168,7 +187,7 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
             name="clientSecret"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Client/Consumer Secret</FormLabel>
+                <FormLabel>Client Secret</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Input
@@ -222,78 +241,12 @@ export const ICConnectionForm = ({ schoolId, onConnectionSuccess }: ICConnection
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm"><strong>Organization:</strong> {previewData.preview.orgName}</p>
-                <p className="text-sm"><strong>School:</strong> {previewData.preview.schoolName}</p>
+                <p className="text-sm"><strong>Organization:</strong> {previewData.preview?.orgName}</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="rounded-lg border p-4">
-                  <p className="text-2xl font-bold">{previewData.preview.studentCount}</p>
-                  <p className="text-sm text-muted-foreground">Students</p>
-                </div>
-                <div className="rounded-lg border p-4">
-                  <p className="text-2xl font-bold">{previewData.preview.teacherCount}</p>
-                  <p className="text-sm text-muted-foreground">Teachers</p>
-                </div>
-                <div className="rounded-lg border p-4">
-                  <p className="text-2xl font-bold">{previewData.preview.classCount}</p>
-                  <p className="text-sm text-muted-foreground">Classes</p>
-                </div>
-              </div>
-
-              {(previewData.preview.duplicateStudents > 0 || previewData.preview.duplicateTeachers > 0) && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Potential Duplicates Detected</AlertTitle>
-                  <AlertDescription>
-                    {previewData.preview.duplicateStudents} potential duplicate students and{' '}
-                    {previewData.preview.duplicateTeachers} potential duplicate teachers detected.
-                    These will require your review after connection.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {previewData.preview.sampleStudents?.length > 0 && (
+              {previewData.schools?.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Sample Students</h4>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Grade</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewData.preview.sampleStudents.map((student: any, i: number) => (
-                        <TableRow key={i}>
-                          <TableCell>{student.name}</TableCell>
-                          <TableCell>{student.grade}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-
-              {previewData.preview.sampleTeachers?.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Sample Teachers</h4>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewData.preview.sampleTeachers.map((teacher: any, i: number) => (
-                        <TableRow key={i}>
-                          <TableCell>{teacher.name}</TableCell>
-                          <TableCell>{teacher.email}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <h4 className="text-sm font-medium mb-2">Schools Found: {previewData.schools.length}</h4>
                 </div>
               )}
 
