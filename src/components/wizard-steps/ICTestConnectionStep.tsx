@@ -139,6 +139,12 @@ export function ICTestConnectionStep({ state, updateState, nextStep, goToStep, s
     updateState({ selectedICSchool: school });
   };
 
+  const handleRefresh = () => {
+    setSelectedSchool(null);
+    updateState({ testResults: null, selectedICSchool: null });
+    testConnection();
+  };
+
   const handleContinue = () => {
     if (!selectedSchool) {
       toast.error('Please select your school from the list');
