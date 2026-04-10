@@ -1,55 +1,52 @@
 
-Root cause is no longer just the OneRoster endpoint logic.
 
-I inspected the wizard flow and found a second failure mode that matches “same result” even after backend fixes:
+# Fix: IC OAuth Token URL Missing `appName` Parameter
 
-1. The school selector UI only fetches schools when `state.testResults` is empty.
-2. The wizard saves all state, including `testResults.schools`, in `localStorage` under `ic-wizard-state`.
-3. If the user reopens the setup after a failed/empty result, Step 3 reuses the old cached empty `schools` array and does not call the edge function again.
-4. That means backend fixes can be deployed correctly, but the UI can still keep showing “No schools found” from stale local state.
+## Root Cause
+Infinite Campus requires `?appName={appName}` on the OAuth token endpoint. The logs confirm:
+- Token URL sent: `https://jessamineky.infinitecampus.org/campus/oauth2/token`
+- IC response: "No Campus Application selected"
+- Required: `https://jessamineky.infinitecampus.org/campus/oauth2/token?appName=jessamine`
 
-Relevant code already confirms this:
-- `src/components/ICConnectionWizard.tsx` restores/saves full wizard state from localStorage.
-- `src/components/wizard-steps/ICTestConnectionStep.tsx` only runs `testConnection()` when `!state.testResults`.
-- The empty-state message is shown whenever `schools?.length` is 0, even if that came from cached data.
+This was always the underlying bug. The previous cached-results behavior masked it by never re-testing.
 
-Plan to fix this cleanly:
+## Fix (2 changes)
 
-1. Remove stale-result behavior in the wizard
-- Stop treating saved `testResults` as authoritative when entering Step 3.
-- Re-run the school fetch when the user reaches the “Test & Select” step, especially for district-connected flows.
-- Optionally preserve credentials/sync settings, but not cached school results.
+### 1. `oneroster-client.ts` -- Append appName to token URL
+In the `authenticate()` method, if `appName` is set and the token URL doesn't already contain it, append `?appName={appName}`:
 
-2. Add an explicit refresh/reset path
-- Add a “Refresh schools” action in `ICTestConnectionStep`.
-- Add a safe reset that clears `testResults` and `selectedICSchool` before re-fetching.
+```typescript
+async authenticate(): Promise<void> {
+  const credentials = btoa(`${this.config.clientId}:${this.config.clientSecret}`);
+  
+  // IC requires appName on the token endpoint
+  let tokenUrl = this.config.tokenUrl;
+  if (this.config.appName && !tokenUrl.includes('appName=')) {
+    const separator = tokenUrl.includes('?') ? '&' : '?';
+    tokenUrl = `${tokenUrl}${separator}appName=${this.config.appName}`;
+  }
+  
+  const response = await fetch(tokenUrl, { ... });
+}
+```
 
-3. Tighten wizard persistence
-- In `ICConnectionWizard.tsx`, either:
-  - exclude `testResults` from localStorage entirely, or
-  - persist it with a short-lived timestamp and invalidate it on reopen.
-- Also clear cached results when district connection info changes.
+### 2. `ICTestConnectionStep.tsx` -- Guard auto-test
+Only auto-test on mount if we have valid credentials OR a district connection ID, preventing errors when state is incomplete:
 
-4. Improve step transition logic
-- In `ICTestConnectionStep.tsx`, make the fetch run when entering the step, not just on first mount with empty state.
-- Ensure Back/Continue/reopen cycles do not strand the user with stale school data.
+```typescript
+useEffect(() => {
+  const hasCredentials = state.districtAlreadyConnected 
+    ? !!state.connectionId
+    : !!(state.credentials.clientId && state.credentials.clientSecret);
+  if (hasCredentials) {
+    testConnection();
+  }
+}, []);
+```
 
-5. Keep the existing server-side org fallback
-- Do not remove the broader `getSchools()` fallback already present in `supabase/functions/_shared/oneroster-client.ts`.
-- The client-side stale cache fix should be layered on top of that server fix.
+### 3. Redeploy
+Deploy `test-ic-connection`, `get-ic-district-schools`, `connect-ic-district`, and `sync-infinite-campus` (all share the updated client).
 
-6. Verification after implementation
-- Open IC setup with a district-already-connected school.
-- Confirm Step 3 makes a fresh request instead of reusing prior empty results.
-- Confirm schools appear if the backend returns them.
-- Confirm “Refresh schools” re-queries successfully.
-- Confirm reopening the dialog does not restore an old empty selector state.
+## Why this will work
+The IC error message explicitly says "No Campus Application selected." Adding `appName` to the token URL is how IC identifies which OneRoster app context to authenticate against. Once auth succeeds, the existing school-fetching logic (with the broadened org filter) will return schools.
 
-Technical notes:
-- Primary files to update:
-  - `src/components/ICConnectionWizard.tsx`
-  - `src/components/wizard-steps/ICTestConnectionStep.tsx`
-- No database changes needed.
-- This is the most likely reason you are still seeing the exact same empty result after prior fixes.
-
-If approved, I will implement the cache/state fix so the wizard actually pulls fresh school data again instead of replaying stale empty results.
