@@ -1,53 +1,55 @@
 
+Root cause is no longer just the OneRoster endpoint logic.
 
-# Fix: IC orgs not matching `type='school'` filter
+I inspected the wizard flow and found a second failure mode that matches “same result” even after backend fixes:
 
-## Problem
-The `/schools` endpoint returns 0 results. The fallback fetches 18 orgs but filters strictly for `type === 'school'`, which matches none of them. We don't know what `type` values IC is returning because they're not logged.
+1. The school selector UI only fetches schools when `state.testResults` is empty.
+2. The wizard saves all state, including `testResults.schools`, in `localStorage` under `ic-wizard-state`.
+3. If the user reopens the setup after a failed/empty result, Step 3 reuses the old cached empty `schools` array and does not call the edge function again.
+4. That means backend fixes can be deployed correctly, but the UI can still keep showing “No schools found” from stale local state.
 
-## Fix (2 changes)
+Relevant code already confirms this:
+- `src/components/ICConnectionWizard.tsx` restores/saves full wizard state from localStorage.
+- `src/components/wizard-steps/ICTestConnectionStep.tsx` only runs `testConnection()` when `!state.testResults`.
+- The empty-state message is shown whenever `schools?.length` is 0, even if that came from cached data.
 
-### 1. `oneroster-client.ts` -- Log org types and broaden filter
-In `getSchools()`:
-- Log each org's `name` and `type` so we can see what IC returns
-- Accept additional OneRoster `OrgType` values that represent schools: `school`, `local`, and any org that is NOT `district`, `national`, `state`
+Plan to fix this cleanly:
 
-```typescript
-async getSchools(): Promise<OneRosterSchool[]> {
-  try {
-    const schools = await this.paginate<OneRosterSchool>('schools');
-    if (schools.length > 0) return schools;
-    console.log('getSchools() returned 0, falling back to orgs');
-  } catch (error) {
-    console.log('getSchools() failed, falling back to orgs:', error);
-  }
-  const orgs = await this.paginate<OneRosterOrg>('orgs');
-  console.log('Org types found:', orgs.map(o => `${o.name}: ${o.type}`));
-  
-  // Accept 'school' or 'local' (common IC type for schools)
-  const schoolTypes = ['school', 'local'];
-  let filtered = orgs.filter(o => schoolTypes.includes(o.type?.toLowerCase()));
-  
-  // If still empty, return all orgs that aren't district/national/state
-  if (filtered.length === 0) {
-    const excludeTypes = ['district', 'national', 'state'];
-    filtered = orgs.filter(o => !excludeTypes.includes(o.type?.toLowerCase()));
-  }
-  
-  // Last resort: return ALL orgs so the user can pick
-  if (filtered.length === 0) {
-    filtered = orgs;
-  }
-  
-  return filtered.map(o => ({
-    sourcedId: o.sourcedId, name: o.name, type: o.type
-  }));
-}
-```
+1. Remove stale-result behavior in the wizard
+- Stop treating saved `testResults` as authoritative when entering Step 3.
+- Re-run the school fetch when the user reaches the “Test & Select” step, especially for district-connected flows.
+- Optionally preserve credentials/sync settings, but not cached school results.
 
-### 2. Redeploy
-Deploy `test-ic-connection`, `get-ic-district-schools`, `connect-ic-district`, and `sync-infinite-campus`.
+2. Add an explicit refresh/reset path
+- Add a “Refresh schools” action in `ICTestConnectionStep`.
+- Add a safe reset that clears `testResults` and `selectedICSchool` before re-fetching.
 
-## Why this will work
-The 18 orgs are there -- we just need to stop excluding them with an overly strict filter. The cascading approach tries `school`/`local` first, then excludes known non-school types, and as a last resort shows all orgs. After deployment, the logs will also reveal exactly what `type` IC uses, letting us refine further if needed.
+3. Tighten wizard persistence
+- In `ICConnectionWizard.tsx`, either:
+  - exclude `testResults` from localStorage entirely, or
+  - persist it with a short-lived timestamp and invalidate it on reopen.
+- Also clear cached results when district connection info changes.
 
+4. Improve step transition logic
+- In `ICTestConnectionStep.tsx`, make the fetch run when entering the step, not just on first mount with empty state.
+- Ensure Back/Continue/reopen cycles do not strand the user with stale school data.
+
+5. Keep the existing server-side org fallback
+- Do not remove the broader `getSchools()` fallback already present in `supabase/functions/_shared/oneroster-client.ts`.
+- The client-side stale cache fix should be layered on top of that server fix.
+
+6. Verification after implementation
+- Open IC setup with a district-already-connected school.
+- Confirm Step 3 makes a fresh request instead of reusing prior empty results.
+- Confirm schools appear if the backend returns them.
+- Confirm “Refresh schools” re-queries successfully.
+- Confirm reopening the dialog does not restore an old empty selector state.
+
+Technical notes:
+- Primary files to update:
+  - `src/components/ICConnectionWizard.tsx`
+  - `src/components/wizard-steps/ICTestConnectionStep.tsx`
+- No database changes needed.
+- This is the most likely reason you are still seeing the exact same empty result after prior fixes.
+
+If approved, I will implement the cache/state fix so the wizard actually pulls fresh school data again instead of replaying stale empty results.
