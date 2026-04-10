@@ -319,7 +319,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: {
             first_name: firstName,
             last_name: lastName,
-            school_id: schoolId,
+            schoolId: schoolId,
             role: role
           }
         }
