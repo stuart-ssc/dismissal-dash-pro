@@ -309,13 +309,20 @@ export function ICOverviewTab({ connection, schoolId }: ICOverviewTabProps) {
           <CardDescription>Common tasks and management tools</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             <Button
-              variant="outline"
+              variant="default"
               className="h-auto flex-col py-4"
-              onClick={() => setSearchParams({ tab: 'merges' })}
-              disabled={pendingCount === 0}
+              onClick={handleSyncNow}
+              disabled={isSyncing}
             >
+              {isSyncing ? (
+                <Loader2 className="h-5 w-5 mb-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-5 w-5 mb-2" />
+              )}
+              <span className="text-sm">{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+            </Button>
               <GitMerge className="h-5 w-5 mb-2" />
               <span className="text-sm">Review Merges</span>
               {pendingCount > 0 && (
