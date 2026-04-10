@@ -346,6 +346,18 @@ export class OneRosterClient {
     return this.paginate<OneRosterEnrollment>('enrollments');
   }
 
+  /**
+   * Fetch enrollments for a specific school
+   */
+  async getEnrollmentsForSchool(schoolSourcedId: string): Promise<OneRosterEnrollment[]> {
+    try {
+      return await this.paginate<OneRosterEnrollment>(`schools/${schoolSourcedId}/enrollments`);
+    } catch (error) {
+      console.log('School-scoped enrollments endpoint failed, falling back to general enrollments:', error);
+      return this.paginate<OneRosterEnrollment>('enrollments');
+    }
+  }
+
   async getResources(): Promise<any[]> {
     try {
       return await this.paginate('resources');

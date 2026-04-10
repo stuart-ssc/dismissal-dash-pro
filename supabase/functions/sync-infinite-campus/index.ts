@@ -435,11 +435,12 @@ function extractPeriodName(cls: any): string | null {
 async function syncClasses(
   client: OneRosterClient,
   supabase: SupabaseClient,
-  schoolId: number
+  schoolId: number,
+  icSchoolSourcedId: string
 ): Promise<{ created: number; updated: number; withPeriods: number; withoutPeriods: number }> {
-  console.log('Syncing classes...');
+  console.log('Syncing classes (school-scoped)...');
   
-  const classes = await client.getClasses();
+  const classes = await client.getClassesForSchool(icSchoolSourcedId);
   let created = 0;
   let updated = 0;
   let withPeriods = 0;
@@ -519,11 +520,12 @@ async function syncClasses(
 async function syncEnrollments(
   client: OneRosterClient,
   supabase: SupabaseClient,
-  schoolId: number
+  schoolId: number,
+  icSchoolSourcedId: string
 ): Promise<{ created: number; updated: number }> {
-  console.log('Syncing enrollments...');
+  console.log('Syncing enrollments (school-scoped)...');
   
-  const enrollments = await client.getEnrollments();
+  const enrollments = await client.getEnrollmentsForSchool(icSchoolSourcedId);
   let created = 0;
   let updated = 0;
 
@@ -844,18 +846,18 @@ serve(async (req) => {
 
     // Sync classes if enabled
     if (shouldSyncClasses) {
-      classStats = await syncClasses(client, supabaseAdmin, schoolId);
+      classStats = await syncClasses(client, supabaseAdmin, schoolId, effectiveSchoolSourcedId);
     }
 
     // Sync enrollments if enabled
     if (shouldSyncEnrollments) {
-      enrollmentStats = await syncEnrollments(client, supabaseAdmin, schoolId);
+      enrollmentStats = await syncEnrollments(client, supabaseAdmin, schoolId, effectiveSchoolSourcedId);
     }
 
     // Archive missing records
     const students = await client.getStudentsForSchool(effectiveSchoolSourcedId);
     const teachers = await client.getTeachersForSchool(effectiveSchoolSourcedId);
-    const classes = await client.getClasses();
+    const classes = await client.getClassesForSchool(effectiveSchoolSourcedId);
 
     const archiveStats = await archiveMissing(supabaseAdmin, schoolId, {
       students: students.map(s => s.sourcedId),
