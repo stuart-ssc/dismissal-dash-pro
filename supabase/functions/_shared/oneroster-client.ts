@@ -126,11 +126,17 @@ export class OneRosterClient {
   private getApiBaseUrl(): string {
     const versionPath = this.config.version === '1.2' ? 'v1p2' : 'v1p1';
     
-    if (this.config.appName) {
-      return `${this.config.baseUrl}/campus/api/oneroster/${versionPath}/${this.config.appName}/ims/oneroster/rostering/${versionPath}`;
+    // Normalize baseUrl: strip trailing slashes and /campus suffix to prevent double-pathing
+    let base = this.config.baseUrl.replace(/\/+$/, '');
+    if (base.endsWith('/campus')) {
+      base = base.slice(0, -7);
     }
     
-    return `${this.config.baseUrl}/ims/oneroster/${versionPath}`;
+    if (this.config.appName) {
+      return `${base}/campus/api/oneroster/${versionPath}/${this.config.appName}/ims/oneroster/rostering/${versionPath}`;
+    }
+    
+    return `${base}/ims/oneroster/${versionPath}`;
   }
 
   /**
@@ -203,6 +209,7 @@ export class OneRosterClient {
       });
 
       const url = `${baseUrl}/${endpoint}?${queryParams}`;
+      console.log(`OneRoster API request: ${url}`);
       
       const response = await fetch(url, {
         headers: {
@@ -235,7 +242,15 @@ export class OneRosterClient {
   }
 
   async getSchools(): Promise<OneRosterSchool[]> {
-    return this.paginate<OneRosterSchool>('schools');
+    try {
+      return await this.paginate<OneRosterSchool>('schools');
+    } catch (error) {
+      console.log('getSchools() failed, falling back to getOrgs() filtered by type=school:', error);
+      const orgs = await this.paginate<OneRosterOrg>('orgs');
+      return orgs
+        .filter(o => o.type?.toLowerCase() === 'school')
+        .map(o => ({ sourcedId: o.sourcedId, name: o.name, type: o.type }));
+    }
   }
 
   async getAcademicSessions(): Promise<OneRosterAcademicSession[]> {
