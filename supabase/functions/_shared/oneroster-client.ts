@@ -126,11 +126,25 @@ export class OneRosterClient {
   private getApiBaseUrl(): string {
     const versionPath = this.config.version === '1.2' ? 'v1p2' : 'v1p1';
     
-    // Normalize baseUrl: strip trailing slashes and /campus suffix to prevent double-pathing
+    // Aggressively normalize baseUrl to just the origin (scheme + host)
+    // Users may paste full API paths like:
+    //   https://example.infinitecampus.org/campus/api/oneroster/v1p2/appName/ims/oneroster
+    // We need just: https://example.infinitecampus.org
     let base = this.config.baseUrl.replace(/\/+$/, '');
-    if (base.endsWith('/campus')) {
-      base = base.slice(0, -7);
+    
+    // Strip everything from /campus onward
+    const campusIdx = base.indexOf('/campus');
+    if (campusIdx > 0) {
+      base = base.substring(0, campusIdx);
     }
+    
+    // Also strip /ims/oneroster for generic OneRoster URLs
+    const imsIdx = base.indexOf('/ims/oneroster');
+    if (imsIdx > 0) {
+      base = base.substring(0, imsIdx);
+    }
+    
+    console.log(`Normalized baseUrl: "${this.config.baseUrl}" → "${base}"`);
     
     if (this.config.appName) {
       return `${base}/campus/api/oneroster/${versionPath}/${this.config.appName}/ims/oneroster/rostering/${versionPath}`;
