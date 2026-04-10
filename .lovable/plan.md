@@ -1,37 +1,53 @@
 
 
-# Fix: Schools list empty despite successful connection
+# Fix: IC orgs not matching `type='school'` filter
 
 ## Problem
-The `/schools` endpoint succeeds but returns 0 results. The current fallback only triggers on HTTP errors, not empty results. Meanwhile, `/orgs` returns 18 organizations — some of which are schools.
+The `/schools` endpoint returns 0 results. The fallback fetches 18 orgs but filters strictly for `type === 'school'`, which matches none of them. We don't know what `type` values IC is returning because they're not logged.
 
-## Root Cause
-In `oneroster-client.ts`, `getSchools()` catches errors and falls back to orgs filtered by `type='school'`. But when `/schools` returns a 200 with an empty array, no error is thrown, so the fallback never runs.
+## Fix (2 changes)
 
-## Fix
-
-### `supabase/functions/_shared/oneroster-client.ts`
-Update `getSchools()` to also fall back when the result is empty:
+### 1. `oneroster-client.ts` -- Log org types and broaden filter
+In `getSchools()`:
+- Log each org's `name` and `type` so we can see what IC returns
+- Accept additional OneRoster `OrgType` values that represent schools: `school`, `local`, and any org that is NOT `district`, `national`, `state`
 
 ```typescript
 async getSchools(): Promise<OneRosterSchool[]> {
   try {
     const schools = await this.paginate<OneRosterSchool>('schools');
     if (schools.length > 0) return schools;
-    console.log('getSchools() returned 0 results, falling back to orgs filtered by type=school');
+    console.log('getSchools() returned 0, falling back to orgs');
   } catch (error) {
-    console.log('getSchools() failed, falling back to orgs filtered by type=school:', error);
+    console.log('getSchools() failed, falling back to orgs:', error);
   }
   const orgs = await this.paginate<OneRosterOrg>('orgs');
-  return orgs
-    .filter(o => o.type?.toLowerCase() === 'school')
-    .map(o => ({ sourcedId: o.sourcedId, name: o.name, type: o.type }));
+  console.log('Org types found:', orgs.map(o => `${o.name}: ${o.type}`));
+  
+  // Accept 'school' or 'local' (common IC type for schools)
+  const schoolTypes = ['school', 'local'];
+  let filtered = orgs.filter(o => schoolTypes.includes(o.type?.toLowerCase()));
+  
+  // If still empty, return all orgs that aren't district/national/state
+  if (filtered.length === 0) {
+    const excludeTypes = ['district', 'national', 'state'];
+    filtered = orgs.filter(o => !excludeTypes.includes(o.type?.toLowerCase()));
+  }
+  
+  // Last resort: return ALL orgs so the user can pick
+  if (filtered.length === 0) {
+    filtered = orgs;
+  }
+  
+  return filtered.map(o => ({
+    sourcedId: o.sourcedId, name: o.name, type: o.type
+  }));
 }
 ```
 
-### Redeploy
-Deploy `test-ic-connection`, `get-ic-district-schools`, `connect-ic-district`, and `sync-infinite-campus` (all share the updated client).
+### 2. Redeploy
+Deploy `test-ic-connection`, `get-ic-district-schools`, `connect-ic-district`, and `sync-infinite-campus`.
 
 ## Why this will work
-The logs confirm 18 orgs are returned. Some of those orgs will have `type='school'`, which is the standard OneRoster way to represent schools within the orgs collection. This is a one-line logic change.
+The 18 orgs are there -- we just need to stop excluding them with an overly strict filter. The cascading approach tries `school`/`local` first, then excludes known non-school types, and as a last resort shows all orgs. After deployment, the logs will also reveal exactly what `type` IC uses, letting us refine further if needed.
 
