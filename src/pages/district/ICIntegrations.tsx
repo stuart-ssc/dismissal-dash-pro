@@ -191,8 +191,8 @@ export default function DistrictICIntegrations() {
                 <TableRow>
                   <TableHead>School Name</TableHead>
                   <TableHead>IC Status</TableHead>
-                  <TableHead>Last Sync</TableHead>
-                  <TableHead>Configured By</TableHead>
+                  <TableHead>Mapped</TableHead>
+                  <TableHead>IC School</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
