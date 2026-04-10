@@ -38,11 +38,12 @@ export function ICSyncControlPanel({ schoolId, onSyncTriggered }: ICSyncControlP
   const [isSyncing, setIsSyncing] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
   const [config, setConfig] = useState<SyncConfig | null>(null);
+  const [configAvailable, setConfigAvailable] = useState(true);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
 
   useEffect(() => {
     fetchConfiguration();
-    const interval = setInterval(fetchConfiguration, 30000); // Refresh every 30s
+    const interval = setInterval(fetchConfiguration, 30000);
     return () => clearInterval(interval);
   }, [schoolId]);
 
@@ -55,10 +56,24 @@ export function ICSyncControlPanel({ schoolId, onSyncTriggered }: ICSyncControlP
         .eq('school_id', schoolId)
         .single() as any;
 
-      if (error && error.code !== 'PGRST116') throw error;
-      setConfig(data);
-    } catch (error) {
-      console.error('Error fetching sync configuration:', error);
+      if (error) {
+        // PGRST205 = relation not found, PGRST116 = no rows
+        if (error.code === 'PGRST205' || error.code === '42P01') {
+          setConfigAvailable(false);
+          setConfig(null);
+        } else if (error.code === 'PGRST116') {
+          setConfig(null);
+        } else {
+          console.error('Error fetching sync configuration:', error);
+        }
+      } else {
+        setConfig(data);
+        setConfigAvailable(true);
+      }
+    } catch {
+      // Silently handle - table likely doesn't exist
+      setConfigAvailable(false);
+      setConfig(null);
     } finally {
       setIsLoading(false);
     }
@@ -67,11 +82,17 @@ export function ICSyncControlPanel({ schoolId, onSyncTriggered }: ICSyncControlP
   const handleSyncNow = async () => {
     try {
       setIsSyncing(true);
-      const { error } = await supabase.functions.invoke('trigger-manual-sync', {
+      const { data, error } = await supabase.functions.invoke('trigger-manual-sync', {
         body: { schoolId }
       });
 
       if (error) throw error;
+      
+      // Check for error in response body (returned as 200 with error field)
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
 
       toast.success('Sync started successfully');
       fetchConfiguration();
@@ -120,15 +141,33 @@ export function ICSyncControlPanel({ schoolId, onSyncTriggered }: ICSyncControlP
     );
   }
 
-  if (!config) {
+  // No sync config table or no config row — show simplified panel with just Sync Now
+  if (!config || !configAvailable) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Sync Control</CardTitle>
-          <CardDescription>
-            Sync configuration not found. Please configure sync settings first.
-          </CardDescription>
+          <CardTitle>Sync Control Panel</CardTitle>
+          <CardDescription>Manually trigger an Infinite Campus sync</CardDescription>
         </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleSyncNow}
+            disabled={isSyncing}
+            className="w-full"
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Syncing...
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Sync Now
+              </>
+            )}
+          </Button>
+        </CardContent>
       </Card>
     );
   }
@@ -172,7 +211,6 @@ export function ICSyncControlPanel({ schoolId, onSyncTriggered }: ICSyncControlP
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Status Info */}
           <div className="flex items-start gap-2 text-sm">
             <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div>
@@ -192,7 +230,6 @@ export function ICSyncControlPanel({ schoolId, onSyncTriggered }: ICSyncControlP
             </div>
           )}
 
-          {/* Action Buttons */}
           <div className="flex gap-2">
             <Button
               onClick={handleSyncNow}
@@ -232,7 +269,6 @@ export function ICSyncControlPanel({ schoolId, onSyncTriggered }: ICSyncControlP
             </Button>
           </div>
 
-          {/* Sync Schedule Summary */}
           <div className="pt-4 border-t">
             <p className="text-xs text-muted-foreground">
               Sync Frequency: Every {config.interval_value}{' '}
@@ -244,7 +280,6 @@ export function ICSyncControlPanel({ schoolId, onSyncTriggered }: ICSyncControlP
         </CardContent>
       </Card>
 
-      {/* Pause/Resume Confirmation Dialog */}
       <AlertDialog open={showPauseDialog} onOpenChange={setShowPauseDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

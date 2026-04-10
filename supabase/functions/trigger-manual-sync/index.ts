@@ -22,7 +22,6 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user authentication
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -41,7 +40,6 @@ serve(async (req) => {
       });
     }
 
-    // Use service role client for admin operations
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -59,27 +57,58 @@ serve(async (req) => {
       });
     }
 
-    // Check if sync configuration exists and is not paused
-    const { data: syncConfig, error: configError } = await supabaseAdmin
-      .from('ic_sync_configuration')
-      .select('*')
+    // Verify IC connection exists for this school via ic_school_mappings
+    const { data: schoolMapping, error: mappingError } = await supabaseAdmin
+      .from('ic_school_mappings')
+      .select('id, district_connection_id')
       .eq('school_id', schoolId)
-      .single();
+      .maybeSingle();
 
-    if (configError || !syncConfig) {
+    if (mappingError || !schoolMapping) {
       return new Response(JSON.stringify({ 
-        error: 'Sync configuration not found. Please configure sync settings first.' 
+        error: 'No Infinite Campus connection found for this school. Please set up the IC integration first.' 
       }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    if (syncConfig.paused) {
+    // Verify the district connection is active
+    const { data: districtConn, error: distConnError } = await supabaseAdmin
+      .from('ic_district_connections')
+      .select('id, status')
+      .eq('id', schoolMapping.district_connection_id)
+      .maybeSingle();
+
+    if (distConnError || !districtConn || districtConn.status !== 'active') {
+      return new Response(JSON.stringify({ 
+        error: 'The Infinite Campus district connection is not active. Please check your IC configuration.' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Optionally check sync configuration (if table/row exists)
+    let syncConfig = null;
+    try {
+      const { data: configData } = await supabaseAdmin
+        .from('ic_sync_configuration')
+        .select('*')
+        .eq('school_id', schoolId)
+        .maybeSingle();
+      
+      syncConfig = configData;
+    } catch {
+      // Table may not exist — that's fine, sync config is optional
+    }
+
+    // If sync config exists and is paused, block
+    if (syncConfig?.paused) {
       return new Response(JSON.stringify({ 
         error: `Sync is currently paused${syncConfig.pause_reason ? `: ${syncConfig.pause_reason}` : ''}` 
       }), {
-        status: 423, // Locked
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -94,7 +123,7 @@ serve(async (req) => {
           schoolId: schoolId,
           syncType: 'manual',
           triggeredBy: user.id,
-          syncConfig: syncConfig,
+          ...(syncConfig ? { syncConfig } : {}),
         }
       }
     );
@@ -111,28 +140,33 @@ serve(async (req) => {
       });
     }
 
-    // Calculate and update next sync time
-    const { data: nextSyncTime } = await supabaseAdmin
-      .rpc('calculate_next_sync_time', { 
-        p_school_id: schoolId,
-        p_from_time: new Date().toISOString()
-      });
-    
-    if (nextSyncTime) {
-      await supabaseAdmin
-        .from('ic_sync_configuration')
-        .update({ 
-          next_scheduled_sync_at: nextSyncTime,
-          last_sync_at: new Date().toISOString()
-        })
-        .eq('school_id', schoolId);
+    // Only update next sync time if sync config exists
+    if (syncConfig) {
+      try {
+        const { data: nextSyncTime } = await supabaseAdmin
+          .rpc('calculate_next_sync_time', { 
+            p_school_id: schoolId,
+            p_from_time: new Date().toISOString()
+          });
+        
+        if (nextSyncTime) {
+          await supabaseAdmin
+            .from('ic_sync_configuration')
+            .update({ 
+              next_scheduled_sync_at: nextSyncTime,
+              last_sync_at: new Date().toISOString()
+            })
+            .eq('school_id', schoolId);
+        }
+      } catch {
+        // Skip if RPC or table doesn't exist
+      }
     }
 
     return new Response(JSON.stringify({ 
       success: true,
       message: 'Manual sync triggered successfully',
       syncResult,
-      nextSyncAt: nextSyncTime,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -142,7 +176,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error' 
     }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
