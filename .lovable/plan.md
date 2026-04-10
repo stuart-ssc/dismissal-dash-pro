@@ -1,34 +1,24 @@
 
 
-# Fix: Missing `ic_sync_configuration` Table + Sync Now Error
+# Fix: Permission Check Fails in trigger-manual-sync
 
-## Problem
-The `ic_sync_configuration` table was never created via migration, but both `trigger-manual-sync` (edge function) and `ICSyncControlPanel` (client) query it. This causes:
-1. The edge function returns HTTP 404 ("Sync configuration not found"), which the SDK surfaces as "non-2xx status code"
-2. The client-side control panel logs errors every 30 seconds in the console
+## Root Cause
+Line 49 of `trigger-manual-sync/index.ts` calls `can_manage_school_data` via the **service role client** (`supabaseAdmin`). This RPC function uses `auth.uid()` internally to check the caller's identity, but the service role client has no auth context -- so `auth.uid()` is NULL, and the function always returns `false`. This produces a 403 response, which the Supabase SDK throws as a "non-2xx" error.
 
-## Solution: Two-part fix
+## Fix
+Use the **authenticated client** (`supabaseClient`) for the `can_manage_school_data` RPC call instead of `supabaseAdmin`. The authenticated client carries the user's JWT, so `auth.uid()` works correctly.
 
-### 1. Update `trigger-manual-sync` to work without `ic_sync_configuration`
-Instead of requiring sync config, make it optional. If the table/row doesn't exist, skip the config check and invoke `sync-infinite-campus` directly without passing `syncConfig`. This is the right approach because sync config (scheduling, pause/resume) is an optional feature -- manual sync should always work if the IC connection exists.
+### Change in `trigger-manual-sync/index.ts`
+```typescript
+// Line 49: Change supabaseAdmin to supabaseClient
+const { data: canManage } = await supabaseClient.rpc('can_manage_school_data', {
+  target_school_id: schoolId
+});
+```
 
-Changes to `trigger-manual-sync/index.ts`:
-- Replace the `ic_sync_configuration` query with a check for an active IC connection (via `ic_school_mappings` + `ic_district_connections`)
-- If sync config exists, check pause status; if not, proceed anyway
-- Remove hard dependency on `ic_sync_configuration` for the sync to trigger
-- Skip the `calculate_next_sync_time` RPC if no config exists
+### Redeploy
+Redeploy `trigger-manual-sync`.
 
-### 2. Update `ICSyncControlPanel` to handle missing table gracefully
-- Catch the PGRST205 error ("table not found") and treat it the same as "no config found"
-- Show a simplified control panel that just has the "Sync Now" button without pause/schedule controls when no config table exists
-- Stop the 30-second polling error spam
-
-### 3. Redeploy `trigger-manual-sync`
-
-## Files to change
-- `supabase/functions/trigger-manual-sync/index.ts` -- Remove hard dependency on `ic_sync_configuration`; look up IC connection from `ic_school_mappings` + `ic_district_connections` instead
-- `src/components/ICSyncControlPanel.tsx` -- Handle missing table gracefully, suppress PGRST205 errors
-
-## Technical detail
-The `sync-infinite-campus` function already receives `syncConfig` as optional (`syncConfig?: any`), so passing `undefined` is safe. The actual sync logic uses the IC connection credentials from `ic_district_connections`, not from sync config.
+## Files changed
+- `supabase/functions/trigger-manual-sync/index.ts` -- one-line fix on line 49
 
