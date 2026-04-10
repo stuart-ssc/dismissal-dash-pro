@@ -257,14 +257,16 @@ export class OneRosterClient {
 
   async getSchools(): Promise<OneRosterSchool[]> {
     try {
-      return await this.paginate<OneRosterSchool>('schools');
+      const schools = await this.paginate<OneRosterSchool>('schools');
+      if (schools.length > 0) return schools;
+      console.log('getSchools() returned 0 results, falling back to orgs filtered by type=school');
     } catch (error) {
-      console.log('getSchools() failed, falling back to getOrgs() filtered by type=school:', error);
-      const orgs = await this.paginate<OneRosterOrg>('orgs');
-      return orgs
-        .filter(o => o.type?.toLowerCase() === 'school')
-        .map(o => ({ sourcedId: o.sourcedId, name: o.name, type: o.type }));
+      console.log('getSchools() failed, falling back to orgs filtered by type=school:', error);
     }
+    const orgs = await this.paginate<OneRosterOrg>('orgs');
+    return orgs
+      .filter(o => o.type?.toLowerCase() === 'school')
+      .map(o => ({ sourcedId: o.sourcedId, name: o.name, type: o.type }));
   }
 
   async getAcademicSessions(): Promise<OneRosterAcademicSession[]> {
