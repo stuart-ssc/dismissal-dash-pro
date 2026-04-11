@@ -1,0 +1,1 @@
+UPDATE ic_sync_logs SET status = 'failed', completed_at = now(), error_message = 'Sync timed out (CPU limit exceeded) - manually cleaned up' WHERE id IN ('d911a02d-ed07-4193-80af-38c4eb172802', 'b32b5e69-c1e2-4a08-bb06-f114f1d9c622') AND status = 'in_progress';
