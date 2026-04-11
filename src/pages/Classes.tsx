@@ -213,33 +213,45 @@ const Classes = () => {
   // Reset page on filter changes
   useEffect(() => { setPage(0); }, [searchTerm, pageSize, selectedSessionId]);
 
-  // Fetch summary stats (lightweight count queries)
+  // Fetch summary stats using count-only queries (avoids PostgREST 1000-row cap)
   const { data: stats } = useQuery({
     queryKey: ['classes-stats', schoolId, selectedSessionId],
     queryFn: async () => {
       if (!schoolId || !selectedSessionId) return { total: 0, totalStudents: 0, totalTeachers: 0 };
 
-      const [totalRes, classIdsRes] = await Promise.all([
-        supabase.from('classes').select('id', { count: 'exact', head: true })
-          .eq('school_id', schoolId).eq('academic_session_id', selectedSessionId),
-        supabase.from('classes').select('id')
-          .eq('school_id', schoolId).eq('academic_session_id', selectedSessionId).limit(10000),
-      ]);
+      // Use count-only queries - no need to fetch all class IDs
+      const totalRes = await supabase
+        .from('classes')
+        .select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+        .eq('academic_session_id', selectedSessionId);
 
-      const classIds = classIdsRes.data?.map(c => c.id) || [];
-      if (classIds.length === 0) return { total: totalRes.count || 0, totalStudents: 0, totalTeachers: 0 };
+      const studentsRes = await supabase
+        .from('class_rosters')
+        .select('id', { count: 'exact', head: true })
+        .eq('academic_session_id', selectedSessionId);
 
-      const [studentsRes, teachersRes] = await Promise.all([
-        supabase.from('class_rosters').select('id', { count: 'exact', head: true }).in('class_id', classIds),
-        supabase.from('class_teachers').select('teacher_id').in('class_id', classIds),
-      ]);
-
-      const uniqueTeachers = new Set(teachersRes.data?.map(t => t.teacher_id) || []);
+      // For unique teacher count, paginate through class_teachers
+      const teacherIds = new Set<string>();
+      let offset = 0;
+      const chunkSize = 900;
+      while (true) {
+        const { data } = await supabase
+          .from('class_teachers')
+          .select('teacher_id, classes!inner(school_id, academic_session_id)')
+          .eq('classes.school_id', schoolId)
+          .eq('classes.academic_session_id', selectedSessionId)
+          .range(offset, offset + chunkSize - 1);
+        if (!data || data.length === 0) break;
+        data.forEach((t: any) => teacherIds.add(t.teacher_id));
+        if (data.length < chunkSize) break;
+        offset += chunkSize;
+      }
 
       return {
         total: totalRes.count || 0,
         totalStudents: studentsRes.count || 0,
-        totalTeachers: uniqueTeachers.size,
+        totalTeachers: teacherIds.size,
       };
     },
     enabled: !!schoolId && !!selectedSessionId,
