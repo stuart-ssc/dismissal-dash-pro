@@ -669,6 +669,7 @@ async function syncEnrollments(
   }
 
   console.log(`Enrollment maps - classes: ${classMap.size}, students: ${studentMap.size}, teachers: ${teacherMap.size}`);
+  console.log(`Enrollment skips - no class: ${skippedNoClass}, no student: ${skippedNoStudent}, no teacher: ${skippedNoTeacher}`);
   console.log(`Enrollments to insert - rosters: ${rosterInserts.length}, teacher assignments: ${teacherInserts.length}`);
 
   // Batch insert enrollments (chunks of 100)
