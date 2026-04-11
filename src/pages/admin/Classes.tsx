@@ -23,6 +23,8 @@ interface ClassData {
   period_end_time?: string;
   student_count: number;
   teacher_names: string[];
+  has_teachers: boolean;
+  has_students: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -34,8 +36,9 @@ const Classes = () => {
   const [academicSessions, setAcademicSessions] = useState<Array<{ id: string; session_name: string; is_active: boolean }>>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
+  const [assignmentFilter, setAssignmentFilter] = useState<string>("assigned");
 
   useEffect(() => {
     const fetchSchoolData = async () => {
@@ -77,7 +80,7 @@ const Classes = () => {
   // Reset page when filters change
   useEffect(() => {
     setPage(0);
-  }, [selectedSessionId, pageSize, searchQuery]);
+  }, [selectedSessionId, pageSize, searchQuery, assignmentFilter]);
 
   // Fetch aggregate stats separately
   const { data: stats } = useQuery({
@@ -108,55 +111,41 @@ const Classes = () => {
     enabled: !!schoolId && !!selectedSessionId,
   });
 
-  // Fetch paginated classes
+  // Fetch paginated classes via server-side RPC
   const { data: classesResult, isLoading: classesLoading } = useQuery({
-    queryKey: ['classes', schoolId, selectedSessionId, page, pageSize, searchQuery],
+    queryKey: ['classes', schoolId, selectedSessionId, page, pageSize, searchQuery, assignmentFilter],
     queryFn: async () => {
       if (!schoolId || !selectedSessionId) return { classes: [] as ClassData[], count: 0 };
 
-      let query = supabase
-        .from('classes')
-        .select('id, class_name, room_number, grade_level, period_number, period_name, period_start_time, period_end_time', { count: 'exact' })
-        .eq('school_id', schoolId)
-        .eq('academic_session_id', selectedSessionId);
-
-      if (searchQuery.trim()) {
-        query = query.ilike('class_name', `%${searchQuery.trim()}%`);
-      }
-
-      const { data: classesData, error, count } = await query
-        .order('period_number', { ascending: true, nullsFirst: false })
-        .order('class_name', { ascending: true })
-        .range(page * pageSize, (page + 1) * pageSize - 1);
+      const { data, error } = await supabase.rpc('get_classes_paginated', {
+        p_school_id: schoolId,
+        p_session_id: selectedSessionId,
+        p_search_query: searchQuery.trim(),
+        p_filter: assignmentFilter,
+        p_limit: pageSize,
+        p_offset: page * pageSize,
+      });
 
       if (error) throw error;
 
-      const classIds = classesData?.map(c => c.id) || [];
-      if (classIds.length === 0) return { classes: [] as ClassData[], count: count || 0 };
+      const totalCount = data?.[0]?.total_count ?? 0;
 
-      const [rosterCounts, teacherData] = await Promise.all([
-        supabase.from('class_rosters').select('class_id').in('class_id', classIds),
-        supabase.from('class_teachers').select('class_id, teachers(first_name, last_name)').in('class_id', classIds),
-      ]);
+      const classes = (data || []).map((row: any) => ({
+        id: row.class_id,
+        class_name: row.class_name,
+        room_number: row.room_number,
+        grade_level: row.grade_level,
+        period_number: row.period_number,
+        period_name: row.period_name,
+        period_start_time: row.period_start_time,
+        period_end_time: row.period_end_time,
+        student_count: Number(row.student_count) || 0,
+        teacher_names: row.teacher_names ? row.teacher_names.split(', ') : [],
+        has_teachers: row.has_teachers || false,
+        has_students: row.has_students || false,
+      })) as ClassData[];
 
-      const studentCountMap = new Map<string, number>();
-      rosterCounts.data?.forEach(r => {
-        studentCountMap.set(r.class_id, (studentCountMap.get(r.class_id) || 0) + 1);
-      });
-
-      const teacherMap = new Map<string, string[]>();
-      teacherData.data?.forEach((t: any) => {
-        if (!teacherMap.has(t.class_id)) teacherMap.set(t.class_id, []);
-        if (t.teachers) teacherMap.get(t.class_id)!.push(`${t.teachers.first_name} ${t.teachers.last_name}`);
-      });
-
-      const classes = classesData?.map(cls => ({
-        ...cls,
-        student_count: studentCountMap.get(cls.id) || 0,
-        teacher_names: teacherMap.get(cls.id) || [],
-      })) as ClassData[] || [];
-
-      return { classes, count: count || 0 };
+      return { classes, count: Number(totalCount) };
     },
     enabled: !!schoolId && !!selectedSessionId,
   });
