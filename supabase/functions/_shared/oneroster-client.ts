@@ -246,9 +246,15 @@ export class OneRosterClient {
       }
 
       const data = await response.json();
-      // OneRoster wraps results in a key matching the resource name (e.g., { "orgs": [...] })
-      const resourceKey = endpoint.split('/').pop() || endpoint;
-      const results = data[resourceKey] || data[endpoint] || (Array.isArray(data) ? data : []);
+      // OneRoster wraps results in a key matching the resource type, not the endpoint suffix
+      // e.g. /schools/{id}/students returns { "users": [...] }, not { "students": [...] }
+      const rawKey = endpoint.split('/').pop() || endpoint;
+      const keyOverrides: Record<string, string> = {
+        'students': 'users',
+        'teachers': 'users',
+      };
+      const resourceKey = keyOverrides[rawKey] || rawKey;
+      const results = data[resourceKey] || data[rawKey] || data[endpoint] || (Array.isArray(data) ? data : []);
       
       allResults = allResults.concat(results);
       
