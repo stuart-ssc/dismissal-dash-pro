@@ -1,40 +1,40 @@
 
 
-# Fix: Batch syncTeachers and syncStudents to Prevent Timeout
+# Fix: Students Missing Grade Level from OneRoster
 
-## Problem
-The sync keeps timing out because `syncTeachers` (lines 116-252) and `syncStudents` (lines 254-356) perform **individual DB queries per record**. For 1000+ students and 100+ teachers, that's 2000+ sequential database round-trips, exceeding the CPU time limit.
+## Root Cause
 
-Classes and enrollments were already batched in the last optimization, but teachers and students were not.
+The OneRoster API returns grade level as **`grades`** (an array of strings, e.g. `["06", "07"]`), not `grade` (singular string). Our `OneRosterUser` interface incorrectly defines `grade?: string`, which never matches the actual API response. So `student.grade` is always `undefined`, and every student gets `null` for `grade_level` -- which then hits the `NOT NULL` constraint and causes the batch insert to silently fail.
+
+This is the actual reason **zero students** were persisted, not just a missing fallback value.
 
 ## Fix
 
-### 1. Clean up the stuck sync log
-SQL migration to mark `16a426ec-43b0-40b0-994a-ca134a0f7ce0` as failed.
+### 1. `supabase/functions/_shared/oneroster-client.ts`
 
-### 2. Batch `syncStudents` in `sync-infinite-campus/index.ts`
+Update `OneRosterUser` interface:
+```typescript
+// Change:
+grade?: string;
+// To:
+grades?: string[];
+```
 
-Replace the row-by-row loop with:
-1. **Pre-fetch all existing students** for this school with `ic_external_id` in one query (build a Map)
-2. **Skip fuzzy matching on first sync** -- if a school has 0 existing students (like this one), every student is new, so `findStudentMatch` is unnecessary. Only run fuzzy matching when there are existing students without `ic_external_id`.
-3. **Batch insert** new students in chunks of 50 using `.insert()`
-4. **Batch update** existing students using `Promise.all` on chunks
+### 2. `supabase/functions/sync-infinite-campus/index.ts`
 
-### 3. Batch `syncTeachers` in `sync-infinite-campus/index.ts`
+Update all grade_level assignments (lines ~311, 334, 363):
+```typescript
+// Change:
+grade_level: student.grade ? parseInt(student.grade, 10) : null
+// To:
+grade_level: student.grades?.[0] || 'Unknown'
+```
 
-Same pattern as students:
-1. Pre-fetch existing teachers with `ic_external_id` in one query
-2. Skip fuzzy matching when no existing teachers lack `ic_external_id`
-3. Batch insert/update in chunks of 50
+This reads the first grade from the array (most students have one), and falls back to `'Unknown'` to satisfy the `NOT NULL` constraint.
 
-### 4. Redeploy
-
-## Expected impact
-- Students: from ~2000 DB queries down to ~20 (pre-fetch + chunked inserts)
-- Teachers: from ~200 DB queries down to ~5
-- Should complete well within CPU time limit
+### 3. Redeploy `sync-infinite-campus`
 
 ## Files to change
-- `supabase/functions/sync-infinite-campus/index.ts` -- batch teacher and student sync
-- SQL migration to clean up stuck sync log
+- `supabase/functions/_shared/oneroster-client.ts` -- fix `OneRosterUser.grades` type
+- `supabase/functions/sync-infinite-campus/index.ts` -- read `grades[0]` instead of `grade`
 
