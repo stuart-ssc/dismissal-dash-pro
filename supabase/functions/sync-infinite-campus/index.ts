@@ -541,6 +541,7 @@ async function syncEnrollments(
   console.log('Syncing enrollments (school-scoped)...');
   
   const enrollments = await client.getEnrollmentsForSchool(icSchoolSourcedId);
+  console.log(`Fetched ${enrollments.length} enrollments from OneRoster API`);
   let created = 0;
   let updated = 0;
 
