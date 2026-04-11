@@ -4315,6 +4315,33 @@ export type Database = {
       }
       get_any_impersonated_school_id: { Args: never; Returns: number }
       get_app_secret: { Args: { p_key: string }; Returns: string }
+      get_classes_paginated: {
+        Args: {
+          p_filter?: string
+          p_limit?: number
+          p_offset?: number
+          p_school_id: number
+          p_search_query?: string
+          p_session_id: string
+        }
+        Returns: {
+          class_id: string
+          class_name: string
+          created_at: string
+          grade_level: string
+          has_students: boolean
+          has_teachers: boolean
+          period_end_time: string
+          period_name: string
+          period_number: number
+          period_start_time: string
+          room_number: string
+          student_count: number
+          teacher_names: string
+          total_count: number
+          updated_at: string
+        }[]
+      }
       get_current_academic_session: {
         Args: { p_school_id: number }
         Returns: string

@@ -173,7 +173,8 @@ const Classes = () => {
   const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(25);
+  const [assignmentFilter, setAssignmentFilter] = useState<string>('assigned');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ClassRecord | null>(null);
   const [availableTeachers, setAvailableTeachers] = useState<Teacher[]>([]);
@@ -211,27 +212,22 @@ const Classes = () => {
   }, [schoolId]);
 
   // Reset page on filter changes
-  useEffect(() => { setPage(0); }, [searchTerm, pageSize, selectedSessionId]);
+  useEffect(() => { setPage(0); }, [searchTerm, pageSize, selectedSessionId, assignmentFilter]);
 
-  // Fetch summary stats using count-only queries (avoids PostgREST 1000-row cap)
+  // Fetch stats using the RPC with 'all' filter and limit 1 just for total_count
   const { data: stats } = useQuery({
     queryKey: ['classes-stats', schoolId, selectedSessionId],
     queryFn: async () => {
       if (!schoolId || !selectedSessionId) return { total: 0, totalStudents: 0, totalTeachers: 0 };
 
-      // Use count-only queries - no need to fetch all class IDs
-      const totalRes = await supabase
-        .from('classes')
-        .select('id', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
-        .eq('academic_session_id', selectedSessionId);
+      const [totalRes, studentsRes] = await Promise.all([
+        supabase.from('classes').select('id', { count: 'exact', head: true })
+          .eq('school_id', schoolId).eq('academic_session_id', selectedSessionId),
+        supabase.from('class_rosters').select('id', { count: 'exact', head: true })
+          .eq('academic_session_id', selectedSessionId),
+      ]);
 
-      const studentsRes = await supabase
-        .from('class_rosters')
-        .select('id', { count: 'exact', head: true })
-        .eq('academic_session_id', selectedSessionId);
-
-      // For unique teacher count, paginate through class_teachers
+      // Unique teacher count via paginated fetch
       const teacherIds = new Set<string>();
       let offset = 0;
       const chunkSize = 900;
@@ -259,60 +255,37 @@ const Classes = () => {
 
   const avgClassSize = stats && stats.total > 0 ? (stats.totalStudents / stats.total).toFixed(1) : '0.0';
 
-  // Fetch paginated classes
+  // Fetch paginated classes via server-side RPC
   const { data: classesResult, isLoading: classesLoading, refetch: refetchClasses } = useQuery({
-    queryKey: ['classes-paginated', schoolId, selectedSessionId, page, pageSize, searchTerm],
+    queryKey: ['classes-paginated', schoolId, selectedSessionId, page, pageSize, searchTerm, assignmentFilter],
     queryFn: async () => {
       if (!schoolId || !selectedSessionId) return { classes: [] as ClassRecord[], count: 0 };
 
-      let query = supabase
-        .from('classes')
-        .select('id, class_name, grade_level, room_number, created_at, updated_at', { count: 'exact' })
-        .eq('school_id', schoolId)
-        .eq('academic_session_id', selectedSessionId);
-
-      if (searchTerm.trim()) {
-        query = query.ilike('class_name', `%${searchTerm.trim()}%`);
-      }
-
-      const { data: classesData, error, count } = await query
-        .order('class_name', { ascending: true })
-        .range(page * pageSize, (page + 1) * pageSize - 1);
+      const { data, error } = await supabase.rpc('get_classes_paginated', {
+        p_school_id: schoolId,
+        p_session_id: selectedSessionId,
+        p_search_query: searchTerm.trim(),
+        p_filter: assignmentFilter,
+        p_limit: pageSize,
+        p_offset: page * pageSize,
+      });
 
       if (error) throw error;
 
-      const classIds = classesData?.map(c => c.id) || [];
-      if (classIds.length === 0) return { classes: [] as ClassRecord[], count: count || 0 };
+      const totalCount = data?.[0]?.total_count ?? 0;
 
-      const [rosterCounts, teacherData] = await Promise.all([
-        supabase.from('class_rosters').select('class_id').in('class_id', classIds),
-        supabase.from('class_teachers').select('class_id, teachers(first_name, last_name)').in('class_id', classIds),
-      ]);
+      const classes = (data || []).map((row: any) => ({
+        id: row.class_id,
+        class_name: row.class_name,
+        grade_level: row.grade_level || '',
+        room_number: row.room_number,
+        teacher_name: row.teacher_names || null,
+        student_count: Number(row.student_count) || 0,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      })) as ClassRecord[];
 
-      const studentCountMap = new Map<string, number>();
-      rosterCounts.data?.forEach(r => {
-        studentCountMap.set(r.class_id, (studentCountMap.get(r.class_id) || 0) + 1);
-      });
-
-      const teacherMap = new Map<string, string>();
-      teacherData.data?.forEach((t: any) => {
-        if (t.teachers && !teacherMap.has(t.class_id)) {
-          teacherMap.set(t.class_id, `${t.teachers.first_name} ${t.teachers.last_name}`);
-        }
-      });
-
-      const classes = classesData?.map(cls => ({
-        id: cls.id,
-        class_name: cls.class_name,
-        grade_level: cls.grade_level || '',
-        room_number: cls.room_number,
-        teacher_name: teacherMap.get(cls.id) || null,
-        student_count: studentCountMap.get(cls.id) || 0,
-        created_at: cls.created_at,
-        updated_at: cls.updated_at,
-      })) as ClassRecord[] || [];
-
-      return { classes, count: count || 0 };
+      return { classes, count: Number(totalCount) };
     },
     enabled: !!schoolId && !!selectedSessionId,
   });
@@ -565,6 +538,18 @@ const Classes = () => {
                         className="pl-10"
                       />
                     </div>
+                    <Select value={assignmentFilter} onValueChange={setAssignmentFilter}>
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Classes</SelectItem>
+                        <SelectItem value="assigned">Assigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        <SelectItem value="with_students">With Students</SelectItem>
+                        <SelectItem value="with_teachers">With Teachers</SelectItem>
+                      </SelectContent>
+                    </Select>
                     {academicSessions.length > 1 && (
                       <Select value={selectedSessionId || ''} onValueChange={setSelectedSessionId}>
                         <SelectTrigger className="w-[200px]">
