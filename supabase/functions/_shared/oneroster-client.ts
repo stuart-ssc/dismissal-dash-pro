@@ -357,11 +357,20 @@ export class OneRosterClient {
    */
   async getEnrollmentsForSchool(schoolSourcedId: string): Promise<OneRosterEnrollment[]> {
     try {
-      return await this.paginate<OneRosterEnrollment>(`schools/${schoolSourcedId}/enrollments`);
+      const enrollments = await this.paginate<OneRosterEnrollment>(`schools/${schoolSourcedId}/enrollments`);
+      if (enrollments.length > 0) {
+        console.log(`School-scoped enrollments returned ${enrollments.length} records`);
+        return enrollments;
+      }
+      console.log('School-scoped enrollments returned 0 records, trying district-wide fallback');
     } catch (error) {
       console.log('School-scoped enrollments endpoint failed, falling back to general enrollments:', error);
-      return this.paginate<OneRosterEnrollment>('enrollments');
     }
+
+    // Fallback: fetch all enrollments district-wide
+    const allEnrollments = await this.paginate<OneRosterEnrollment>('enrollments');
+    console.log(`District-wide enrollments fallback returned ${allEnrollments.length} records`);
+    return allEnrollments;
   }
 
   async getResources(): Promise<any[]> {
