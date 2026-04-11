@@ -1,57 +1,48 @@
 
+Problem confirmed:
+- The sync is no longer the blocker.
+- Your screenshot already shows the proof: the top cards say `14,916 students` and `89 teachers assigned`, so the page is reading synced assignment data.
+- The specific rows shown in the screenshot are genuinely empty classes in the database, which is why they still show `No teacher assigned` and `0`.
+- East Jessamine currently has:
+  - `2,010` classes in the active session
+  - `633` classes with at least one teacher or student
+  - `1,377` empty classes/sections
+- There are also many duplicate class names, so an empty section and a populated section can share nearly the same label, which makes the page look broken even when data exists.
 
-# Fix: Missing Foreign Keys on class_teachers and class_rosters
+What I will change:
+1. Replace the current client-side “fetch classes, then decorate them” approach with a single server-side paginated query/RPC that returns:
+   - class info
+   - teacher names
+   - student count
+   - flags like `has_students` / `has_teachers`
+   - total count
+2. Change the default ordering so the page shows useful classes first:
+   - assigned/populated classes first
+   - then higher student count
+   - then class name
+3. Add an explicit filter so you can quickly switch between:
+   - All classes
+   - Assigned classes
+   - Unassigned classes
+   - With students
+   - Empty sections
+4. Improve row labels so duplicate IC sections are distinguishable:
+   - show room/period where available
+   - keep teacher/student badges visible at a glance
+5. Apply the same fix to both dashboard and admin classes views so behavior stays consistent.
 
-## Root Cause
+Files to update:
+- new migration in `supabase/migrations/` for a secure paginated classes query/function
+- `src/pages/Classes.tsx`
+- `src/pages/admin/Classes.tsx`
 
-The `class_teachers` and `class_rosters` tables have **no foreign key constraints at all**. The Classes page (`src/pages/Classes.tsx`) uses PostgREST embedded resource joins like:
+Technical notes:
+- The current page paginates `classes` first, then looks up `class_rosters` and `class_teachers` only for those visible IDs.
+- That means alphabetical sorting can easily place large blocks of empty IC sections at the top, which is exactly what your screenshot shows.
+- A server-side aggregated query is the correct fix because it allows filtering/sorting by populated status before pagination.
+- No more sync changes are needed for this issue.
 
-```typescript
-supabase.from('class_teachers').select('class_id, teachers(first_name, last_name)')
-```
-
-PostgREST requires foreign key relationships to resolve these joins. Without FKs, the `teachers(...)` part silently returns null, making every class show no teacher and no students.
-
-This is **not** a sync issue, an RLS issue, or a role issue. The data exists (805 teacher assignments, 14,916 roster entries). The page simply cannot join to related tables.
-
-## Fix
-
-### 1. Database Migration: Add Foreign Keys
-
-Create a migration to add the missing foreign key constraints:
-
-```sql
--- class_teachers: FK to classes and teachers
-ALTER TABLE class_teachers 
-  ADD CONSTRAINT class_teachers_class_id_fkey 
-  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE;
-
-ALTER TABLE class_teachers 
-  ADD CONSTRAINT class_teachers_teacher_id_fkey 
-  FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE;
-
--- class_rosters: FK to classes and students
-ALTER TABLE class_rosters 
-  ADD CONSTRAINT class_rosters_class_id_fkey 
-  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE;
-
-ALTER TABLE class_rosters 
-  ADD CONSTRAINT class_rosters_student_id_fkey 
-  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE;
-```
-
-### 2. Fix Stats Query in Classes.tsx
-
-The stats query (line 225) still uses `.limit(10000)` to fetch all class IDs, which is capped at 1,000. Replace with a count-only approach or paginated fetch for accurate stats across 2,010 classes.
-
-### 3. No Edge Function Changes Needed
-
-The sync logic is working correctly -- all data is being written. This is purely a schema + UI fix.
-
-## Files to Change
-- New migration in `supabase/migrations/` -- add foreign keys
-- `src/pages/Classes.tsx` -- fix stats query `.limit(10000)` pattern
-
-## Expected Outcome
-After adding FKs, the existing PostgREST joins will resolve correctly, and teacher names + student counts will appear immediately on the Classes page without needing another sync.
-
+Expected outcome:
+- The first page will no longer look like “nothing synced”.
+- Populated classes with real teachers/students will appear first by default.
+- Empty IC sections will still be accessible, but won’t dominate the initial view.
