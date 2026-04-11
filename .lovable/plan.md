@@ -1,42 +1,38 @@
 
 
-# Fix: CPU Time Exceeded -- Scope Classes and Enrollments to School
+# Fix: Clean Up Stuck Syncs + Prevent Future Stuck Syncs
 
 ## Problem
-The sync function times out ("CPU Time exceeded") because `syncClasses()` calls `client.getClasses()` which fetches **all 6,700+ classes across the entire district** (67+ paginated API calls). The same issue affects `syncEnrollments()` and the archive section.
+Two sync logs are permanently stuck in `in_progress` status (IDs: `d911a02d` and `b32b5e69`). The edge function either timed out (CPU limit) or crashed, and the error handler never ran -- leaving the sync logs un-updated. The UI sees these as perpetually running syncs.
 
-Teachers and students were already fixed to use school-scoped endpoints, but classes and enrollments were missed.
+## Fix (2 parts)
 
-## Fix
+### 1. Clean up the two stuck sync logs
+Run a SQL update to mark both stuck syncs as `failed` with a clear error message.
 
-### 1. `supabase/functions/sync-infinite-campus/index.ts`
+### 2. Add a stale sync detector to `sync-infinite-campus`
+At the start of the sync function, before creating a new sync log, mark any `in_progress` syncs for this school that are older than 10 minutes as `failed` (with message "Sync timed out"). This prevents future stuck syncs from accumulating.
 
-**syncClasses function (line 435-439)**
-- Add `icSchoolSourcedId` parameter
-- Replace `client.getClasses()` with `client.getClassesForSchool(icSchoolSourcedId)`
+Add this right before the "Create sync log" block (~line 774):
 
-**syncEnrollments function (line 519-523)**
-- Instead of `client.getEnrollments()` (all district enrollments), iterate over only the classes that were synced for this school and call `client.getEnrollments(classId)` per class
-- Alternative: add a `getEnrollmentsForSchool` method to the OneRoster client if the `/schools/{id}/enrollments` endpoint is supported
+```typescript
+// Clean up any stuck syncs older than 10 minutes
+await supabaseAdmin
+  .from('ic_sync_logs')
+  .update({
+    status: 'failed',
+    completed_at: new Date().toISOString(),
+    error_message: 'Sync timed out - automatically cleaned up',
+  })
+  .eq('school_id', schoolId)
+  .eq('status', 'in_progress')
+  .lt('started_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+```
 
-**Archive section (line 858)**
-- Replace `client.getClasses()` with `client.getClassesForSchool(effectiveSchoolSourcedId)`
+### Files to change
+- `supabase/functions/sync-infinite-campus/index.ts` -- add stale sync cleanup
+- SQL query to fix the two existing stuck records
 
-**Call sites (lines 847, 852)**
-- Pass `effectiveSchoolSourcedId` to both `syncClasses` and `syncEnrollments`
-
-### 2. `supabase/functions/_shared/oneroster-client.ts`
-- Add `getEnrollmentsForSchool(schoolSourcedId)` method using the standard OneRoster endpoint `/schools/{sourcedId}/enrollments` (if supported), with a fallback to per-class enrollment fetching
-
-### 3. Redeploy
-- Redeploy `sync-infinite-campus`
-
-## Why this works
-- School-scoped endpoints return only classes/enrollments for the mapped school (likely hundreds, not thousands)
-- Dramatically reduces API calls and CPU time
-- Matches the pattern already applied for teachers and students
-
-## Files to change
-- `supabase/functions/sync-infinite-campus/index.ts` -- scope classes and enrollments to school
-- `supabase/functions/_shared/oneroster-client.ts` -- add school-scoped enrollments method
+### Redeploy
+Redeploy `sync-infinite-campus`.
 
