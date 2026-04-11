@@ -620,6 +620,29 @@ async function syncEnrollments(
   let skippedNoClass = 0;
   let skippedNoStudent = 0;
   let skippedNoTeacher = 0;
+  let handledStudentRoles = 0;
+  let handledTeacherRoles = 0;
+  const unknownRoleCounts = new Map<string, number>();
+
+  // Known teacher-like and student-like role values from OneRoster / Infinite Campus
+  const TEACHER_ROLES = new Set(['teacher', 'teacherofrecord', 'primaryteacher', 'aide', 'instructor', 'proctor']);
+  const STUDENT_ROLES = new Set(['student', 'pupil', 'learner']);
+
+  function isTeacherRole(role: string): boolean {
+    return TEACHER_ROLES.has(role) || role.includes('teacher');
+  }
+
+  function isStudentRole(role: string): boolean {
+    return STUDENT_ROLES.has(role) || role.includes('student');
+  }
+
+  // Log role distribution for diagnostics
+  const roleDistribution = new Map<string, number>();
+  for (const enrollment of enrollments) {
+    const raw = (enrollment.role || '').trim();
+    roleDistribution.set(raw, (roleDistribution.get(raw) || 0) + 1);
+  }
+  console.log(`Enrollment role distribution:`, JSON.stringify(Object.fromEntries(roleDistribution)));
 
   for (const enrollment of enrollments) {
     const classId = classMap.get(enrollment.class.sourcedId);
@@ -628,7 +651,10 @@ async function syncEnrollments(
       continue;
     }
 
-    if (enrollment.role === 'student') {
+    const normalizedRole = (enrollment.role || '').trim().toLowerCase();
+
+    if (isStudentRole(normalizedRole)) {
+      handledStudentRoles++;
       const studentId = studentMap.get(enrollment.user.sourcedId);
       if (!studentId) {
         skippedNoStudent++;
@@ -647,7 +673,8 @@ async function syncEnrollments(
         rosterSet.add(key);
         created++;
       }
-    } else if (enrollment.role === 'teacher') {
+    } else if (isTeacherRole(normalizedRole)) {
+      handledTeacherRoles++;
       const teacherId = teacherMap.get(enrollment.user.sourcedId);
       if (!teacherId) {
         skippedNoTeacher++;
@@ -665,11 +692,17 @@ async function syncEnrollments(
         teacherAssignSet.add(key);
         created++;
       }
+    } else {
+      unknownRoleCounts.set(normalizedRole, (unknownRoleCounts.get(normalizedRole) || 0) + 1);
     }
   }
 
   console.log(`Enrollment maps - classes: ${classMap.size}, students: ${studentMap.size}, teachers: ${teacherMap.size}`);
+  console.log(`Enrollment role handling - student roles: ${handledStudentRoles}, teacher roles: ${handledTeacherRoles}`);
   console.log(`Enrollment skips - no class: ${skippedNoClass}, no student: ${skippedNoStudent}, no teacher: ${skippedNoTeacher}`);
+  if (unknownRoleCounts.size > 0) {
+    console.log(`Unknown enrollment roles:`, JSON.stringify(Object.fromEntries(unknownRoleCounts)));
+  }
   console.log(`Enrollments to insert - rosters: ${rosterInserts.length}, teacher assignments: ${teacherInserts.length}`);
 
   // Batch insert enrollments (chunks of 100)
