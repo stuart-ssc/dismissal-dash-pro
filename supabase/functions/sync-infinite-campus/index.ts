@@ -128,31 +128,55 @@ async function syncTeachers(
   let pending = 0;
   const sourcedIds: string[] = [];
 
-  for (const teacher of teachers) {
-    if (!teacher.enabledUser) {
-      continue;
-    }
+  // Pre-fetch all existing teachers for this school
+  const { data: existingWithIcId } = await supabase
+    .from('teachers')
+    .select('id, ic_external_id, email')
+    .eq('school_id', schoolId)
+    .not('ic_external_id', 'is', null);
 
+  const icIdMap = new Map<string, { id: string; email: string | null }>();
+  for (const t of existingWithIcId || []) {
+    if (t.ic_external_id) icIdMap.set(t.ic_external_id, { id: t.id, email: t.email });
+  }
+
+  // Pre-fetch teachers WITHOUT ic_external_id (candidates for fuzzy matching)
+  const { data: unmatchedTeachers } = await supabase
+    .from('teachers')
+    .select('id, first_name, last_name, email')
+    .eq('school_id', schoolId)
+    .is('ic_external_id', null)
+    .eq('archived', false);
+
+  const hasUnmatchedTeachers = (unmatchedTeachers?.length || 0) > 0;
+
+  // Filter enabled teachers
+  const enabledTeachers = teachers.filter(t => t.enabledUser);
+
+  // Categorize: update existing, fuzzy match, or insert new
+  const toUpdate: { id: string; data: any }[] = [];
+  const toInsert: any[] = [];
+  const pendingMerges: any[] = [];
+
+  for (const teacher of enabledTeachers) {
     sourcedIds.push(teacher.sourcedId);
 
-    const { data: existing } = await supabase
-      .from('teachers')
-      .select('id, email')
-      .eq('ic_external_id', teacher.sourcedId)
-      .maybeSingle();
-
+    const existing = icIdMap.get(teacher.sourcedId);
     if (existing) {
-      await supabase
-        .from('teachers')
-        .update({
+      toUpdate.push({
+        id: existing.id,
+        data: {
           first_name: teacher.givenName,
           last_name: teacher.familyName,
           email: teacher.email || existing.email,
-        })
-        .eq('id', existing.id);
-      
+        },
+      });
       updated++;
-    } else {
+      continue;
+    }
+
+    // Only run fuzzy matching if there are unmatched teachers
+    if (hasUnmatchedTeachers) {
       const match = await findTeacherMatch(supabase, schoolId, {
         sourcedId: teacher.sourcedId,
         givenName: teacher.givenName,
@@ -161,93 +185,64 @@ async function syncTeachers(
       });
 
       if (match.confidence >= 0.95) {
-        await supabase
-          .from('teachers')
-          .update({
+        toUpdate.push({
+          id: match.existingRecordId!,
+          data: {
             first_name: teacher.givenName,
             last_name: teacher.familyName,
             email: teacher.email || null,
             ic_external_id: teacher.sourcedId,
-          })
-          .eq('id', match.existingRecordId);
-        
+          },
+        });
         updated++;
+        continue;
       } else if (match.confidence > 0) {
-        await supabase
-          .from('ic_pending_merges')
-          .insert({
-            school_id: schoolId,
-            sync_log_id: syncLogId,
-            ic_external_id: teacher.sourcedId,
-            ic_data: teacher,
-            record_type: 'teacher',
-            existing_record_id: match.existingRecordId,
-            match_confidence: match.confidence,
-            match_criteria: match.criteria,
-            status: 'pending',
-          });
-        
+        pendingMerges.push({
+          school_id: schoolId,
+          sync_log_id: syncLogId,
+          ic_external_id: teacher.sourcedId,
+          ic_data: teacher,
+          record_type: 'teacher',
+          existing_record_id: match.existingRecordId,
+          match_confidence: match.confidence,
+          match_criteria: match.criteria,
+          status: 'pending',
+        });
         pending++;
-      } else {
-        if (teacher.email) {
-          const { data: existingUser } = await supabase
-            .from('teachers')
-            .select('id, user_id, school_id')
-            .ilike('email', teacher.email)
-            .maybeSingle();
-
-          if (existingUser && existingUser.user_id) {
-            await supabase
-              .from('user_schools')
-              .insert({
-                user_id: existingUser.user_id,
-                school_id: schoolId,
-                is_primary: false,
-              })
-              .onConflict('user_id,school_id')
-              .ignoreDuplicates();
-
-            await supabase
-              .from('teachers')
-              .insert({
-                school_id: schoolId,
-                user_id: existingUser.user_id,
-                first_name: teacher.givenName,
-                last_name: teacher.familyName,
-                email: teacher.email,
-                ic_external_id: teacher.sourcedId,
-              });
-            
-            created++;
-          } else {
-            await supabase
-              .from('teachers')
-              .insert({
-                school_id: schoolId,
-                first_name: teacher.givenName,
-                last_name: teacher.familyName,
-                email: teacher.email,
-                ic_external_id: teacher.sourcedId,
-              });
-            
-            created++;
-          }
-        } else {
-          await supabase
-            .from('teachers')
-            .insert({
-              school_id: schoolId,
-              first_name: teacher.givenName,
-              last_name: teacher.familyName,
-              ic_external_id: teacher.sourcedId,
-            });
-          
-          created++;
-        }
+        continue;
       }
     }
+
+    // New teacher - insert
+    toInsert.push({
+      school_id: schoolId,
+      first_name: teacher.givenName,
+      last_name: teacher.familyName,
+      email: teacher.email || null,
+      ic_external_id: teacher.sourcedId,
+    });
+    created++;
   }
 
+  // Batch insert new teachers (chunks of 50)
+  for (let i = 0; i < toInsert.length; i += 50) {
+    await supabase.from('teachers').insert(toInsert.slice(i, i + 50));
+  }
+
+  // Batch update existing teachers (chunks of 50)
+  for (let i = 0; i < toUpdate.length; i += 50) {
+    const chunk = toUpdate.slice(i, i + 50);
+    await Promise.all(chunk.map(item =>
+      supabase.from('teachers').update(item.data).eq('id', item.id)
+    ));
+  }
+
+  // Batch insert pending merges (chunks of 50)
+  for (let i = 0; i < pendingMerges.length; i += 50) {
+    await supabase.from('ic_pending_merges').insert(pendingMerges.slice(i, i + 50));
+  }
+
+  console.log(`Teachers: ${created} created, ${updated} updated, ${pending} pending`);
   return { created, updated, pending, sourcedIds };
 }
 
@@ -273,32 +268,56 @@ async function syncStudents(
     .eq('is_active', true)
     .maybeSingle();
 
-  for (const student of students) {
-    if (!student.enabledUser) {
-      continue;
-    }
+  // Pre-fetch all existing students with ic_external_id
+  const { data: existingWithIcId } = await supabase
+    .from('students')
+    .select('id, ic_external_id')
+    .eq('school_id', schoolId)
+    .not('ic_external_id', 'is', null);
 
+  const icIdMap = new Map<string, string>();
+  for (const s of existingWithIcId || []) {
+    if (s.ic_external_id) icIdMap.set(s.ic_external_id, s.id);
+  }
+
+  // Pre-fetch students WITHOUT ic_external_id (candidates for fuzzy matching)
+  const { data: unmatchedStudents } = await supabase
+    .from('students')
+    .select('id, first_name, last_name, grade_level')
+    .eq('school_id', schoolId)
+    .is('ic_external_id', null)
+    .eq('archived', false);
+
+  const hasUnmatchedStudents = (unmatchedStudents?.length || 0) > 0;
+
+  // Filter enabled students
+  const enabledStudents = students.filter(s => s.enabledUser);
+
+  // Categorize
+  const toUpdate: { id: string; data: any }[] = [];
+  const toInsert: any[] = [];
+  const pendingMerges: any[] = [];
+
+  for (const student of enabledStudents) {
     sourcedIds.push(student.sourcedId);
 
-    const { data: existing } = await supabase
-      .from('students')
-      .select('id')
-      .eq('ic_external_id', student.sourcedId)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase
-        .from('students')
-        .update({
+    const existingId = icIdMap.get(student.sourcedId);
+    if (existingId) {
+      toUpdate.push({
+        id: existingId,
+        data: {
           first_name: student.givenName,
           last_name: student.familyName,
           grade_level: student.grade ? parseInt(student.grade, 10) : null,
           academic_session_id: activeSession?.id || null,
-        })
-        .eq('id', existing.id);
-      
+        },
+      });
       updated++;
-    } else {
+      continue;
+    }
+
+    // Only run fuzzy matching if there are unmatched students
+    if (hasUnmatchedStudents) {
       const match = await findStudentMatch(supabase, schoolId, {
         sourcedId: student.sourcedId,
         givenName: student.givenName,
@@ -307,51 +326,66 @@ async function syncStudents(
       });
 
       if (match.confidence >= 0.95) {
-        await supabase
-          .from('students')
-          .update({
+        toUpdate.push({
+          id: match.existingRecordId!,
+          data: {
             first_name: student.givenName,
             last_name: student.familyName,
             grade_level: student.grade ? parseInt(student.grade, 10) : null,
             ic_external_id: student.sourcedId,
             academic_session_id: activeSession?.id || null,
-          })
-          .eq('id', match.existingRecordId);
-        
+          },
+        });
         updated++;
+        continue;
       } else if (match.confidence > 0) {
-        await supabase
-          .from('ic_pending_merges')
-          .insert({
-            school_id: schoolId,
-            sync_log_id: syncLogId,
-            ic_external_id: student.sourcedId,
-            ic_data: student,
-            record_type: 'student',
-            existing_record_id: match.existingRecordId,
-            match_confidence: match.confidence,
-            match_criteria: match.criteria,
-            status: 'pending',
-          });
-        
+        pendingMerges.push({
+          school_id: schoolId,
+          sync_log_id: syncLogId,
+          ic_external_id: student.sourcedId,
+          ic_data: student,
+          record_type: 'student',
+          existing_record_id: match.existingRecordId,
+          match_confidence: match.confidence,
+          match_criteria: match.criteria,
+          status: 'pending',
+        });
         pending++;
-      } else {
-        await supabase
-          .from('students')
-          .insert({
-            school_id: schoolId,
-            first_name: student.givenName,
-            last_name: student.familyName,
-            grade_level: student.grade ? parseInt(student.grade, 10) : null,
-            ic_external_id: student.sourcedId,
-            academic_session_id: activeSession?.id || null,
-          });
-        
-        created++;
+        continue;
       }
     }
+
+    // New student - insert
+    toInsert.push({
+      school_id: schoolId,
+      first_name: student.givenName,
+      last_name: student.familyName,
+      grade_level: student.grade ? parseInt(student.grade, 10) : null,
+      ic_external_id: student.sourcedId,
+      academic_session_id: activeSession?.id || null,
+    });
+    created++;
   }
 
+  // Batch insert new students (chunks of 50)
+  for (let i = 0; i < toInsert.length; i += 50) {
+    await supabase.from('students').insert(toInsert.slice(i, i + 50));
+  }
+
+  // Batch update existing students (chunks of 50)
+  for (let i = 0; i < toUpdate.length; i += 50) {
+    const chunk = toUpdate.slice(i, i + 50);
+    await Promise.all(chunk.map(item =>
+      supabase.from('students').update(item.data).eq('id', item.id)
+    ));
+  }
+
+  // Batch insert pending merges (chunks of 50)
+  for (let i = 0; i < pendingMerges.length; i += 50) {
+    await supabase.from('ic_pending_merges').insert(pendingMerges.slice(i, i + 50));
+  }
+
+  console.log(`Students: ${created} created, ${updated} updated, ${pending} pending`);
   return { created, updated, pending, sourcedIds };
 }
 
