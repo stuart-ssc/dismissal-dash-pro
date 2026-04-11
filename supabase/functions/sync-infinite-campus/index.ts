@@ -133,7 +133,8 @@ async function syncTeachers(
     .from('teachers')
     .select('id, ic_external_id, email')
     .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null);
+    .not('ic_external_id', 'is', null)
+    .limit(10000);
 
   const icIdMap = new Map<string, { id: string; email: string | null }>();
   for (const t of existingWithIcId || []) {
@@ -273,7 +274,8 @@ async function syncStudents(
     .from('students')
     .select('id, ic_external_id')
     .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null);
+    .not('ic_external_id', 'is', null)
+    .limit(10000);
 
   const icIdMap = new Map<string, string>();
   for (const s of existingWithIcId || []) {
@@ -461,7 +463,8 @@ async function syncClasses(
     .from('classes')
     .select('id, ic_external_id')
     .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null);
+    .not('ic_external_id', 'is', null)
+    .limit(10000);
 
   const existingClassMap = new Map<string, string>();
   for (const c of existingClasses || []) {
@@ -553,7 +556,8 @@ async function syncEnrollments(
     .from('classes')
     .select('id, ic_external_id')
     .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null);
+    .not('ic_external_id', 'is', null)
+    .limit(10000);
 
   const classMap = new Map<string, string>();
   for (const c of allClasses || []) {
@@ -565,7 +569,8 @@ async function syncEnrollments(
     .from('students')
     .select('id, ic_external_id')
     .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null);
+    .not('ic_external_id', 'is', null)
+    .limit(10000);
 
   const studentMap = new Map<string, string>();
   for (const s of allStudents || []) {
@@ -577,7 +582,8 @@ async function syncEnrollments(
     .from('teachers')
     .select('id, ic_external_id')
     .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null);
+    .not('ic_external_id', 'is', null)
+    .limit(10000);
 
   const teacherMap = new Map<string, string>();
   for (const t of allTeachers || []) {
@@ -588,7 +594,8 @@ async function syncEnrollments(
   const { data: existingRosters } = await supabase
     .from('class_rosters')
     .select('class_id, student_id')
-    .in('class_id', Array.from(classMap.values()));
+    .in('class_id', Array.from(classMap.values()))
+    .limit(10000);
 
   const rosterSet = new Set<string>();
   for (const r of existingRosters || []) {
@@ -598,7 +605,8 @@ async function syncEnrollments(
   const { data: existingTeacherAssignments } = await supabase
     .from('class_teachers')
     .select('class_id, teacher_id')
-    .in('class_id', Array.from(classMap.values()));
+    .in('class_id', Array.from(classMap.values()))
+    .limit(10000);
 
   const teacherAssignSet = new Set<string>();
   for (const a of existingTeacherAssignments || []) {
@@ -647,12 +655,17 @@ async function syncEnrollments(
     }
   }
 
+  console.log(`Enrollment maps - classes: ${classMap.size}, students: ${studentMap.size}, teachers: ${teacherMap.size}`);
+  console.log(`Enrollments to insert - rosters: ${rosterInserts.length}, teacher assignments: ${teacherInserts.length}`);
+
   // Batch insert enrollments (chunks of 100)
   for (let i = 0; i < rosterInserts.length; i += 100) {
-    await supabase.from('class_rosters').insert(rosterInserts.slice(i, i + 100));
+    const { error } = await supabase.from('class_rosters').insert(rosterInserts.slice(i, i + 100));
+    if (error) console.error(`Error inserting class_rosters batch ${i}:`, error.message);
   }
   for (let i = 0; i < teacherInserts.length; i += 100) {
-    await supabase.from('class_teachers').insert(teacherInserts.slice(i, i + 100));
+    const { error } = await supabase.from('class_teachers').insert(teacherInserts.slice(i, i + 100));
+    if (error) console.error(`Error inserting class_teachers batch ${i}:`, error.message);
   }
 
   return { created, updated };
