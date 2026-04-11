@@ -1,65 +1,57 @@
 
 
-# Fix: Supabase 1,000-Row Limit Truncating Enrollment Maps
+# Fix: Missing Foreign Keys on class_teachers and class_rosters
 
-## Root Cause (confirmed from edge function logs)
+## Root Cause
 
-The latest sync fetched **17,112 enrollments** with correct role values (`"student": 16290, "teacher": 822`), but **all 17,112 were skipped** with reason `no class`.
+The `class_teachers` and `class_rosters` tables have **no foreign key constraints at all**. The Classes page (`src/pages/Classes.tsx`) uses PostgREST embedded resource joins like:
 
-The enrollment maps show:
-- `classes: 1000` (but 2,010 exist)
-- `students: 1000` (but 1,010 exist)
-- `teachers: 104` (correct, under 1000)
+```typescript
+supabase.from('class_teachers').select('class_id, teachers(first_name, last_name)')
+```
 
-The pre-fetch queries in `syncEnrollments` use `.limit(10000)`, but **PostgREST's server-side `max_rows` silently caps all queries at 1,000 rows**, even for service-role clients. So only half the classes and students are loaded into the lookup maps, and enrollments referencing the missing half are all skipped.
+PostgREST requires foreign key relationships to resolve these joins. Without FKs, the `teachers(...)` part silently returns null, making every class show no teacher and no students.
 
-This same issue affects `syncTeachers` and `syncStudents` pre-fetch queries (e.g., fetching existing records for dedup), though those happen to work because there are fewer than 1,000 existing records currently.
+This is **not** a sync issue, an RLS issue, or a role issue. The data exists (805 teacher assignments, 14,916 roster entries). The page simply cannot join to related tables.
 
 ## Fix
 
-Replace all `.limit(10000)` pre-fetch queries with a paginated fetch helper that loops in chunks of 900 until all rows are retrieved.
+### 1. Database Migration: Add Foreign Keys
 
-### File: `supabase/functions/sync-infinite-campus/index.ts`
+Create a migration to add the missing foreign key constraints:
 
-1. Add a helper function `fetchAllRows` that paginates any Supabase query in chunks of 900:
-```typescript
-async function fetchAllRows<T>(
-  query: () => any, // returns a SupabaseQueryBuilder with .range()
-  chunkSize = 900
-): Promise<T[]> {
-  let all: T[] = [];
-  let offset = 0;
-  while (true) {
-    const { data } = await query().range(offset, offset + chunkSize - 1);
-    if (!data || data.length === 0) break;
-    all = all.concat(data);
-    if (data.length < chunkSize) break;
-    offset += chunkSize;
-  }
-  return all;
-}
+```sql
+-- class_teachers: FK to classes and teachers
+ALTER TABLE class_teachers 
+  ADD CONSTRAINT class_teachers_class_id_fkey 
+  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE;
+
+ALTER TABLE class_teachers 
+  ADD CONSTRAINT class_teachers_teacher_id_fkey 
+  FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE;
+
+-- class_rosters: FK to classes and students
+ALTER TABLE class_rosters 
+  ADD CONSTRAINT class_rosters_class_id_fkey 
+  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE;
+
+ALTER TABLE class_rosters 
+  ADD CONSTRAINT class_rosters_student_id_fkey 
+  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE;
 ```
 
-2. Replace every `.limit(10000)` call in `syncEnrollments`, `syncTeachers`, `syncStudents`, and `syncClasses` with paginated fetches using this helper.
+### 2. Fix Stats Query in Classes.tsx
 
-3. Key queries to fix (all in `syncEnrollments`):
-   - `allClasses` pre-fetch (line ~556-561)
-   - `allStudents` pre-fetch (line ~569-574)
-   - `allTeachers` pre-fetch (line ~582-587)
-   - `existingRosters` pre-fetch (line ~595-599)
-   - `existingTeacherAssignments` pre-fetch (line ~606-610)
+The stats query (line 225) still uses `.limit(10000)` to fetch all class IDs, which is capped at 1,000. Replace with a count-only approach or paginated fetch for accurate stats across 2,010 classes.
 
-4. Also fix in `syncTeachers` and `syncStudents`:
-   - `existingWithIcId` pre-fetch
-   - `unmatchedTeachers`/`unmatchedStudents` pre-fetch
+### 3. No Edge Function Changes Needed
 
-5. Also fix the stats query pre-fetch in `src/pages/Classes.tsx` (line ~225-226) where `classIdsRes` uses `.limit(10000)` -- same cap applies to the browser client.
+The sync logic is working correctly -- all data is being written. This is purely a schema + UI fix.
 
-### File: `src/pages/Classes.tsx`
+## Files to Change
+- New migration in `supabase/migrations/` -- add foreign keys
+- `src/pages/Classes.tsx` -- fix stats query `.limit(10000)` pattern
 
-The stats query fetches all class IDs with `.limit(10000)` to count students/teachers. Since this is also capped at 1,000, the stats will be wrong for schools with more than 1,000 classes. Fix by using count-only queries instead of fetching IDs.
-
-## Files to change
-- `supabase/functions/sync-infinite-campus/index.ts` -- paginate all pre-fetch queries
-- `src/pages/Classes.tsx` -- fix stats query to avoid `.limit(10000)` pattern
+## Expected Outcome
+After adding FKs, the existing PostgREST joins will resolve correctly, and teacher names + student counts will appear immediately on the Classes page without needing another sync.
 
