@@ -264,6 +264,21 @@ const Classes = () => {
               </div>
             )}
             <div className="space-y-1.5">
+              <Label htmlFor="assignment-filter" className="text-sm font-medium">Status</Label>
+              <Select value={assignmentFilter} onValueChange={setAssignmentFilter}>
+                <SelectTrigger id="assignment-filter" className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  <SelectItem value="assigned">Assigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  <SelectItem value="with_students">With Students</SelectItem>
+                  <SelectItem value="with_teachers">With Teachers</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="page-size" className="text-sm font-medium">Show</Label>
               <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                 <SelectTrigger id="page-size" className="w-[100px]">
