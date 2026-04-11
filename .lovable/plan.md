@@ -1,43 +1,58 @@
 
+Problem found:
+- The slow page at `/dashboard/people/classes` is wired to `src/pages/Classes.tsx` in `src/App.tsx`.
+- The pagination work was added to `src/pages/admin/Classes.tsx`, which is only used for `/admin/classes`.
+- So the page you are actually using still has the old expensive logic.
 
-# Add Server-Side Pagination to Classes Page
+What is making it slow now:
+- `src/pages/Classes.tsx` fetches all classes for the school with `.eq('school_id', schoolId)` and no server-side pagination.
+- It then loops every class and runs a separate `class_rosters` count query for each class, causing an N+1 query pattern.
+- It also fetches and filters/sorts/paginates in the browser after loading everything.
+- It does not appear to filter the main class load by academic session, even though the UI text says “this session”.
 
-## Problem
-The Classes page fetches ALL 2,010 classes in one query, plus runs two additional bulk queries (`class_rosters` and `class_teachers`) with `.in('class_id', classIds)` on all 2,010 IDs. This is extremely slow and hits the Supabase 1,000-row default limit on the roster/teacher lookups too.
+Plan:
+1. Replace the data-loading logic in `src/pages/Classes.tsx` with true server-side pagination
+   - add `page` and `pageSize` state
+   - use `.range(...)` and `{ count: 'exact' }` on the `classes` query
+   - keep page size options `10, 25, 50, 100`
 
-## Solution
-Add proper server-side pagination with a configurable page size selector (10, 25, 50, 100).
+2. Stop loading all classes up front
+   - fetch only the visible page of classes
+   - apply search/filter in the query instead of client-side where practical
 
-### Changes to `src/pages/admin/Classes.tsx`
+3. Eliminate the per-class roster count loop
+   - after loading the current page’s class IDs, fetch `class_rosters` once for those IDs
+   - fetch `class_teachers` once for those IDs
+   - build maps in memory for counts/names
 
-1. **Add pagination state**: `page` (starting at 0), `pageSize` (default 10)
-2. **Paginate the classes query**: Add `.range(page * pageSize, (page + 1) * pageSize - 1)` to the classes query, and use Supabase's `{ count: 'exact' }` option to get total count without fetching all rows
-3. **Only fetch rosters/teachers for the current page's class IDs** (max 100 IDs instead of 2,010)
-4. **Update summary stats**: Use the `count` from the paginated query for "Total Classes". For "Total Students", "With Period Data", and "Missing Period Data" -- these will reflect the current page or we fetch separate lightweight count queries
-5. **Add page size selector**: A `Select` dropdown with options 10, 25, 50, 100, placed next to the academic session selector
-6. **Add pagination controls**: Previous/Next buttons with current page indicator at the bottom of the table
-7. **Add search input**: Optional text filter for class name to help navigate large lists
+4. Align the page with the current academic session model
+   - use `useActiveSchoolId()` instead of manually reading `profiles.school_id`
+   - load academic sessions for the active school
+   - default to the active session
+   - filter classes and related data by `academic_session_id`
 
-### Technical approach
+5. Keep the existing page functionality
+   - preserve add/edit/manage students/assign coverage flows
+   - update refresh callbacks so they re-query the current page instead of refetching the full dataset
 
-```typescript
-// Paginated query with exact count
-const { data: classesData, error, count } = await supabase
-  .from('classes')
-  .select('id, class_name, room_number, grade_level, period_number, period_name, period_start_time, period_end_time', { count: 'exact' })
-  .eq('school_id', schoolId)
-  .eq('academic_session_id', selectedSessionId)
-  .order('period_number', { ascending: true, nullsFirst: false })
-  .order('class_name', { ascending: true })
-  .range(page * pageSize, (page + 1) * pageSize - 1);
-```
+6. Improve the stats area so it stays fast
+   - use lightweight count queries for totals
+   - avoid fetching all classes just to compute summary cards
+   - if needed, make “total students” session-aware using a dedicated aggregate query rather than loading all class IDs first
 
-The roster and teacher sub-queries then only operate on the 10-100 class IDs from the current page, making them fast.
+7. QA after implementation
+   - verify first paint loads quickly on `/dashboard/people/classes`
+   - verify only 10 records load by default
+   - verify switching to 25/50/100 works
+   - verify search, session switching, previous/next paging, edit, manage students, and coverage assignment still work end to end
 
-### Summary stats
-- "Total Classes" will use the `count` from the paginated query (exact count without fetching all rows)
-- "With Period Data" / "Missing Period Data" will be calculated from the current page's data, with a note showing "on this page" or we run two separate lightweight count queries
+Technical details:
+- Route mapping:
+  - `/dashboard/people/classes` -> `src/pages/Classes.tsx`
+  - `/admin/classes` -> `src/pages/admin/Classes.tsx`
+- Root cause is not that pagination “is broken”; it is that the optimized file is not the file used by the dashboard route.
+- Best fix is to port the optimized query pattern into `src/pages/Classes.tsx` rather than touching only the admin page again.
 
-## Files to change
-- `src/pages/admin/Classes.tsx` -- add pagination state, paginated query, page size selector, pagination controls
-
+Files to change:
+- `src/pages/Classes.tsx`
+- possibly small shared-hook reuse from `src/hooks/useActiveSchoolId.ts` if needed, but likely no hook changes required
