@@ -1,52 +1,40 @@
 
 
-# Fix: Students and Teachers Not Importing -- Wrong JSON Response Key
+# Fix: Batch syncTeachers and syncStudents to Prevent Timeout
 
-## Root Cause
+## Problem
+The sync keeps timing out because `syncTeachers` (lines 116-252) and `syncStudents` (lines 254-356) perform **individual DB queries per record**. For 1000+ students and 100+ teachers, that's 2000+ sequential database round-trips, exceeding the CPU time limit.
 
-The OneRoster API wraps response data in a key matching the **resource type**, not the endpoint path segment. The `paginate` method extracts the key using `endpoint.split('/').pop()`:
-
-- `schools/{id}/students` -> looks for key `"students"` in response
-- `schools/{id}/teachers` -> looks for key `"teachers"` in response
-
-But the OneRoster API returns these as `{ "users": [...] }` because students and teachers are both "users" in the OneRoster data model. So the response parsing finds no matching key and returns an empty array.
-
-This explains why:
-- **Classes** work (endpoint ends in `/classes`, response key is `"classes"`)
-- **Enrollments** work (endpoint ends in `/enrollments`, response key is `"enrollments"`)
-- **Students** return 0 (endpoint ends in `/students`, but response key is `"users"`)
-- **Teachers** return 0 (endpoint ends in `/teachers`, but response key is `"users"`)
-
-Also: the school has **14,400+ enrollments** being fetched (144 paginated calls), which is still a performance concern.
+Classes and enrollments were already batched in the last optimization, but teachers and students were not.
 
 ## Fix
 
-### 1. `supabase/functions/_shared/oneroster-client.ts` -- Fix response key mapping
+### 1. Clean up the stuck sync log
+SQL migration to mark `16a426ec-43b0-40b0-994a-ca134a0f7ce0` as failed.
 
-Add a mapping of endpoint suffixes to known OneRoster response wrapper keys in the `paginate` method:
+### 2. Batch `syncStudents` in `sync-infinite-campus/index.ts`
 
-```typescript
-// OneRoster response key mapping -- some endpoints use a different wrapper key
-const keyOverrides: Record<string, string> = {
-  'students': 'users',
-  'teachers': 'users',
-};
-const resourceKey = keyOverrides[rawKey] || rawKey;
-```
+Replace the row-by-row loop with:
+1. **Pre-fetch all existing students** for this school with `ic_external_id` in one query (build a Map)
+2. **Skip fuzzy matching on first sync** -- if a school has 0 existing students (like this one), every student is new, so `findStudentMatch` is unnecessary. Only run fuzzy matching when there are existing students without `ic_external_id`.
+3. **Batch insert** new students in chunks of 50 using `.insert()`
+4. **Batch update** existing students using `Promise.all` on chunks
 
-This ensures `students` and `teachers` endpoints correctly read from the `"users"` key in the response.
+### 3. Batch `syncTeachers` in `sync-infinite-campus/index.ts`
 
-### 2. Clean up the 2,010 orphaned classes (optional)
+Same pattern as students:
+1. Pre-fetch existing teachers with `ic_external_id` in one query
+2. Skip fuzzy matching when no existing teachers lack `ic_external_id`
+3. Batch insert/update in chunks of 50
 
-The sync created classes but no students/teachers to go with them. After re-syncing, we may want to clean up classes that have no enrollments, or just let the next sync handle archiving.
+### 4. Redeploy
 
-### 3. Redeploy `sync-infinite-campus`
-
-## Additional: Classes page spinning
-
-This is likely caused by 2,010 classes being loaded with no teachers or students linked to them. Once teachers and students import correctly and enrollments link them, the page should work. If it remains stuck after re-sync, we can investigate the classes query separately.
+## Expected impact
+- Students: from ~2000 DB queries down to ~20 (pre-fetch + chunked inserts)
+- Teachers: from ~200 DB queries down to ~5
+- Should complete well within CPU time limit
 
 ## Files to change
-- `supabase/functions/_shared/oneroster-client.ts` -- fix response key mapping in `paginate`
-- Redeploy `sync-infinite-campus`
+- `supabase/functions/sync-infinite-campus/index.ts` -- batch teacher and student sync
+- SQL migration to clean up stuck sync log
 
