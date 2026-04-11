@@ -5,6 +5,24 @@ import { OneRosterClient } from '../_shared/oneroster-client.ts';
 import { decrypt } from '../_shared/encryption.ts';
 import { findStudentMatch, findTeacherMatch } from '../_shared/fuzzy-matcher.ts';
 
+// Helper to paginate Supabase queries past the 1,000-row PostgREST max_rows cap
+async function fetchAllRows<T>(
+  buildQuery: () => any,
+  chunkSize = 900
+): Promise<T[]> {
+  let all: T[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await buildQuery().range(offset, offset + chunkSize - 1);
+    if (error) { console.error('fetchAllRows error:', error); break; }
+    if (!data || data.length === 0) break;
+    all = all.concat(data);
+    if (data.length < chunkSize) break;
+    offset += chunkSize;
+  }
+  return all;
+}
+
 interface SyncRequest {
   schoolId: number;
   syncType: 'manual' | 'scheduled';
@@ -128,13 +146,10 @@ async function syncTeachers(
   let pending = 0;
   const sourcedIds: string[] = [];
 
-  // Pre-fetch all existing teachers for this school
-  const { data: existingWithIcId } = await supabase
-    .from('teachers')
-    .select('id, ic_external_id, email')
-    .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null)
-    .limit(10000);
+  // Pre-fetch all existing teachers for this school (paginated to bypass 1000-row cap)
+  const existingWithIcId = await fetchAllRows<{ id: string; ic_external_id: string | null; email: string | null }>(
+    () => supabase.from('teachers').select('id, ic_external_id, email').eq('school_id', schoolId).not('ic_external_id', 'is', null)
+  );
 
   const icIdMap = new Map<string, { id: string; email: string | null }>();
   for (const t of existingWithIcId || []) {
@@ -269,13 +284,10 @@ async function syncStudents(
     .eq('is_active', true)
     .maybeSingle();
 
-  // Pre-fetch all existing students with ic_external_id
-  const { data: existingWithIcId } = await supabase
-    .from('students')
-    .select('id, ic_external_id')
-    .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null)
-    .limit(10000);
+  // Pre-fetch all existing students with ic_external_id (paginated to bypass 1000-row cap)
+  const existingWithIcId = await fetchAllRows<{ id: string; ic_external_id: string | null }>(
+    () => supabase.from('students').select('id, ic_external_id').eq('school_id', schoolId).not('ic_external_id', 'is', null)
+  );
 
   const icIdMap = new Map<string, string>();
   for (const s of existingWithIcId || []) {
@@ -458,13 +470,10 @@ async function syncClasses(
     console.log('Sample IC class data:', JSON.stringify(classes[0], null, 2));
   }
 
-  // Pre-fetch existing classes for this school with ic_external_id
-  const { data: existingClasses } = await supabase
-    .from('classes')
-    .select('id, ic_external_id')
-    .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null)
-    .limit(10000);
+  // Pre-fetch existing classes for this school with ic_external_id (paginated to bypass 1000-row cap)
+  const existingClasses = await fetchAllRows<{ id: string; ic_external_id: string | null }>(
+    () => supabase.from('classes').select('id, ic_external_id').eq('school_id', schoolId).not('ic_external_id', 'is', null)
+  );
 
   const existingClassMap = new Map<string, string>();
   for (const c of existingClasses || []) {
@@ -552,62 +561,52 @@ async function syncEnrollments(
     .eq('is_active', true)
     .maybeSingle();
 
-  // Pre-fetch all classes for this school with ic_external_id -> id map
-  const { data: allClasses } = await supabase
-    .from('classes')
-    .select('id, ic_external_id')
-    .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null)
-    .limit(10000);
+  // Pre-fetch all classes for this school with ic_external_id -> id map (paginated)
+  const allClasses = await fetchAllRows<{ id: string; ic_external_id: string | null }>(
+    () => supabase.from('classes').select('id, ic_external_id').eq('school_id', schoolId).not('ic_external_id', 'is', null)
+  );
 
   const classMap = new Map<string, string>();
-  for (const c of allClasses || []) {
+  for (const c of allClasses) {
     if (c.ic_external_id) classMap.set(c.ic_external_id, c.id);
   }
 
-  // Pre-fetch all students for this school with ic_external_id -> id map
-  const { data: allStudents } = await supabase
-    .from('students')
-    .select('id, ic_external_id')
-    .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null)
-    .limit(10000);
+  // Pre-fetch all students for this school with ic_external_id -> id map (paginated)
+  const allStudents = await fetchAllRows<{ id: string; ic_external_id: string | null }>(
+    () => supabase.from('students').select('id, ic_external_id').eq('school_id', schoolId).not('ic_external_id', 'is', null)
+  );
 
   const studentMap = new Map<string, string>();
-  for (const s of allStudents || []) {
+  for (const s of allStudents) {
     if (s.ic_external_id) studentMap.set(s.ic_external_id, s.id);
   }
 
-  // Pre-fetch all teachers for this school with ic_external_id -> id map
-  const { data: allTeachers } = await supabase
-    .from('teachers')
-    .select('id, ic_external_id')
-    .eq('school_id', schoolId)
-    .not('ic_external_id', 'is', null)
-    .limit(10000);
+  // Pre-fetch all teachers for this school with ic_external_id -> id map (paginated)
+  const allTeachers = await fetchAllRows<{ id: string; ic_external_id: string | null }>(
+    () => supabase.from('teachers').select('id, ic_external_id').eq('school_id', schoolId).not('ic_external_id', 'is', null)
+  );
 
   const teacherMap = new Map<string, string>();
-  for (const t of allTeachers || []) {
+  for (const t of allTeachers) {
     if (t.ic_external_id) teacherMap.set(t.ic_external_id, t.id);
   }
 
-  // Pre-fetch existing enrollments to avoid duplicate checks per-row
-  const { data: existingRosters } = await supabase
-    .from('class_rosters')
-    .select('class_id, student_id')
-    .in('class_id', Array.from(classMap.values()))
-    .limit(10000);
+  console.log(`Enrollment pre-fetch maps - classes: ${classMap.size}, students: ${studentMap.size}, teachers: ${teacherMap.size}`);
+
+  // Pre-fetch existing enrollments to avoid duplicate checks per-row (paginated)
+  const classIds = Array.from(classMap.values());
+  const existingRosters = classIds.length > 0 ? await fetchAllRows<{ class_id: string; student_id: string }>(
+    () => supabase.from('class_rosters').select('class_id, student_id').in('class_id', classIds)
+  ) : [];
 
   const rosterSet = new Set<string>();
-  for (const r of existingRosters || []) {
+  for (const r of existingRosters) {
     rosterSet.add(`${r.class_id}:${r.student_id}`);
   }
 
-  const { data: existingTeacherAssignments } = await supabase
-    .from('class_teachers')
-    .select('class_id, teacher_id')
-    .in('class_id', Array.from(classMap.values()))
-    .limit(10000);
+  const existingTeacherAssignments = classIds.length > 0 ? await fetchAllRows<{ class_id: string; teacher_id: string }>(
+    () => supabase.from('class_teachers').select('class_id, teacher_id').in('class_id', classIds)
+  ) : [];
 
   const teacherAssignSet = new Set<string>();
   for (const a of existingTeacherAssignments || []) {

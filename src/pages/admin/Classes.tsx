@@ -95,7 +95,7 @@ const Classes = () => {
           .eq('school_id', schoolId).eq('academic_session_id', selectedSessionId)
           .is('period_number', null),
         supabase.from('class_rosters').select('id', { count: 'exact', head: true })
-          .in('class_id', (await supabase.from('classes').select('id').eq('school_id', schoolId).eq('academic_session_id', selectedSessionId).limit(10000)).data?.map(c => c.id) || []),
+          .eq('academic_session_id', selectedSessionId),
       ]);
 
       return {
