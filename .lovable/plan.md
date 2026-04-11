@@ -1,40 +1,42 @@
 
 
-# Fix: Students Missing Grade Level from OneRoster
+# Fix: Supabase 1,000-Row Default Limit Breaking Enrollments
 
 ## Root Cause
 
-The OneRoster API returns grade level as **`grades`** (an array of strings, e.g. `["06", "07"]`), not `grade` (singular string). Our `OneRosterUser` interface incorrectly defines `grade?: string`, which never matches the actual API response. So `student.grade` is always `undefined`, and every student gets `null` for `grade_level` -- which then hits the `NOT NULL` constraint and causes the batch insert to silently fail.
+Supabase's JavaScript client has a **default limit of 1,000 rows** per query. The `syncEnrollments` function pre-fetches classes, students, and teachers into in-memory Maps, but these queries don't specify a higher limit:
 
-This is the actual reason **zero students** were persisted, not just a missing fallback value.
+- **Classes**: 2,010 records -- only 1,000 fetched, so 1,010 classes are missing from `classMap`
+- **Students**: 1,010 records -- only 1,000 fetched, so 10 students are missing from `studentMap`  
+- **Teachers**: 104 records -- fine (under 1,000)
+
+When enrollments reference a class or student not in the Map, the code does `if (!classId) continue` and silently skips them. Result: **0 class_rosters and 0 class_teachers** inserted.
+
+This same issue affects the pre-fetch queries in `syncStudents` and `syncTeachers` (existing records lookup) and the `syncClasses` function.
 
 ## Fix
 
-### 1. `supabase/functions/_shared/oneroster-client.ts`
+### In `supabase/functions/sync-infinite-campus/index.ts`
 
-Update `OneRosterUser` interface:
-```typescript
-// Change:
-grade?: string;
-// To:
-grades?: string[];
-```
+Add `.limit(10000)` (or a suitably high number) to every bulk pre-fetch query that could exceed 1,000 rows. Affected queries:
 
-### 2. `supabase/functions/sync-infinite-campus/index.ts`
+1. **syncEnrollments** (lines ~552-601):
+   - `classes` query (line 552-556) -- add `.limit(10000)`
+   - `students` query (line 564-568) -- add `.limit(10000)`
+   - `teachers` query (line 576-580) -- add `.limit(10000)`
+   - `class_rosters` query (line 588-591) -- add `.limit(10000)`
+   - `class_teachers` query (line 598-601) -- add `.limit(10000)`
 
-Update all grade_level assignments (lines ~311, 334, 363):
-```typescript
-// Change:
-grade_level: student.grade ? parseInt(student.grade, 10) : null
-// To:
-grade_level: student.grades?.[0] || 'Unknown'
-```
+2. **syncStudents** pre-fetch queries -- add `.limit(10000)` to existing students lookup
+3. **syncTeachers** pre-fetch queries -- add `.limit(10000)` to existing teachers lookup
+4. **syncClasses** pre-fetch queries -- add `.limit(10000)` to existing classes lookup
 
-This reads the first grade from the array (most students have one), and falls back to `'Unknown'` to satisfy the `NOT NULL` constraint.
+Also add error logging on the batch insert calls for `class_rosters` and `class_teachers` so failures aren't silent.
 
-### 3. Redeploy `sync-infinite-campus`
+### Redeploy `sync-infinite-campus`
+
+After fix, re-sync East Jessamine Middle School. Teacher-class and student-class assignments should populate.
 
 ## Files to change
-- `supabase/functions/_shared/oneroster-client.ts` -- fix `OneRosterUser.grades` type
-- `supabase/functions/sync-infinite-campus/index.ts` -- read `grades[0]` instead of `grade`
+- `supabase/functions/sync-infinite-campus/index.ts` -- add `.limit(10000)` to all bulk queries + error logging on inserts
 
