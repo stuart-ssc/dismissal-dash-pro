@@ -538,6 +538,18 @@ const Classes = () => {
                         className="pl-10"
                       />
                     </div>
+                    <Select value={assignmentFilter} onValueChange={setAssignmentFilter}>
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Classes</SelectItem>
+                        <SelectItem value="assigned">Assigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        <SelectItem value="with_students">With Students</SelectItem>
+                        <SelectItem value="with_teachers">With Teachers</SelectItem>
+                      </SelectContent>
+                    </Select>
                     {academicSessions.length > 1 && (
                       <Select value={selectedSessionId || ''} onValueChange={setSelectedSessionId}>
                         <SelectTrigger className="w-[200px]">
