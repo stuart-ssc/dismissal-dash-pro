@@ -308,7 +308,7 @@ async function syncStudents(
         data: {
           first_name: student.givenName,
           last_name: student.familyName,
-          grade_level: student.grade ? parseInt(student.grade, 10) : null,
+          grade_level: student.grades?.[0] || 'Unknown',
           academic_session_id: activeSession?.id || null,
         },
       });
@@ -322,7 +322,7 @@ async function syncStudents(
         sourcedId: student.sourcedId,
         givenName: student.givenName,
         familyName: student.familyName,
-        grade: student.grade,
+        grade: student.grades?.[0],
       });
 
       if (match.confidence >= 0.95) {
@@ -331,7 +331,7 @@ async function syncStudents(
           data: {
             first_name: student.givenName,
             last_name: student.familyName,
-            grade_level: student.grade ? parseInt(student.grade, 10) : null,
+            grade_level: student.grades?.[0] || 'Unknown',
             ic_external_id: student.sourcedId,
             academic_session_id: activeSession?.id || null,
           },
@@ -360,7 +360,7 @@ async function syncStudents(
       school_id: schoolId,
       first_name: student.givenName,
       last_name: student.familyName,
-      grade_level: student.grade ? parseInt(student.grade, 10) : null,
+      grade_level: student.grades?.[0] || 'Unknown',
       ic_external_id: student.sourcedId,
       academic_session_id: activeSession?.id || null,
     });
