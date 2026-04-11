@@ -771,6 +771,18 @@ serve(async (req) => {
       connectionId = connection.id;
     }
 
+    // Clean up any stuck syncs older than 10 minutes
+    await supabaseAdmin
+      .from('ic_sync_logs')
+      .update({
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+        error_message: 'Sync timed out - automatically cleaned up',
+      })
+      .eq('school_id', schoolId)
+      .eq('status', 'in_progress')
+      .lt('started_at', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+
     // Create sync log
     const { data: syncLog, error: logError } = await supabaseAdmin
       .from('ic_sync_logs')
