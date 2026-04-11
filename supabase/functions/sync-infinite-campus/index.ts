@@ -617,14 +617,23 @@ async function syncEnrollments(
   // Build batch inserts
   const rosterInserts: any[] = [];
   const teacherInserts: any[] = [];
+  let skippedNoClass = 0;
+  let skippedNoStudent = 0;
+  let skippedNoTeacher = 0;
 
   for (const enrollment of enrollments) {
     const classId = classMap.get(enrollment.class.sourcedId);
-    if (!classId) continue;
+    if (!classId) {
+      skippedNoClass++;
+      continue;
+    }
 
     if (enrollment.role === 'student') {
       const studentId = studentMap.get(enrollment.user.sourcedId);
-      if (!studentId) continue;
+      if (!studentId) {
+        skippedNoStudent++;
+        continue;
+      }
 
       const key = `${classId}:${studentId}`;
       if (rosterSet.has(key)) {
@@ -635,12 +644,15 @@ async function syncEnrollments(
           student_id: studentId,
           academic_session_id: activeSession?.id || null,
         });
-        rosterSet.add(key); // prevent duplicates within this batch
+        rosterSet.add(key);
         created++;
       }
     } else if (enrollment.role === 'teacher') {
       const teacherId = teacherMap.get(enrollment.user.sourcedId);
-      if (!teacherId) continue;
+      if (!teacherId) {
+        skippedNoTeacher++;
+        continue;
+      }
 
       const key = `${classId}:${teacherId}`;
       if (teacherAssignSet.has(key)) {
