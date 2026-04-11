@@ -9,7 +9,7 @@ interface SyncRequest {
   schoolId: number;
   syncType: 'manual' | 'scheduled';
   triggeredBy?: string;
-  syncConfig?: any; // Sync configuration from ic_sync_configuration table
+  syncConfig?: any;
 }
 
 interface SyncStats {
@@ -51,7 +51,6 @@ async function checkRateLimit(
     return { allowed: false, remaining: 0 };
   }
 
-  // Increment counter
   await supabase
     .from('ic_sync_rate_limits')
     .upsert({
@@ -78,7 +77,6 @@ async function syncAcademicSessions(
     const endDate = new Date(session.endDate);
     const isActive = currentDate >= startDate && currentDate <= endDate;
 
-    // Check if session exists
     const { data: existing } = await supabase
       .from('academic_sessions')
       .select('id')
@@ -87,7 +85,6 @@ async function syncAcademicSessions(
       .maybeSingle();
 
     if (existing) {
-      // Update existing
       await supabase
         .from('academic_sessions')
         .update({
@@ -99,7 +96,6 @@ async function syncAcademicSessions(
         })
         .eq('id', existing.id);
     } else {
-      // Create new
       await supabase
         .from('academic_sessions')
         .insert({
@@ -123,20 +119,22 @@ async function syncTeachers(
   schoolId: number,
   syncLogId: string,
   icSchoolSourcedId: string
-): Promise<{ created: number; updated: number; pending: number }> {
+): Promise<{ created: number; updated: number; pending: number; sourcedIds: string[] }> {
   console.log('Syncing teachers...');
   
   const teachers = await client.getTeachersForSchool(icSchoolSourcedId);
   let created = 0;
   let updated = 0;
   let pending = 0;
+  const sourcedIds: string[] = [];
 
   for (const teacher of teachers) {
     if (!teacher.enabledUser) {
-      continue; // Skip disabled users
+      continue;
     }
 
-    // Check for existing by ic_external_id
+    sourcedIds.push(teacher.sourcedId);
+
     const { data: existing } = await supabase
       .from('teachers')
       .select('id, email')
@@ -144,7 +142,6 @@ async function syncTeachers(
       .maybeSingle();
 
     if (existing) {
-      // Update existing
       await supabase
         .from('teachers')
         .update({
@@ -156,7 +153,6 @@ async function syncTeachers(
       
       updated++;
     } else {
-      // Try fuzzy matching
       const match = await findTeacherMatch(supabase, schoolId, {
         sourcedId: teacher.sourcedId,
         givenName: teacher.givenName,
@@ -165,7 +161,6 @@ async function syncTeachers(
       });
 
       if (match.confidence >= 0.95) {
-        // High confidence match - update
         await supabase
           .from('teachers')
           .update({
@@ -178,7 +173,6 @@ async function syncTeachers(
         
         updated++;
       } else if (match.confidence > 0) {
-        // Potential match - create pending merge
         await supabase
           .from('ic_pending_merges')
           .insert({
@@ -195,7 +189,6 @@ async function syncTeachers(
         
         pending++;
       } else {
-        // No match - check if email already exists in another school
         if (teacher.email) {
           const { data: existingUser } = await supabase
             .from('teachers')
@@ -204,7 +197,6 @@ async function syncTeachers(
             .maybeSingle();
 
           if (existingUser && existingUser.user_id) {
-            // Add this school to user_schools for multi-school support
             await supabase
               .from('user_schools')
               .insert({
@@ -215,7 +207,6 @@ async function syncTeachers(
               .onConflict('user_id,school_id')
               .ignoreDuplicates();
 
-            // Create teacher record for this school
             await supabase
               .from('teachers')
               .insert({
@@ -229,7 +220,6 @@ async function syncTeachers(
             
             created++;
           } else {
-            // Create new teacher
             await supabase
               .from('teachers')
               .insert({
@@ -243,7 +233,6 @@ async function syncTeachers(
             created++;
           }
         } else {
-          // No email - create as new
           await supabase
             .from('teachers')
             .insert({
@@ -259,7 +248,7 @@ async function syncTeachers(
     }
   }
 
-  return { created, updated, pending };
+  return { created, updated, pending, sourcedIds };
 }
 
 async function syncStudents(
@@ -268,15 +257,15 @@ async function syncStudents(
   schoolId: number,
   syncLogId: string,
   icSchoolSourcedId: string
-): Promise<{ created: number; updated: number; pending: number }> {
+): Promise<{ created: number; updated: number; pending: number; sourcedIds: string[] }> {
   console.log('Syncing students...');
   
   const students = await client.getStudentsForSchool(icSchoolSourcedId);
   let created = 0;
   let updated = 0;
   let pending = 0;
+  const sourcedIds: string[] = [];
 
-  // Get active session
   const { data: activeSession } = await supabase
     .from('academic_sessions')
     .select('id')
@@ -289,7 +278,8 @@ async function syncStudents(
       continue;
     }
 
-    // Check for existing by ic_external_id
+    sourcedIds.push(student.sourcedId);
+
     const { data: existing } = await supabase
       .from('students')
       .select('id')
@@ -297,7 +287,6 @@ async function syncStudents(
       .maybeSingle();
 
     if (existing) {
-      // Update existing
       await supabase
         .from('students')
         .update({
@@ -310,7 +299,6 @@ async function syncStudents(
       
       updated++;
     } else {
-      // Try fuzzy matching
       const match = await findStudentMatch(supabase, schoolId, {
         sourcedId: student.sourcedId,
         givenName: student.givenName,
@@ -319,7 +307,6 @@ async function syncStudents(
       });
 
       if (match.confidence >= 0.95) {
-        // High confidence match - update
         await supabase
           .from('students')
           .update({
@@ -333,7 +320,6 @@ async function syncStudents(
         
         updated++;
       } else if (match.confidence > 0) {
-        // Potential match - create pending merge
         await supabase
           .from('ic_pending_merges')
           .insert({
@@ -350,7 +336,6 @@ async function syncStudents(
         
         pending++;
       } else {
-        // No match - create new
         await supabase
           .from('students')
           .insert({
@@ -367,40 +352,28 @@ async function syncStudents(
     }
   }
 
-  return { created, updated, pending };
+  return { created, updated, pending, sourcedIds };
 }
 
-/**
- * Extract period number from IC class data
- * Priority: metadata.periodNumber > classCode parsing > null
- */
 function extractPeriodNumber(cls: any): number | null {
-  // Check metadata
   if (cls.metadata?.periodNumber) {
     const num = parseInt(cls.metadata.periodNumber, 10);
     if (!isNaN(num)) return num;
   }
-  
   if (cls.metadata?.period) {
     const num = parseInt(cls.metadata.period, 10);
     if (!isNaN(num)) return num;
   }
-  
-  // Parse from classCode (e.g., "Math-P3", "3-Math", "P3")
   if (cls.classCode) {
     const match = cls.classCode.match(/[Pp]?(\d+)/);
     if (match) {
       const num = parseInt(match[1], 10);
-      if (num > 0 && num <= 20) return num; // Reasonable period range
+      if (num > 0 && num <= 20) return num;
     }
   }
-  
   return null;
 }
 
-/**
- * Extract period start time from IC class data
- */
 function extractPeriodStartTime(cls: any): string | null {
   if (cls.metadata?.startTime) return cls.metadata.startTime;
   if (cls.metadata?.periodStartTime) return cls.metadata.periodStartTime;
@@ -408,9 +381,6 @@ function extractPeriodStartTime(cls: any): string | null {
   return null;
 }
 
-/**
- * Extract period end time from IC class data
- */
 function extractPeriodEndTime(cls: any): string | null {
   if (cls.metadata?.endTime) return cls.metadata.endTime;
   if (cls.metadata?.periodEndTime) return cls.metadata.periodEndTime;
@@ -418,17 +388,11 @@ function extractPeriodEndTime(cls: any): string | null {
   return null;
 }
 
-/**
- * Extract period name from IC class data
- */
 function extractPeriodName(cls: any): string | null {
   if (cls.metadata?.periodName) return cls.metadata.periodName;
   if (cls.metadata?.period_name) return cls.metadata.period_name;
-  
-  // Generate from period number if available
   const periodNum = extractPeriodNumber(cls);
   if (periodNum) return `Period ${periodNum}`;
-  
   return null;
 }
 
@@ -437,7 +401,7 @@ async function syncClasses(
   supabase: SupabaseClient,
   schoolId: number,
   icSchoolSourcedId: string
-): Promise<{ created: number; updated: number; withPeriods: number; withoutPeriods: number }> {
+): Promise<{ created: number; updated: number; withPeriods: number; withoutPeriods: number; sourcedIds: string[] }> {
   console.log('Syncing classes (school-scoped)...');
   
   const classes = await client.getClassesForSchool(icSchoolSourcedId);
@@ -445,8 +409,8 @@ async function syncClasses(
   let updated = 0;
   let withPeriods = 0;
   let withoutPeriods = 0;
+  const sourcedIds: string[] = [];
 
-  // Get active session
   const { data: activeSession } = await supabase
     .from('academic_sessions')
     .select('id')
@@ -454,26 +418,36 @@ async function syncClasses(
     .eq('is_active', true)
     .maybeSingle();
 
-  // Log sample class for debugging (first class only)
   if (classes.length > 0) {
     console.log('Sample IC class data:', JSON.stringify(classes[0], null, 2));
   }
 
-  for (const cls of classes) {
-    // Check for existing by ic_external_id
-    const { data: existing } = await supabase
-      .from('classes')
-      .select('id')
-      .eq('ic_external_id', cls.sourcedId)
-      .maybeSingle();
+  // Pre-fetch existing classes for this school with ic_external_id
+  const { data: existingClasses } = await supabase
+    .from('classes')
+    .select('id, ic_external_id')
+    .eq('school_id', schoolId)
+    .not('ic_external_id', 'is', null);
 
-    // Extract period data
+  const existingClassMap = new Map<string, string>();
+  for (const c of existingClasses || []) {
+    if (c.ic_external_id) {
+      existingClassMap.set(c.ic_external_id, c.id);
+    }
+  }
+
+  // Build batch arrays
+  const toInsert: any[] = [];
+  const toUpdate: { id: string; data: any }[] = [];
+
+  for (const cls of classes) {
+    sourcedIds.push(cls.sourcedId);
+
     const periodNumber = extractPeriodNumber(cls);
     const periodStartTime = extractPeriodStartTime(cls);
     const periodEndTime = extractPeriodEndTime(cls);
     const periodName = extractPeriodName(cls);
 
-    // Track period data availability
     if (periodNumber !== null) {
       withPeriods++;
     } else {
@@ -491,30 +465,34 @@ async function syncClasses(
       period_name: periodName,
     };
 
-    if (existing) {
-      // Update existing
-      await supabase
-        .from('classes')
-        .update(classData)
-        .eq('id', existing.id);
-      
+    const existingId = existingClassMap.get(cls.sourcedId);
+    if (existingId) {
+      toUpdate.push({ id: existingId, data: classData });
       updated++;
     } else {
-      // Create new
-      await supabase
-        .from('classes')
-        .insert({
-          ...classData,
-          ic_external_id: cls.sourcedId,
-        });
-      
+      toInsert.push({ ...classData, ic_external_id: cls.sourcedId });
       created++;
     }
   }
 
+  // Batch insert new classes (chunks of 50)
+  for (let i = 0; i < toInsert.length; i += 50) {
+    const chunk = toInsert.slice(i, i + 50);
+    await supabase.from('classes').insert(chunk);
+  }
+
+  // Batch update existing classes (chunks of 50)
+  for (let i = 0; i < toUpdate.length; i += 50) {
+    const chunk = toUpdate.slice(i, i + 50);
+    // Updates must be done individually since each has a different id
+    await Promise.all(chunk.map(item =>
+      supabase.from('classes').update(item.data).eq('id', item.id)
+    ));
+  }
+
   console.log(`Period data: ${withPeriods} classes with periods, ${withoutPeriods} without periods`);
 
-  return { created, updated, withPeriods, withoutPeriods };
+  return { created, updated, withPeriods, withoutPeriods, sourcedIds };
 }
 
 async function syncEnrollments(
@@ -529,7 +507,6 @@ async function syncEnrollments(
   let created = 0;
   let updated = 0;
 
-  // Get active session
   const { data: activeSession } = await supabase
     .from('academic_sessions')
     .select('id')
@@ -537,81 +514,111 @@ async function syncEnrollments(
     .eq('is_active', true)
     .maybeSingle();
 
-  for (const enrollment of enrollments) {
-    // Get class by IC external ID
-    const { data: classData } = await supabase
-      .from('classes')
-      .select('id')
-      .eq('ic_external_id', enrollment.class.sourcedId)
-      .eq('school_id', schoolId)
-      .maybeSingle();
+  // Pre-fetch all classes for this school with ic_external_id -> id map
+  const { data: allClasses } = await supabase
+    .from('classes')
+    .select('id, ic_external_id')
+    .eq('school_id', schoolId)
+    .not('ic_external_id', 'is', null);
 
-    if (!classData) continue;
+  const classMap = new Map<string, string>();
+  for (const c of allClasses || []) {
+    if (c.ic_external_id) classMap.set(c.ic_external_id, c.id);
+  }
+
+  // Pre-fetch all students for this school with ic_external_id -> id map
+  const { data: allStudents } = await supabase
+    .from('students')
+    .select('id, ic_external_id')
+    .eq('school_id', schoolId)
+    .not('ic_external_id', 'is', null);
+
+  const studentMap = new Map<string, string>();
+  for (const s of allStudents || []) {
+    if (s.ic_external_id) studentMap.set(s.ic_external_id, s.id);
+  }
+
+  // Pre-fetch all teachers for this school with ic_external_id -> id map
+  const { data: allTeachers } = await supabase
+    .from('teachers')
+    .select('id, ic_external_id')
+    .eq('school_id', schoolId)
+    .not('ic_external_id', 'is', null);
+
+  const teacherMap = new Map<string, string>();
+  for (const t of allTeachers || []) {
+    if (t.ic_external_id) teacherMap.set(t.ic_external_id, t.id);
+  }
+
+  // Pre-fetch existing enrollments to avoid duplicate checks per-row
+  const { data: existingRosters } = await supabase
+    .from('class_rosters')
+    .select('class_id, student_id')
+    .in('class_id', Array.from(classMap.values()));
+
+  const rosterSet = new Set<string>();
+  for (const r of existingRosters || []) {
+    rosterSet.add(`${r.class_id}:${r.student_id}`);
+  }
+
+  const { data: existingTeacherAssignments } = await supabase
+    .from('class_teachers')
+    .select('class_id, teacher_id')
+    .in('class_id', Array.from(classMap.values()));
+
+  const teacherAssignSet = new Set<string>();
+  for (const a of existingTeacherAssignments || []) {
+    teacherAssignSet.add(`${a.class_id}:${a.teacher_id}`);
+  }
+
+  // Build batch inserts
+  const rosterInserts: any[] = [];
+  const teacherInserts: any[] = [];
+
+  for (const enrollment of enrollments) {
+    const classId = classMap.get(enrollment.class.sourcedId);
+    if (!classId) continue;
 
     if (enrollment.role === 'student') {
-      // Get student by IC external ID
-      const { data: student } = await supabase
-        .from('students')
-        .select('id')
-        .eq('ic_external_id', enrollment.user.sourcedId)
-        .eq('school_id', schoolId)
-        .maybeSingle();
+      const studentId = studentMap.get(enrollment.user.sourcedId);
+      if (!studentId) continue;
 
-      if (!student) continue;
-
-      // Check if enrollment exists
-      const { data: existing } = await supabase
-        .from('class_rosters')
-        .select('id')
-        .eq('class_id', classData.id)
-        .eq('student_id', student.id)
-        .maybeSingle();
-
-      if (!existing) {
-        await supabase
-          .from('class_rosters')
-          .insert({
-            class_id: classData.id,
-            student_id: student.id,
-            academic_session_id: activeSession?.id || null,
-          });
-        
-        created++;
-      } else {
+      const key = `${classId}:${studentId}`;
+      if (rosterSet.has(key)) {
         updated++;
+      } else {
+        rosterInserts.push({
+          class_id: classId,
+          student_id: studentId,
+          academic_session_id: activeSession?.id || null,
+        });
+        rosterSet.add(key); // prevent duplicates within this batch
+        created++;
       }
     } else if (enrollment.role === 'teacher') {
-      // Get teacher by IC external ID
-      const { data: teacher } = await supabase
-        .from('teachers')
-        .select('id')
-        .eq('ic_external_id', enrollment.user.sourcedId)
-        .eq('school_id', schoolId)
-        .maybeSingle();
+      const teacherId = teacherMap.get(enrollment.user.sourcedId);
+      if (!teacherId) continue;
 
-      if (!teacher) continue;
-
-      // Check if teacher assignment exists
-      const { data: existing } = await supabase
-        .from('class_teachers')
-        .select('id')
-        .eq('class_id', classData.id)
-        .eq('teacher_id', teacher.id)
-        .maybeSingle();
-
-      if (!existing) {
-        await supabase
-          .from('class_teachers')
-          .insert({
-            class_id: classData.id,
-            teacher_id: teacher.id,
-          });
-        
-        created++;
-      } else {
+      const key = `${classId}:${teacherId}`;
+      if (teacherAssignSet.has(key)) {
         updated++;
+      } else {
+        teacherInserts.push({
+          class_id: classId,
+          teacher_id: teacherId,
+        });
+        teacherAssignSet.add(key);
+        created++;
       }
     }
+  }
+
+  // Batch insert enrollments (chunks of 100)
+  for (let i = 0; i < rosterInserts.length; i += 100) {
+    await supabase.from('class_rosters').insert(rosterInserts.slice(i, i + 100));
+  }
+  for (let i = 0; i < teacherInserts.length; i += 100) {
+    await supabase.from('class_teachers').insert(teacherInserts.slice(i, i + 100));
   }
 
   return { created, updated };
@@ -627,7 +634,6 @@ async function archiveMissing(
   const archivedAt = new Date().toISOString();
   const archivedReason = 'Not found in Infinite Campus sync';
 
-  // Archive students
   const { data: studentsToArchive } = await supabase
     .from('students')
     .select('id')
@@ -647,7 +653,6 @@ async function archiveMissing(
       .in('id', studentsToArchive!.map(s => s.id));
   }
 
-  // Archive teachers
   const { data: teachersToArchive } = await supabase
     .from('teachers')
     .select('id')
@@ -667,7 +672,6 @@ async function archiveMissing(
       .in('id', teachersToArchive!.map(t => t.id));
   }
 
-  // Archive classes (soft delete by removing from active session)
   const { data: classesToArchive } = await supabase
     .from('classes')
     .select('id')
@@ -696,7 +700,6 @@ serve(async (req) => {
     const body: SyncRequest = await req.json();
     const { schoolId, syncType, triggeredBy, syncConfig } = body;
     
-    // Determine what data types to sync based on configuration
     const shouldSyncStudents = syncConfig?.sync_students !== false;
     const shouldSyncTeachers = syncConfig?.sync_teachers !== false;
     const shouldSyncClasses = syncConfig?.sync_classes !== false;
@@ -712,7 +715,6 @@ serve(async (req) => {
     if (!shouldSyncAcademicSessions) skippedDataTypes.push('academic_sessions');
     if (!shouldSyncCourses) skippedDataTypes.push('courses');
 
-    // Check rate limiting for manual syncs
     const rateLimit = await checkRateLimit(supabaseAdmin, schoolId, syncType);
     if (!rateLimit.allowed) {
       return new Response(JSON.stringify({ 
@@ -724,7 +726,6 @@ serve(async (req) => {
       });
     }
 
-    // Try district connection first, fall back to legacy per-school connection
     let clientId: string;
     let clientSecretDecrypted: string;
     let baseUrl: string;
@@ -749,7 +750,6 @@ serve(async (req) => {
       appName = districtConn.app_name;
       connectionId = districtConn.id;
     } else {
-      // Fallback to legacy connection
       const { data: connection, error: connError } = await supabaseAdmin
         .from('infinite_campus_connections')
         .select('*')
@@ -807,7 +807,6 @@ serve(async (req) => {
 
     syncLogId = syncLog.id;
 
-    // Initialize OneRoster client
     const client = new OneRosterClient({
       baseUrl,
       clientId,
@@ -817,16 +816,13 @@ serve(async (req) => {
       appName,
     });
 
-    // Authenticate
     await client.authenticate();
 
-    // Conditionally sync based on configuration
-    let teacherStats = { created: 0, updated: 0, pending: 0 };
-    let studentStats = { created: 0, updated: 0, pending: 0 };
-    let classStats = { created: 0, updated: 0, withPeriods: 0, withoutPeriods: 0 };
+    let teacherStats = { created: 0, updated: 0, pending: 0, sourcedIds: [] as string[] };
+    let studentStats = { created: 0, updated: 0, pending: 0, sourcedIds: [] as string[] };
+    let classStats = { created: 0, updated: 0, withPeriods: 0, withoutPeriods: 0, sourcedIds: [] as string[] };
     let enrollmentStats = { created: 0, updated: 0 };
     
-    // Sync academic sessions first if enabled
     if (shouldSyncAcademicSessions) {
       await syncAcademicSessions(client, supabaseAdmin, schoolId);
     }
@@ -834,7 +830,6 @@ serve(async (req) => {
     // Determine IC school sourcedId
     const icSchoolSourcedId = schoolMapping?.ic_school_sourced_id || null;
     if (!icSchoolSourcedId) {
-      // Fallback: discover from API
       const schools = await client.getSchools();
       if (schools.length === 0) {
         throw new Error('No schools found in OneRoster API');
@@ -846,35 +841,27 @@ serve(async (req) => {
       throw new Error('Could not determine IC school sourcedId for school-scoped sync');
     }
 
-    // Sync teachers if enabled
     if (shouldSyncTeachers) {
       teacherStats = await syncTeachers(client, supabaseAdmin, schoolId, syncLogId, effectiveSchoolSourcedId);
     }
 
-    // Sync students if enabled
     if (shouldSyncStudents) {
       studentStats = await syncStudents(client, supabaseAdmin, schoolId, syncLogId, effectiveSchoolSourcedId);
     }
 
-    // Sync classes if enabled
     if (shouldSyncClasses) {
       classStats = await syncClasses(client, supabaseAdmin, schoolId, effectiveSchoolSourcedId);
     }
 
-    // Sync enrollments if enabled
     if (shouldSyncEnrollments) {
       enrollmentStats = await syncEnrollments(client, supabaseAdmin, schoolId, effectiveSchoolSourcedId);
     }
 
-    // Archive missing records
-    const students = await client.getStudentsForSchool(effectiveSchoolSourcedId);
-    const teachers = await client.getTeachersForSchool(effectiveSchoolSourcedId);
-    const classes = await client.getClassesForSchool(effectiveSchoolSourcedId);
-
+    // Archive missing records using cached sourcedIds (no duplicate API calls)
     const archiveStats = await archiveMissing(supabaseAdmin, schoolId, {
-      students: students.map(s => s.sourcedId),
-      teachers: teachers.map(t => t.sourcedId),
-      classes: classes.map(c => c.sourcedId),
+      students: studentStats.sourcedIds,
+      teachers: teacherStats.sourcedIds,
+      classes: classStats.sourcedIds,
     });
 
     // Update sync log
@@ -934,7 +921,6 @@ serve(async (req) => {
       }
     } catch (autoMergeError) {
       console.error('Error calling process-auto-merge-rules:', autoMergeError);
-      // Don't fail the sync if auto-merge processing fails
     }
 
     // Update connection status
@@ -947,7 +933,6 @@ serve(async (req) => {
         })
         .eq('id', connectionId);
     }
-    // Also update legacy table if it exists
     await supabaseAdmin
       .from('infinite_campus_connections')
       .update({
@@ -975,7 +960,6 @@ serve(async (req) => {
       }
     } catch (qualityError) {
       console.error('Error capturing quality snapshot:', qualityError);
-      // Don't fail the sync if quality capture fails
     }
 
     return new Response(JSON.stringify({ 
@@ -990,7 +974,6 @@ serve(async (req) => {
   } catch (error) {
     console.error('Sync error:', error);
 
-    // Update sync log if it was created
     if (syncLogId) {
       await supabaseAdmin
         .from('ic_sync_logs')
