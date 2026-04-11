@@ -41,7 +41,7 @@ export interface OneRosterUser {
   familyName: string;
   email?: string;
   role: string;
-  grade?: string;
+  grades?: string[];
   identifier?: string;
   enabledUser: boolean;
 }
