@@ -1,46 +1,65 @@
 
-Problem confirmed:
-- The classes UI reads teacher assignments from `class_teachers`, so if that table is still empty the page will continue to show no teachers.
-- The current sync code now falls back from `/schools/{id}/enrollments` to district-wide `/enrollments`, but teacher assignment creation still depends on a very strict check: `enrollment.role === 'teacher'`.
-- In Infinite Campus / OneRoster, enrollment role values are often not exactly `"teacher"` (for example `teacherOfRecord`, `primaryTeacher`, uppercase variants, or other teacher-like role strings). If that is happening, the sync will fetch enrollments but silently skip teacher assignments.
 
-What I found in code:
-- `syncEnrollments` only creates teacher rows when `enrollment.role === 'teacher'`.
-- There is no normalization like lowercase/trim, and no broader teacher-role handling.
-- The current logging is better than before, but it still does not log role distribution, so we cannot see whether the API is returning teacher-like roles that fail the equality check.
-- The dashboard classes page is correctly reading from `class_teachers`, so this is still a sync/data issue, not a page-render issue.
+# Fix: Supabase 1,000-Row Limit Truncating Enrollment Maps
 
-Plan:
-1. Harden enrollment role handling in `supabase/functions/sync-infinite-campus/index.ts`
-   - normalize `enrollment.role` with trim + lowercase
-   - treat known teacher-like values as teacher assignments
-   - treat known student-like values as roster assignments
-   - log unknown/unhandled role values instead of silently ignoring them
+## Root Cause (confirmed from edge function logs)
 
-2. Improve diagnostics in the sync
-   - log a role breakdown from fetched enrollments
-   - log counts for handled student roles, handled teacher roles, and unknown roles
-   - log a few sample unknown role values so we can confirm what Infinite Campus is returning
+The latest sync fetched **17,112 enrollments** with correct role values (`"student": 16290, "teacher": 822`), but **all 17,112 were skipped** with reason `no class`.
 
-3. Keep the existing enrollment fallback in `supabase/functions/_shared/oneroster-client.ts`
-   - do not remove the new district-wide fallback
-   - if needed, add one more log line clarifying whether data came from school-scoped or district-wide fallback
+The enrollment maps show:
+- `classes: 1000` (but 2,010 exist)
+- `students: 1000` (but 1,010 exist)
+- `teachers: 104` (correct, under 1000)
 
-4. Verify the sync writes actual assignments
-   - after implementation, trigger a manual sync for East Jessamine Middle
-   - confirm the latest sync log now shows non-zero enrollment processing
-   - confirm `class_teachers` rows are created and the classes page begins showing teacher names
+The pre-fetch queries in `syncEnrollments` use `.limit(10000)`, but **PostgREST's server-side `max_rows` silently caps all queries at 1,000 rows**, even for service-role clients. So only half the classes and students are loaded into the lookup maps, and enrollments referencing the missing half are all skipped.
 
-Technical details:
-- Most likely failure point now is not “no enrollments fetched” anymore, but “enrollments fetched with role values that do not equal exactly `teacher`”.
-- Best implementation pattern is a helper like:
-  ```ts
-  const normalizedRole = (enrollment.role || '').trim().toLowerCase();
-  const isTeacherRole = ['teacher', 'teacherofrecord', 'primaryteacher'].includes(normalizedRole) || normalizedRole.includes('teacher');
-  const isStudentRole = ['student', 'pupil', 'learner'].includes(normalizedRole);
-  ```
-- Also add an `unknownRoles` map/count so the next sync makes the exact IC payload behavior visible in logs.
+This same issue affects `syncTeachers` and `syncStudents` pre-fetch queries (e.g., fetching existing records for dedup), though those happen to work because there are fewer than 1,000 existing records currently.
 
-Files to change:
-- `supabase/functions/sync-infinite-campus/index.ts`
-- optionally a small extra log in `supabase/functions/_shared/oneroster-client.ts`
+## Fix
+
+Replace all `.limit(10000)` pre-fetch queries with a paginated fetch helper that loops in chunks of 900 until all rows are retrieved.
+
+### File: `supabase/functions/sync-infinite-campus/index.ts`
+
+1. Add a helper function `fetchAllRows` that paginates any Supabase query in chunks of 900:
+```typescript
+async function fetchAllRows<T>(
+  query: () => any, // returns a SupabaseQueryBuilder with .range()
+  chunkSize = 900
+): Promise<T[]> {
+  let all: T[] = [];
+  let offset = 0;
+  while (true) {
+    const { data } = await query().range(offset, offset + chunkSize - 1);
+    if (!data || data.length === 0) break;
+    all = all.concat(data);
+    if (data.length < chunkSize) break;
+    offset += chunkSize;
+  }
+  return all;
+}
+```
+
+2. Replace every `.limit(10000)` call in `syncEnrollments`, `syncTeachers`, `syncStudents`, and `syncClasses` with paginated fetches using this helper.
+
+3. Key queries to fix (all in `syncEnrollments`):
+   - `allClasses` pre-fetch (line ~556-561)
+   - `allStudents` pre-fetch (line ~569-574)
+   - `allTeachers` pre-fetch (line ~582-587)
+   - `existingRosters` pre-fetch (line ~595-599)
+   - `existingTeacherAssignments` pre-fetch (line ~606-610)
+
+4. Also fix in `syncTeachers` and `syncStudents`:
+   - `existingWithIcId` pre-fetch
+   - `unmatchedTeachers`/`unmatchedStudents` pre-fetch
+
+5. Also fix the stats query pre-fetch in `src/pages/Classes.tsx` (line ~225-226) where `classIdsRes` uses `.limit(10000)` -- same cap applies to the browser client.
+
+### File: `src/pages/Classes.tsx`
+
+The stats query fetches all class IDs with `.limit(10000)` to count students/teachers. Since this is also capped at 1,000, the stats will be wrong for schools with more than 1,000 classes. Fix by using count-only queries instead of fetching IDs.
+
+## Files to change
+- `supabase/functions/sync-infinite-campus/index.ts` -- paginate all pre-fetch queries
+- `src/pages/Classes.tsx` -- fix stats query to avoid `.limit(10000)` pattern
+
