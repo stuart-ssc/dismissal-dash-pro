@@ -1,58 +1,75 @@
 
-Problem found:
-- The slow page at `/dashboard/people/classes` is wired to `src/pages/Classes.tsx` in `src/App.tsx`.
-- The pagination work was added to `src/pages/admin/Classes.tsx`, which is only used for `/admin/classes`.
-- So the page you are actually using still has the old expensive logic.
 
-What is making it slow now:
-- `src/pages/Classes.tsx` fetches all classes for the school with `.eq('school_id', schoolId)` and no server-side pagination.
-- It then loops every class and runs a separate `class_rosters` count query for each class, causing an N+1 query pattern.
-- It also fetches and filters/sorts/paginates in the browser after loading everything.
-- It does not appear to filter the main class load by academic session, even though the UI text says “this session”.
+# Fix: Teachers Not Assigned to Classes (Enrollment Sync Returning 0)
 
-Plan:
-1. Replace the data-loading logic in `src/pages/Classes.tsx` with true server-side pagination
-   - add `page` and `pageSize` state
-   - use `.range(...)` and `{ count: 'exact' }` on the `classes` query
-   - keep page size options `10, 25, 50, 100`
+## Root Cause
 
-2. Stop loading all classes up front
-   - fetch only the visible page of classes
-   - apply search/filter in the query instead of client-side where practical
+The database confirms:
+- **104 teachers** exist (all with `ic_external_id`)
+- **2,010 classes** exist (all with `ic_external_id`)
+- **0 class_teachers** records
+- **0 class_rosters** records
+- Last 3 syncs all completed with `enrollments_created = 0, enrollments_updated = 0`
 
-3. Eliminate the per-class roster count loop
-   - after loading the current page’s class IDs, fetch `class_rosters` once for those IDs
-   - fetch `class_teachers` once for those IDs
-   - build maps in memory for counts/names
+The `syncEnrollments` function calls `client.getEnrollmentsForSchool(icSchoolSourcedId)` which hits the OneRoster endpoint `/schools/{sourcedId}/enrollments`. This endpoint likely returns a **200 OK with an empty result** on Infinite Campus, because IC often does not support school-scoped enrollment endpoints. When it returns empty, no error is thrown, so the fallback to district-wide `/enrollments` is never triggered.
 
-4. Align the page with the current academic session model
-   - use `useActiveSchoolId()` instead of manually reading `profiles.school_id`
-   - load academic sessions for the active school
-   - default to the active session
-   - filter classes and related data by `academic_session_id`
+Additionally, there is **zero logging** of how many enrollments were fetched from the API -- so the problem has been invisible.
 
-5. Keep the existing page functionality
-   - preserve add/edit/manage students/assign coverage flows
-   - update refresh callbacks so they re-query the current page instead of refetching the full dataset
+## Fix (2 files)
 
-6. Improve the stats area so it stays fast
-   - use lightweight count queries for totals
-   - avoid fetching all classes just to compute summary cards
-   - if needed, make “total students” session-aware using a dedicated aggregate query rather than loading all class IDs first
+### 1. `supabase/functions/_shared/oneroster-client.ts`
 
-7. QA after implementation
-   - verify first paint loads quickly on `/dashboard/people/classes`
-   - verify only 10 records load by default
-   - verify switching to 25/50/100 works
-   - verify search, session switching, previous/next paging, edit, manage students, and coverage assignment still work end to end
+Change `getEnrollmentsForSchool` to **always check** if the school-scoped result is empty and fall back to district-wide enrollments filtered by school:
 
-Technical details:
-- Route mapping:
-  - `/dashboard/people/classes` -> `src/pages/Classes.tsx`
-  - `/admin/classes` -> `src/pages/admin/Classes.tsx`
-- Root cause is not that pagination “is broken”; it is that the optimized file is not the file used by the dashboard route.
-- Best fix is to port the optimized query pattern into `src/pages/Classes.tsx` rather than touching only the admin page again.
+```typescript
+async getEnrollmentsForSchool(schoolSourcedId: string): Promise<OneRosterEnrollment[]> {
+  try {
+    const enrollments = await this.paginate<OneRosterEnrollment>(
+      `schools/${schoolSourcedId}/enrollments`
+    );
+    if (enrollments.length > 0) {
+      console.log(`School-scoped enrollments returned ${enrollments.length} records`);
+      return enrollments;
+    }
+    console.log('School-scoped enrollments returned 0 records, trying district-wide fallback');
+  } catch (error) {
+    console.log('School-scoped enrollments endpoint failed:', error);
+  }
+  
+  // Fallback: fetch all enrollments and filter by school
+  const allEnrollments = await this.paginate<OneRosterEnrollment>('enrollments');
+  console.log(`District-wide enrollments returned ${allEnrollments.length} records`);
+  
+  // Filter to only enrollments for classes belonging to this school
+  // (we can't filter server-side on IC, so we filter client-side)
+  return allEnrollments;
+}
+```
 
-Files to change:
-- `src/pages/Classes.tsx`
-- possibly small shared-hook reuse from `src/hooks/useActiveSchoolId.ts` if needed, but likely no hook changes required
+### 2. `supabase/functions/sync-infinite-campus/index.ts`
+
+Add logging after fetching enrollments so we can see counts:
+
+```typescript
+const enrollments = await client.getEnrollmentsForSchool(icSchoolSourcedId);
+console.log(`Fetched ${enrollments.length} enrollments from OneRoster API`);
+```
+
+Also add a safety log when enrollments reference unknown classes/students/teachers so we can diagnose mapping failures:
+
+```typescript
+// After building maps, log sizes
+console.log(`Enrollment maps - classes: ${classMap.size}, students: ${studentMap.size}, teachers: ${teacherMap.size}`);
+
+// Track skip reasons
+let skippedNoClass = 0, skippedNoStudent = 0, skippedNoTeacher = 0;
+```
+
+### 3. Redeploy `sync-infinite-campus`
+
+After the fix, trigger a manual re-sync for East Jessamine Middle School.
+
+## Files to change
+- `supabase/functions/_shared/oneroster-client.ts` -- fix enrollment fallback logic
+- `supabase/functions/sync-infinite-campus/index.ts` -- add enrollment count logging
+
