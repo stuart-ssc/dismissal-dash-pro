@@ -519,10 +519,16 @@ const Classes = () => {
                       Manage school classes, teachers, and student assignments
                     </CardDescription>
                   </div>
-                  <Button onClick={() => setShowAddDialog(true)} className="w-full md:w-auto">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Class
-                  </Button>
+                  <div className="flex gap-2 w-full md:w-auto">
+                    <Button variant="outline" onClick={() => navigate("/dashboard/people/classes/convert-groups")} className="w-full md:w-auto">
+                      <Repeat className="h-4 w-4 mr-2" />
+                      Convert Groups/Teams
+                    </Button>
+                    <Button onClick={() => setShowAddDialog(true)} className="w-full md:w-auto">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Class
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
