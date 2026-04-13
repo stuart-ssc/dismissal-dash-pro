@@ -1,31 +1,21 @@
 
 
-# Track Reviewed Classes & Remove Bulk Action Buttons
+# Fix: `added_by` NOT NULL violation in convert_classes_to_groups RPC
 
-## What changes
+## Problem
+The `special_use_group_students` table requires `added_by` (NOT NULL), but the `convert_classes_to_groups` RPC inserts students without setting it.
 
-### 1. Remove "Set Convert" and "Set Hide" bulk buttons
-Remove the two buttons from the toolbar (lines 348-365). Keep Select All / Deselect All.
+## Fix
+Update the RPC's INSERT into `special_use_group_students` to include `added_by = auth.uid()`:
 
-### 2. Track reviewed classes
-When the user processes a batch (converts/hides selected classes), the unselected classes on the current page should be marked as "reviewed" so they sort to the bottom of the list on future visits.
-
-**Database**: Add an `is_reviewed` boolean column to the `classes` table (default false). When the conversion RPC runs, it will also mark all unselected candidate classes as `is_reviewed = true` (passed as a separate array parameter).
-
-**Migration update to `convert_classes_to_groups` RPC**: Accept an additional parameter `p_reviewed_class_ids uuid[]` and run:
 ```sql
-UPDATE classes SET is_reviewed = true WHERE id = ANY(p_reviewed_class_ids);
+INSERT INTO special_use_group_students (group_id, student_id, added_by)
+SELECT v_new_group_id, cr.student_id, auth.uid()
+FROM class_rosters cr
+WHERE cr.class_id = v_class_id
+ON CONFLICT DO NOTHING;
 ```
 
-**UI sorting**: Query results will sort unreviewed classes first, reviewed classes last. A reviewed class shows a subtle "Reviewed" badge and appears at the bottom of the list. Users can still select and convert/hide a reviewed class if they change their mind.
-
-### 3. UI flow
-- User goes through page 1, selects some classes, clicks "Review N Selected"
-- On Step 2 confirm, the mutation sends both the selected conversions AND the IDs of unselected classes visible in the candidate list as "reviewed"
-- When returning to the wizard, reviewed classes appear at the bottom with a "Reviewed" indicator
-- The candidate list sorts: unreviewed keyword-matched classes first, then reviewed classes at the end
-
-### Files to modify
-- `src/pages/ConvertClassesToGroups.tsx` -- remove bulk buttons, add reviewed tracking logic, sort reviewed to bottom
-- **New migration**: add `is_reviewed` column to `classes`, update `convert_classes_to_groups` RPC to accept and set reviewed IDs
+## File
+- **New migration**: Update `convert_classes_to_groups` function with the fix above (single line change in the INSERT statement).
 
