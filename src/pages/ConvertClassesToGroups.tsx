@@ -382,7 +382,7 @@ export default function ConvertClassesToGroups() {
                         </TableRow>
                       ) : (
                         paginatedItems.map((c) => (
-                          <TableRow key={c.class_id} className={c.selected ? "" : "opacity-60"}>
+                          <TableRow key={c.class_id} className={`${c.selected ? "" : "opacity-60"} ${c.is_reviewed ? "bg-muted/30" : ""}`}>
                             <TableCell>
                               <Checkbox
                                 checked={c.selected}
