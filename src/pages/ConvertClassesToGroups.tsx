@@ -245,7 +245,7 @@ export default function ConvertClassesToGroups() {
   }
 
   return (
-    <div className="space-y-6 px-4 sm:px-6">
+    <div className="space-y-6 px-4 sm:px-6 pt-4">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Convert Classes to Groups & Teams</h1>
