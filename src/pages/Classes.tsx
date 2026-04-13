@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-import { Users, GraduationCap, BookOpen, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, UserPlus } from "lucide-react";
+import { Users, GraduationCap, BookOpen, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, UserPlus, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
