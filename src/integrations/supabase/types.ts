@@ -711,6 +711,7 @@ export type Database = {
           ic_external_id: string | null
           id: string
           is_hidden: boolean
+          is_reviewed: boolean
           period_end_time: string | null
           period_name: string | null
           period_number: number | null
@@ -727,6 +728,7 @@ export type Database = {
           ic_external_id?: string | null
           id?: string
           is_hidden?: boolean
+          is_reviewed?: boolean
           period_end_time?: string | null
           period_name?: string | null
           period_number?: number | null
@@ -743,6 +745,7 @@ export type Database = {
           ic_external_id?: string | null
           id?: string
           is_hidden?: boolean
+          is_reviewed?: boolean
           period_end_time?: string | null
           period_name?: string | null
           period_number?: number | null
@@ -4261,10 +4264,24 @@ export type Database = {
       cleanup_expired_email_requests: { Args: never; Returns: number }
       cleanup_expired_impersonation_sessions: { Args: never; Returns: number }
       cleanup_expired_oauth_signups: { Args: never; Returns: number }
-      convert_classes_to_groups: {
-        Args: { p_conversions: Json; p_school_id: number; p_session_id: string }
-        Returns: Json
-      }
+      convert_classes_to_groups:
+        | {
+            Args: {
+              p_conversions: Json
+              p_school_id: number
+              p_session_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_conversions: Json
+              p_reviewed_class_ids?: string[]
+              p_school_id: number
+              p_session_id: string
+            }
+            Returns: Json
+          }
       create_scheduled_dismissal_run: {
         Args: { target_date?: string; target_school_id: number }
         Returns: string
