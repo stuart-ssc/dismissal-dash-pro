@@ -83,6 +83,7 @@ interface ClassCandidate {
   student_count: number;
   action: "convert" | "hide";
   selected: boolean;
+  is_reviewed: boolean;
 }
 
 export default function ConvertClassesToGroups() {
