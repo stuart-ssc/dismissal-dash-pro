@@ -392,9 +392,16 @@ export default function ConvertClassesToGroups() {
                               />
                             </TableCell>
                             <TableCell>
-                              <span className="text-xs font-mono text-muted-foreground">
-                                {c.original_name}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-muted-foreground">
+                                  {c.original_name}
+                                </span>
+                                {c.is_reviewed && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-muted-foreground/30">
+                                    Reviewed
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Input
