@@ -150,8 +150,11 @@ export default function ConvertClassesToGroups() {
         group_type: detectType(c.class_name),
         student_count: Number(c.student_count) || 0,
         action: detectType(c.class_name) === "other" ? ("hide" as const) : ("convert" as const),
-        selected: matchesAnyKeyword(c.class_name, activeKeywords),
+        selected: matchesAnyKeyword(c.class_name, activeKeywords) && !c.is_reviewed,
+        is_reviewed: !!c.is_reviewed,
       }));
+    // Sort: unreviewed first, reviewed last
+    items.sort((a, b) => (a.is_reviewed === b.is_reviewed ? 0 : a.is_reviewed ? 1 : -1));
     setCandidates(items);
     setPage(1);
   }, [allClasses, showAllClasses, activeKeywords]);
