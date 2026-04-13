@@ -325,7 +325,7 @@ const Dashboard = () => {
       
       try {
         const { data: connection } = await supabase
-          .from('ic_connections' as any)
+          .from('infinite_campus_connections')
           .select('id')
           .eq('school_id', schoolId)
           .maybeSingle();
@@ -343,8 +343,15 @@ const Dashboard = () => {
   }, [schoolId]);
 
   // Check if setup method dialog should be shown
+  // Skip if IC connection already exists (school is already set up via IC)
   useEffect(() => {
-    if (!schoolId || setupLoading) return;
+    if (!schoolId || setupLoading || checkingICConnection) return;
+    
+    // Never show setup dialog if IC connection already exists
+    if (hasICConnection) {
+      setShowSetupMethodDialog(false);
+      return;
+    }
     
     // Check if setup is incomplete and user hasn't selected a method
     if (!isReady) {
@@ -356,7 +363,7 @@ const Dashboard = () => {
         setShowSetupMethodDialog(true);
       }
     }
-  }, [schoolId, isReady, setupLoading]);
+  }, [schoolId, isReady, setupLoading, hasICConnection, checkingICConnection]);
 
   if (loading) {
     return (
@@ -530,7 +537,7 @@ const Dashboard = () => {
             />
           )}
 
-          {!setupLoading && !isReady && !showSetupMethodDialog && (
+          {!setupLoading && !isReady && !showSetupMethodDialog && !(hasICConnection && statuses.hasStudent && statuses.hasClass) && (
             userRole === 'school_admin' ? (
               <SetupChecklistCard statuses={statuses} />
             ) : (
@@ -575,12 +582,12 @@ const Dashboard = () => {
           )}
           
           <div className="relative">
-            {!setupLoading && !isReady && (
+            {!setupLoading && !isReady && !statuses.hasStudent && !statuses.hasClass && (
               <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
                 <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these insights.</p>
               </div>
             )}
-            <div aria-hidden={!setupLoading && !isReady ? true : undefined} className={`grid gap-6 ${userRole === 'teacher' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
+            <div aria-hidden={!setupLoading && !isReady && !statuses.hasStudent && !statuses.hasClass ? true : undefined} className={`grid gap-6 ${userRole === 'teacher' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Today's Dismissal Time</CardTitle>
