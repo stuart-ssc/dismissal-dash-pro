@@ -4355,6 +4355,7 @@ export type Database = {
           grade_level: string
           has_students: boolean
           has_teachers: boolean
+          is_reviewed: boolean
           period_end_time: string
           period_name: string
           period_number: number
