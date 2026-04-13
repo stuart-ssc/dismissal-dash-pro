@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-import { Users, GraduationCap, BookOpen, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, UserPlus } from "lucide-react";
+import { Users, GraduationCap, BookOpen, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, UserPlus, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -519,10 +519,16 @@ const Classes = () => {
                       Manage school classes, teachers, and student assignments
                     </CardDescription>
                   </div>
-                  <Button onClick={() => setShowAddDialog(true)} className="w-full md:w-auto">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Class
-                  </Button>
+                  <div className="flex gap-2 w-full md:w-auto">
+                    <Button variant="outline" onClick={() => navigate("/dashboard/people/classes/convert-groups")} className="w-full md:w-auto">
+                      <Repeat className="h-4 w-4 mr-2" />
+                      Convert Groups/Teams
+                    </Button>
+                    <Button onClick={() => setShowAddDialog(true)} className="w-full md:w-auto">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Class
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
