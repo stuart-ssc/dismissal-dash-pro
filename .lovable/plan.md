@@ -1,28 +1,31 @@
 
 
-# Adjustments to Convert Classes to Groups Wizard
+# Track Reviewed Classes & Remove Bulk Action Buttons
 
-## Changes
+## What changes
 
-### 1. Fix header spacing
-- Remove the back arrow button (breadcrumb already exists above)
-- Add horizontal padding (`px-4 sm:px-6`) to the page content wrapper
+### 1. Remove "Set Convert" and "Set Hide" bulk buttons
+Remove the two buttons from the toolbar (lines 348-365). Keep Select All / Deselect All.
 
-### 2. Add bulk Convert/Hide buttons
-- Add two buttons next to Select All/Deselect All: "Set Selected to Convert" and "Set Selected to Hide"
-- These update the `action` field on all currently selected (and visible/filtered) candidates
+### 2. Track reviewed classes
+When the user processes a batch (converts/hides selected classes), the unselected classes on the current page should be marked as "reviewed" so they sort to the bottom of the list on future visits.
 
-### 3. Add keyword toggle controls
-- Add a row of toggleable keyword chips/badges above the table (e.g., "Athletics", "Club", "Homeroom", "Advisory", "Study Hall", "Band/Choir", "Field Trip")
-- Each keyword can be toggled on/off -- when off, classes matching only that keyword are deselected and dimmed
-- This lets each school decide which patterns to include (e.g., keep homeroom as a class, convert athletics)
-- Store active keywords in state; the candidate list filters/selects based on which keywords are active
+**Database**: Add an `is_reviewed` boolean column to the `classes` table (default false). When the conversion RPC runs, it will also mark all unselected candidate classes as `is_reviewed = true` (passed as a separate array parameter).
 
-### 4. Add pagination
-- Add page size selector (10, 25, 50, 100) and Previous/Next page controls below the table
-- Paginate the `filtered` list client-side (all data is already loaded)
-- Show "Showing X to Y of Z" text
+**Migration update to `convert_classes_to_groups` RPC**: Accept an additional parameter `p_reviewed_class_ids uuid[]` and run:
+```sql
+UPDATE classes SET is_reviewed = true WHERE id = ANY(p_reviewed_class_ids);
+```
 
-## File to modify
-- `src/pages/ConvertClassesToGroups.tsx` -- all four changes in this single file
+**UI sorting**: Query results will sort unreviewed classes first, reviewed classes last. A reviewed class shows a subtle "Reviewed" badge and appears at the bottom of the list. Users can still select and convert/hide a reviewed class if they change their mind.
+
+### 3. UI flow
+- User goes through page 1, selects some classes, clicks "Review N Selected"
+- On Step 2 confirm, the mutation sends both the selected conversions AND the IDs of unselected classes visible in the candidate list as "reviewed"
+- When returning to the wizard, reviewed classes appear at the bottom with a "Reviewed" indicator
+- The candidate list sorts: unreviewed keyword-matched classes first, then reviewed classes at the end
+
+### Files to modify
+- `src/pages/ConvertClassesToGroups.tsx` -- remove bulk buttons, add reviewed tracking logic, sort reviewed to bottom
+- **New migration**: add `is_reviewed` column to `classes`, update `convert_classes_to_groups` RPC to accept and set reviewed IDs
 
