@@ -217,10 +217,13 @@ export default function ConvertClassesToGroups() {
   });
 
   // Handlers
-  const toggleAll = (checked: boolean) => {
-    const visibleIds = new Set(filtered.map((c) => c.class_id));
+  const allPageSelected = paginatedItems.length > 0 && paginatedItems.every((c) => c.selected);
+  const somePageSelected = paginatedItems.some((c) => c.selected) && !allPageSelected;
+
+  const togglePage = (checked: boolean) => {
+    const pageIds = new Set(paginatedItems.map((c) => c.class_id));
     setCandidates((prev) =>
-      prev.map((c) => (visibleIds.has(c.class_id) ? { ...c, selected: checked } : c))
+      prev.map((c) => (pageIds.has(c.class_id) ? { ...c, selected: checked } : c))
     );
   };
 
@@ -341,12 +344,6 @@ export default function ConvertClassesToGroups() {
                     />
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" onClick={() => toggleAll(true)}>
-                      Select All
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => toggleAll(false)}>
-                      Deselect All
-                    </Button>
                   </div>
                 </div>
 
@@ -355,7 +352,14 @@ export default function ConvertClassesToGroups() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-10"></TableHead>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={allPageSelected}
+                            onCheckedChange={(checked) => togglePage(!!checked)}
+                            aria-label="Select all on this page"
+                            className={somePageSelected ? "data-[state=unchecked]:bg-primary/30" : ""}
+                          />
+                        </TableHead>
                         <TableHead>IC Class Name</TableHead>
                         <TableHead>Display Name</TableHead>
                         <TableHead className="w-[140px]">Type</TableHead>
