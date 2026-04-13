@@ -224,14 +224,6 @@ export default function ConvertClassesToGroups() {
     );
   };
 
-  const bulkSetAction = (action: "convert" | "hide") => {
-    const visibleSelectedIds = new Set(
-      filtered.filter((c) => c.selected).map((c) => c.class_id)
-    );
-    setCandidates((prev) =>
-      prev.map((c) => (visibleSelectedIds.has(c.class_id) ? { ...c, action } : c))
-    );
-  };
 
   const toggleKeyword = (label: string) => {
     setActiveKeywords((prev) => {
