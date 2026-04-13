@@ -11,38 +11,37 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, ArrowRight, Check, RefreshCw, Search, Users, EyeOff, Repeat } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, RefreshCw, Search, Users, EyeOff, Repeat, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
-// --- Pattern matching & name cleanup ---
+// --- Keyword definitions ---
 
-const TYPE_PATTERNS: { regex: RegExp; type: string }[] = [
-  { regex: /athletics?/i, type: "athletics" },
-  { regex: /clubs?(?:\s|$)/i, type: "club" },
-  { regex: /field[\s._-]?trip|^128_FT/i, type: "field_trip" },
-  { regex: /band|orchestra|choir|choral|chorus|music|ensemble/i, type: "club" },
-  { regex: /homeroom|advisory|study[\s._-]?hall/i, type: "other" },
-];
+interface KeywordDef {
+  label: string;
+  regex: RegExp;
+  defaultType: string;
+  defaultActive: boolean;
+}
 
-const CANDIDATE_PATTERNS = [
-  /athletics?/i,
-  /clubs?(?:\s|$)/i,
-  /field[\s._-]?trip|^128_FT/i,
-  /homeroom/i,
-  /advisory/i,
-  /study[\s._-]?hall/i,
-  /band|orchestra|choir|choral|chorus|ensemble/i,
+const KEYWORDS: KeywordDef[] = [
+  { label: "Athletics", regex: /athletics?/i, defaultType: "athletics", defaultActive: true },
+  { label: "Club", regex: /clubs?(?:\s|$)/i, defaultType: "club", defaultActive: true },
+  { label: "Field Trip", regex: /field[\s._-]?trip|^128_FT/i, defaultType: "field_trip", defaultActive: true },
+  { label: "Band/Choir/Music", regex: /band|orchestra|choir|choral|chorus|music|ensemble/i, defaultType: "club", defaultActive: true },
+  { label: "Homeroom", regex: /homeroom/i, defaultType: "other", defaultActive: false },
+  { label: "Advisory", regex: /advisory/i, defaultType: "other", defaultActive: false },
+  { label: "Study Hall", regex: /study[\s._-]?hall/i, defaultType: "other", defaultActive: false },
 ];
 
 function detectType(name: string): string {
-  for (const p of TYPE_PATTERNS) {
-    if (p.regex.test(name)) return p.type;
+  for (const kw of KEYWORDS) {
+    if (kw.regex.test(name)) return kw.defaultType;
   }
   return "other";
 }
 
-function isCandidate(name: string): boolean {
-  return CANDIDATE_PATTERNS.some((r) => r.test(name));
+function matchesAnyKeyword(name: string, activeKeywords: Set<string>): boolean {
+  return KEYWORDS.some((kw) => activeKeywords.has(kw.label) && kw.regex.test(name));
 }
 
 const TRUNCATION_FIXES: Record<string, string> = {
@@ -57,20 +56,15 @@ const TRUNCATION_FIXES: Record<string, string> = {
 };
 
 function cleanDisplayName(raw: string): string {
-  // Strip leading numeric prefix like "128_"
   let name = raw.replace(/^\d+_/, "");
-  // Strip trailing " \d+ Athletics" or " \d+ Club(s)"
   name = name.replace(/\s+\d+\s+(Athletics?|Clubs?)$/i, "");
-  // Strip "FT " prefix for field trips
   name = name.replace(/^FT\s*/i, "");
-  // Fix known truncations
   const lower = name.toLowerCase().trim();
   for (const [trunc, full] of Object.entries(TRUNCATION_FIXES)) {
     if (lower.endsWith(trunc) || lower === trunc) {
       name = name.slice(0, name.length - trunc.length) + full;
     }
   }
-  // Clean up extra whitespace
   return name.replace(/\s+/g, " ").trim();
 }
 
@@ -100,8 +94,12 @@ export default function ConvertClassesToGroups() {
   const [search, setSearch] = useState("");
   const [candidates, setCandidates] = useState<ClassCandidate[]>([]);
   const [showAllClasses, setShowAllClasses] = useState(false);
+  const [activeKeywords, setActiveKeywords] = useState<Set<string>>(
+    () => new Set(KEYWORDS.filter((k) => k.defaultActive).map((k) => k.label))
+  );
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
-  // Get current academic session
   const { data: sessionId } = useQuery({
     queryKey: ["current-session", schoolId],
     queryFn: async () => {
@@ -112,12 +110,10 @@ export default function ConvertClassesToGroups() {
     enabled: !!schoolId,
   });
 
-  // Fetch ALL classes (not just paginated) for this session
   const { data: allClasses, isLoading } = useQuery({
     queryKey: ["all-classes-for-conversion", schoolId, sessionId],
     queryFn: async () => {
       if (!schoolId || !sessionId) return [];
-      // Fetch in pages of 1000
       let allData: any[] = [];
       let offset = 0;
       const limit = 1000;
@@ -141,11 +137,11 @@ export default function ConvertClassesToGroups() {
     enabled: !!schoolId && !!sessionId,
   });
 
-  // Build candidates when classes load
+  // Build candidates when classes load or keywords change
   useEffect(() => {
     if (!allClasses || allClasses.length === 0) return;
     const items: ClassCandidate[] = allClasses
-      .filter((c: any) => showAllClasses || isCandidate(c.class_name))
+      .filter((c: any) => showAllClasses || matchesAnyKeyword(c.class_name, activeKeywords))
       .map((c: any) => ({
         class_id: c.class_id,
         original_name: c.class_name,
@@ -153,12 +149,13 @@ export default function ConvertClassesToGroups() {
         group_type: detectType(c.class_name),
         student_count: Number(c.student_count) || 0,
         action: detectType(c.class_name) === "other" ? ("hide" as const) : ("convert" as const),
-        selected: isCandidate(c.class_name),
+        selected: matchesAnyKeyword(c.class_name, activeKeywords),
       }));
     setCandidates(items);
-  }, [allClasses, showAllClasses]);
+    setPage(1);
+  }, [allClasses, showAllClasses, activeKeywords]);
 
-  // Filtered view
+  // Filtered + paginated
   const filtered = useMemo(() => {
     if (!search) return candidates;
     const q = search.toLowerCase();
@@ -167,11 +164,19 @@ export default function ConvertClassesToGroups() {
     );
   }, [candidates, search]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safeCurrentPage = Math.min(page, totalPages);
+  const paginatedItems = filtered.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+  const showFrom = filtered.length > 0 ? (safeCurrentPage - 1) * pageSize + 1 : 0;
+  const showTo = Math.min(safeCurrentPage * pageSize, filtered.length);
+
   const selectedCount = candidates.filter((c) => c.selected).length;
   const convertCount = candidates.filter((c) => c.selected && c.action === "convert").length;
   const hideCount = candidates.filter((c) => c.selected && c.action === "hide").length;
 
-  // Mutation
+  // Reset page when search changes
+  useEffect(() => { setPage(1); }, [search]);
+
   const convertMutation = useMutation({
     mutationFn: async () => {
       if (!schoolId || !sessionId) throw new Error("Missing school/session");
@@ -203,12 +208,28 @@ export default function ConvertClassesToGroups() {
 
   // Handlers
   const toggleAll = (checked: boolean) => {
+    const visibleIds = new Set(filtered.map((c) => c.class_id));
     setCandidates((prev) =>
-      prev.map((c) => {
-        const isVisible = !search || c.original_name.toLowerCase().includes(search.toLowerCase()) || c.display_name.toLowerCase().includes(search.toLowerCase());
-        return isVisible ? { ...c, selected: checked } : c;
-      })
+      prev.map((c) => (visibleIds.has(c.class_id) ? { ...c, selected: checked } : c))
     );
+  };
+
+  const bulkSetAction = (action: "convert" | "hide") => {
+    const visibleSelectedIds = new Set(
+      filtered.filter((c) => c.selected).map((c) => c.class_id)
+    );
+    setCandidates((prev) =>
+      prev.map((c) => (visibleSelectedIds.has(c.class_id) ? { ...c, action } : c))
+    );
+  };
+
+  const toggleKeyword = (label: string) => {
+    setActiveKeywords((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
   };
 
   const updateCandidate = (classId: string, updates: Partial<ClassCandidate>) => {
@@ -224,18 +245,13 @@ export default function ConvertClassesToGroups() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 sm:px-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard/people/classes")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Convert Classes to Groups & Teams</h1>
-          <p className="text-muted-foreground text-sm">
-            Identify non-instructional IC sections and convert them into Groups & Teams with their student rosters.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Convert Classes to Groups & Teams</h1>
+        <p className="text-muted-foreground text-sm">
+          Identify non-instructional IC sections and convert them into Groups & Teams with their student rosters.
+        </p>
       </div>
 
       {/* Step indicator */}
@@ -291,7 +307,27 @@ export default function ConvertClassesToGroups() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Search & Select All */}
+                {/* Keyword toggles */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Filter by keyword pattern:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {KEYWORDS.map((kw) => (
+                      <button
+                        key={kw.label}
+                        onClick={() => toggleKeyword(kw.label)}
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                          activeKeywords.has(kw.label)
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                        }`}
+                      >
+                        {kw.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Search & bulk actions */}
                 <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                   <div className="relative flex-1 w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -302,12 +338,30 @@ export default function ConvertClassesToGroups() {
                       className="pl-9"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={() => toggleAll(true)}>
                       Select All
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => toggleAll(false)}>
                       Deselect All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => bulkSetAction("convert")}
+                      disabled={selectedCount === 0}
+                    >
+                      <Repeat className="h-3 w-3 mr-1" />
+                      Set Convert
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => bulkSetAction("hide")}
+                      disabled={selectedCount === 0}
+                    >
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Set Hide
                     </Button>
                   </div>
                 </div>
@@ -326,7 +380,7 @@ export default function ConvertClassesToGroups() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filtered.length === 0 ? (
+                      {paginatedItems.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             {search
@@ -335,7 +389,7 @@ export default function ConvertClassesToGroups() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filtered.map((c) => (
+                        paginatedItems.map((c) => (
                           <TableRow key={c.class_id} className={c.selected ? "" : "opacity-60"}>
                             <TableCell>
                               <Checkbox
@@ -420,6 +474,54 @@ export default function ConvertClassesToGroups() {
                   </Table>
                 </div>
 
+                {/* Pagination */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                  <p className="text-sm text-muted-foreground w-full sm:w-auto text-center sm:text-left">
+                    Showing {showFrom} to {showTo} of {filtered.length}
+                  </p>
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(val) => {
+                        setPageSize(Number(val));
+                        setPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[70px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[10, 25, 50, 100].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={safeCurrentPage <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {safeCurrentPage} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={safeCurrentPage >= totalPages}
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Actions */}
                 <div className="flex justify-between items-center pt-4">
                   <Button variant="outline" onClick={() => navigate("/dashboard/people/classes")}>
@@ -446,7 +548,6 @@ export default function ConvertClassesToGroups() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Summary stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-muted/50 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-primary">{convertCount}</div>
@@ -466,7 +567,6 @@ export default function ConvertClassesToGroups() {
               </div>
             </div>
 
-            {/* Detailed list */}
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -498,7 +598,6 @@ export default function ConvertClassesToGroups() {
               </Table>
             </div>
 
-            {/* Actions */}
             <div className="flex justify-between items-center pt-4">
               <Button variant="outline" onClick={() => setStep(1)}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
