@@ -1,48 +1,46 @@
 
-Problem confirmed:
-- The sync is no longer the blocker.
-- Your screenshot already shows the proof: the top cards say `14,916 students` and `89 teachers assigned`, so the page is reading synced assignment data.
-- The specific rows shown in the screenshot are genuinely empty classes in the database, which is why they still show `No teacher assigned` and `0`.
-- East Jessamine currently has:
-  - `2,010` classes in the active session
-  - `633` classes with at least one teacher or student
-  - `1,377` empty classes/sections
-- There are also many duplicate class names, so an empty section and a populated section can share nearly the same label, which makes the page look broken even when data exists.
 
-What I will change:
-1. Replace the current client-side “fetch classes, then decorate them” approach with a single server-side paginated query/RPC that returns:
-   - class info
-   - teacher names
-   - student count
-   - flags like `has_students` / `has_teachers`
-   - total count
-2. Change the default ordering so the page shows useful classes first:
-   - assigned/populated classes first
-   - then higher student count
-   - then class name
-3. Add an explicit filter so you can quickly switch between:
-   - All classes
-   - Assigned classes
-   - Unassigned classes
-   - With students
-   - Empty sections
-4. Improve row labels so duplicate IC sections are distinguishable:
-   - show room/period where available
-   - keep teacher/student badges visible at a glance
-5. Apply the same fix to both dashboard and admin classes views so behavior stays consistent.
+# Fix: Dashboard Still Prompts Setup After IC Sync
 
-Files to update:
-- new migration in `supabase/migrations/` for a secure paginated classes query/function
-- `src/pages/Classes.tsx`
-- `src/pages/admin/Classes.tsx`
+## Root Cause (two bugs)
 
-Technical notes:
-- The current page paginates `classes` first, then looks up `class_rosters` and `class_teachers` only for those visible IDs.
-- That means alphabetical sorting can easily place large blocks of empty IC sections at the top, which is exactly what your screenshot shows.
-- A server-side aggregated query is the correct fix because it allows filtering/sorting by populated status before pagination.
-- No more sync changes are needed for this issue.
+### Bug 1: IC connection check queries wrong table
+The dashboard (line 328) queries `ic_connections` to detect IC setup, but that table does not exist. The actual table is `infinite_campus_connections`. Result: `hasICConnection` is always false, so the IC status widget shows "Not Connected" even though there IS an active connection (id: `bc8992a1`).
 
-Expected outcome:
-- The first page will no longer look like “nothing synced”.
-- Populated classes with real teachers/students will appear first by default.
-- Empty IC sections will still be accessible, but won’t dominate the initial view.
+### Bug 2: Setup checklist blocks dashboard even when IC sync is complete
+`useSchoolSetupStatus` requires ALL of these to be true for `isReady`:
+- `transportationReady` (buses OR car lines OR walkers)
+- `hasTeacher`
+- `hasStudent`
+- `hasClass`
+- `schoolUpdated`
+
+The school has 104 teachers, 1,010 students, and 2,010 classes -- but 0 buses, 0 car lines, and 0 walkers. Transportation is a manual setup step that IC sync does not handle. So `isReady` is permanently false, which:
+- Shows the "Getting your school ready" checklist card
+- Overlays a blur on all dashboard widgets ("Complete the setup checklist to unlock these insights")
+- Re-triggers the setup method dialog on every visit (since `isReady` is false and localStorage may not persist)
+
+## Fix Plan
+
+### 1. Fix IC connection check in Dashboard.tsx
+Change the query from `ic_connections` to `infinite_campus_connections` so the dashboard correctly detects that IC is connected.
+
+### 2. Make setup checklist IC-aware
+When a school has a completed IC sync (active `infinite_campus_connections` record), treat the school as "set up" for the purposes of showing/hiding the setup prompts -- even if transportation hasn't been configured yet. Specifically:
+- If `hasICConnection` is true AND the school has students and classes, skip the setup method dialog entirely
+- Show the setup checklist only as a helpful guide (not as a blocker with the blur overlay) when IC is connected but transportation is still missing
+- Never re-show the "IC or Manual?" dialog if an IC connection already exists
+
+### 3. Update the blur overlay logic
+The blur overlay (line 578-582) currently blocks ALL dashboard content when `!isReady`. Change this so the overlay only appears when the school has NO data at all (no students AND no classes), not when only transportation is missing.
+
+## Files to Change
+- `src/pages/Dashboard.tsx` -- fix `ic_connections` table name, update setup dialog/overlay logic
+- No migration needed -- this is purely a UI logic fix
+
+## Expected Outcome
+- Dashboard detects the existing IC connection correctly
+- Setup method dialog does not appear for schools that already have an IC connection
+- Dashboard widgets are visible and usable even before transportation is configured
+- Setup checklist still shows as a non-blocking guide with the transportation step unchecked
+
