@@ -191,11 +191,17 @@ export default function ConvertClassesToGroups() {
         group_type: c.group_type,
         action: c.action,
       }));
+      // IDs of unselected candidates to mark as reviewed
+      const selectedIds = new Set(selected.map((c) => c.class_id));
+      const reviewedIds = candidates
+        .filter((c) => !selectedIds.has(c.class_id) && !c.is_reviewed)
+        .map((c) => c.class_id);
       const { data, error } = await supabase.rpc("convert_classes_to_groups", {
         p_school_id: schoolId,
         p_session_id: sessionId,
         p_conversions: conversions,
-      });
+        p_reviewed_class_ids: reviewedIds,
+      } as any);
       if (error) throw error;
       return data as any;
     },
