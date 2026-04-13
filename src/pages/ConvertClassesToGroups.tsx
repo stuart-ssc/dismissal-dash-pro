@@ -355,24 +355,6 @@ export default function ConvertClassesToGroups() {
                     <Button variant="outline" size="sm" onClick={() => toggleAll(false)}>
                       Deselect All
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => bulkSetAction("convert")}
-                      disabled={selectedCount === 0}
-                    >
-                      <Repeat className="h-3 w-3 mr-1" />
-                      Set Convert
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => bulkSetAction("hide")}
-                      disabled={selectedCount === 0}
-                    >
-                      <EyeOff className="h-3 w-3 mr-1" />
-                      Set Hide
-                    </Button>
                   </div>
                 </div>
 
