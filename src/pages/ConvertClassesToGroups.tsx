@@ -83,6 +83,7 @@ interface ClassCandidate {
   student_count: number;
   action: "convert" | "hide";
   selected: boolean;
+  is_reviewed: boolean;
 }
 
 export default function ConvertClassesToGroups() {
@@ -149,8 +150,11 @@ export default function ConvertClassesToGroups() {
         group_type: detectType(c.class_name),
         student_count: Number(c.student_count) || 0,
         action: detectType(c.class_name) === "other" ? ("hide" as const) : ("convert" as const),
-        selected: matchesAnyKeyword(c.class_name, activeKeywords),
+        selected: matchesAnyKeyword(c.class_name, activeKeywords) && !c.is_reviewed,
+        is_reviewed: !!c.is_reviewed,
       }));
+    // Sort: unreviewed first, reviewed last
+    items.sort((a, b) => (a.is_reviewed === b.is_reviewed ? 0 : a.is_reviewed ? 1 : -1));
     setCandidates(items);
     setPage(1);
   }, [allClasses, showAllClasses, activeKeywords]);
@@ -187,11 +191,17 @@ export default function ConvertClassesToGroups() {
         group_type: c.group_type,
         action: c.action,
       }));
+      // IDs of unselected candidates to mark as reviewed
+      const selectedIds = new Set(selected.map((c) => c.class_id));
+      const reviewedIds = candidates
+        .filter((c) => !selectedIds.has(c.class_id) && !c.is_reviewed)
+        .map((c) => c.class_id);
       const { data, error } = await supabase.rpc("convert_classes_to_groups", {
         p_school_id: schoolId,
         p_session_id: sessionId,
         p_conversions: conversions,
-      });
+        p_reviewed_class_ids: reviewedIds,
+      } as any);
       if (error) throw error;
       return data as any;
     },
@@ -214,14 +224,6 @@ export default function ConvertClassesToGroups() {
     );
   };
 
-  const bulkSetAction = (action: "convert" | "hide") => {
-    const visibleSelectedIds = new Set(
-      filtered.filter((c) => c.selected).map((c) => c.class_id)
-    );
-    setCandidates((prev) =>
-      prev.map((c) => (visibleSelectedIds.has(c.class_id) ? { ...c, action } : c))
-    );
-  };
 
   const toggleKeyword = (label: string) => {
     setActiveKeywords((prev) => {
@@ -345,24 +347,6 @@ export default function ConvertClassesToGroups() {
                     <Button variant="outline" size="sm" onClick={() => toggleAll(false)}>
                       Deselect All
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => bulkSetAction("convert")}
-                      disabled={selectedCount === 0}
-                    >
-                      <Repeat className="h-3 w-3 mr-1" />
-                      Set Convert
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => bulkSetAction("hide")}
-                      disabled={selectedCount === 0}
-                    >
-                      <EyeOff className="h-3 w-3 mr-1" />
-                      Set Hide
-                    </Button>
                   </div>
                 </div>
 
@@ -390,7 +374,7 @@ export default function ConvertClassesToGroups() {
                         </TableRow>
                       ) : (
                         paginatedItems.map((c) => (
-                          <TableRow key={c.class_id} className={c.selected ? "" : "opacity-60"}>
+                          <TableRow key={c.class_id} className={`${c.selected ? "" : "opacity-60"} ${c.is_reviewed ? "bg-muted/30" : ""}`}>
                             <TableCell>
                               <Checkbox
                                 checked={c.selected}
@@ -400,9 +384,16 @@ export default function ConvertClassesToGroups() {
                               />
                             </TableCell>
                             <TableCell>
-                              <span className="text-xs font-mono text-muted-foreground">
-                                {c.original_name}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-muted-foreground">
+                                  {c.original_name}
+                                </span>
+                                {c.is_reviewed && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-muted-foreground/30">
+                                    Reviewed
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Input
