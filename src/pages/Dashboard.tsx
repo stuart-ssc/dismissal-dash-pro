@@ -699,12 +699,12 @@ const Dashboard = () => {
 
           {(userRole === 'school_admin' || userRole === 'district_admin' || userRole === 'system_admin') && (
             <div className="relative">
-              {!setupLoading && !isReady && (
+              {!setupLoading && !isReady && !statuses.hasStudent && !statuses.hasClass && (
                 <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
                   <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these actions and activity.</p>
                 </div>
               )}
-              <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div aria-hidden={!setupLoading && !isReady && !statuses.hasStudent && !statuses.hasClass ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                   <CardHeader>
                     <CardTitle>Quick Actions</CardTitle>
@@ -831,12 +831,12 @@ const Dashboard = () => {
         )}
 
         <div className="relative mb-8">
-          {!setupLoading && !isReady && (
+          {!setupLoading && !isReady && !statuses.hasStudent && !statuses.hasClass && (
             <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
               <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these insights.</p>
             </div>
           )}
-          <div aria-hidden={!setupLoading && !isReady ? true : undefined} className={`grid gap-6 ${userRole === 'teacher' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
+          <div aria-hidden={!setupLoading && !isReady && !statuses.hasStudent && !statuses.hasClass ? true : undefined} className={`grid gap-6 ${userRole === 'teacher' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
             <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Today's Dismissal Time</CardTitle>
@@ -935,12 +935,12 @@ const Dashboard = () => {
 
         {userRole !== 'teacher' && (
           <div className="relative">
-            {!setupLoading && !isReady && (
+            {!setupLoading && !isReady && !statuses.hasStudent && !statuses.hasClass && (
               <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-sm flex items-center justify-center">
                 <p className="text-sm text-muted-foreground">Complete the setup checklist to unlock these actions and activity.</p>
               </div>
             )}
-            <div aria-hidden={!setupLoading && !isReady ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div aria-hidden={!setupLoading && !isReady && !statuses.hasStudent && !statuses.hasClass ? true : undefined} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur">
                 <CardHeader>
                   <CardTitle>Quick Actions</CardTitle>
