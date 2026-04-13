@@ -35,6 +35,7 @@ import PeopleHub from "./pages/PeopleHub";
 import DismissalsHub from "./pages/DismissalsHub";
 import SpecialUseRunDetail from "./pages/SpecialUseRunDetail";
 import SpecialUseRunMode from "./pages/modes/SpecialUseRunMode";
+import ConvertClassesToGroups from "./pages/ConvertClassesToGroups";
 import Settings from "./pages/Settings";
 import CarLines from "./pages/CarLines";
 import WalkerLocations from "./pages/WalkerLocations";
@@ -109,6 +110,7 @@ const AppContent = () => {
             <Route path="/dashboard/people" element={<PeopleHub />} />
             <Route path="/dashboard/people/manage" element={<PeopleManagement />} />
             <Route path="/dashboard/people/classes" element={<Classes />} />
+            <Route path="/dashboard/people/classes/convert-groups" element={<ConvertClassesToGroups />} />
             <Route path="/dashboard/people/coverage" element={<TeacherCoverage />} />
             <Route path="/dashboard/people/absences" element={<Absences />} />
             <Route path="/dashboard/people/groups-teams" element={<GroupsTeams />} />
