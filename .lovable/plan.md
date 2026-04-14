@@ -1,21 +1,22 @@
 
 
-# Fix: `added_by` NOT NULL violation in convert_classes_to_groups RPC
+# Fix Class Management Page (`src/pages/Classes.tsx`)
 
-## Problem
-The `special_use_group_students` table requires `added_by` (NOT NULL), but the `convert_classes_to_groups` RPC inserts students without setting it.
+## Changes
 
-## Fix
-Update the RPC's INSERT into `special_use_group_students` to include `added_by = auth.uid()`:
+### 1. Remove Grade column
+- Delete the "Grade" `TableHead` (line 648)
+- Delete the Grade `TableCell` with `getGradeBadge` (line 665)
+- Remove grade from the mobile card view (lines 632-634)
+- Remove the `getGradeBadge` helper (lines 414-421)
+- Update the empty-state `colSpan` from 5 to 4
 
-```sql
-INSERT INTO special_use_group_students (group_id, student_id, added_by)
-SELECT v_new_group_id, cr.student_id, auth.uid()
-FROM class_rosters cr
-WHERE cr.class_id = v_class_id
-ON CONFLICT DO NOTHING;
-```
+### 2. Add "Hide Class" to the Actions dropdown
+- Import `EyeOff` from lucide-react
+- Import `useQueryClient` from `@tanstack/react-query`
+- Add `handleHideClass` function that sets `is_hidden = true` via Supabase and invalidates queries
+- Add a "Hide Class" `DropdownMenuItem` in both the desktop table and mobile card action menus (after the existing items like Edit, Manage Students, etc.)
 
-## File
-- **New migration**: Update `convert_classes_to_groups` function with the fix above (single line change in the INSERT statement).
+### File
+- `src/pages/Classes.tsx` — the school admin view at `/dashboard/people/classes`
 
