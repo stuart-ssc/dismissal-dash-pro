@@ -182,7 +182,9 @@ export function ManagePersonClassesDialog({
   const handleRemove = async (assignmentId: string) => {
     setRemovingId(assignmentId);
     try {
-      const { error } = await supabase.from(tableName).delete().eq('id', assignmentId);
+      const { error } = isStudent
+        ? await supabase.from('class_rosters').delete().eq('id', assignmentId)
+        : await supabase.from('class_teachers').delete().eq('id', assignmentId);
       if (error) throw error;
 
       toast({ title: "Class removed", description: "Successfully removed class assignment." });
