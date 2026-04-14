@@ -2812,7 +2812,7 @@ export type Database = {
             foreignKeyName: "special_use_group_managers_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
         ]
