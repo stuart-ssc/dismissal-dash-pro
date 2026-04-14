@@ -222,9 +222,9 @@ const Classes = () => {
 
       const [totalRes, studentsRes] = await Promise.all([
         supabase.from('classes').select('id', { count: 'exact', head: true })
+          .eq('school_id', schoolId).eq('academic_session_id', selectedSessionId).eq('is_hidden', false),
+        supabase.from('students').select('id', { count: 'exact', head: true })
           .eq('school_id', schoolId).eq('academic_session_id', selectedSessionId),
-        supabase.from('class_rosters').select('id', { count: 'exact', head: true })
-          .eq('academic_session_id', selectedSessionId),
       ]);
 
       // Unique teacher count via paginated fetch
@@ -418,8 +418,8 @@ const Classes = () => {
     const queryKey = ['classes-paginated', schoolId, selectedSessionId, page, pageSize, searchTerm, assignmentFilter];
     const previousData = queryClient.getQueryData(queryKey);
     queryClient.setQueryData(queryKey, (old: any) => {
-      if (!old) return old;
-      return old.filter((c: any) => c.class_id !== classId);
+      if (!old?.classes) return old;
+      return { ...old, classes: old.classes.filter((c: any) => c.id !== classId) };
     });
 
     const { error } = await supabase
@@ -441,8 +441,8 @@ const Classes = () => {
     const queryKey = ['classes-paginated', schoolId, selectedSessionId, page, pageSize, searchTerm, assignmentFilter];
     const previousData = queryClient.getQueryData(queryKey);
     queryClient.setQueryData(queryKey, (old: any) => {
-      if (!old) return old;
-      return old.filter((c: any) => c.class_id !== classId);
+      if (!old?.classes) return old;
+      return { ...old, classes: old.classes.filter((c: any) => c.id !== classId) };
     });
 
     const { error } = await supabase
