@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon, Loader2, Archive } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon, Loader2, Archive, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { usePaginatedPeople, type PersonData } from "@/hooks/usePaginatedPeople";
 import { useQueryClient } from "@tanstack/react-query";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -700,22 +701,21 @@ const People = () => {
           )}
 
 
-              <Card className="shadow-elevated border-0 bg-card/80 backdrop-blur max-w-full">
+              <Card className="shadow-elevated border-0 bg-card backdrop-blur max-w-full">
                 <CardHeader>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                     <div className="space-y-2">
-                       <CardTitle className="flex items-center gap-2">
-                         <Users className="h-5 w-5" />
+                     <div>
+                       <CardTitle className="flex items-center gap-3">
                          People Management
+                         {selectedSessionId && academicSessions.length > 0 && (
+                           <Badge variant="secondary" className="text-xs font-normal">
+                             {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                           </Badge>
+                         )}
                        </CardTitle>
-                       <CardDescription>
+                       <CardDescription className="mt-2">
                          Manage students, teachers, and administrators
                        </CardDescription>
-                       {selectedSessionId && academicSessions.length > 0 && (
-                         <Badge variant="secondary" className="text-xs">
-                           Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-                         </Badge>
-                       )}
                      </div>
                     <div className="flex flex-wrap gap-2">
                       <Button 
@@ -738,36 +738,40 @@ const People = () => {
                   </div>
                 </CardHeader>
                  <CardContent>
-                   {/* Academic Session Selector */}
-                   {academicSessions.length > 0 && (
-                     <div className="mb-4 p-4 bg-muted/30 rounded-lg border space-y-2">
-                       <Label htmlFor="session-filter" className="text-sm font-medium">
-                         Academic Year / Session
-                       </Label>
-                       <Select value={selectedSessionId || ''} onValueChange={(value) => setSelectedSessionId(value)}>
-                         <SelectTrigger id="session-filter" className="w-full max-w-md">
-                           <SelectValue placeholder="Select academic session" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           {academicSessions.map((session) => (
-                             <SelectItem key={session.id} value={session.id}>
-                               {session.session_name} {session.is_active && '(Active)'}
-                             </SelectItem>
-                           ))}
-                         </SelectContent>
-                       </Select>
-                       <p className="text-xs text-muted-foreground">
-                         Filtering people by selected academic session
-                       </p>
-                     </div>
-                   )}
 
                    {/* Filters and Sort Controls */}
           <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-muted/30 rounded-lg border">
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Filters:</span>
+                    {/* Search Input */}
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search people..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="pl-8 h-8 text-sm"
+                      />
                     </div>
+
+                    {/* Academic Session Filter */}
+                    {academicSessions.length > 0 && (
+                      <Select value={selectedSessionId || ''} onValueChange={(value) => setSelectedSessionId(value)}>
+                        <SelectTrigger className="h-8 w-full sm:w-48 text-sm">
+                          <SelectValue placeholder="Session" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {academicSessions.map((session) => (
+                            <SelectItem key={session.id} value={session.id}>
+                              {session.session_name} {session.is_active && '(Active)'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    <div className="hidden sm:block h-4 w-px bg-border" />
                     
                     {/* Role Filter */}
                     <DropdownMenu>
