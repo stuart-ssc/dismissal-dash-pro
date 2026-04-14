@@ -67,6 +67,7 @@ type SpecialUseGroup = {
 export default function SpecialUseGroups() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedGroup, setSelectedGroup] = useState<SpecialUseGroup | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [studentsDialogOpen, setStudentsDialogOpen] = useState(false);
@@ -140,9 +141,11 @@ export default function SpecialUseGroups() {
     enabled: !!user && !!selectedSessionId,
   });
 
-  const filteredGroups = groups.filter((group) =>
-    group.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredGroups = groups.filter((group) => {
+    const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || group.group_type === typeFilter;
+    return matchesSearch && matchesType;
+  });
 
   const handleExportCSV = () => {
     if (filteredGroups.length === 0) {
@@ -285,14 +288,28 @@ export default function SpecialUseGroups() {
         </CardHeader>
           <CardContent>
             {/* Search Field */}
-            <div className="relative w-full mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search groups..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search groups..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="field_trip">Field Trip</SelectItem>
+                  <SelectItem value="athletics">Athletics</SelectItem>
+                  <SelectItem value="club">Club</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Groups Table */}
