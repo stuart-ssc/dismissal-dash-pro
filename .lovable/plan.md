@@ -1,37 +1,30 @@
 
 
-# Simplify Student Display in Manage Group Students Dialog
+# Fix: "invalid input syntax for type uuid" Error in Special Use Run Dialog
 
-## Problem
-The student listing currently shows Student ID, Grade, and all class names in a subtitle line, which is cluttered and overflows (as seen in the screenshot).
+## Root Cause
+When saving/updating a special use run, `formData.group_id` can be an empty string `""`. This gets passed to Supabase as-is, and Postgres rejects `""` as an invalid UUID.
 
-## Change
-Simplify each student row to show: **First Name Last Name** on one line with **(Grade XX)** inline — no subtitle line, no student ID, no class list.
+Similarly, on line 122, `activeSession?.id` could be `undefined` when loading groups, causing a silent filter failure.
 
-## File: `src/components/ManageGroupStudentsDialog.tsx`
+## Fix — `src/components/SpecialUseRunDialog.tsx`
 
-Replace the current two-line display (lines 333-341):
+1. **Add validation before submit** — check that `group_id` is not empty before calling insert/update. Show a toast error if missing.
+
+2. **Guard the `loadData` query** — skip the groups query if `activeSession` is null (avoid passing undefined to `.eq()`).
+
+### Specific changes:
+
+**In `handleSubmit` (~line 147):** Add early validation:
 ```tsx
-<div className="flex-1 min-w-0">
-  <div className="font-medium">
-    {student.first_name} {student.last_name}
-  </div>
-  <div className="text-sm text-muted-foreground truncate">
-    {student.student_id ? `ID: ${student.student_id} · ` : ''}
-    Grade {student.grade_level}
-    {classes.length > 0 && ` · ${classes.map(c => c.class_name).join(', ')}`}
-  </div>
-</div>
+if (!formData.group_id) {
+  toast.error("Please select a group");
+  setLoading(false);
+  return;
+}
 ```
 
-With a single-line display:
-```tsx
-<div className="flex-1 min-w-0">
-  <div className="font-medium">
-    {student.first_name} {student.last_name} <span className="text-muted-foreground font-normal">(Grade {student.grade_level})</span>
-  </div>
-</div>
-```
+**In `loadData` (~line 110-122):** Handle missing session gracefully — if no active session, set groups to empty and return early instead of querying with `undefined`.
 
-One file, ~3 lines changed.
+One file, ~5 lines added.
 
