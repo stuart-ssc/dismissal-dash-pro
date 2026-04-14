@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useSEO } from "@/hooks/useSEO";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-import { Users, GraduationCap, BookOpen, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, UserPlus, Repeat } from "lucide-react";
+import { Users, GraduationCap, BookOpen, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, UserPlus, Repeat, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -411,12 +411,20 @@ const Classes = () => {
     else handleAddClass(values);
   };
 
-  const getGradeBadge = (grade: string) => {
-    switch (grade) {
-      case '6': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">6th Grade</Badge>;
-      case '7': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">7th Grade</Badge>;
-      case '8': return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">8th Grade</Badge>;
-      default: return <Badge variant="secondary">{grade || 'N/A'}</Badge>;
+  const queryClient = useQueryClient();
+
+  const handleHideClass = async (classId: string, className: string) => {
+    const { error } = await supabase
+      .from('classes')
+      .update({ is_hidden: true })
+      .eq('id', classId);
+
+    if (error) {
+      toast.error("Failed to hide class");
+    } else {
+      toast.success(`"${className}" has been hidden`);
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['classes-stats'] });
     }
   };
 
@@ -629,9 +637,7 @@ const Classes = () => {
                             </CardHeader>
                             <CardContent className="pt-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground">Grade:</span>
-                                {getGradeBadge(classRecord.grade_level)}
-                                <Badge variant="secondary" className="ml-auto">{classRecord.student_count} students</Badge>
+                                <Badge variant="secondary">{classRecord.student_count} students</Badge>
                               </div>
                             </CardContent>
                           </Card>
@@ -645,7 +651,6 @@ const Classes = () => {
                           <TableRow className="border-border hover:bg-muted/50">
                             <TableHead>Class Name</TableHead>
                             <TableHead>Teacher</TableHead>
-                            <TableHead>Grade</TableHead>
                             <TableHead>Students</TableHead>
                             <TableHead className="w-[50px]">Actions</TableHead>
                           </TableRow>
@@ -653,7 +658,7 @@ const Classes = () => {
                         <TableBody>
                           {currentClasses.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                 {searchTerm ? 'No classes match your search.' : 'No classes found for this session.'}
                               </TableCell>
                             </TableRow>
@@ -662,7 +667,6 @@ const Classes = () => {
                               <TableRow key={classRecord.id} className="border-border hover:bg-muted/30">
                                 <TableCell className="font-medium">{classRecord.class_name}</TableCell>
                                 <TableCell>{classRecord.teacher_name || 'No teacher assigned'}</TableCell>
-                                <TableCell>{getGradeBadge(classRecord.grade_level)}</TableCell>
                                 <TableCell><Badge variant="secondary">{classRecord.student_count}</Badge></TableCell>
                                 <TableCell>
                                   <DropdownMenu>
@@ -684,6 +688,9 @@ const Classes = () => {
                                         availableTeachers={availableTeachers.map(t => ({ id: t.id, first_name: t.first_name, last_name: t.last_name, email: t.email }))}
                                         onCoverageAssigned={refreshData}
                                       />
+                                      <DropdownMenuItem onClick={() => handleHideClass(classRecord.id, classRecord.class_name)}>
+                                        <EyeOff className="h-4 w-4 mr-2" /> Hide Class
+                                      </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </TableCell>
