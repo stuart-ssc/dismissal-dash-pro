@@ -1,22 +1,47 @@
 
+Fix the detail page query, not permissions.
 
-# Fix: Special Use Run Detail Not Loading
+What’s happening:
+- The run is not failing because of RLS.
+- The console error shows the real cause: `column buses_2.capacity does not exist`
+- In `src/pages/SpecialUseRunDetail.tsx`, the detail query selects:
+  ```tsx
+  bus:buses(
+    id,
+    bus_number,
+    capacity
+  )
+  ```
+- But the `buses` table in `src/integrations/supabase/types.ts` only has:
+  `id, bus_number, driver_first_name, driver_last_name, school_id, status, created_at, updated_at`
+- So the query crashes before the page can load anything.
 
-## Problem
-The query in `SpecialUseRunDetail.tsx` (line 64-70) uses `manager:profiles(...)` inside `special_use_run_managers`, but that table has TWO foreign keys to `profiles`: `manager_id` and `assigned_by`. PostgREST can't auto-resolve which one to use and throws error PGRST201.
+What should be shown on this page:
+- The selected Special Use Run’s details:
+  - run name + date
+  - status
+  - group
+  - academic year
+  - schedule/timeline
+  - notes
+  - assigned buses
+  - managers
+  - student roster
+  - event history
+- The page structure already exists; it just fails during data fetch.
 
-## Fix — `src/pages/SpecialUseRunDetail.tsx`
+Plan:
+1. Update `src/pages/SpecialUseRunDetail.tsx` to stop requesting `capacity` from `buses`.
+2. Adjust the Assigned Buses card so it only shows fields that actually exist, such as:
+   - `Bus {bus_number}`
+   - optionally driver name if useful
+   - remove the `Capacity:` line unless that data should come from `special_use_run_buses.capacity`
+3. If bus capacity is meant to be shown for a run assignment, switch the UI to read it from `special_use_run_buses.capacity` instead of `buses.capacity`.
+4. Keep the existing route and permissions logic unchanged, because the current failure is a broken query, not an access issue.
+5. Verify the full “View Details” flow end-to-end:
+   - from Special Runs listing
+   - into detail page
+   - for scheduled and cancelled runs if available
 
-Change line 65 from:
-```tsx
-manager:profiles(
-```
-to:
-```tsx
-manager:profiles!special_use_run_managers_manager_id_fkey(
-```
-
-This explicitly tells PostgREST to use the `manager_id` foreign key relationship.
-
-One file, one line changed.
-
+Technical note:
+- If your intended design is “anyone who can see the Special Runs admin listing can also see run details,” I’ll also review the detail page’s fallback messaging after the query fix so it doesn’t misleadingly imply a permission problem when the fetch actually errors.
