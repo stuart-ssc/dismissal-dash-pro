@@ -36,9 +36,6 @@ export function ICDataQualityTab({ schoolId }: ICDataQualityTabProps) {
   const colors = gradeColors[grade as keyof typeof gradeColors] || gradeColors.F;
 
   // Calculate percentages
-  const studentContactPct = currentMetrics?.total_students 
-    ? ((currentMetrics.total_students - currentMetrics.students_missing_contact_info) / currentMetrics.total_students * 100).toFixed(1)
-    : '0';
   const studentEnrolledPct = currentMetrics?.total_students
     ? ((currentMetrics.total_students - currentMetrics.students_without_classes) / currentMetrics.total_students * 100).toFixed(1)
     : '0';
