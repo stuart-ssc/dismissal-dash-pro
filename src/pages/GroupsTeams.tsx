@@ -149,6 +149,16 @@ export default function SpecialUseGroups() {
     return matchesSearch && matchesType;
   });
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / pageSize));
+  const paginatedGroups = filteredGroups.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, filteredGroups.length);
+
   const handleExportCSV = () => {
     if (filteredGroups.length === 0) {
       toast.error("No groups to export");
