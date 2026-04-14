@@ -318,9 +318,7 @@ export function ManageGroupStudentsDialog({
             {filteredStudents.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">No students match filters</div>
             ) : (
-              filteredStudents.map((student) => {
-                const classes = studentClassMap.get(student.id) || [];
-                return (
+              filteredStudents.map((student) => (
                   <div
                     key={student.id}
                     className="flex items-center gap-3 p-3 border-b last:border-0 hover:bg-accent cursor-pointer"
@@ -332,16 +330,11 @@ export function ManageGroupStudentsDialog({
                     />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">
-                        {student.first_name} {student.last_name}
-                      </div>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {student.student_id ? `ID: ${student.student_id} · ` : ''}
-                        Grade {student.grade_level}
-                        {classes.length > 0 && ` · ${classes.map(c => c.class_name).join(', ')}`}
+                        {student.first_name} {student.last_name} <span className="text-muted-foreground font-normal">(Grade {student.grade_level})</span>
                       </div>
                     </div>
                   </div>
-                );
+                ));
               })
             )}
           </div>
