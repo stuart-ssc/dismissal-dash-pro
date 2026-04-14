@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Download, MoreHorizontal, Settings } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Download, MoreHorizontal, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { convertToCSV, downloadCSV, formatDateForCSV } from "@/lib/csvExport";
 import {
   DropdownMenu,
