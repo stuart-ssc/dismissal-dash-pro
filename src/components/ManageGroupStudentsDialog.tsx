@@ -334,8 +334,7 @@ export function ManageGroupStudentsDialog({
                       </div>
                     </div>
                   </div>
-                ));
-              })
+                ))
             )}
           </div>
 
