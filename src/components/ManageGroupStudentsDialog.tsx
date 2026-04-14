@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, CheckSquare, XSquare } from "lucide-react";
+import { Search, CheckSquare, XSquare, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 type Student = {
