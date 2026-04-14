@@ -114,6 +114,12 @@ export function SpecialUseRunDialog({
         .eq("is_active", true)
         .single();
 
+      if (!activeSession?.id) {
+        setGroups([]);
+        setBuses([]);
+        return;
+      }
+
       const [groupsRes, busesRes] = await Promise.all([
         supabase
           .from("special_use_groups")
@@ -143,6 +149,11 @@ export function SpecialUseRunDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (!formData.group_id) {
+      toast.error("Please select a group");
+      return;
+    }
 
     setLoading(true);
     try {
