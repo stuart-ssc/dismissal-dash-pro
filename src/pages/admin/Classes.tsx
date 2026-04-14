@@ -34,6 +34,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const Classes = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [academicSessions, setAcademicSessions] = useState<Array<{ id: string; session_name: string; is_active: boolean }>>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
