@@ -58,7 +58,6 @@ export function ManageGroupManagersDialog({
         .from("teachers")
         .select("id, first_name, last_name, email")
         .eq("school_id", profile?.school_id)
-        .not("account_completed_at", "is", null)
         .order("last_name");
 
       if (teachersError) throw teachersError;
@@ -141,7 +140,7 @@ export function ManageGroupManagersDialog({
         <DialogHeader>
           <DialogTitle>Manage Managers</DialogTitle>
           <DialogDescription>
-            Assign teachers to manage {group?.name}. Only teachers who have completed their account setup can be assigned.
+            Assign teachers to manage {group?.name}. All teachers in the school can be assigned, including those who haven't completed account setup yet.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
