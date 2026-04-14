@@ -1,29 +1,31 @@
 
 
-# Match Groups Table Styling to Classes Table
+# Auto-assign Teachers as Group Managers During Conversion
 
-## Differences found
+## Problem
+When classes are converted to groups/teams, the assigned teachers are not carried over as group managers. Additionally, `special_use_group_managers.manager_id` has a foreign key to `profiles(id)` (requires an auth account), while `class_teachers.teacher_id` references `teachers(id)` (no auth required). This means IC-imported teachers who haven't been invited yet cannot be group managers.
 
-| Aspect | Classes page | Groups page |
-|--------|-------------|-------------|
-| Table wrapper | `rounded-md border bg-background/50` | `border rounded-lg bg-background overflow-hidden` + extra `overflow-x-auto` div |
-| Header row | `border-border hover:bg-muted/50` | `bg-muted/50 hover:bg-muted/50` (has background tint) |
-| Body rows | `border-border hover:bg-muted/30` | `hover:bg-muted/50 transition-colors` |
-| Actions column | `w-[50px]`, no text-right | `text-right` on head and cell |
-| Trigger button | `className="h-8 w-8 p-0"` | `size="icon"` |
-| Dropdown content | `className="bg-background border border-border shadow-lg z-50"` | `className="w-48"` |
-| Students column | Uses `<Badge variant="secondary">` | Plain text, `text-center` |
+## Solution
 
-## Changes to `src/pages/GroupsTeams.tsx`
+### 1. Database migration: Change FK on `special_use_group_managers`
+- Drop the FK constraint `special_use_group_managers_manager_id_fkey` referencing `profiles(id)`
+- Add a new FK constraint referencing `teachers(id)` instead
+- This aligns with how `class_teachers` works — no auth account required
 
-1. **Table wrapper**: Change to `<div className="rounded-md border bg-background/50">` and remove the extra `overflow-x-auto` wrapper div
-2. **Header row**: Change from `bg-muted/50 hover:bg-muted/50` to `border-border hover:bg-muted/50`
-3. **Body rows**: Change from `hover:bg-muted/50 transition-colors` to `border-border hover:bg-muted/30`
-4. **Actions column**: Change `TableHead` from `text-right` to `w-[50px]`, remove `text-right` from Actions `TableCell`
-5. **Dropdown trigger**: Change from `size="icon"` to `className="h-8 w-8 p-0"`
-6. **Dropdown content**: Add `className="bg-background border border-border shadow-lg z-50"` and remove `w-48`
-7. **Students count**: Wrap student count in `<Badge variant="secondary">` to match Classes page styling; remove `text-center` from Students header/cells
+### 2. Database migration: Update `convert_classes_to_groups` RPC
+- After creating each group and migrating students, query `class_teachers` for the source class
+- Insert those teacher IDs into `special_use_group_managers` as managers of the new group
+- Use `auth.uid()` as `assigned_by` (the admin performing the conversion)
+- Include the count of managers assigned in the return value
 
-## File
-- `src/pages/GroupsTeams.tsx` (desktop table section, ~lines 397-470)
+### 3. Update `ManageGroupManagersDialog.tsx`
+- Remove the `.not("account_completed_at", "is", null)` filter so all teachers (including uninvited IC imports) appear in the manager selection list
+- Update the description text to reflect that any teacher can be assigned
+
+### 4. Update `assigned_by` FK constraint
+- The `assigned_by` column also references `profiles(id)` — this stays as-is since the person assigning (the admin) will always have an auth account
+
+## Files to change
+- **New migration** — alter FK on `manager_id`, update `convert_classes_to_groups` RPC
+- **`src/components/ManageGroupManagersDialog.tsx`** — remove `account_completed_at` filter
 
