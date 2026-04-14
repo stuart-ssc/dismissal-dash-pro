@@ -955,18 +955,6 @@ const People = () => {
                                     </>
                                   )}
                                   
-                                  {person.classes && person.classes.length > 0 && (
-                                    <div className="col-span-2">
-                                      <p className="text-muted-foreground text-xs mb-1">Classes</p>
-                                      <div className="flex flex-wrap gap-1">
-                                        {person.classes.map((className, index) => (
-                                          <Badge key={index} variant="outline" className="text-xs">
-                                            {className}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
 
                                   {person.role === 'Teacher' && person.invitationStatus && (
                                     <div className="col-span-2">
@@ -1016,7 +1004,6 @@ const People = () => {
           <SortableHeader column="role">Role</SortableHeader>
           <SortableHeader column="grade">Grade</SortableHeader>
                         <TableHead>Transportation</TableHead>
-                        <TableHead>Classes</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1167,19 +1154,6 @@ const People = () => {
                               </Badge>
                             ) : (
                               person.transportation || '-'
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {person.classes.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {person.classes.map((className, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
-                                    {className}
-                                  </Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              '-'
                             )}
                           </TableCell>
                           <TableCell className="text-right">
