@@ -1741,6 +1741,18 @@ const People = () => {
             )}
           </>
         )}
+
+        {schoolId && personForClasses && (
+          <ManagePersonClassesDialog
+            open={manageClassesOpen}
+            onOpenChange={setManageClassesOpen}
+            personId={personForClasses.id}
+            personName={`${personForClasses.firstName} ${personForClasses.lastName}`}
+            personRole={personForClasses.role}
+            schoolId={schoolId}
+            sessionId={selectedSessionId}
+          />
+        )}
     </main>
     </>
   );
