@@ -157,6 +157,22 @@ const Classes = () => {
   const totalCount = classesResult?.count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  const handleHideClass = async (classId: string, className: string) => {
+    try {
+      const { error } = await supabase
+        .from('classes')
+        .update({ is_hidden: true })
+        .eq('id', classId);
+      if (error) throw error;
+      toast.success(`"${className}" has been hidden`);
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['classes-stats'] });
+    } catch (error) {
+      console.error('Error hiding class:', error);
+      toast.error('Failed to hide class');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
