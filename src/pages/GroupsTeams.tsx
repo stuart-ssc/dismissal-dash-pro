@@ -78,6 +78,8 @@ export default function SpecialUseGroups() {
   const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
 
   useEffect(() => {
