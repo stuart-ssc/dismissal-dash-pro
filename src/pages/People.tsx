@@ -884,6 +884,10 @@ const People = () => {
                                         <Edit className="h-4 w-4 mr-2" />
                                         Edit
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => { setPersonForClasses(person); setManageClassesOpen(true); }}>
+                                        <GraduationCap className="h-4 w-4 mr-2" />
+                                        Manage Classes
+                                      </DropdownMenuItem>
                                       {person.role === 'Student' && (
                                         <DropdownMenuItem onClick={() => openTempTransportDialog(person)}>
                                           <CalendarIcon className="h-4 w-4 mr-2" />
