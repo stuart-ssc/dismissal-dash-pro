@@ -49,6 +49,7 @@ const People = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filterRole, setFilterRole] = useState<'all' | 'school_admin' | 'teacher' | 'student'>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
+  const [searchInput, setSearchInput] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   const [tempTransportDialogOpen, setTempTransportDialogOpen] = useState(false);
@@ -70,6 +71,15 @@ const People = () => {
     pendingInvites: 0,
     totalStudents: 0,
   });
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     const tabletMql = window.matchMedia("(min-width: 768px) and (max-width: 1024px)");
@@ -768,11 +778,8 @@ const People = () => {
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search people..."
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          setCurrentPage(1);
-                        }}
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
                         className="pl-8 h-8 text-sm"
                       />
                     </div>
