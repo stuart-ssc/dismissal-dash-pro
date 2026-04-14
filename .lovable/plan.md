@@ -1,38 +1,46 @@
 
 
-# Remove Student Contact/Parent Metrics from Data Quality Score
+# Daily IC Sync Between 10AM-2PM School Time
 
-## Problem
-The data quality algorithm penalizes schools 15% (each) for `students_missing_contact_info` and `students_missing_parent_name`. These fields are:
-- Not populated by Infinite Campus sync (OneRoster doesn't provide parent contact details)
-- Only populated via manual CSV import
-- Irrelevant for evaluating IC data quality
+## Current State
+- The `ic-sync-scheduler` cron job runs at 2 AM UTC daily
+- The scheduler calls two missing database functions (`should_sync_now` and `calculate_next_sync_time`) and references a missing table (`ic_sync_configuration`), so **every scheduled sync currently fails**
+- There's no holidays/calendar table to skip non-school days
 
-This costs 15 points out of 100, guaranteeing no IC-synced school can score above ~85%.
+## Plan
 
-## Solution
+### 1. Create `ic_sync_configuration` table + `should_sync_now` function (Migration)
+- Create `ic_sync_configuration` with columns: `school_id`, `enabled` (default true), `sync_window_start` (default `10:00`), `sync_window_end` (default `14:00`), `skip_weekends` (default true), `last_sync_at`, `next_scheduled_sync_at`
+- Seed a row for school 103090 with defaults
+- Create `should_sync_now(p_school_id)` function that:
+  - Checks the school's timezone (from `schools` table)
+  - Converts current UTC time to school local time
+  - Returns true only if: enabled, current local time is within the sync window, it's a weekday (Mon-Fri), and no successful sync has been logged today
+- Create `calculate_next_sync_time(p_school_id)` function that returns the next valid sync timestamp (next weekday at `sync_window_start` in the school's timezone)
 
-### 1. Database migration: Rebalance student weights to exclude contact/parent
-Update `calculate_ic_data_quality` to set contact info and parent name weights to **0%**, redistributing to the metrics that actually matter for IC data:
+### 2. Update cron schedule
+- Change cron from `0 2 * * *` to `0 * * * *` (every hour) so it can catch each school's 10AM-2PM local window regardless of timezone
+- The `should_sync_now` function handles the actual filtering, so schools only sync once per day within their window
 
-**Students (50pts) — new weights:**
-- Contact info: **0%** (was 15%)
-- Parent name: **0%** (was 15%)
-- IC linked: **50%** (was 35%)
-- Enrolled in classes: **50%** (was 35%)
+### 3. Simplify the scheduler edge function
+- Remove the now-unnecessary `ic_sync_configuration` select for `syncConfig` (the function already has defaults)
+- The `should_sync_now` and `calculate_next_sync_time` RPCs will now exist and work correctly
 
-Teacher and class weights remain unchanged.
+## Technical Details
 
-### 2. UI: Hide zero-weight metrics from the dashboard
-In `ICDataQualityTab.tsx`, remove the "With contact info" progress bar from the Student Data Health card since it's no longer scored.
+**`should_sync_now` logic:**
+```text
+1. Look up school timezone from schools table
+2. Convert now() to school local time
+3. Check: is it a weekday? (DOW 1-5)
+4. Check: is local time between sync_window_start and sync_window_end?
+5. Check: has a successful sync already completed today (local date)?
+6. Return true only if weekday + in window + not yet synced today
+```
 
-### Estimated new score for school 103090
-- Students: (1 - 0×0.50 - 0.01×0.50) × 50 ≈ 49.75
-- Teachers: ~25.7 (unchanged)
-- Classes: ~6.0 (unchanged)
-- **Total ≈ 81.5% → Grade B**
+**Cron change:** The cron fires hourly. For an Eastern school (UTC-4), 10AM ET = 2PM UTC, so the hourly cron at 14:00 UTC would trigger it. The `should_sync_now` function ensures only one sync per day.
 
 ## Files
-- **New migration** — `CREATE OR REPLACE FUNCTION` with updated student weights
-- **`src/components/ic/ICDataQualityTab.tsx`** — remove contact info and parent name progress bars from student card
+- **New migration** — create `ic_sync_configuration` table, `should_sync_now` function, `calculate_next_sync_time` function, update cron schedule
+- **`supabase/functions/ic-sync-scheduler/index.ts`** — simplify to use the new functions properly
 
