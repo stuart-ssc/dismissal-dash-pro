@@ -187,7 +187,7 @@ export default function SpecialUseRunMode() {
     },
     onSuccess: () => {
       toast.success("Run completed successfully");
-      navigate("/admin/special-use-runs");
+      navigate("/dashboard/dismissals/special-runs");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to complete run");
@@ -294,7 +294,7 @@ export default function SpecialUseRunMode() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/admin/special-use-runs")}
+              onClick={() => navigate("/dashboard/dismissals/special-runs")}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>

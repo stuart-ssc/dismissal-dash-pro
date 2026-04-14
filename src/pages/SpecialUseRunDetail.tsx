@@ -163,7 +163,7 @@ export default function SpecialUseRunDetail() {
       <>
         <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/special-use-runs")}>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/dismissals/special-runs")}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
@@ -195,7 +195,7 @@ export default function SpecialUseRunDetail() {
       <>
         <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/special-use-runs")}>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/dismissals/special-runs")}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
@@ -230,7 +230,7 @@ export default function SpecialUseRunDetail() {
     <>
       <header className="h-16 flex items-center justify-between px-6 border-b bg-card/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/special-use-runs")}>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/dismissals/special-runs")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>

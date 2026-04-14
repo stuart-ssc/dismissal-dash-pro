@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import HowItWorks from "./pages/HowItWorks";
@@ -83,6 +83,11 @@ const ScrollToTop = () => {
   return null;
 };
 
+const SpecialUseRunRedirect = () => {
+  const { runId } = useParams();
+  return <Navigate to={`/dashboard/dismissals/special-runs/${runId}`} replace />;
+};
+
 const AppContent = () => {
   useSessionTimeout();
   
@@ -141,6 +146,7 @@ const AppContent = () => {
             <Route path="/dashboard/dismissal-plans" element={<Navigate to="/dashboard/dismissals/plans" replace />} />
             <Route path="/dashboard/special-use-groups" element={<Navigate to="/dashboard/people/groups-teams" replace />} />
             <Route path="/dashboard/special-use-runs" element={<Navigate to="/dashboard/dismissals/special-runs" replace />} />
+            <Route path="/dashboard/special-use-runs/:runId" element={<SpecialUseRunRedirect />} />
             <Route path="/dashboard/car-lines" element={<Navigate to="/dashboard/dismissals/transportation" replace />} />
             <Route path="/dashboard/walker-locations" element={<Navigate to="/dashboard/dismissals/transportation" replace />} />
               {/* New unified IC hub */}
