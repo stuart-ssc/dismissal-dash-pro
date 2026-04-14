@@ -73,8 +73,8 @@ export function ManagePersonClassesDialog({
     setLoading(true);
     try {
       // Fetch current assignments
-      let assignmentQuery = supabase
-        .from(tableName)
+      const { data: assignmentData, error: assignmentError } = await supabase
+        .from(isStudent ? 'class_rosters' : 'class_teachers')
         .select(`
           id,
           class_id,
@@ -90,9 +90,7 @@ export function ManagePersonClassesDialog({
             academic_session_id
           )
         `)
-        .eq(foreignKey, personId);
-
-      const { data: assignmentData, error: assignmentError } = await assignmentQuery;
+        .eq(isStudent ? 'student_id' : 'teacher_id', personId) as { data: any[] | null; error: any };
 
       if (assignmentError) throw assignmentError;
 
