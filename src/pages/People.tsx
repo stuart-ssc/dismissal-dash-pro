@@ -1441,41 +1441,6 @@ const People = () => {
                   </>
                 )}
 
-                <div className="flex items-center gap-2">
-                  <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Sort:</span>
-                </div>
-
-                {/* Sort Options */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
-                      {sortBy === 'name' ? 'Name' : sortBy === 'role' ? 'Role' : 'Grade'} ({sortOrder === 'asc' ? '↑' : '↓'})
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                    <DropdownMenuItem onClick={() => handleSortChange('name', 'asc')}>
-                      Name (A-Z)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('name', 'desc')}>
-                      Name (Z-A)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('role', 'asc')}>
-                      Role (A-Z)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('role', 'desc')}>
-                      Role (Z-A)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('grade', 'asc')}>
-                      Grade (A-Z)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('grade', 'desc')}>
-                      Grade (Z-A)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
                 {/* Results count */}
                 <div className="w-full sm:w-auto sm:ml-auto text-left sm:text-right text-sm text-muted-foreground">
                   Showing {startIndex}-{endIndex} of {totalCount} people
