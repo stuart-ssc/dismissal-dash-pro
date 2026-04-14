@@ -58,7 +58,6 @@ export function ManageGroupManagersDialog({
         .from("teachers")
         .select("id, first_name, last_name, email")
         .eq("school_id", profile?.school_id)
-        .not("account_completed_at", "is", null)
         .order("last_name");
 
       if (teachersError) throw teachersError;
