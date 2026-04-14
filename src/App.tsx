@@ -83,6 +83,11 @@ const ScrollToTop = () => {
   return null;
 };
 
+const SpecialUseRunRedirect = () => {
+  const { runId } = useParams();
+  return <Navigate to={`/dashboard/dismissals/special-runs/${runId}`} replace />;
+};
+
 const AppContent = () => {
   useSessionTimeout();
   
