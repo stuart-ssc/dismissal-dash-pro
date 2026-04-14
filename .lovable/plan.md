@@ -1,36 +1,37 @@
 
 
-# Enhance Manage Group Students Dialog
+# Simplify Student Display in Manage Group Students Dialog
 
-## Current State
-The dialog shows `student_id • Grade {grade_level}` under each name. When `student_id` is empty, only `· Grade XX` appears (matching the screenshot). The dialog already supports multi-select via checkboxes — but lacks bulk selection by grade or class.
+## Problem
+The student listing currently shows Student ID, Grade, and all class names in a subtitle line, which is cluttered and overflows (as seen in the screenshot).
 
-## Changes — `src/components/ManageGroupStudentsDialog.tsx`
+## Change
+Simplify each student row to show: **First Name Last Name** on one line with **(Grade XX)** inline — no subtitle line, no student ID, no class list.
 
-### 1. Fix the subtitle display
-Show Student ID only when present. Always show grade. Format: `ID: 12345 · Grade 08` or just `Grade 08` when no student ID.
+## File: `src/components/ManageGroupStudentsDialog.tsx`
 
-### 2. Add Grade and Class filter dropdowns
-Above the student list, add two filter selects:
-- **Grade filter** — populated from distinct grade levels in the student list. Selecting a grade filters the visible list.
-- **Class filter** — fetch classes for the school/session. Selecting a class filters to only students enrolled in that class (via `class_rosters`).
-
-Both filters work alongside the search input. Clearing a filter shows all students again.
-
-### 3. Add "Select All Filtered" / "Deselect All Filtered" buttons
-When a grade or class filter is active, show a small link/button like "Select all 24 filtered" that checks all currently visible students at once — enabling true bulk selection by grade or class.
-
-### 4. Fetch class roster data
-On dialog open, also fetch `class_rosters` joined with `classes` to build a map of student_id → class names. This powers the class filter and optionally shows the class name in the subtitle.
-
-## Data flow
-```
-students query (existing) → all school students for session
-class_rosters + classes query (new) → student-to-class mapping
-Grade filter + Class filter + Search → filteredStudents
-Select All Filtered → bulk toggle selectedStudents set
+Replace the current two-line display (lines 333-341):
+```tsx
+<div className="flex-1 min-w-0">
+  <div className="font-medium">
+    {student.first_name} {student.last_name}
+  </div>
+  <div className="text-sm text-muted-foreground truncate">
+    {student.student_id ? `ID: ${student.student_id} · ` : ''}
+    Grade {student.grade_level}
+    {classes.length > 0 && ` · ${classes.map(c => c.class_name).join(', ')}`}
+  </div>
+</div>
 ```
 
-## File changes
-- **Edit: `src/components/ManageGroupStudentsDialog.tsx`** — add grade/class filter selects, select-all button, fix subtitle, fetch class data
+With a single-line display:
+```tsx
+<div className="flex-1 min-w-0">
+  <div className="font-medium">
+    {student.first_name} {student.last_name} <span className="text-muted-foreground font-normal">(Grade {student.grade_level})</span>
+  </div>
+</div>
+```
+
+One file, ~3 lines changed.
 
