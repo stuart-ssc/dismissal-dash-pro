@@ -1172,6 +1172,10 @@ const People = () => {
                                   <Edit className="h-4 w-4" />
                                   Edit
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setPersonForClasses(person); setManageClassesOpen(true); }} className="flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4" />
+                                  Manage Classes
+                                </DropdownMenuItem>
                                 
                                 {person.role === 'Teacher' && 
                                  (person.invitationStatus === 'pending' || person.invitationStatus === 'expired') && (
@@ -1469,6 +1473,10 @@ const People = () => {
                                       <Edit className="h-4 w-4 mr-2" />
                                       Edit
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setPersonForClasses(person); setManageClassesOpen(true); }}>
+                                      <GraduationCap className="h-4 w-4 mr-2" />
+                                      Manage Classes
+                                    </DropdownMenuItem>
                                     {person.role === 'Student' && (
                                       <DropdownMenuItem onClick={() => openTempTransportDialog(person)}>
                                         <CalendarIcon className="h-4 w-4 mr-2" />
@@ -1603,6 +1611,11 @@ const People = () => {
                               <DropdownMenuItem onClick={() => openEditDialog(person)} className="flex items-center gap-2">
                                 <Edit className="h-4 w-4" />
                                 Edit
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem onClick={() => { setPersonForClasses(person); setManageClassesOpen(true); }} className="flex items-center gap-2">
+                                <GraduationCap className="h-4 w-4" />
+                                Manage Classes
                               </DropdownMenuItem>
 
                               {person.role === 'Student' && (
