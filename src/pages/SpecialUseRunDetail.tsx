@@ -62,7 +62,7 @@ export default function SpecialUseRunDetail() {
             )
           ),
           managers:special_use_run_managers(
-            manager:profiles(
+            manager:profiles!special_use_run_managers_manager_id_fkey(
               id,
               first_name,
               last_name,
