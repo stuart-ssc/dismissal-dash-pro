@@ -129,20 +129,15 @@ export function ICDataQualityTab({ schoolId }: ICDataQualityTabProps) {
             <div className="text-2xl font-bold">{currentMetrics?.total_students || 0} students</div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>With contact info</span>
-                <span className="font-medium">{studentContactPct}%</span>
+                <span>Linked to IC</span>
+                <span className="font-medium">{studentLinkedPct}%</span>
               </div>
-              <Progress value={Number(studentContactPct)} />
+              <Progress value={Number(studentLinkedPct)} />
               <div className="flex justify-between">
                 <span>Enrolled in classes</span>
                 <span className="font-medium">{studentEnrolledPct}%</span>
               </div>
               <Progress value={Number(studentEnrolledPct)} />
-              <div className="flex justify-between">
-                <span>Linked to IC</span>
-                <span className="font-medium">{studentLinkedPct}%</span>
-              </div>
-              <Progress value={Number(studentLinkedPct)} />
             </div>
           </CardContent>
         </Card>
