@@ -1,26 +1,29 @@
 
-# Fix Groups & Teams Page Header Layout
 
-Match the Classes Management page layout where the title, session badge, description, and action buttons are all inside the card header.
+# Match Groups Table Styling to Classes Table
+
+## Differences found
+
+| Aspect | Classes page | Groups page |
+|--------|-------------|-------------|
+| Table wrapper | `rounded-md border bg-background/50` | `border rounded-lg bg-background overflow-hidden` + extra `overflow-x-auto` div |
+| Header row | `border-border hover:bg-muted/50` | `bg-muted/50 hover:bg-muted/50` (has background tint) |
+| Body rows | `border-border hover:bg-muted/30` | `hover:bg-muted/50 transition-colors` |
+| Actions column | `w-[50px]`, no text-right | `text-right` on head and cell |
+| Trigger button | `className="h-8 w-8 p-0"` | `size="icon"` |
+| Dropdown content | `className="bg-background border border-border shadow-lg z-50"` | `className="w-48"` |
+| Students column | Uses `<Badge variant="secondary">` | Plain text, `text-center` |
 
 ## Changes to `src/pages/GroupsTeams.tsx`
 
-### Current (broken) layout
-- Search field full-width on its own row
-- Settings icon + New Group button on a second row below search
-- Card header has title, badge on separate line, description below
-
-### Target layout (matching Classes page)
-- Move search field, filters, and action buttons **inside** `CardContent` (like Classes page has its search/filters inside CardContent)
-- Card header: title + session badge inline on one row, action buttons (Settings dropdown + New Group) on the right side, description below
-- Remove the standalone div above the card that currently holds search + buttons
-
-### Specific edits
-1. Restructure `CardHeader` to use `flex flex-col md:flex-row md:justify-between md:items-center gap-4` layout
-2. Put title + badge in a `flex items-center gap-3` wrapper (left side)
-3. Put Settings dropdown + New Group button on the right side of the header
-4. Move search input inside `CardContent` at the top of the data area
-5. Remove the outer `div.space-y-3` that currently wraps search + action buttons above the card
+1. **Table wrapper**: Change to `<div className="rounded-md border bg-background/50">` and remove the extra `overflow-x-auto` wrapper div
+2. **Header row**: Change from `bg-muted/50 hover:bg-muted/50` to `border-border hover:bg-muted/50`
+3. **Body rows**: Change from `hover:bg-muted/50 transition-colors` to `border-border hover:bg-muted/30`
+4. **Actions column**: Change `TableHead` from `text-right` to `w-[50px]`, remove `text-right` from Actions `TableCell`
+5. **Dropdown trigger**: Change from `size="icon"` to `className="h-8 w-8 p-0"`
+6. **Dropdown content**: Add `className="bg-background border border-border shadow-lg z-50"` and remove `w-48`
+7. **Students count**: Wrap student count in `<Badge variant="secondary">` to match Classes page styling; remove `text-center` from Students header/cells
 
 ## File
-- `src/pages/GroupsTeams.tsx` (lines ~208–297)
+- `src/pages/GroupsTeams.tsx` (desktop table section, ~lines 397-470)
+
