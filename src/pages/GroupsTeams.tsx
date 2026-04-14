@@ -141,9 +141,11 @@ export default function SpecialUseGroups() {
     enabled: !!user && !!selectedSessionId,
   });
 
-  const filteredGroups = groups.filter((group) =>
-    group.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredGroups = groups.filter((group) => {
+    const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || group.group_type === typeFilter;
+    return matchesSearch && matchesType;
+  });
 
   const handleExportCSV = () => {
     if (filteredGroups.length === 0) {
