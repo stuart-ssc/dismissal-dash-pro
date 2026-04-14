@@ -57,8 +57,7 @@ export default function SpecialUseRunDetail() {
             id,
             bus:buses(
               id,
-              bus_number,
-              capacity
+              bus_number
             )
           ),
           managers:special_use_run_managers(
@@ -424,7 +423,6 @@ export default function SpecialUseRunDetail() {
                 {run.buses.map((bus: any) => (
                   <div key={bus.id} className="border rounded-lg p-4">
                     <p className="font-semibold">Bus {bus.bus_number}</p>
-                    <p className="text-sm text-muted-foreground">Capacity: {bus.capacity}</p>
                   </div>
                 ))}
               </div>
