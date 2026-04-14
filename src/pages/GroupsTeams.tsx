@@ -208,21 +208,23 @@ export default function SpecialUseGroups() {
   return (
     <>
       <main className="flex-1 p-6 space-y-6">
-        {/* Search and Actions Row */}
-        <div className="space-y-3">
-          {/* Search Field - Full Width */}
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search groups..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        {/* Main Data Card */}
+        <Card className="shadow-elevated border-0 bg-card backdrop-blur">
+        <CardHeader className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <CardTitle>Groups & Teams</CardTitle>
+              {selectedSessionId && academicSessions.length > 0 && (
+                <Badge variant="secondary" className="font-normal">
+                  Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
+                </Badge>
+              )}
+            </div>
+            <CardDescription className="mt-2">
+              Create and manage special use groups for field trips, athletics, clubs, and other activities
+            </CardDescription>
           </div>
-          
-          {/* Action Buttons Row */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -280,22 +282,19 @@ export default function SpecialUseGroups() {
               New Group
             </Button>
           </div>
-        </div>
-
-        {/* Main Data Card */}
-        <Card className="shadow-elevated border-0 bg-card backdrop-blur">
-        <CardHeader>
-          <CardTitle>Groups & Teams</CardTitle>
-          {selectedSessionId && academicSessions.length > 0 && (
-            <Badge variant="secondary" className="font-normal mt-2">
-              Viewing: {academicSessions.find(s => s.id === selectedSessionId)?.session_name}
-            </Badge>
-          )}
-          <CardDescription className="mt-2">
-            Create and manage special use groups for field trips, athletics, clubs, and other activities
-          </CardDescription>
         </CardHeader>
           <CardContent>
+            {/* Search Field */}
+            <div className="relative w-full mb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search groups..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
             {/* Groups Table */}
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading groups...</div>
