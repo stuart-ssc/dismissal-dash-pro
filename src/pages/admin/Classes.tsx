@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, BookOpen, User, Clock, CalendarDays, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, Users, BookOpen, User, Clock, CalendarDays, ChevronLeft, ChevronRight, Search, MoreHorizontal, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +34,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const Classes = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [schoolId, setSchoolId] = useState<number | null>(null);
   const [academicSessions, setAcademicSessions] = useState<Array<{ id: string; session_name: string; is_active: boolean }>>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -153,6 +156,22 @@ const Classes = () => {
   const classes = classesResult?.classes || [];
   const totalCount = classesResult?.count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
+
+  const handleHideClass = async (classId: string, className: string) => {
+    try {
+      const { error } = await supabase
+        .from('classes')
+        .update({ is_hidden: true })
+        .eq('id', classId);
+      if (error) throw error;
+      toast.success(`"${className}" has been hidden`);
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      queryClient.invalidateQueries({ queryKey: ['classes-stats'] });
+    } catch (error) {
+      console.error('Error hiding class:', error);
+      toast.error('Failed to hide class');
+    }
+  };
 
   if (loading) {
     return (
@@ -308,11 +327,11 @@ const Classes = () => {
                   <TableRow>
                     <TableHead>Class Name</TableHead>
                     <TableHead>Room</TableHead>
-                    <TableHead className="hidden md:table-cell">Grade</TableHead>
                     <TableHead>Period</TableHead>
                     <TableHead className="hidden md:table-cell">Time</TableHead>
                     <TableHead>Teachers</TableHead>
                     <TableHead>Students</TableHead>
+                    <TableHead className="w-[60px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -320,7 +339,6 @@ const Classes = () => {
                     <TableRow key={cls.id}>
                       <TableCell className="font-medium">{cls.class_name}</TableCell>
                       <TableCell>{cls.room_number || '—'}</TableCell>
-                      <TableCell className="hidden md:table-cell">{cls.grade_level || '—'}</TableCell>
                       <TableCell>
                         {cls.period_number !== null ? (
                           <Badge variant="outline">
@@ -352,6 +370,21 @@ const Classes = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{cls.student_count}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleHideClass(cls.id, cls.class_name)}>
+                              <EyeOff className="mr-2 h-4 w-4" />
+                              Hide Class
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
