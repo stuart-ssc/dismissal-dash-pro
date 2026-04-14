@@ -218,5 +218,6 @@ export const usePaginatedPeople = ({
     },
     enabled: enabled && !!schoolId,
     staleTime: 30000, // Cache for 30 seconds
+    placeholderData: (previousData) => previousData,
   });
 };
