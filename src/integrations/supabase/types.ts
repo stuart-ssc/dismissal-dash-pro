@@ -2181,6 +2181,68 @@ export type Database = {
           },
         ]
       }
+      ic_sync_configuration: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          interval_type: string
+          interval_value: number
+          last_sync_at: string | null
+          next_scheduled_sync_at: string | null
+          pause_reason: string | null
+          paused: boolean
+          paused_until: string | null
+          school_id: number
+          skip_weekends: boolean
+          sync_window_end: string
+          sync_window_start: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          interval_type?: string
+          interval_value?: number
+          last_sync_at?: string | null
+          next_scheduled_sync_at?: string | null
+          pause_reason?: string | null
+          paused?: boolean
+          paused_until?: string | null
+          school_id: number
+          skip_weekends?: boolean
+          sync_window_end?: string
+          sync_window_start?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          interval_type?: string
+          interval_value?: number
+          last_sync_at?: string | null
+          next_scheduled_sync_at?: string | null
+          pause_reason?: string | null
+          paused?: boolean
+          paused_until?: string | null
+          school_id?: number
+          skip_weekends?: boolean
+          sync_window_end?: string
+          sync_window_start?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ic_sync_configuration_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ic_sync_logs: {
         Row: {
           classes_archived: number | null
@@ -4219,6 +4281,10 @@ export type Database = {
           total_teachers: number
         }[]
       }
+      calculate_next_sync_time: {
+        Args: { p_from_time?: string; p_school_id: number }
+        Returns: string
+      }
       can_manage_district_data: {
         Args: { target_district_id: string }
         Returns: boolean
@@ -4558,6 +4624,7 @@ export type Database = {
           state: string
         }[]
       }
+      should_sync_now: { Args: { p_school_id: number }; Returns: boolean }
       should_trigger_data_quality_alert: {
         Args: { p_current_score: number; p_school_id: number }
         Returns: boolean
