@@ -72,6 +72,15 @@ const People = () => {
     totalStudents: 0,
   });
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   useEffect(() => {
     const tabletMql = window.matchMedia("(min-width: 768px) and (max-width: 1024px)");
     const mobileMql = window.matchMedia("(max-width: 767px)");
