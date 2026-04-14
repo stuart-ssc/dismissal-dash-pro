@@ -1007,7 +1007,7 @@ const People = () => {
                     </div>
                   ) : (
                     // TABLE LAYOUT FOR DESKTOP
-                  <div className="rounded-md border bg-background/50 overflow-x-auto">
+                  <div className={`rounded-md border bg-background/50 overflow-x-auto transition-opacity duration-200 ${isPeopleLoading ? 'opacity-50' : 'opacity-100'}`}>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1553,7 +1553,7 @@ const People = () => {
                 </div>
               ) : (
                 // TABLE LAYOUT FOR DESKTOP
-              <div className="rounded-md border bg-background/50 overflow-x-auto">
+              <div className={`rounded-md border bg-background/50 overflow-x-auto transition-opacity duration-200 ${isPeopleLoading ? 'opacity-50' : 'opacity-100'}`}>
               <Table>
                   <TableHeader>
                     <TableRow>
