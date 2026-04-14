@@ -1,30 +1,27 @@
 
 
-# Fix: "invalid input syntax for type uuid" Error in Special Use Run Dialog
+# Fix: Special Use Run "View Details" 404 Error
 
-## Root Cause
-When saving/updating a special use run, `formData.group_id` can be an empty string `""`. This gets passed to Supabase as-is, and Postgres rejects `""` as an invalid UUID.
+## Problem
+The "View Details" button navigates to `/dashboard/special-use-runs/{id}`, but the route in `App.tsx` is defined as `/dashboard/dismissals/special-runs/:runId`. The old path has a backward-compatibility redirect for the list page (`/dashboard/special-use-runs` → `/dashboard/dismissals/special-runs`) but **no redirect for the detail route with `:runId`**.
 
-Similarly, on line 122, `activeSession?.id` could be `undefined` when loading groups, causing a silent filter failure.
+## Fix
 
-## Fix — `src/components/SpecialUseRunDialog.tsx`
+### 1. Update navigation URLs in `SpecialUseRuns.tsx`
+Change all `navigate('/dashboard/special-use-runs/${run.id}')` calls (lines 433, 520) to `navigate('/dashboard/dismissals/special-runs/${run.id}')`.
 
-1. **Add validation before submit** — check that `group_id` is not empty before calling insert/update. Show a toast error if missing.
+### 2. Update back-navigation in `SpecialUseRunDetail.tsx`
+Change all `navigate("/dashboard/special-use-runs")` calls (lines 166, 198, 233) to `navigate("/dashboard/dismissals/special-runs")`.
 
-2. **Guard the `loadData` query** — skip the groups query if `activeSession` is null (avoid passing undefined to `.eq()`).
+### 3. Update navigation in `SpecialUseRunMode.tsx`
+Change `navigate("/admin/special-use-runs")` calls (lines 190, 297) to `navigate("/dashboard/dismissals/special-runs")`.
 
-### Specific changes:
-
-**In `handleSubmit` (~line 147):** Add early validation:
+### 4. Add backward-compatibility redirect in `App.tsx`
+Add a redirect for the old detail path:
 ```tsx
-if (!formData.group_id) {
-  toast.error("Please select a group");
-  setLoading(false);
-  return;
-}
+<Route path="/dashboard/special-use-runs/:runId" element={<Navigate to="/dashboard/dismissals/special-runs/:runId" replace />} />
 ```
+(Using a small wrapper component to forward the `runId` param.)
 
-**In `loadData` (~line 110-122):** Handle missing session gracefully — if no active session, set groups to empty and return early instead of querying with `undefined`.
-
-One file, ~5 lines added.
+Four files, ~8 lines changed.
 
