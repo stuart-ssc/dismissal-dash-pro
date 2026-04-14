@@ -30,6 +30,7 @@ import { TemporaryTransportationDialog } from "@/components/TemporaryTransportat
 import { ViewTemporaryTransportationDialog } from "@/components/ViewTemporaryTransportationDialog";
 import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 import { TeachersWithoutClassesAlert } from "@/components/TeachersWithoutClassesAlert";
+import { ManagePersonClassesDialog } from "@/components/ManagePersonClassesDialog";
 
 const People = () => {
   const { user, userRole, signOut, loading, session } = useAuth();
@@ -61,6 +62,8 @@ const People = () => {
   const isMobile = useIsMobile();
   const [isTabletOrMobile, setIsTabletOrMobile] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [manageClassesOpen, setManageClassesOpen] = useState(false);
+  const [personForClasses, setPersonForClasses] = useState<PersonData | null>(null);
   const [stats, setStats] = useState({
     totalTeachers: 0,
     activeTeachers: 0,
@@ -881,6 +884,10 @@ const People = () => {
                                         <Edit className="h-4 w-4 mr-2" />
                                         Edit
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => { setPersonForClasses(person); setManageClassesOpen(true); }}>
+                                        <GraduationCap className="h-4 w-4 mr-2" />
+                                        Manage Classes
+                                      </DropdownMenuItem>
                                       {person.role === 'Student' && (
                                         <DropdownMenuItem onClick={() => openTempTransportDialog(person)}>
                                           <CalendarIcon className="h-4 w-4 mr-2" />
@@ -952,18 +959,6 @@ const People = () => {
                                     </>
                                   )}
                                   
-                                  {person.classes && person.classes.length > 0 && (
-                                    <div className="col-span-2">
-                                      <p className="text-muted-foreground text-xs mb-1">Classes</p>
-                                      <div className="flex flex-wrap gap-1">
-                                        {person.classes.map((className, index) => (
-                                          <Badge key={index} variant="outline" className="text-xs">
-                                            {className}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
 
                                   {person.role === 'Teacher' && person.invitationStatus && (
                                     <div className="col-span-2">
@@ -1013,7 +1008,6 @@ const People = () => {
           <SortableHeader column="role">Role</SortableHeader>
           <SortableHeader column="grade">Grade</SortableHeader>
                         <TableHead>Transportation</TableHead>
-                        <TableHead>Classes</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1166,19 +1160,6 @@ const People = () => {
                               person.transportation || '-'
                             )}
                           </TableCell>
-                          <TableCell>
-                            {person.classes.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {person.classes.map((className, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
-                                    {className}
-                                  </Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              '-'
-                            )}
-                          </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -1190,6 +1171,10 @@ const People = () => {
                                 <DropdownMenuItem onClick={() => openEditDialog(person)} className="flex items-center gap-2">
                                   <Edit className="h-4 w-4" />
                                   Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setPersonForClasses(person); setManageClassesOpen(true); }} className="flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4" />
+                                  Manage Classes
                                 </DropdownMenuItem>
                                 
                                 {person.role === 'Teacher' && 
@@ -1488,6 +1473,10 @@ const People = () => {
                                       <Edit className="h-4 w-4 mr-2" />
                                       Edit
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setPersonForClasses(person); setManageClassesOpen(true); }}>
+                                      <GraduationCap className="h-4 w-4 mr-2" />
+                                      Manage Classes
+                                    </DropdownMenuItem>
                                     {person.role === 'Student' && (
                                       <DropdownMenuItem onClick={() => openTempTransportDialog(person)}>
                                         <CalendarIcon className="h-4 w-4 mr-2" />
@@ -1548,18 +1537,6 @@ const People = () => {
                                 </>
                               )}
                               
-                              {userRole !== 'teacher' && person.classes && person.classes.length > 0 && (
-                                <div className="col-span-2">
-                                  <p className="text-muted-foreground text-xs mb-1">Classes</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {person.classes.map((className, index) => (
-                                      <Badge key={index} variant="outline" className="text-xs">
-                                        {className}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -1577,7 +1554,6 @@ const People = () => {
                       <SortableHeader column="role">Role</SortableHeader>
                       <SortableHeader column="grade">Grade</SortableHeader>
                       <TableHead>Transportation</TableHead>
-                      {userRole !== 'teacher' && <TableHead>Classes</TableHead>}
                       {userRole === 'school_admin' && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -1623,21 +1599,6 @@ const People = () => {
                           person.transportation || '-'
                         )}
                       </TableCell>
-                      {userRole !== 'teacher' && (
-                        <TableCell>
-                          {person.classes.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {person.classes.map((className, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {className}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                      )}
                       {userRole === 'school_admin' && (
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -1650,6 +1611,11 @@ const People = () => {
                               <DropdownMenuItem onClick={() => openEditDialog(person)} className="flex items-center gap-2">
                                 <Edit className="h-4 w-4" />
                                 Edit
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem onClick={() => { setPersonForClasses(person); setManageClassesOpen(true); }} className="flex items-center gap-2">
+                                <GraduationCap className="h-4 w-4" />
+                                Manage Classes
                               </DropdownMenuItem>
 
                               {person.role === 'Student' && (
@@ -1774,6 +1740,18 @@ const People = () => {
               </>
             )}
           </>
+        )}
+
+        {schoolId && personForClasses && (
+          <ManagePersonClassesDialog
+            open={manageClassesOpen}
+            onOpenChange={setManageClassesOpen}
+            personId={personForClasses.id}
+            personName={`${personForClasses.firstName} ${personForClasses.lastName}`}
+            personRole={personForClasses.role}
+            schoolId={schoolId}
+            sessionId={selectedSessionId}
+          />
         )}
     </main>
     </>
