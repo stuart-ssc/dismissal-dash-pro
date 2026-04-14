@@ -1,55 +1,35 @@
 
 
-# Remove Classes Column, Add "Manage Classes" to Actions Menu
+# Fix People Page Search: Add Debouncing
 
-## What changes
+## Problem
+Every keystroke in the search input immediately updates `searchQuery`, which is in the react-query key. This triggers a new database query on every character, causing the page to reload/flash constantly.
 
-### 1. Remove the Classes column from all table views
-- Remove the "Classes" `TableHead` from both desktop tables (admin view ~line 1016, teacher view ~line 1580)
-- Remove the Classes `TableCell` from both desktop table bodies (~lines 1169-1181 and 1626-1639)
-- Remove the Classes display from both mobile card layouts (~lines 955-966 and 1551-1562)
+## Solution
+Add a debounced search pattern: keep a local `searchInput` state for the controlled input, and debounce it (300ms) before setting the actual `searchQuery` that feeds into the query.
 
-### 2. Create a new `ManagePersonClassesDialog` component
-A dialog opened from the Actions menu that lets admins manage which classes a person belongs to (for students) or teaches (for teachers/admins). Features:
+## Changes — `src/pages/People.tsx`
 
-**For Students:**
-- Shows current class enrollments with period info (period number, name, times) in a list
-- "Add to Class" section with a searchable select of available classes at the school (filtered by session)
-- Remove button on each enrolled class
-- Uses `class_rosters` table for add/remove
+1. Add a `searchInput` state for the text field value
+2. Add a `useEffect` with a 300ms `setTimeout` to debounce `searchInput` → `searchQuery`
+3. Reset `currentPage` to 1 inside the debounce effect (not on every keystroke)
+4. Bind the `<Input>` to `searchInput` / `setSearchInput` instead of `searchQuery`
 
-**For Teachers:**
-- Shows current class teaching assignments with period info
-- "Assign to Class" section with a select of available classes
-- Remove button on each assignment
-- Uses `class_teachers` table for add/remove
+```tsx
+const [searchInput, setSearchInput] = useState('');
+const [searchQuery, setSearchQuery] = useState('');
 
-**Period information display:** Each class row shows class name, period number, period name, and start/end times when available.
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setSearchQuery(searchInput);
+    setCurrentPage(1);
+  }, 300);
+  return () => clearTimeout(timer);
+}, [searchInput]);
 
-**No drag-and-drop:** Given the data is server-side paginated and class assignments are individual DB operations, a straightforward add/remove list is more reliable and consistent with the existing `ManageClassStudentsDialog` pattern. The dialog will show classes sorted by period number for a natural schedule view.
-
-### 3. Add "Manage Classes" menu item to all Actions dropdowns
-- Add a `GraduationCap` icon + "Manage Classes" `DropdownMenuItem` in all 4 action menus (admin desktop, admin mobile, teacher desktop, teacher mobile)
-- Opens the new dialog with the person's ID, role, school ID, and session ID
-- Available for both students and teachers/admins
-
-## Files
-- **New: `src/components/ManagePersonClassesDialog.tsx`** — dialog component with add/remove class functionality, period info display
-- **Edit: `src/pages/People.tsx`** — remove Classes column/cells from all views, add "Manage Classes" to all action menus, add state for the dialog, import the new component
-
-## Technical details
-
-**Dialog data flow:**
-- On open, fetch current assignments via `class_rosters` (students) or `class_teachers` (teachers) joined with `classes` for period data
-- Fetch available classes via `get_school_classes` RPC or direct query on `classes` table filtered by session
-- Add: `INSERT` into `class_rosters` or `class_teachers`
-- Remove: `DELETE` from `class_rosters` or `class_teachers`
-- On change, invalidate `people-paginated` query cache
-
-**Class list display per person:**
+// Input binds to searchInput
+<Input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
 ```
-Period 1 · Math 101 (Room 204) · 8:00-8:50    [Remove]
-Period 2 · English 201 (Room 112) · 8:55-9:45  [Remove]
-(no period) · Homeroom                          [Remove]
-```
+
+One file edit, ~10 lines changed.
 
