@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-import { Users, GraduationCap, BookOpen, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, UserPlus, Repeat, EyeOff } from "lucide-react";
+import { Users, GraduationCap, BookOpen, Plus, Search, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, UserPlus, Repeat, EyeOff, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -414,16 +414,48 @@ const Classes = () => {
   const queryClient = useQueryClient();
 
   const handleHideClass = async (classId: string, className: string) => {
+    // Optimistically remove from UI
+    const queryKey = ['classes-paginated', schoolId, selectedSessionId, page, pageSize, searchTerm, assignmentFilter];
+    const previousData = queryClient.getQueryData(queryKey);
+    queryClient.setQueryData(queryKey, (old: any) => {
+      if (!old) return old;
+      return old.filter((c: any) => c.class_id !== classId);
+    });
+
     const { error } = await supabase
       .from('classes')
       .update({ is_hidden: true })
       .eq('id', classId);
 
     if (error) {
+      queryClient.setQueryData(queryKey, previousData);
       toast.error("Failed to hide class");
     } else {
-      toast.success(`"${className}" has been hidden`);
-      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      toast.success(`"${className}" has been hidden. Use the "Hidden" filter to find it.`);
+      queryClient.invalidateQueries({ queryKey: ['classes-paginated'] });
+      queryClient.invalidateQueries({ queryKey: ['classes-stats'] });
+    }
+  };
+
+  const handleUnhideClass = async (classId: string, className: string) => {
+    const queryKey = ['classes-paginated', schoolId, selectedSessionId, page, pageSize, searchTerm, assignmentFilter];
+    const previousData = queryClient.getQueryData(queryKey);
+    queryClient.setQueryData(queryKey, (old: any) => {
+      if (!old) return old;
+      return old.filter((c: any) => c.class_id !== classId);
+    });
+
+    const { error } = await supabase
+      .from('classes')
+      .update({ is_hidden: false })
+      .eq('id', classId);
+
+    if (error) {
+      queryClient.setQueryData(queryKey, previousData);
+      toast.error("Failed to unhide class");
+    } else {
+      toast.success(`"${className}" is now visible again`);
+      queryClient.invalidateQueries({ queryKey: ['classes-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['classes-stats'] });
     }
   };
@@ -562,6 +594,7 @@ const Classes = () => {
                         <SelectItem value="unassigned">Unassigned</SelectItem>
                         <SelectItem value="with_students">With Students</SelectItem>
                         <SelectItem value="with_teachers">With Teachers</SelectItem>
+                        <SelectItem value="hidden">Hidden</SelectItem>
                       </SelectContent>
                     </Select>
                     {academicSessions.length > 1 && (
@@ -631,9 +664,15 @@ const Classes = () => {
                                       availableTeachers={availableTeachers.map(t => ({ id: t.id, first_name: t.first_name, last_name: t.last_name, email: t.email }))}
                                       onCoverageAssigned={refreshData}
                                     />
-                                    <DropdownMenuItem onClick={() => handleHideClass(classRecord.id, classRecord.class_name)}>
-                                      <EyeOff className="h-4 w-4 mr-2" /> Hide Class
-                                    </DropdownMenuItem>
+                                    {assignmentFilter === 'hidden' ? (
+                                      <DropdownMenuItem onClick={() => handleUnhideClass(classRecord.id, classRecord.class_name)}>
+                                        <Eye className="h-4 w-4 mr-2" /> Unhide Class
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem onClick={() => handleHideClass(classRecord.id, classRecord.class_name)}>
+                                        <EyeOff className="h-4 w-4 mr-2" /> Hide Class
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -691,9 +730,15 @@ const Classes = () => {
                                         availableTeachers={availableTeachers.map(t => ({ id: t.id, first_name: t.first_name, last_name: t.last_name, email: t.email }))}
                                         onCoverageAssigned={refreshData}
                                       />
-                                      <DropdownMenuItem onClick={() => handleHideClass(classRecord.id, classRecord.class_name)}>
-                                        <EyeOff className="h-4 w-4 mr-2" /> Hide Class
-                                      </DropdownMenuItem>
+                                      {assignmentFilter === 'hidden' ? (
+                                        <DropdownMenuItem onClick={() => handleUnhideClass(classRecord.id, classRecord.class_name)}>
+                                          <Eye className="h-4 w-4 mr-2" /> Unhide Class
+                                        </DropdownMenuItem>
+                                      ) : (
+                                        <DropdownMenuItem onClick={() => handleHideClass(classRecord.id, classRecord.class_name)}>
+                                          <EyeOff className="h-4 w-4 mr-2" /> Hide Class
+                                        </DropdownMenuItem>
+                                      )}
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </TableCell>
