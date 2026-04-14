@@ -1,27 +1,22 @@
 
 
-# Fix: Special Use Run "View Details" 404 Error
+# Fix: Special Use Run Detail Not Loading
 
 ## Problem
-The "View Details" button navigates to `/dashboard/special-use-runs/{id}`, but the route in `App.tsx` is defined as `/dashboard/dismissals/special-runs/:runId`. The old path has a backward-compatibility redirect for the list page (`/dashboard/special-use-runs` → `/dashboard/dismissals/special-runs`) but **no redirect for the detail route with `:runId`**.
+The query in `SpecialUseRunDetail.tsx` (line 64-70) uses `manager:profiles(...)` inside `special_use_run_managers`, but that table has TWO foreign keys to `profiles`: `manager_id` and `assigned_by`. PostgREST can't auto-resolve which one to use and throws error PGRST201.
 
-## Fix
+## Fix — `src/pages/SpecialUseRunDetail.tsx`
 
-### 1. Update navigation URLs in `SpecialUseRuns.tsx`
-Change all `navigate('/dashboard/special-use-runs/${run.id}')` calls (lines 433, 520) to `navigate('/dashboard/dismissals/special-runs/${run.id}')`.
-
-### 2. Update back-navigation in `SpecialUseRunDetail.tsx`
-Change all `navigate("/dashboard/special-use-runs")` calls (lines 166, 198, 233) to `navigate("/dashboard/dismissals/special-runs")`.
-
-### 3. Update navigation in `SpecialUseRunMode.tsx`
-Change `navigate("/admin/special-use-runs")` calls (lines 190, 297) to `navigate("/dashboard/dismissals/special-runs")`.
-
-### 4. Add backward-compatibility redirect in `App.tsx`
-Add a redirect for the old detail path:
+Change line 65 from:
 ```tsx
-<Route path="/dashboard/special-use-runs/:runId" element={<Navigate to="/dashboard/dismissals/special-runs/:runId" replace />} />
+manager:profiles(
 ```
-(Using a small wrapper component to forward the `runId` param.)
+to:
+```tsx
+manager:profiles!special_use_run_managers_manager_id_fkey(
+```
 
-Four files, ~8 lines changed.
+This explicitly tells PostgREST to use the `manager_id` foreign key relationship.
+
+One file, one line changed.
 
