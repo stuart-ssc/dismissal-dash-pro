@@ -1,25 +1,36 @@
 
 
-# Fix: Search Should Only Reload Table, Not Entire Page
+# Enhance Manage Group Students Dialog
 
-## Problem
-Line 606 checks `if (loading || isLoading)` and returns a **full-screen spinner**, replacing the entire page. When search triggers a new query, `isPeopleLoading` (from react-query) flips to `true`, causing the whole page to unmount and show a spinner. This is the "reload" effect.
+## Current State
+The dialog shows `student_id • Grade {grade_level}` under each name. When `student_id` is empty, only `· Grade XX` appears (matching the screenshot). The dialog already supports multi-select via checkboxes — but lacks bulk selection by grade or class.
 
-## Solution
-Separate the **initial auth/page load** spinner from the **data refetch** loading state:
+## Changes — `src/components/ManageGroupStudentsDialog.tsx`
 
-1. **Keep the full-page spinner only for initial auth loading** — use `loading` (from `useAuth`) and `isLoadingSchoolId` only
-2. **Show an inline loading indicator on the table** when data is refetching — use `isPeopleLoading` or `isFetching` from react-query
-3. Use `keepPreviousData: true` in `usePaginatedPeople` so stale results stay visible while new data loads (prevents the table from going blank)
+### 1. Fix the subtitle display
+Show Student ID only when present. Always show grade. Format: `ID: 12345 · Grade 08` or just `Grade 08` when no student ID.
 
-## Changes
+### 2. Add Grade and Class filter dropdowns
+Above the student list, add two filter selects:
+- **Grade filter** — populated from distinct grade levels in the student list. Selecting a grade filters the visible list.
+- **Class filter** — fetch classes for the school/session. Selecting a class filters to only students enrolled in that class (via `class_rosters`).
 
-### `src/hooks/usePaginatedPeople.ts`
-- Add `keepPreviousData: true` (or `placeholderData: keepPreviousData` for TanStack Query v5) to the query options so old data persists during refetches
+Both filters work alongside the search input. Clearing a filter shows all students again.
 
-### `src/pages/People.tsx`
-- **Line 606**: Change the early return to only check `loading` (auth) — not `isPeopleLoading`
-- **Line 120**: Remove `isPeopleLoading` from the combined `isLoading` variable (or rename it)
-- Add a subtle inline loading indicator (e.g., a small spinner or opacity overlay) on the table area when `isPeopleLoading` is true, so users see the table is updating without losing the whole page
-- Also expose `isFetching` from the hook to distinguish initial load vs background refetch if needed
+### 3. Add "Select All Filtered" / "Deselect All Filtered" buttons
+When a grade or class filter is active, show a small link/button like "Select all 24 filtered" that checks all currently visible students at once — enabling true bulk selection by grade or class.
+
+### 4. Fetch class roster data
+On dialog open, also fetch `class_rosters` joined with `classes` to build a map of student_id → class names. This powers the class filter and optionally shows the class name in the subtitle.
+
+## Data flow
+```
+students query (existing) → all school students for session
+class_rosters + classes query (new) → student-to-class mapping
+Grade filter + Class filter + Search → filteredStudents
+Select All Filtered → bulk toggle selectedStudents set
+```
+
+## File changes
+- **Edit: `src/components/ManageGroupStudentsDialog.tsx`** — add grade/class filter selects, select-all button, fix subtitle, fetch class data
 
