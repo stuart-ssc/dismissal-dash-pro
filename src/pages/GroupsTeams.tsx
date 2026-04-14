@@ -335,7 +335,7 @@ export default function SpecialUseGroups() {
               <>
               {/* Mobile Card Layout */}
               <div className="md:hidden space-y-3">
-                {filteredGroups.map((group) => (
+                {paginatedGroups.map((group) => (
                   <Card key={group.id} className="overflow-hidden">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-3">
