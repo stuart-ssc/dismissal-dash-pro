@@ -30,6 +30,7 @@ import { TemporaryTransportationDialog } from "@/components/TemporaryTransportat
 import { ViewTemporaryTransportationDialog } from "@/components/ViewTemporaryTransportationDialog";
 import { TemporaryTransportationBadge } from "@/components/TemporaryTransportationBadge";
 import { TeachersWithoutClassesAlert } from "@/components/TeachersWithoutClassesAlert";
+import { ManagePersonClassesDialog } from "@/components/ManagePersonClassesDialog";
 
 const People = () => {
   const { user, userRole, signOut, loading, session } = useAuth();
