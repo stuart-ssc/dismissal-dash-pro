@@ -1,58 +1,38 @@
 
 
-# Rebalance Data Quality Scoring Algorithm
+# Remove Student Contact/Parent Metrics from Data Quality Score
 
-## Current breakdown (52.29% = F)
-| Category (max weight) | Sub-metric | % missing | Points lost |
-|---|---|---|---|
-| Students (50pts) | Contact info (25%) | 100% | 12.5 |
-| Students (50pts) | Parent name (25%) | 100% | 12.5 |
-| Students (50pts) | IC linked (25%) | 0% | 0 |
-| Students (50pts) | In classes (25%) | 1% | 0.1 |
-| Teachers (30pts) | Email (25%) | 0% | 0 |
-| Teachers (30pts) | IC linked (25%) | 0% | 0 |
-| Teachers (30pts) | In classes (25%) | 14% | 1.1 |
-| Teachers (30pts) | Has account (25%) | 100% | 7.5 |
-| Classes (20pts) | Has teachers (50%) | 70% | 7.0 |
-| Classes (20pts) | Has students (50%) | 70% | 7.0 |
+## Problem
+The data quality algorithm penalizes schools 15% (each) for `students_missing_contact_info` and `students_missing_parent_name`. These fields are:
+- Not populated by Infinite Campus sync (OneRoster doesn't provide parent contact details)
+- Only populated via manual CSV import
+- Irrelevant for evaluating IC data quality
 
-## Proposed changes
+This costs 15 points out of 100, guaranteeing no IC-synced school can score above ~85%.
 
-### 1. Reduce "classes without teachers" weight
-Change from 50/50 split to 20/80 (teachers/students). Many IC-imported classes are sections that naturally lack a direct teacher assignment.
+## Solution
 
-### 2. Reduce "teachers without accounts" weight
-Pre-invitation, 100% of teachers lack accounts — this is expected during setup. Change from 25% to 10% weight within teacher metrics.
+### 1. Database migration: Rebalance student weights to exclude contact/parent
+Update `calculate_ic_data_quality` to set contact info and parent name weights to **0%**, redistributing to the metrics that actually matter for IC data:
 
-### 3. Reduce "student contact info / parent name" weight
-IC imports often don't include parent contact details. Reduce each from 25% to 15%, and increase IC-linked and enrolled-in-classes weights.
+**Students (50pts) — new weights:**
+- Contact info: **0%** (was 15%)
+- Parent name: **0%** (was 15%)
+- IC linked: **50%** (was 35%)
+- Enrolled in classes: **50%** (was 35%)
 
-### Proposed new weights
+Teacher and class weights remain unchanged.
 
-**Students (50pts):**
-- Contact info: 15% (was 25%)
-- Parent name: 15% (was 25%)
-- IC linked: 35% (was 25%)
-- Enrolled in classes: 35% (was 25%)
-
-**Teachers (30pts):**
-- Email: 30% (was 25%)
-- IC linked: 30% (was 25%)
-- In classes: 30% (was 25%)
-- Has account: 10% (was 25%)
-
-**Classes (20pts):**
-- Has teachers: 20% (was 50%)
-- Has students: 80% (was 50%)
+### 2. UI: Hide zero-weight metrics from the dashboard
+In `ICDataQualityTab.tsx`, remove the "With contact info" progress bar from the Student Data Health card since it's no longer scored.
 
 ### Estimated new score for school 103090
-- Students: (1 - 1.0×0.15 - 1.0×0.15 - 0×0.35 - 0.01×0.35) × 50 ≈ 34.8
-- Teachers: (1 - 0 - 0 - 0.14×0.30 - 1.0×0.10) × 30 ≈ 25.7
-- Classes: (1 - 0.70×0.20 - 0.70×0.80) × 20 ≈ 6.0
-- **Total ≈ 66.5% → Grade D**
+- Students: (1 - 0×0.50 - 0.01×0.50) × 50 ≈ 49.75
+- Teachers: ~25.7 (unchanged)
+- Classes: ~6.0 (unchanged)
+- **Total ≈ 81.5% → Grade B**
 
-This better reflects the reality that IC data is structurally complete (students linked, teachers have emails) even when optional fields like parent contact and account activation are pending.
-
-## File
-- **New migration** — `CREATE OR REPLACE FUNCTION` for `calculate_ic_data_quality` with rebalanced weights
+## Files
+- **New migration** — `CREATE OR REPLACE FUNCTION` with updated student weights
+- **`src/components/ic/ICDataQualityTab.tsx`** — remove contact info and parent name progress bars from student card
 
