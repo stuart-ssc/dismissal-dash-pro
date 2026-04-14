@@ -62,6 +62,8 @@ const People = () => {
   const isMobile = useIsMobile();
   const [isTabletOrMobile, setIsTabletOrMobile] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [manageClassesOpen, setManageClassesOpen] = useState(false);
+  const [personForClasses, setPersonForClasses] = useState<PersonData | null>(null);
   const [stats, setStats] = useState({
     totalTeachers: 0,
     activeTeachers: 0,
