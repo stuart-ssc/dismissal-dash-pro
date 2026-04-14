@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Download, MoreHorizontal, Settings } from "lucide-react";
+import { Plus, Search, Users, Calendar, Edit, Trash2, UserCog, Copy, Download, MoreHorizontal, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { convertToCSV, downloadCSV, formatDateForCSV } from "@/lib/csvExport";
 import {
   DropdownMenu,
@@ -78,6 +78,8 @@ export default function SpecialUseGroups() {
   const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const { schoolId, isLoading: isLoadingSchoolId } = useActiveSchoolId();
 
   useEffect(() => {
@@ -146,6 +148,16 @@ export default function SpecialUseGroups() {
     const matchesType = typeFilter === "all" || group.group_type === typeFilter;
     return matchesSearch && matchesType;
   });
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / pageSize));
+  const paginatedGroups = filteredGroups.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, filteredGroups.length);
 
   const handleExportCSV = () => {
     if (filteredGroups.length === 0) {
@@ -323,7 +335,7 @@ export default function SpecialUseGroups() {
               <>
               {/* Mobile Card Layout */}
               <div className="md:hidden space-y-3">
-                {filteredGroups.map((group) => (
+                {paginatedGroups.map((group) => (
                   <Card key={group.id} className="overflow-hidden">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-3">
@@ -424,7 +436,7 @@ export default function SpecialUseGroups() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredGroups.map((group) => (
+                      {paginatedGroups.map((group) => (
                         <TableRow key={group.id} className="border-border hover:bg-muted/30">
                           <TableCell className="font-medium">{group.name}</TableCell>
                           <TableCell>{getGroupTypeBadge(group.group_type)}</TableCell>
@@ -497,6 +509,49 @@ export default function SpecialUseGroups() {
                       ))}
                     </TableBody>
                   </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+                <div className="flex items-center gap-2 w-full sm:w-auto text-center sm:text-left">
+                  <span className="text-sm text-muted-foreground">
+                    Showing {startIndex} to {endIndex} of {filteredGroups.length} groups
+                  </span>
+                  <Select value={String(pageSize)} onValueChange={(val) => { setPageSize(Number(val)); setCurrentPage(1); }}>
+                    <SelectTrigger className="w-[70px] h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Previous</span>
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               </>
             )}
