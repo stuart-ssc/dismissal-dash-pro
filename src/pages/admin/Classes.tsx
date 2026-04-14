@@ -327,11 +327,11 @@ const Classes = () => {
                   <TableRow>
                     <TableHead>Class Name</TableHead>
                     <TableHead>Room</TableHead>
-                    <TableHead className="hidden md:table-cell">Grade</TableHead>
                     <TableHead>Period</TableHead>
                     <TableHead className="hidden md:table-cell">Time</TableHead>
                     <TableHead>Teachers</TableHead>
                     <TableHead>Students</TableHead>
+                    <TableHead className="w-[60px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -339,7 +339,6 @@ const Classes = () => {
                     <TableRow key={cls.id}>
                       <TableCell className="font-medium">{cls.class_name}</TableCell>
                       <TableCell>{cls.room_number || '—'}</TableCell>
-                      <TableCell className="hidden md:table-cell">{cls.grade_level || '—'}</TableCell>
                       <TableCell>
                         {cls.period_number !== null ? (
                           <Badge variant="outline">
@@ -371,6 +370,21 @@ const Classes = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{cls.student_count}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleHideClass(cls.id, cls.class_name)}>
+                              <EyeOff className="mr-2 h-4 w-4" />
+                              Hide Class
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
