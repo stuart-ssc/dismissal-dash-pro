@@ -415,7 +415,7 @@ const Classes = () => {
 
   const handleHideClass = async (classId: string, className: string) => {
     // Optimistically remove from UI
-    const queryKey = ['classes-paginated', schoolId, selectedSessionId, debouncedSearch, assignmentFilter, currentPage, pageSize];
+    const queryKey = ['classes-paginated', schoolId, selectedSessionId, page, pageSize, searchTerm, assignmentFilter];
     const previousData = queryClient.getQueryData(queryKey);
     queryClient.setQueryData(queryKey, (old: any) => {
       if (!old) return old;
@@ -438,7 +438,7 @@ const Classes = () => {
   };
 
   const handleUnhideClass = async (classId: string, className: string) => {
-    const queryKey = ['classes-paginated', schoolId, selectedSessionId, debouncedSearch, assignmentFilter, currentPage, pageSize];
+    const queryKey = ['classes-paginated', schoolId, selectedSessionId, page, pageSize, searchTerm, assignmentFilter];
     const previousData = queryClient.getQueryData(queryKey);
     queryClient.setQueryData(queryKey, (old: any) => {
       if (!old) return old;
