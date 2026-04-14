@@ -73,24 +73,20 @@ export function ManagePersonClassesDialog({
     setLoading(true);
     try {
       // Fetch current assignments
-      const { data: assignmentData, error: assignmentError } = await supabase
-        .from(isStudent ? 'class_rosters' : 'class_teachers')
-        .select(`
-          id,
-          class_id,
-          classes!inner (
-            id,
-            class_name,
-            room_number,
-            period_number,
-            period_name,
-            period_start_time,
-            period_end_time,
-            school_id,
-            academic_session_id
-          )
-        `)
-        .eq(isStudent ? 'student_id' : 'teacher_id', personId) as { data: any[] | null; error: any };
+      const selectQuery = `id, class_id, classes!inner ( id, class_name, room_number, period_number, period_name, period_start_time, period_end_time, school_id, academic_session_id )`;
+      
+      let assignmentData: any[] | null = null;
+      let assignmentError: any = null;
+
+      if (isStudent) {
+        const res = await supabase.from('class_rosters').select(selectQuery).eq('student_id', personId);
+        assignmentData = res.data as any[];
+        assignmentError = res.error;
+      } else {
+        const res = await supabase.from('class_teachers').select(selectQuery).eq('teacher_id', personId);
+        assignmentData = res.data as any[];
+        assignmentError = res.error;
+      }
 
       if (assignmentError) throw assignmentError;
 
