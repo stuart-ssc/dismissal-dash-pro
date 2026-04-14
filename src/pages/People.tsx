@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ArrowUpDown, ChevronDown, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon, Loader2, Archive, Search } from "lucide-react";
+import { Users, UserPlus, Trash2, GraduationCap, UserCheck, User, ChevronLeft, ChevronRight, Filter, ChevronDown, ChevronUp, MoreHorizontal, Edit, Mail, Copy, Clock, CheckCircle2, AlertCircle, Calendar as CalendarIcon, Loader2, Archive, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { usePaginatedPeople, type PersonData } from "@/hooks/usePaginatedPeople";
 import { useQueryClient } from "@tanstack/react-query";
@@ -548,11 +548,30 @@ const People = () => {
     }
   };
 
-  const handleSortChange = (newSortBy: typeof sortBy, newSortOrder?: typeof sortOrder) => {
+  const handleSortChange = (column: typeof sortBy) => {
     setCurrentPage(1);
-    setSortBy(newSortBy);
-    if (newSortOrder) setSortOrder(newSortOrder);
+    if (sortBy === column) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
   };
+
+  const SortableHeader = ({ column, children }: { column: typeof sortBy; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+      onClick={() => handleSortChange(column)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        <div className="flex flex-col">
+          <ChevronUp className={cn("h-3 w-3 -mb-1", sortBy === column && sortOrder === 'asc' ? "text-foreground" : "text-muted-foreground/40")} />
+          <ChevronDown className={cn("h-3 w-3 -mt-1", sortBy === column && sortOrder === 'desc' ? "text-foreground" : "text-muted-foreground/40")} />
+        </div>
+      </div>
+    </TableHead>
+  );
 
   // Pagination logic - now using server-side totalCount
   const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -817,43 +836,6 @@ const People = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-            <div className="hidden sm:block h-4 w-px bg-border mx-2" />
-
-                    <div className="flex items-center gap-2">
-                      <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Sort:</span>
-                    </div>
-
-                    {/* Sort Options */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
-                          {sortBy === 'name' ? 'Name' : sortBy === 'role' ? 'Role' : 'Grade'} ({sortOrder === 'asc' ? '↑' : '↓'})
-                          <ChevronDown className="h-3 w-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                        <DropdownMenuItem onClick={() => handleSortChange('name', 'asc')}>
-                          Name (A-Z)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSortChange('name', 'desc')}>
-                          Name (Z-A)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSortChange('role', 'asc')}>
-                          Role (A-Z)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSortChange('role', 'desc')}>
-                          Role (Z-A)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSortChange('grade', 'asc')}>
-                          Grade (A-Z)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSortChange('grade', 'desc')}>
-                          Grade (Z-A)
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
                     {/* Results count */}
                     <div className="w-full sm:w-auto sm:ml-auto text-left sm:text-right text-sm text-muted-foreground">
                       Showing {startIndex}-{endIndex} of {totalCount} people
@@ -1023,13 +1005,13 @@ const People = () => {
                     </div>
                   ) : (
                     // TABLE LAYOUT FOR DESKTOP
-                  <div className="overflow-x-auto">
+                  <div className="rounded-md border bg-background/50 overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Grade</TableHead>
+          <SortableHeader column="name">Name</SortableHeader>
+          <SortableHeader column="role">Role</SortableHeader>
+          <SortableHeader column="grade">Grade</SortableHeader>
                         <TableHead>Transportation</TableHead>
                         <TableHead>Classes</TableHead>
                         <TableHead>Actions</TableHead>
@@ -1459,41 +1441,6 @@ const People = () => {
                   </>
                 )}
 
-                <div className="flex items-center gap-2">
-                  <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Sort:</span>
-                </div>
-
-                {/* Sort Options */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 w-full sm:w-auto">
-                      {sortBy === 'name' ? 'Name' : sortBy === 'role' ? 'Role' : 'Grade'} ({sortOrder === 'asc' ? '↑' : '↓'})
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-background border border-border shadow-lg z-50">
-                    <DropdownMenuItem onClick={() => handleSortChange('name', 'asc')}>
-                      Name (A-Z)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('name', 'desc')}>
-                      Name (Z-A)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('role', 'asc')}>
-                      Role (A-Z)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('role', 'desc')}>
-                      Role (Z-A)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('grade', 'asc')}>
-                      Grade (A-Z)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSortChange('grade', 'desc')}>
-                      Grade (Z-A)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
                 {/* Results count */}
                 <div className="w-full sm:w-auto sm:ml-auto text-left sm:text-right text-sm text-muted-foreground">
                   Showing {startIndex}-{endIndex} of {totalCount} people
@@ -1622,13 +1569,13 @@ const People = () => {
                 </div>
               ) : (
                 // TABLE LAYOUT FOR DESKTOP
-              <div className="overflow-x-auto">
+              <div className="rounded-md border bg-background/50 overflow-x-auto">
               <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Grade</TableHead>
+                      <SortableHeader column="name">Name</SortableHeader>
+                      <SortableHeader column="role">Role</SortableHeader>
+                      <SortableHeader column="grade">Grade</SortableHeader>
                       <TableHead>Transportation</TableHead>
                       {userRole !== 'teacher' && <TableHead>Classes</TableHead>}
                       {userRole === 'school_admin' && <TableHead className="text-right">Actions</TableHead>}
