@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, CheckSquare, XSquare } from "lucide-react";
+import { Search, CheckSquare, XSquare, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 type Student = {
@@ -282,6 +282,18 @@ export function ManageGroupStudentsDialog({
                 ))}
               </SelectContent>
             </Select>
+
+            {(searchQuery || gradeFilter !== "all" || classFilter !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 text-xs gap-1"
+                onClick={() => { setSearchQuery(""); setGradeFilter("all"); setClassFilter("all"); }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </Button>
+            )}
 
             <Badge variant="secondary" className="ml-auto">{selectedStudents.size} selected</Badge>
           </div>
