@@ -394,39 +394,38 @@ export default function SpecialUseGroups() {
               </div>
 
               {/* Desktop Table Layout */}
-              <div className="hidden md:block border rounded-lg bg-background overflow-hidden">
-                <div className="overflow-x-auto">
+              <div className="hidden md:block rounded-md border bg-background/50">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableRow className="border-border hover:bg-muted/50">
                         <TableHead>Name</TableHead>
                         <TableHead>Type</TableHead>
-                        <TableHead className="text-center">Students</TableHead>
-                        <TableHead className="text-center">Managers</TableHead>
+                        <TableHead>Students</TableHead>
+                        <TableHead>Managers</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredGroups.map((group) => (
-                        <TableRow key={group.id} className="hover:bg-muted/50 transition-colors">
+                        <TableRow key={group.id} className="border-border hover:bg-muted/30">
                           <TableCell className="font-medium">{group.name}</TableCell>
                           <TableCell>{getGroupTypeBadge(group.group_type)}</TableCell>
-                          <TableCell className="text-center">{group.student_count}</TableCell>
-                          <TableCell className="text-center">{group.manager_count}</TableCell>
+                          <TableCell><Badge variant="secondary">{group.student_count}</Badge></TableCell>
+                          <TableCell>{group.manager_count}</TableCell>
                           <TableCell>
                             <Badge variant={group.is_active ? "default" : "secondary"}>
                               {group.is_active ? "Active" : "Inactive"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" className="h-8 w-8 p-0">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent align="end" className="bg-background border border-border shadow-lg z-50">
                                 <DropdownMenuItem
                                   onClick={() => {
                                     setSelectedGroup(group);
@@ -481,7 +480,6 @@ export default function SpecialUseGroups() {
                       ))}
                     </TableBody>
                   </Table>
-                </div>
               </div>
               </>
             )}
