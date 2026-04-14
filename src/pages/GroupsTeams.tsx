@@ -67,6 +67,7 @@ type SpecialUseGroup = {
 export default function SpecialUseGroups() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedGroup, setSelectedGroup] = useState<SpecialUseGroup | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [studentsDialogOpen, setStudentsDialogOpen] = useState(false);
