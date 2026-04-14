@@ -430,7 +430,7 @@ export default function SpecialUseRuns() {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}>
+                              <DropdownMenuItem onClick={() => navigate(`/dashboard/dismissals/special-runs/${run.id}`)}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
@@ -517,7 +517,7 @@ export default function SpecialUseRuns() {
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => navigate(`/dashboard/special-use-runs/${run.id}`)}>
+                                <DropdownMenuItem onClick={() => navigate(`/dashboard/dismissals/special-runs/${run.id}`)}>
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
