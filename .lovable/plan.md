@@ -1,32 +1,26 @@
 
+# Fix Groups & Teams Page Header Layout
 
-# Instant Hide & Hidden Classes Filter
+Match the Classes Management page layout where the title, session badge, description, and action buttons are all inside the card header.
 
-## What changes
+## Changes to `src/pages/GroupsTeams.tsx`
 
-### 1. Optimistic hide (instant visual feedback)
-When "Hide Class" is clicked, immediately remove the class from the local list before the DB call completes. On error, roll back and show an error toast.
+### Current (broken) layout
+- Search field full-width on its own row
+- Settings icon + New Group button on a second row below search
+- Card header has title, badge on separate line, description below
 
-Update `handleHideClass` in `src/pages/Classes.tsx` to:
-- Use `queryClient.setQueryData` to optimistically remove the hidden class from the current `classes-paginated` query cache
-- Also decrement the stats cache optimistically
-- On error, invalidate queries to roll back to server state
+### Target layout (matching Classes page)
+- Move search field, filters, and action buttons **inside** `CardContent` (like Classes page has its search/filters inside CardContent)
+- Card header: title + session badge inline on one row, action buttons (Settings dropdown + New Group) on the right side, description below
+- Remove the standalone div above the card that currently holds search + buttons
 
-### 2. Add "Hidden" filter option
-Add a `hidden` option to the assignment filter dropdown so users can find and manage hidden classes:
-- Add `<SelectItem value="hidden">Hidden</SelectItem>` to the filter `<Select>` (~line 564)
+### Specific edits
+1. Restructure `CardHeader` to use `flex flex-col md:flex-row md:justify-between md:items-center gap-4` layout
+2. Put title + badge in a `flex items-center gap-3` wrapper (left side)
+3. Put Settings dropdown + New Group button on the right side of the header
+4. Move search input inside `CardContent` at the top of the data area
+5. Remove the outer `div.space-y-3` that currently wraps search + action buttons above the card
 
-### 3. Update the RPC to support the "hidden" filter
-The `get_classes_paginated` RPC currently excludes hidden classes. It needs to handle `p_filter = 'hidden'` by returning **only** hidden classes instead.
-
-**New migration**: `ALTER` the `get_classes_paginated` function to:
-- When `p_filter = 'hidden'`: filter to `is_hidden = true`
-- All other filters: keep existing `is_hidden = false` behavior
-
-### 4. Add "Unhide" action for hidden classes
-When viewing the "Hidden" filter, the dropdown action should show "Unhide Class" instead of "Hide Class". Implement `handleUnhideClass` that sets `is_hidden = false` with the same optimistic pattern.
-
-## Files
-- `src/pages/Classes.tsx` — optimistic updates, hidden filter, unhide action
-- **New migration** — update `get_classes_paginated` RPC to support `'hidden'` filter value
-
+## File
+- `src/pages/GroupsTeams.tsx` (lines ~208–297)
