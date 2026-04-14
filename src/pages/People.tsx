@@ -117,7 +117,7 @@ const People = () => {
 
   const people = paginatedData?.people || [];
   const totalCount = paginatedData?.totalCount || 0;
-  const isLoading = loading || isPeopleLoading;
+  const isInitialLoading = loading;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -603,7 +603,7 @@ const People = () => {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
-  if (loading || isLoading) {
+  if (isInitialLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
