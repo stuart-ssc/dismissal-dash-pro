@@ -2774,21 +2774,21 @@ export type Database = {
       special_use_group_managers: {
         Row: {
           assigned_at: string
-          assigned_by: string
+          assigned_by: string | null
           group_id: string
           id: string
           manager_id: string
         }
         Insert: {
           assigned_at?: string
-          assigned_by: string
+          assigned_by?: string | null
           group_id: string
           id?: string
           manager_id: string
         }
         Update: {
           assigned_at?: string
-          assigned_by?: string
+          assigned_by?: string | null
           group_id?: string
           id?: string
           manager_id?: string
