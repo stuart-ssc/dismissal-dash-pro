@@ -631,6 +631,9 @@ const Classes = () => {
                                       availableTeachers={availableTeachers.map(t => ({ id: t.id, first_name: t.first_name, last_name: t.last_name, email: t.email }))}
                                       onCoverageAssigned={refreshData}
                                     />
+                                    <DropdownMenuItem onClick={() => handleHideClass(classRecord.id, classRecord.class_name)}>
+                                      <EyeOff className="h-4 w-4 mr-2" /> Hide Class
+                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
