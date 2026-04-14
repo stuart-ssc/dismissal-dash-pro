@@ -436,7 +436,7 @@ export default function SpecialUseGroups() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredGroups.map((group) => (
+                      {paginatedGroups.map((group) => (
                         <TableRow key={group.id} className="border-border hover:bg-muted/30">
                           <TableCell className="font-medium">{group.name}</TableCell>
                           <TableCell>{getGroupTypeBadge(group.group_type)}</TableCell>
