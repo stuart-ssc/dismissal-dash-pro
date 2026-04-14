@@ -156,7 +156,9 @@ export function ManagePersonClassesDialog({
         insertData.academic_session_id = sessionId;
       }
 
-      const { error } = await supabase.from(tableName).insert(insertData);
+      const { error } = isStudent
+        ? await supabase.from('class_rosters').insert(insertData)
+        : await supabase.from('class_teachers').insert(insertData);
       if (error) {
         if (error.code === '23505') {
           toast({ title: "Already assigned", description: "This person is already in that class." });
