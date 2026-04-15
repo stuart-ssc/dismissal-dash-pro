@@ -1,47 +1,34 @@
 
-Fix the detail page query, not permissions.
 
-What’s happening:
-- The run is not failing because of RLS.
-- The console error shows the real cause: `column buses_2.capacity does not exist`
-- In `src/pages/SpecialUseRunDetail.tsx`, the detail query selects:
-  ```tsx
-  bus:buses(
-    id,
-    bus_number,
-    capacity
-  )
-  ```
-- But the `buses` table in `src/integrations/supabase/types.ts` only has:
-  `id, bus_number, driver_first_name, driver_last_name, school_id, status, created_at, updated_at`
-- So the query crashes before the page can load anything.
+# Fix: Auto-assign Group Managers as Run Managers
 
-What should be shown on this page:
-- The selected Special Use Run’s details:
-  - run name + date
-  - status
-  - group
-  - academic year
-  - schedule/timeline
-  - notes
-  - assigned buses
-  - managers
-  - student roster
-  - event history
-- The page structure already exists; it just fails during data fetch.
+## Problem
+When creating a special use run, only the current user (you, Stuart) is added as a run manager. Jennifer Borders is the group manager but was never copied to the run. Additionally, Jennifer only exists in the `teachers` table (no user account/profile yet), and the `special_use_run_managers` table requires a `profiles` FK — so she literally cannot be inserted there today.
 
-Plan:
-1. Update `src/pages/SpecialUseRunDetail.tsx` to stop requesting `capacity` from `buses`.
-2. Adjust the Assigned Buses card so it only shows fields that actually exist, such as:
-   - `Bus {bus_number}`
-   - optionally driver name if useful
-   - remove the `Capacity:` line unless that data should come from `special_use_run_buses.capacity`
-3. If bus capacity is meant to be shown for a run assignment, switch the UI to read it from `special_use_run_buses.capacity` instead of `buses.capacity`.
-4. Keep the existing route and permissions logic unchanged, because the current failure is a broken query, not an access issue.
-5. Verify the full “View Details” flow end-to-end:
-   - from Special Runs listing
-   - into detail page
-   - for scheduled and cancelled runs if available
+## Data Model Context
+- `special_use_group_managers.manager_id` → references `teachers` table
+- `special_use_run_managers.manager_id` → references `profiles` table
+- Jennifer has a `teachers` record (`cea7cd6d`) but no `profiles` record (no account yet)
 
-Technical note:
-- If your intended design is “anyone who can see the Special Runs admin listing can also see run details,” I’ll also review the detail page’s fallback messaging after the query fix so it doesn’t misleadingly imply a permission problem when the fetch actually errors.
+## Plan
+
+### 1. Update run creation logic in `SpecialUseRunDialog.tsx`
+After creating the run and assigning the current user as manager:
+- Query `special_use_group_managers` for the selected group to get all group managers
+- For each group manager, check if they have a matching `profiles` record (i.e., have an account)
+- Insert those with profiles into `special_use_run_managers` (skip duplicates if creator is already a group manager)
+- The creator is always added regardless
+
+### 2. Show unlinked group managers as read-only on the detail page (`SpecialUseRunDetail.tsx`)
+- After loading run managers, also fetch group managers from `special_use_group_managers` joined with `teachers`
+- Display all run managers normally
+- Display group managers who are NOT in the run managers list with a "No account" badge (read-only, greyed out)
+- This makes Jennifer visible on the detail page even though she can't operate the run yet
+
+### 3. No database migration needed
+The existing schema supports this. We just need to change the application logic.
+
+## Files Changed
+- `src/components/SpecialUseRunDialog.tsx` — copy group managers with profiles to run managers on creation
+- `src/pages/SpecialUseRunDetail.tsx` — fetch and display unlinked group managers as read-only
+
