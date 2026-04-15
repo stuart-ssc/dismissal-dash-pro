@@ -1,34 +1,35 @@
 
 
-# Fix: Auto-assign Group Managers as Run Managers
+# Add Role Re-assignment to Edit Person Dialog
 
 ## Problem
-When creating a special use run, only the current user (you, Stuart) is added as a run manager. Jennifer Borders is the group manager but was never copied to the run. Additionally, Jennifer only exists in the `teachers` table (no user account/profile yet), and the `special_use_run_managers` table requires a `profiles` FK — so she literally cannot be inserted there today.
+When Infinite Campus syncs staff, everyone comes in as "teacher." School admins need to promote a teacher to "school_admin" role directly from the Edit Person dialog. Currently, the dialog has no role field for staff.
 
-## Data Model Context
-- `special_use_group_managers.manager_id` → references `teachers` table
-- `special_use_run_managers.manager_id` → references `profiles` table
-- Jennifer has a `teachers` record (`cea7cd6d`) but no `profiles` record (no account yet)
+## Approach
 
-## Plan
+### 1. Add role selector to `EditPersonDialog.tsx`
+- Add a `role` field to `formData` state, initialized from `person.role`
+- Show a Role dropdown for staff (Teacher / School Admin) — only when editing a non-student
+- School admins can only assign: `teacher` or `school_admin` (not `district_admin` or `system_admin`)
 
-### 1. Update run creation logic in `SpecialUseRunDialog.tsx`
-After creating the run and assigning the current user as manager:
-- Query `special_use_group_managers` for the selected group to get all group managers
-- For each group manager, check if they have a matching `profiles` record (i.e., have an account)
-- Insert those with profiles into `special_use_run_managers` (skip duplicates if creator is already a group manager)
-- The creator is always added regardless
+### 2. Handle role change on submit
+When the role changes:
+- **Teacher → School Admin**: Insert `school_admin` role into `user_roles`, remove `teacher` role. Also ensure `profiles` record exists (teachers with accounts already have one; teachers without accounts can't be promoted until they have one — show a warning).
+- **School Admin → Teacher**: Insert `teacher` role into `user_roles`, remove `school_admin` role.
+- Use upsert/delete on `user_roles` table with the person's ID.
 
-### 2. Show unlinked group managers as read-only on the detail page (`SpecialUseRunDetail.tsx`)
-- After loading run managers, also fetch group managers from `special_use_group_managers` joined with `teachers`
-- Display all run managers normally
-- Display group managers who are NOT in the run managers list with a "No account" badge (read-only, greyed out)
-- This makes Jennifer visible on the detail page even though she can't operate the run yet
+### 3. Guard: only allow promotion for users with accounts
+If a teacher was imported from IC and has no user account yet (`invitation_status` is not `completed`), disable the role dropdown and show a message: "This person must complete their account setup before their role can be changed."
 
-### 3. No database migration needed
-The existing schema supports this. We just need to change the application logic.
+### 4. Load current role on dialog open
+Query `user_roles` for the person's ID to get their actual DB role, rather than relying solely on the display role passed in.
 
 ## Files Changed
-- `src/components/SpecialUseRunDialog.tsx` — copy group managers with profiles to run managers on creation
-- `src/pages/SpecialUseRunDetail.tsx` — fetch and display unlinked group managers as read-only
+- `src/components/EditPersonDialog.tsx` — add role dropdown, role change logic on submit
+
+## Technical Details
+- Role changes go to the `user_roles` table (not profiles)
+- Delete old role row + insert new role row in a single submit handler
+- The `person.role` prop uses display format ('Teacher', 'School Admin'); map to DB values (`teacher`, `school_admin`)
+- No migration needed — `user_roles` table and `app_role` enum already include both values
 
