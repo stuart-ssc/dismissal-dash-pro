@@ -65,12 +65,12 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
         supabase.from('buses').select('id, bus_number').eq('school_id', schoolId).order('bus_number', { ascending: true }),
         supabase.from('car_lines').select('id, line_name').eq('school_id', schoolId).order('line_name', { ascending: true }),
         supabase.from('walker_locations').select('id, location_name').eq('school_id', schoolId).order('location_name', { ascending: true }),
-        supabase.from('after_school_activities').select('id, activity_name').eq('school_id', schoolId).order('activity_name', { ascending: true })
+        supabase.from('activity_transport_options' as any).select('id, location, status, special_use_groups(name)').eq('school_id', schoolId).eq('status', 'active')
       ]);
       setAvailableBuses(buses || []);
       setAvailableCarLines(carLines || []);
       setAvailableWalkerLocations(walkerLocs || []);
-      setAvailableActivities(activities || []);
+      setAvailableActivities((activities as any[] || []).map((a: any) => ({ id: a.id, activity_name: a.special_use_groups?.name || 'Unknown' })));
     };
     fetchTransportationOptions();
   }, [open, personType, schoolId]);
@@ -130,7 +130,7 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
           await supabase.from('student_bus_assignments').delete().eq('student_id', studentData.id);
           await supabase.from('student_walker_assignments').delete().eq('student_id', studentData.id);
           await supabase.from('student_car_assignments').delete().eq('student_id', studentData.id);
-          await supabase.from('student_after_school_assignments').delete().eq('student_id', studentData.id);
+          await supabase.from('student_after_school_assignments').delete().eq('student_id', studentData.id); // legacy cleanup
           if (formData.transportMethod && formData.transportTargetId) {
             if (formData.transportMethod === 'bus') {
               const { error: insErr } = await supabase.from('student_bus_assignments').insert({ student_id: studentData.id, bus_id: formData.transportTargetId });
@@ -142,6 +142,9 @@ export const AddPersonDialog = ({ schoolId, onPersonAdded }: AddPersonDialogProp
               const { error: insErr } = await supabase.from('student_car_assignments').insert({ student_id: studentData.id, car_line_id: formData.transportTargetId });
               if (insErr) throw insErr;
             } else if (formData.transportMethod === 'activity') {
+              // activity_transport_option_id is not a standard assignment table; 
+              // For now, store as after_school_activity reference for backward compat
+              // The activity_transport_option_id is the id from activity_transport_options
               const { error: insErr } = await supabase.from('student_after_school_assignments').insert({ student_id: studentData.id, after_school_activity_id: formData.transportTargetId });
               if (insErr) throw insErr;
             }

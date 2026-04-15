@@ -56,7 +56,8 @@ export function ViewTemporaryTransportationDialog({
           buses (bus_number, driver_first_name, driver_last_name),
           car_lines (line_name, color),
           walker_locations (location_name),
-          after_school_activities (activity_name)
+          after_school_activities (activity_name),
+          activity_transport_options:activity_transport_option_id (id, location, special_use_groups (name))
         `)
         .eq('student_id', student.id)
         .order('start_date', { ascending: true });
@@ -114,6 +115,9 @@ export function ViewTemporaryTransportationDialog({
     }
     if (override.after_school_activity_id && override.after_school_activities) {
       return override.after_school_activities.activity_name;
+    }
+    if (override.activity_transport_option_id && override.activity_transport_options) {
+      return override.activity_transport_options.special_use_groups?.name || 'Activity';
     }
     return "Unknown";
   };

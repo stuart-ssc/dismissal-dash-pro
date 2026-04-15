@@ -80,6 +80,51 @@ export type Database = {
           },
         ]
       }
+      activity_transport_options: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          location: string | null
+          school_id: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          location?: string | null
+          school_id: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          location?: string | null
+          school_id?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_transport_options_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "special_use_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_transport_options_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_impersonation_sessions: {
         Row: {
           admin_user_id: string
@@ -809,24 +854,35 @@ export type Database = {
       }
       dismissal_group_activities: {
         Row: {
+          activity_transport_option_id: string | null
           after_school_activity_id: string
           created_at: string
           dismissal_group_id: string
           id: string
         }
         Insert: {
+          activity_transport_option_id?: string | null
           after_school_activity_id: string
           created_at?: string
           dismissal_group_id: string
           id?: string
         }
         Update: {
+          activity_transport_option_id?: string | null
           after_school_activity_id?: string
           created_at?: string
           dismissal_group_id?: string
           id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dismissal_group_activities_activity_transport_option_id_fkey"
+            columns: ["activity_transport_option_id"]
+            isOneToOne: false
+            referencedRelation: "activity_transport_options"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dismissal_group_buses: {
         Row: {
@@ -3469,6 +3525,7 @@ export type Database = {
       }
       student_temporary_transportation: {
         Row: {
+          activity_transport_option_id: string | null
           after_school_activity_id: string | null
           bus_id: string | null
           car_line_id: string | null
@@ -3488,6 +3545,7 @@ export type Database = {
           weekday_pattern: number[] | null
         }
         Insert: {
+          activity_transport_option_id?: string | null
           after_school_activity_id?: string | null
           bus_id?: string | null
           car_line_id?: string | null
@@ -3507,6 +3565,7 @@ export type Database = {
           weekday_pattern?: number[] | null
         }
         Update: {
+          activity_transport_option_id?: string | null
           after_school_activity_id?: string | null
           bus_id?: string | null
           car_line_id?: string | null
@@ -3526,6 +3585,13 @@ export type Database = {
           weekday_pattern?: number[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "student_temporary_transportat_activity_transport_option_id_fkey"
+            columns: ["activity_transport_option_id"]
+            isOneToOne: false
+            referencedRelation: "activity_transport_options"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_temporary_transportation_after_school_activity_id_fkey"
             columns: ["after_school_activity_id"]

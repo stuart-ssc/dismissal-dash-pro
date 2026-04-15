@@ -25,7 +25,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ManageActivityStudentsDialog } from "@/components/ManageActivityStudentsDialog";
+import { Link } from "react-router-dom";
 
 const editBusSchema = z.object({
   bus_number: z.string().min(1, "Bus number is required"),
@@ -52,12 +52,9 @@ const laneSchema = z.object({
   color: z.string().min(1, "Color is required"),
 });
 
-const afterSchoolActivitySchema = z.object({
-  activity_name: z.string().min(1, "Activity name is required"),
-  description: z.string().optional(),
+const linkActivitySchema = z.object({
+  group_id: z.string().min(1, "Group is required"),
   location: z.string().optional(),
-  supervisor_name: z.string().optional(),
-  capacity: z.number().min(1).optional(),
   status: z.enum(["active", "inactive"]),
 });
 
@@ -124,18 +121,18 @@ interface CarLineLane {
   order_index: number;
 }
 
-interface AfterSchoolActivityRecord {
+interface ActivityTransportRecord {
   id: string;
+  group_id: string;
+  group_name: string;
+  group_type: string;
   school_id: number;
-  activity_name: string;
-  description: string | null;
   location: string | null;
-  supervisor_name: string | null;
-  capacity: number | null;
   status: 'active' | 'inactive';
+  students_count: number;
+  manager_names: string;
   created_at: string;
   updated_at: string;
-  students_count: number;
 }
 
 const Transportation = () => {
@@ -218,26 +215,19 @@ const Transportation = () => {
   const [carStudentSearchResults, setCarStudentSearchResults] = useState<StudentSearchResult[]>([]);
   const [isSearchingCarStudents, setIsSearchingCarStudents] = useState(false);
   
-  // After school activities state
-  const [afterSchoolActivities, setAfterSchoolActivities] = useState<AfterSchoolActivityRecord[]>([]);
-  const [filteredAfterSchoolActivities, setFilteredAfterSchoolActivities] = useState<AfterSchoolActivityRecord[]>([]);
+  // After school activities state (now group-linked)
+  const [afterSchoolActivities, setAfterSchoolActivities] = useState<ActivityTransportRecord[]>([]);
+  const [filteredAfterSchoolActivities, setFilteredAfterSchoolActivities] = useState<ActivityTransportRecord[]>([]);
   const [activitySearchTerm, setActivitySearchTerm] = useState('');
   const [activityCurrentPage, setActivityCurrentPage] = useState(1);
-  const [activitySortBy, setActivitySortBy] = useState<keyof AfterSchoolActivityRecord>('activity_name');
+  const [activitySortBy, setActivitySortBy] = useState<keyof ActivityTransportRecord>('group_name');
   const [activitySortOrder, setActivitySortOrder] = useState<'asc' | 'desc'>('asc');
   const [activityFilterStatus, setActivityFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [showAddActivityDialog, setShowAddActivityDialog] = useState(false);
-  const [editingActivityRecord, setEditingActivityRecord] = useState<AfterSchoolActivityRecord | null>(null);
+  const [editingActivityRecord, setEditingActivityRecord] = useState<ActivityTransportRecord | null>(null);
   
-  // After school activity student management state
-  const [managingActivityStudents, setManagingActivityStudents] = useState<AfterSchoolActivityRecord | null>(null);
-  const [managingActivity, setManagingActivity] = useState<AfterSchoolActivityRecord | null>(null);
-  const [activityStudents, setActivityStudents] = useState<StudentBusRecord[]>([]);
-  const [isLoadingActivityStudents, setIsLoadingActivityStudents] = useState(false);
-  const [showAddActivityStudentDialog, setShowAddActivityStudentDialog] = useState(false);
-  const [activityStudentSearchTerm, setActivityStudentSearchTerm] = useState('');
-  const [activityStudentSearchResults, setActivityStudentSearchResults] = useState<StudentSearchResult[]>([]);
-  const [isSearchingActivityStudents, setIsSearchingActivityStudents] = useState(false);
+  // Available groups for linking
+  const [availableGroups, setAvailableGroups] = useState<Array<{ id: string; name: string; group_type: string }>>([]);
   
   const itemsPerPage = 10;
 
@@ -503,39 +493,71 @@ const Transportation = () => {
     if (!user || !schoolId) return;
 
     try {
-      // Fetch after school activities without nested aggregation to avoid RLS issues
-      const { data: activitiesData, error: activitiesError } = await supabase
-        .from('after_school_activities')
-        .select('*')
-        .eq('school_id', schoolId)
-        .order('activity_name');
+      // Fetch activity_transport_options with group details
+      const { data: atoData, error: atoError } = await supabase
+        .from('activity_transport_options' as any)
+        .select('*, special_use_groups(id, name, group_type)')
+        .eq('school_id', schoolId);
 
-      if (activitiesError) {
-        console.error('Error fetching after school activities:', activitiesError);
+      if (atoError) {
+        console.error('Error fetching activity transport options:', atoError);
         return;
       }
 
-      // Fetch activity assignment counts separately
-      const activityAssignmentCounts = new Map<string, number>();
-      if (activitiesData && activitiesData.length > 0) {
-        for (const activity of activitiesData) {
-          const { count } = await supabase
-            .from('student_after_school_assignments')
-            .select('*', { count: 'exact', head: true })
-            .eq('after_school_activity_id', activity.id);
-          activityAssignmentCounts.set(activity.id, count || 0);
-        }
+      // Fetch student counts and manager names for each linked group
+      const records: ActivityTransportRecord[] = [];
+      for (const ato of (atoData as any[] || [])) {
+        const group = ato.special_use_groups;
+        if (!group) continue;
+
+        // Get student count
+        const { count: studentCount } = await supabase
+          .from('special_use_group_students')
+          .select('*', { count: 'exact', head: true })
+          .eq('group_id', group.id);
+
+        // Get managers
+        const { data: managers } = await supabase
+          .from('special_use_group_managers')
+          .select('manager_id, teachers(first_name, last_name)')
+          .eq('group_id', group.id);
+
+        const managerNames = (managers || [])
+          .map((m: any) => m.teachers ? `${m.teachers.first_name} ${m.teachers.last_name}` : '')
+          .filter(Boolean)
+          .join(', ');
+
+        records.push({
+          id: ato.id,
+          group_id: group.id,
+          group_name: group.name,
+          group_type: group.group_type || '',
+          school_id: ato.school_id,
+          location: ato.location,
+          status: ato.status as 'active' | 'inactive',
+          students_count: studentCount || 0,
+          manager_names: managerNames,
+          created_at: ato.created_at,
+          updated_at: ato.updated_at,
+        });
       }
 
-      const activitiesWithCounts = (activitiesData || []).map(activity => ({
-        ...activity,
-        students_count: activityAssignmentCounts.get(activity.id) || 0
-      })) as AfterSchoolActivityRecord[];
+      records.sort((a, b) => a.group_name.localeCompare(b.group_name));
+      setAfterSchoolActivities(records);
+      setFilteredAfterSchoolActivities(records);
 
-      setAfterSchoolActivities(activitiesWithCounts);
-      setFilteredAfterSchoolActivities(activitiesWithCounts);
+      // Also fetch available groups not yet linked
+      const linkedGroupIds = records.map(r => r.group_id);
+      const { data: allGroups } = await supabase
+        .from('special_use_groups')
+        .select('id, name, group_type')
+        .eq('school_id', schoolId)
+        .eq('is_active', true);
+
+      const unlinked = (allGroups || []).filter(g => !linkedGroupIds.includes(g.id));
+      setAvailableGroups(unlinked);
     } catch (error) {
-      console.error('Error fetching after school activities data:', error);
+      console.error('Error fetching activity transport data:', error);
     }
   };
 
@@ -628,10 +650,9 @@ const Transportation = () => {
   useEffect(() => {
     let filtered = afterSchoolActivities.filter(record => {
       const matchesSearch = 
-        record.activity_name.toLowerCase().includes(activitySearchTerm.toLowerCase()) ||
-        (record.description && record.description.toLowerCase().includes(activitySearchTerm.toLowerCase())) ||
+        record.group_name.toLowerCase().includes(activitySearchTerm.toLowerCase()) ||
         (record.location && record.location.toLowerCase().includes(activitySearchTerm.toLowerCase())) ||
-        (record.supervisor_name && record.supervisor_name.toLowerCase().includes(activitySearchTerm.toLowerCase()));
+        record.manager_names.toLowerCase().includes(activitySearchTerm.toLowerCase());
       
       const matchesStatus = activityFilterStatus === 'all' || record.status === activityFilterStatus;
       
@@ -742,14 +763,11 @@ const Transportation = () => {
     },
   });
 
-  const activityForm = useForm<z.infer<typeof afterSchoolActivitySchema>>({
-    resolver: zodResolver(afterSchoolActivitySchema),
+  const activityForm = useForm<z.infer<typeof linkActivitySchema>>({
+    resolver: zodResolver(linkActivitySchema),
     defaultValues: {
-      activity_name: "",
-      description: "",
+      group_id: "",
       location: "",
-      supervisor_name: "",
-      capacity: undefined,
       status: "active",
     },
   });
@@ -1108,28 +1126,14 @@ const Transportation = () => {
     }
   };
 
-  const handleActivityFormSubmit = async (values: z.infer<typeof afterSchoolActivitySchema>) => {
+  const handleActivityFormSubmit = async (values: z.infer<typeof linkActivitySchema>) => {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user!.id)
-        .single();
-
-      if (!profile?.school_id) {
-        toast.error('No school found for user');
-        return;
-      }
-
       if (editingActivityRecord) {
+        // Update existing activity_transport_option (location/status only)
         const { error } = await supabase
-          .from('after_school_activities')
+          .from('activity_transport_options' as any)
           .update({
-            activity_name: values.activity_name,
-            description: values.description || null,
             location: values.location || null,
-            supervisor_name: values.supervisor_name || null,
-            capacity: values.capacity || null,
             status: values.status,
           })
           .eq('id', editingActivityRecord.id);
@@ -1138,20 +1142,18 @@ const Transportation = () => {
         toast.success('Activity updated successfully');
         setEditingActivityRecord(null);
       } else {
+        // Create new link
         const { error } = await supabase
-          .from('after_school_activities')
+          .from('activity_transport_options' as any)
           .insert({
-            school_id: profile.school_id,
-            activity_name: values.activity_name,
-            description: values.description || null,
+            group_id: values.group_id,
+            school_id: schoolId,
             location: values.location || null,
-            supervisor_name: values.supervisor_name || null,
-            capacity: values.capacity || null,
             status: values.status,
           });
 
         if (error) throw error;
-        toast.success('Activity added successfully');
+        toast.success('Group linked as activity successfully');
       }
 
       setShowAddActivityDialog(false);
@@ -1163,28 +1165,28 @@ const Transportation = () => {
     }
   };
 
-  const handleDeleteActivity = async (activity: AfterSchoolActivityRecord) => {
-    if (!confirm(`Are you sure you want to delete ${activity.activity_name}?`)) {
+  const handleDeleteActivity = async (activity: ActivityTransportRecord) => {
+    if (!confirm(`Are you sure you want to unlink ${activity.group_name}?`)) {
       return;
     }
 
     try {
       const { error } = await supabase
-        .from('after_school_activities')
+        .from('activity_transport_options' as any)
         .delete()
         .eq('id', activity.id);
 
       if (error) {
-        console.error('Error deleting activity:', error);
-        toast.error('Failed to delete activity');
+        console.error('Error unlinking activity:', error);
+        toast.error('Failed to unlink activity');
         return;
       }
 
-      toast.success('Activity deleted successfully');
+      toast.success('Activity unlinked successfully');
       await fetchAfterSchoolActivities();
     } catch (error) {
-      console.error('Error deleting activity:', error);
-      toast.error('Failed to delete activity');
+      console.error('Error unlinking activity:', error);
+      toast.error('Failed to unlink activity');
     }
   };
 
@@ -2728,14 +2730,27 @@ const Transportation = () => {
                       <div>
                         <h3 className="text-lg font-semibold">After School Activities</h3>
                         <p className="text-sm text-muted-foreground">
-                          Manage after school activities and student assignments
+                          Link groups as transportation activities. Manage rosters on the <Link to="/dashboard/groups" className="text-primary underline">Groups page</Link>.
                         </p>
                       </div>
-                      <Button onClick={() => setShowAddActivityDialog(true)} className="w-full sm:w-auto">
+                      <Button onClick={() => { setEditingActivityRecord(null); activityForm.reset(); setShowAddActivityDialog(true); }} className="w-full sm:w-auto" disabled={availableGroups.length === 0}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Add Activity
+                        Link Group as Activity
                       </Button>
                     </div>
+
+                    {afterSchoolActivities.length === 0 && !isLoading && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                        <p className="text-lg font-medium mb-2">No activities linked yet</p>
+                        <p className="text-sm mb-4">Create a group first, then link it here as a transportation activity.</p>
+                        <Button variant="outline" asChild>
+                          <Link to="/dashboard/groups">Go to Groups</Link>
+                        </Button>
+                      </div>
+                    )}
+
+                    {afterSchoolActivities.length > 0 && (
                     <div className="space-y-4">
                       {/* Mobile Card Layout */}
                       <div className="md:hidden space-y-3">
@@ -2744,8 +2759,9 @@ const Transportation = () => {
                             <CardHeader className="pb-3">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0 flex-1">
-                                  <CardTitle className="text-base">{activity.activity_name}</CardTitle>
+                                  <CardTitle className="text-base">{activity.group_name}</CardTitle>
                                   <div className="flex flex-wrap gap-2 mt-2">
+                                    <Badge variant="outline">{activity.group_type}</Badge>
                                     <Badge variant={activity.status === 'active' ? 'default' : 'secondary'}>
                                       {activity.status}
                                     </Badge>
@@ -2759,18 +2775,17 @@ const Transportation = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => setManagingActivity(activity)}>
-                                      <Users className="mr-2 h-4 w-4" />
-                                      Manage Students
+                                    <DropdownMenuItem asChild>
+                                      <Link to="/dashboard/groups">
+                                        <Users className="mr-2 h-4 w-4" />
+                                        View Group
+                                      </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => {
                                       setEditingActivityRecord(activity);
                                       activityForm.reset({
-                                        activity_name: activity.activity_name,
-                                        description: activity.description || '',
+                                        group_id: activity.group_id,
                                         location: activity.location || '',
-                                        supervisor_name: activity.supervisor_name || '',
-                                        capacity: activity.capacity || undefined,
                                         status: activity.status,
                                       });
                                       setShowAddActivityDialog(true);
@@ -2780,7 +2795,7 @@ const Transportation = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteActivity(activity)}>
                                       <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete
+                                      Unlink
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -2794,8 +2809,8 @@ const Transportation = () => {
                                     <div className="font-medium">{activity.location || '-'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-muted-foreground">Supervisor</div>
-                                    <div className="font-medium">{activity.supervisor_name || '-'}</div>
+                                    <div className="text-muted-foreground">Managers</div>
+                                    <div className="font-medium">{activity.manager_names || '-'}</div>
                                   </div>
                                 </div>
                               </div>
@@ -2809,9 +2824,10 @@ const Transportation = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Activity Name</TableHead>
+                              <TableHead>Group Name</TableHead>
+                              <TableHead>Type</TableHead>
                               <TableHead>Location</TableHead>
-                              <TableHead>Supervisor</TableHead>
+                              <TableHead>Managers</TableHead>
                               <TableHead>Students</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -2820,9 +2836,10 @@ const Transportation = () => {
                           <TableBody>
                             {filteredAfterSchoolActivities.map((activity) => (
                               <TableRow key={activity.id}>
-                                <TableCell className="font-medium">{activity.activity_name}</TableCell>
+                                <TableCell className="font-medium">{activity.group_name}</TableCell>
+                                <TableCell><Badge variant="outline">{activity.group_type}</Badge></TableCell>
                                 <TableCell>{activity.location || '-'}</TableCell>
-                                <TableCell>{activity.supervisor_name || '-'}</TableCell>
+                                <TableCell>{activity.manager_names || '-'}</TableCell>
                                 <TableCell>
                                   <Badge variant="secondary">{activity.students_count}</Badge>
                                 </TableCell>
@@ -2839,20 +2856,17 @@ const Transportation = () => {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                       <DropdownMenuItem onClick={() => {
-                                         setManagingActivity(activity);
-                                       }}>
-                                        <Users className="mr-2 h-4 w-4" />
-                                        Manage Students
+                                      <DropdownMenuItem asChild>
+                                        <Link to="/dashboard/groups">
+                                          <Users className="mr-2 h-4 w-4" />
+                                          View Group
+                                        </Link>
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => {
                                         setEditingActivityRecord(activity);
                                         activityForm.reset({
-                                          activity_name: activity.activity_name,
-                                          description: activity.description || '',
+                                          group_id: activity.group_id,
                                           location: activity.location || '',
-                                          supervisor_name: activity.supervisor_name || '',
-                                          capacity: activity.capacity || undefined,
                                           status: activity.status,
                                         });
                                         setShowAddActivityDialog(true);
@@ -2865,7 +2879,7 @@ const Transportation = () => {
                                         onClick={() => handleDeleteActivity(activity)}
                                       >
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
+                                        Unlink
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
@@ -2876,6 +2890,7 @@ const Transportation = () => {
                         </Table>
                       </div>
                     </div>
+                    )}
                   </div>
                 </TabsContent>
               </div>
@@ -3832,111 +3847,79 @@ const Transportation = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Add/Edit Activity Dialog */}
+      {/* Link/Edit Activity Dialog */}
       <Dialog open={showAddActivityDialog || !!editingActivityRecord} onOpenChange={() => {
         setShowAddActivityDialog(false);
         setEditingActivityRecord(null);
         activityForm.reset();
       }}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{editingActivityRecord ? 'Edit Activity' : 'Add New Activity'}</DialogTitle>
+            <DialogTitle>{editingActivityRecord ? 'Edit Activity' : 'Link Group as Activity'}</DialogTitle>
             <DialogDescription>
-              {editingActivityRecord ? 'Update the activity information below.' : 'Enter the details for the new after school activity.'}
+              {editingActivityRecord ? 'Update the location and status.' : 'Select a group to link as a transportation activity.'}
             </DialogDescription>
           </DialogHeader>
           <Form {...activityForm}>
             <form onSubmit={activityForm.handleSubmit(handleActivityFormSubmit)} className="space-y-4">
-              <FormField
-                control={activityForm.control}
-                name="activity_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Activity Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Soccer Club" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={activityForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Weekly soccer practice and games" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
+              {!editingActivityRecord && (
                 <FormField
                   control={activityForm.control}
-                  name="location"
+                  name="group_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Gymnasium" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={activityForm.control}
-                  name="supervisor_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Supervisor</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ms. Johnson" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={activityForm.control}
-                  name="capacity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Capacity</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="25" {...field} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={activityForm.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
+                      <FormLabel>Group</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Select a group" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
+                          {availableGroups.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>{g.name} ({g.group_type})</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
+              )}
+              <FormField
+                control={activityForm.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Back Gym, Field #2" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={activityForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => {
                   setShowAddActivityDialog(false);
@@ -3946,24 +3929,13 @@ const Transportation = () => {
                   Cancel
                 </Button>
                 <Button type="submit">
-                  {editingActivityRecord ? 'Update Activity' : 'Add Activity'}
+                  {editingActivityRecord ? 'Update' : 'Link Activity'}
                 </Button>
               </div>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
-
-      {managingActivity && schoolId && (
-        <ManageActivityStudentsDialog
-          open={!!managingActivity}
-          onOpenChange={(o) => !o && setManagingActivity(null)}
-          activityId={managingActivity.id}
-          activityName={managingActivity.activity_name}
-          schoolId={schoolId}
-          onUpdated={fetchAfterSchoolActivities}
-        />
-      )}
     </>
   );
 };

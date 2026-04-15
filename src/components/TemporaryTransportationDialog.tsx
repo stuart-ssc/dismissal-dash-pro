@@ -76,13 +76,21 @@ export function TemporaryTransportationDialog({
       supabase.from('buses').select('*').eq('school_id', schoolId).eq('status', 'active'),
       supabase.from('car_lines').select('*').eq('school_id', schoolId).eq('status', 'active'),
       supabase.from('walker_locations').select('*').eq('school_id', schoolId).eq('status', 'active'),
-      supabase.from('after_school_activities').select('*').eq('school_id', schoolId).eq('status', 'active'),
+      supabase.from('activity_transport_options' as any).select('id, location, status, group_id, special_use_groups(id, name)').eq('school_id', schoolId).eq('status', 'active'),
     ]);
 
     if (busesRes.data) setBuses(busesRes.data);
     if (carLinesRes.data) setCarLines(carLinesRes.data);
     if (walkersRes.data) setWalkerLocations(walkersRes.data);
-    if (activitiesRes.data) setActivities(activitiesRes.data);
+    if (activitiesRes.data) {
+      // Map activity_transport_options to a friendly format
+      const mapped = (activitiesRes.data as any[]).map((a: any) => ({
+        id: a.id,
+        activity_name: a.special_use_groups?.name || 'Unknown Group',
+        location: a.location,
+      }));
+      setActivities(mapped);
+    }
   };
 
   const toggleWeekday = (day: number) => {
@@ -137,7 +145,7 @@ export function TemporaryTransportationDialog({
       if (transportType === 'bus') insertData.bus_id = selectedTransportId;
       else if (transportType === 'car') insertData.car_line_id = selectedTransportId;
       else if (transportType === 'walker') insertData.walker_location_id = selectedTransportId;
-      else if (transportType === 'activity') insertData.after_school_activity_id = selectedTransportId;
+      else if (transportType === 'activity') insertData.activity_transport_option_id = selectedTransportId;
 
       // Set date-related fields based on override type
       if (overrideType === 'date_range') {
