@@ -2730,14 +2730,27 @@ const Transportation = () => {
                       <div>
                         <h3 className="text-lg font-semibold">After School Activities</h3>
                         <p className="text-sm text-muted-foreground">
-                          Manage after school activities and student assignments
+                          Link groups as transportation activities. Manage rosters on the <Link to="/dashboard/groups" className="text-primary underline">Groups page</Link>.
                         </p>
                       </div>
-                      <Button onClick={() => setShowAddActivityDialog(true)} className="w-full sm:w-auto">
+                      <Button onClick={() => { setEditingActivityRecord(null); activityForm.reset(); setShowAddActivityDialog(true); }} className="w-full sm:w-auto" disabled={availableGroups.length === 0}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Add Activity
+                        Link Group as Activity
                       </Button>
                     </div>
+
+                    {afterSchoolActivities.length === 0 && !isLoading && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                        <p className="text-lg font-medium mb-2">No activities linked yet</p>
+                        <p className="text-sm mb-4">Create a group first, then link it here as a transportation activity.</p>
+                        <Button variant="outline" asChild>
+                          <Link to="/dashboard/groups">Go to Groups</Link>
+                        </Button>
+                      </div>
+                    )}
+
+                    {afterSchoolActivities.length > 0 && (
                     <div className="space-y-4">
                       {/* Mobile Card Layout */}
                       <div className="md:hidden space-y-3">
@@ -2746,8 +2759,9 @@ const Transportation = () => {
                             <CardHeader className="pb-3">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0 flex-1">
-                                  <CardTitle className="text-base">{activity.activity_name}</CardTitle>
+                                  <CardTitle className="text-base">{activity.group_name}</CardTitle>
                                   <div className="flex flex-wrap gap-2 mt-2">
+                                    <Badge variant="outline">{activity.group_type}</Badge>
                                     <Badge variant={activity.status === 'active' ? 'default' : 'secondary'}>
                                       {activity.status}
                                     </Badge>
@@ -2761,18 +2775,17 @@ const Transportation = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => setManagingActivity(activity)}>
-                                      <Users className="mr-2 h-4 w-4" />
-                                      Manage Students
+                                    <DropdownMenuItem asChild>
+                                      <Link to="/dashboard/groups">
+                                        <Users className="mr-2 h-4 w-4" />
+                                        View Group
+                                      </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => {
                                       setEditingActivityRecord(activity);
                                       activityForm.reset({
-                                        activity_name: activity.activity_name,
-                                        description: activity.description || '',
+                                        group_id: activity.group_id,
                                         location: activity.location || '',
-                                        supervisor_name: activity.supervisor_name || '',
-                                        capacity: activity.capacity || undefined,
                                         status: activity.status,
                                       });
                                       setShowAddActivityDialog(true);
@@ -2782,7 +2795,7 @@ const Transportation = () => {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteActivity(activity)}>
                                       <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete
+                                      Unlink
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -2796,8 +2809,8 @@ const Transportation = () => {
                                     <div className="font-medium">{activity.location || '-'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-muted-foreground">Supervisor</div>
-                                    <div className="font-medium">{activity.supervisor_name || '-'}</div>
+                                    <div className="text-muted-foreground">Managers</div>
+                                    <div className="font-medium">{activity.manager_names || '-'}</div>
                                   </div>
                                 </div>
                               </div>
@@ -2811,9 +2824,10 @@ const Transportation = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Activity Name</TableHead>
+                              <TableHead>Group Name</TableHead>
+                              <TableHead>Type</TableHead>
                               <TableHead>Location</TableHead>
-                              <TableHead>Supervisor</TableHead>
+                              <TableHead>Managers</TableHead>
                               <TableHead>Students</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -2822,9 +2836,10 @@ const Transportation = () => {
                           <TableBody>
                             {filteredAfterSchoolActivities.map((activity) => (
                               <TableRow key={activity.id}>
-                                <TableCell className="font-medium">{activity.activity_name}</TableCell>
+                                <TableCell className="font-medium">{activity.group_name}</TableCell>
+                                <TableCell><Badge variant="outline">{activity.group_type}</Badge></TableCell>
                                 <TableCell>{activity.location || '-'}</TableCell>
-                                <TableCell>{activity.supervisor_name || '-'}</TableCell>
+                                <TableCell>{activity.manager_names || '-'}</TableCell>
                                 <TableCell>
                                   <Badge variant="secondary">{activity.students_count}</Badge>
                                 </TableCell>
@@ -2841,20 +2856,17 @@ const Transportation = () => {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                       <DropdownMenuItem onClick={() => {
-                                         setManagingActivity(activity);
-                                       }}>
-                                        <Users className="mr-2 h-4 w-4" />
-                                        Manage Students
+                                      <DropdownMenuItem asChild>
+                                        <Link to="/dashboard/groups">
+                                          <Users className="mr-2 h-4 w-4" />
+                                          View Group
+                                        </Link>
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => {
                                         setEditingActivityRecord(activity);
                                         activityForm.reset({
-                                          activity_name: activity.activity_name,
-                                          description: activity.description || '',
+                                          group_id: activity.group_id,
                                           location: activity.location || '',
-                                          supervisor_name: activity.supervisor_name || '',
-                                          capacity: activity.capacity || undefined,
                                           status: activity.status,
                                         });
                                         setShowAddActivityDialog(true);
@@ -2867,7 +2879,7 @@ const Transportation = () => {
                                         onClick={() => handleDeleteActivity(activity)}
                                       >
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
+                                        Unlink
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
@@ -2878,6 +2890,7 @@ const Transportation = () => {
                         </Table>
                       </div>
                     </div>
+                    )}
                   </div>
                 </TabsContent>
               </div>
