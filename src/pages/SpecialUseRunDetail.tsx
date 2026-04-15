@@ -121,11 +121,35 @@ export default function SpecialUseRunDetail() {
         `)
         .eq("group_id", data.group_id);
 
+      // Fetch group managers (from teachers table) to show unlinked ones as read-only
+      const { data: groupManagersData } = await supabase
+        .from("special_use_group_managers")
+        .select(`
+          manager_id,
+          teacher:teachers!special_use_group_managers_manager_id_fkey(
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq("group_id", data.group_id);
+
+      const runManagers = data.managers.map((m: any) => m.manager).filter(Boolean);
+      const runManagerIds = new Set(runManagers.map((m: any) => m.id));
+
+      // Group managers not already in run managers list (no account or not linked)
+      const unlinkedGroupManagers = (groupManagersData || [])
+        .map((gm: any) => gm.teacher)
+        .filter(Boolean)
+        .filter((t: any) => !runManagerIds.has(t.id));
+
       return {
         ...data,
         buses: data.buses.map((b: any) => b.bus),
         students: studentsData?.map((s: any) => s.student).filter(Boolean) || [],
-        managers: data.managers.map((m: any) => m.manager).filter(Boolean),
+        managers: runManagers,
+        unlinkedGroupManagers,
         events: data.events || []
       };
     },
