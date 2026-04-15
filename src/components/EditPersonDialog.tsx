@@ -388,6 +388,31 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
             </div>
           )}
 
+          {(person.role === 'Teacher' || person.role === 'School Admin') && (
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              {hasAccount === false ? (
+                <div className="flex items-center gap-2 p-3 rounded-md bg-muted text-muted-foreground text-sm">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>This person must complete their account setup before their role can be changed.</span>
+                </div>
+              ) : (
+                <Select
+                  value={selectedRole}
+                  onValueChange={setSelectedRole}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectItem value="school_admin">School Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
           {person.role === 'Student' && (
             <>
               <div className="space-y-2">
