@@ -121,18 +121,18 @@ interface CarLineLane {
   order_index: number;
 }
 
-interface AfterSchoolActivityRecord {
+interface ActivityTransportRecord {
   id: string;
+  group_id: string;
+  group_name: string;
+  group_type: string;
   school_id: number;
-  activity_name: string;
-  description: string | null;
   location: string | null;
-  supervisor_name: string | null;
-  capacity: number | null;
   status: 'active' | 'inactive';
+  students_count: number;
+  manager_names: string;
   created_at: string;
   updated_at: string;
-  students_count: number;
 }
 
 const Transportation = () => {
