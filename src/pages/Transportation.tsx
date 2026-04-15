@@ -493,39 +493,71 @@ const Transportation = () => {
     if (!user || !schoolId) return;
 
     try {
-      // Fetch after school activities without nested aggregation to avoid RLS issues
-      const { data: activitiesData, error: activitiesError } = await supabase
-        .from('after_school_activities')
-        .select('*')
-        .eq('school_id', schoolId)
-        .order('activity_name');
+      // Fetch activity_transport_options with group details
+      const { data: atoData, error: atoError } = await supabase
+        .from('activity_transport_options' as any)
+        .select('*, special_use_groups(id, name, group_type)')
+        .eq('school_id', schoolId);
 
-      if (activitiesError) {
-        console.error('Error fetching after school activities:', activitiesError);
+      if (atoError) {
+        console.error('Error fetching activity transport options:', atoError);
         return;
       }
 
-      // Fetch activity assignment counts separately
-      const activityAssignmentCounts = new Map<string, number>();
-      if (activitiesData && activitiesData.length > 0) {
-        for (const activity of activitiesData) {
-          const { count } = await supabase
-            .from('student_after_school_assignments')
-            .select('*', { count: 'exact', head: true })
-            .eq('after_school_activity_id', activity.id);
-          activityAssignmentCounts.set(activity.id, count || 0);
-        }
+      // Fetch student counts and manager names for each linked group
+      const records: ActivityTransportRecord[] = [];
+      for (const ato of (atoData as any[] || [])) {
+        const group = ato.special_use_groups;
+        if (!group) continue;
+
+        // Get student count
+        const { count: studentCount } = await supabase
+          .from('special_use_group_students')
+          .select('*', { count: 'exact', head: true })
+          .eq('group_id', group.id);
+
+        // Get managers
+        const { data: managers } = await supabase
+          .from('special_use_group_managers')
+          .select('manager_id, teachers(first_name, last_name)')
+          .eq('group_id', group.id);
+
+        const managerNames = (managers || [])
+          .map((m: any) => m.teachers ? `${m.teachers.first_name} ${m.teachers.last_name}` : '')
+          .filter(Boolean)
+          .join(', ');
+
+        records.push({
+          id: ato.id,
+          group_id: group.id,
+          group_name: group.name,
+          group_type: group.group_type || '',
+          school_id: ato.school_id,
+          location: ato.location,
+          status: ato.status as 'active' | 'inactive',
+          students_count: studentCount || 0,
+          manager_names: managerNames,
+          created_at: ato.created_at,
+          updated_at: ato.updated_at,
+        });
       }
 
-      const activitiesWithCounts = (activitiesData || []).map(activity => ({
-        ...activity,
-        students_count: activityAssignmentCounts.get(activity.id) || 0
-      })) as AfterSchoolActivityRecord[];
+      records.sort((a, b) => a.group_name.localeCompare(b.group_name));
+      setAfterSchoolActivities(records);
+      setFilteredAfterSchoolActivities(records);
 
-      setAfterSchoolActivities(activitiesWithCounts);
-      setFilteredAfterSchoolActivities(activitiesWithCounts);
+      // Also fetch available groups not yet linked
+      const linkedGroupIds = records.map(r => r.group_id);
+      const { data: allGroups } = await supabase
+        .from('special_use_groups')
+        .select('id, name, group_type')
+        .eq('school_id', schoolId)
+        .eq('is_active', true);
+
+      const unlinked = (allGroups || []).filter(g => !linkedGroupIds.includes(g.id));
+      setAvailableGroups(unlinked);
     } catch (error) {
-      console.error('Error fetching after school activities data:', error);
+      console.error('Error fetching activity transport data:', error);
     }
   };
 
