@@ -1,35 +1,73 @@
 
 
-# Add Role Re-assignment to Edit Person Dialog
+# Refactor: After School Activities to Use Groups
 
 ## Problem
-When Infinite Campus syncs staff, everyone comes in as "teacher." School admins need to promote a teacher to "school_admin" role directly from the Edit Person dialog. Currently, the dialog has no role field for staff.
+After-school activities are currently a standalone system (`after_school_activities` table) with their own student roster (`student_after_school_assignments`) and separate management. The user wants activities to leverage the existing **special use groups** system — using group rosters and managers — and only add a location + active/inactive status as a transportation option.
 
-## Approach
+## New Mental Model
+An "After School Activity" = a **special use group** (which already has students, managers, academic session) + a **transportation configuration** record that adds:
+- **Location** (e.g., "Back Gym", "Field #2")
+- **Status** (active/inactive — e.g., Football is inactive in spring)
 
-### 1. Add role selector to `EditPersonDialog.tsx`
-- Add a `role` field to `formData` state, initialized from `person.role`
-- Show a Role dropdown for staff (Teacher / School Admin) — only when editing a non-student
-- School admins can only assign: `teacher` or `school_admin` (not `district_admin` or `system_admin`)
+If no group exists yet, the user is prompted to create one first (link to Groups page).
 
-### 2. Handle role change on submit
-When the role changes:
-- **Teacher → School Admin**: Insert `school_admin` role into `user_roles`, remove `teacher` role. Also ensure `profiles` record exists (teachers with accounts already have one; teachers without accounts can't be promoted until they have one — show a warning).
-- **School Admin → Teacher**: Insert `teacher` role into `user_roles`, remove `school_admin` role.
-- Use upsert/delete on `user_roles` table with the person's ID.
+## Plan
 
-### 3. Guard: only allow promotion for users with accounts
-If a teacher was imported from IC and has no user account yet (`invitation_status` is not `completed`), disable the role dropdown and show a message: "This person must complete their account setup before their role can be changed."
+### 1. Database Migration
+Create a new `activity_transport_options` table that links a special use group to transportation:
 
-### 4. Load current role on dialog open
-Query `user_roles` for the person's ID to get their actual DB role, rather than relying solely on the display role passed in.
+```sql
+CREATE TABLE activity_transport_options (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id UUID NOT NULL REFERENCES special_use_groups(id) ON DELETE CASCADE,
+  school_id BIGINT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  location TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(group_id)
+);
+```
+
+Add RLS policies matching existing school data access patterns. Add an update trigger for `updated_at`.
+
+### 2. Rewrite the Activities Tab in `Transportation.tsx`
+Replace the current activities UI with:
+
+- **"Link Group as Activity" button** — opens a dialog to select from existing special use groups (that aren't already linked) and set a location + status
+- **If no groups exist** — show a message: "No groups available. Create a group first." with a link/button to `/dashboard/groups`
+- **Activities list** — shows linked groups with: group name, group type badge, student count (from group roster), manager names (from group managers), location, status, and actions
+- **Actions**: Edit (location/status only), Unlink, View Group (navigates to Groups page)
+- **Remove**: "Add Activity" form, `ManageActivityStudentsDialog` usage, all direct `after_school_activities` CRUD
+
+### 3. Update References to `after_school_activities`
+- **`TemporaryTransportationDialog.tsx`**: Replace the "activity" transport type to query `activity_transport_options` joined with `special_use_groups` instead of `after_school_activities`
+- **`ViewTemporaryTransportationDialog.tsx`**: Update the join to use the new table
+- **`EditPersonDialog.tsx` / `AddPersonDialog.tsx`**: Update activity dropdown to pull from `activity_transport_options` + group name
+- **`ClassroomMode.tsx`**: Update activity name resolution to use the new table
+- **`student_temporary_transportation`**: The `after_school_activity_id` FK will need to reference the new `activity_transport_options.id` instead (or add a new column `activity_transport_option_id` and deprecate the old one)
+
+### 4. Dismissal Group Integration
+- Update dismissal group activity references (currently in `dismissal_group_activities` table) to reference `activity_transport_options` instead of `after_school_activities`
+- This ensures the classroom mode and transportation columns still resolve activity names correctly
+
+### 5. Keep Legacy Data Intact
+- Do NOT drop `after_school_activities` table immediately — mark it deprecated
+- Existing temporary transportation overrides referencing `after_school_activity_id` continue to work
+- New overrides use the new `activity_transport_option_id`
 
 ## Files Changed
-- `src/components/EditPersonDialog.tsx` — add role dropdown, role change logic on submit
+- **New migration** — `activity_transport_options` table + RLS + trigger
+- `src/pages/Transportation.tsx` — rewrite Activities tab
+- `src/components/TemporaryTransportationDialog.tsx` — update activity transport type
+- `src/components/ViewTemporaryTransportationDialog.tsx` — update join
+- `src/components/EditPersonDialog.tsx` — update activity dropdown
+- `src/components/AddPersonDialog.tsx` — update activity dropdown
+- `src/pages/modes/ClassroomMode.tsx` — update activity name resolution
 
-## Technical Details
-- Role changes go to the `user_roles` table (not profiles)
-- Delete old role row + insert new role row in a single submit handler
-- The `person.role` prop uses display format ('Teacher', 'School Admin'); map to DB values (`teacher`, `school_admin`)
-- No migration needed — `user_roles` table and `app_role` enum already include both values
+## What Stays the Same
+- Groups page (`GroupsTeams.tsx`) — unchanged, it's the source of truth for group management
+- Group creation dialog (`SpecialUseGroupDialog.tsx`) — unchanged
+- Buses, car lines, walker locations — unchanged
 
