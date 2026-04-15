@@ -215,26 +215,19 @@ const Transportation = () => {
   const [carStudentSearchResults, setCarStudentSearchResults] = useState<StudentSearchResult[]>([]);
   const [isSearchingCarStudents, setIsSearchingCarStudents] = useState(false);
   
-  // After school activities state
-  const [afterSchoolActivities, setAfterSchoolActivities] = useState<AfterSchoolActivityRecord[]>([]);
-  const [filteredAfterSchoolActivities, setFilteredAfterSchoolActivities] = useState<AfterSchoolActivityRecord[]>([]);
+  // After school activities state (now group-linked)
+  const [afterSchoolActivities, setAfterSchoolActivities] = useState<ActivityTransportRecord[]>([]);
+  const [filteredAfterSchoolActivities, setFilteredAfterSchoolActivities] = useState<ActivityTransportRecord[]>([]);
   const [activitySearchTerm, setActivitySearchTerm] = useState('');
   const [activityCurrentPage, setActivityCurrentPage] = useState(1);
-  const [activitySortBy, setActivitySortBy] = useState<keyof AfterSchoolActivityRecord>('activity_name');
+  const [activitySortBy, setActivitySortBy] = useState<keyof ActivityTransportRecord>('group_name');
   const [activitySortOrder, setActivitySortOrder] = useState<'asc' | 'desc'>('asc');
   const [activityFilterStatus, setActivityFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [showAddActivityDialog, setShowAddActivityDialog] = useState(false);
-  const [editingActivityRecord, setEditingActivityRecord] = useState<AfterSchoolActivityRecord | null>(null);
+  const [editingActivityRecord, setEditingActivityRecord] = useState<ActivityTransportRecord | null>(null);
   
-  // After school activity student management state
-  const [managingActivityStudents, setManagingActivityStudents] = useState<AfterSchoolActivityRecord | null>(null);
-  const [managingActivity, setManagingActivity] = useState<AfterSchoolActivityRecord | null>(null);
-  const [activityStudents, setActivityStudents] = useState<StudentBusRecord[]>([]);
-  const [isLoadingActivityStudents, setIsLoadingActivityStudents] = useState(false);
-  const [showAddActivityStudentDialog, setShowAddActivityStudentDialog] = useState(false);
-  const [activityStudentSearchTerm, setActivityStudentSearchTerm] = useState('');
-  const [activityStudentSearchResults, setActivityStudentSearchResults] = useState<StudentSearchResult[]>([]);
-  const [isSearchingActivityStudents, setIsSearchingActivityStudents] = useState(false);
+  // Available groups for linking
+  const [availableGroups, setAvailableGroups] = useState<Array<{ id: string; name: string; group_type: string }>>([]);
   
   const itemsPerPage = 10;
 
