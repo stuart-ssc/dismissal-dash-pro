@@ -536,29 +536,53 @@ export default function ClassroomMode() {
               })
               .filter((s): s is NonNullable<typeof s> => s !== null);
           } else if (group.group_type?.toLowerCase().includes("activity")) {
-            // Get activities for this group
+            // Get activities for this group via activity_transport_options
             const { data: groupActivities } = await supabase
               .from("dismissal_group_activities")
-              .select("after_school_activity_id")
+              .select("after_school_activity_id, activity_transport_option_id")
               .eq("dismissal_group_id", group.id);
 
             if (groupActivities && groupActivities.length > 0) {
-              const activityIds = groupActivities.map(ga => ga.after_school_activity_id);
+              // Try new activity_transport_options first
+              const atoIds = groupActivities
+                .map((ga: any) => ga.activity_transport_option_id)
+                .filter(Boolean);
+              const legacyIds = groupActivities
+                .map((ga: any) => ga.after_school_activity_id)
+                .filter(Boolean);
+
+              const activityNameMap = new Map<string, string>();
+
+              if (atoIds.length > 0) {
+                const { data: atoDetails } = await supabase
+                  .from("activity_transport_options" as any)
+                  .select("id, special_use_groups(name)")
+                  .in("id", atoIds);
+                (atoDetails as any[] || []).forEach((a: any) => {
+                  activityNameMap.set(a.id, a.special_use_groups?.name || 'Activity');
+                });
+              }
+
+              if (legacyIds.length > 0) {
+                const { data: legacyDetails } = await supabase
+                  .from("after_school_activities")
+                  .select("id, activity_name")
+                  .in("id", legacyIds);
+                (legacyDetails || []).forEach(a => {
+                  activityNameMap.set(a.id, a.activity_name);
+                });
+              }
+
+              // Get group students directly from the special_use_group linked to ATO
+              // For now, use the same student matching as before via assignments
+              const allActivityIds = [...atoIds, ...legacyIds];
               
-              // Get activity assignments for teacher's students
+              // For legacy: use student_after_school_assignments
               const { data: activityAssignments } = await supabase
                 .from("student_after_school_assignments")
                 .select("student_id, after_school_activity_id")
                 .in("student_id", teacherStudentIds)
-                .in("after_school_activity_id", activityIds);
-
-              // Get activity names
-              const { data: activityDetails } = await supabase
-                .from("after_school_activities")
-                .select("id, activity_name")
-                .in("id", activityIds);
-
-              const activityNameMap = new Map((activityDetails || []).map(a => [a.id, a.activity_name]));
+                .in("after_school_activity_id", legacyIds.length > 0 ? legacyIds : ['__none__']);
 
               students = (activityAssignments || [])
                 .map(aa => {
