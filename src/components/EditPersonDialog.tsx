@@ -260,7 +260,8 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
             if (insErr) throw insErr;
           }
         }
-      } else if (person.role === 'Teacher') {
+      } else if (person.role === 'Teacher' || person.role === 'School Admin') {
+        // Update teacher record
         const { error } = await supabase
           .from('teachers')
           .update({
@@ -271,18 +272,38 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
           .eq('id', person.id);
 
         if (error) throw error;
-      } else if (person.role === 'School Admin') {
-        // Update profile for school admin
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            email: formData.email
-          })
-          .eq('id', person.id);
 
-        if (error) throw error;
+        // Also update profiles if they have an account
+        if (hasAccount) {
+          await supabase
+            .from('profiles')
+            .update({
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              email: formData.email
+            })
+            .eq('id', person.id);
+        }
+
+        // Handle role change if different from DB role
+        if (selectedRole && selectedRole !== dbRole && hasAccount) {
+          // Delete old role
+          await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', person.id)
+            .eq('role', dbRole as any);
+
+          // Insert new role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: person.id,
+              role: selectedRole as any
+            });
+
+          if (roleError) throw roleError;
+        }
       }
 
       toast({
