@@ -25,7 +25,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ManageActivityStudentsDialog } from "@/components/ManageActivityStudentsDialog";
+import { Link } from "react-router-dom";
 
 const editBusSchema = z.object({
   bus_number: z.string().min(1, "Bus number is required"),
@@ -52,12 +52,9 @@ const laneSchema = z.object({
   color: z.string().min(1, "Color is required"),
 });
 
-const afterSchoolActivitySchema = z.object({
-  activity_name: z.string().min(1, "Activity name is required"),
-  description: z.string().optional(),
+const linkActivitySchema = z.object({
+  group_id: z.string().min(1, "Group is required"),
   location: z.string().optional(),
-  supervisor_name: z.string().optional(),
-  capacity: z.number().min(1).optional(),
   status: z.enum(["active", "inactive"]),
 });
 
