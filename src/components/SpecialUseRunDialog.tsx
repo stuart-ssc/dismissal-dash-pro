@@ -255,6 +255,44 @@ export function SpecialUseRunDialog({
 
         if (managerError) throw managerError;
 
+        // Copy group managers who have profiles (user accounts) to run managers
+        try {
+          const { data: groupManagers } = await supabase
+            .from("special_use_group_managers")
+            .select("manager_id")
+            .eq("group_id", formData.group_id);
+
+          if (groupManagers && groupManagers.length > 0) {
+            const groupManagerIds = groupManagers.map(gm => gm.manager_id);
+            
+            // Check which group managers have a profiles record (i.e., have an account)
+            const { data: profileMatches } = await supabase
+              .from("profiles")
+              .select("id")
+              .in("id", groupManagerIds);
+
+            if (profileMatches && profileMatches.length > 0) {
+              // Filter out the creator (already added above) to avoid duplicates
+              const managersToAdd = profileMatches
+                .filter(p => p.id !== user.id)
+                .map(p => ({
+                  run_id: newRun.id,
+                  manager_id: p.id,
+                  assigned_by: user.id,
+                }));
+
+              if (managersToAdd.length > 0) {
+                await supabase
+                  .from("special_use_run_managers")
+                  .insert(managersToAdd);
+              }
+            }
+          }
+        } catch (groupManagerError) {
+          // Non-critical: log but don't fail run creation
+          console.warn("Could not copy group managers to run:", groupManagerError);
+        }
+
         toast.success("Run created successfully");
       }
 

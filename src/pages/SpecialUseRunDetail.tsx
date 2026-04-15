@@ -121,11 +121,35 @@ export default function SpecialUseRunDetail() {
         `)
         .eq("group_id", data.group_id);
 
+      // Fetch group managers (from teachers table) to show unlinked ones as read-only
+      const { data: groupManagersData } = await supabase
+        .from("special_use_group_managers")
+        .select(`
+          manager_id,
+          teacher:teachers!special_use_group_managers_manager_id_fkey(
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq("group_id", data.group_id);
+
+      const runManagers = data.managers.map((m: any) => m.manager).filter(Boolean);
+      const runManagerIds = new Set(runManagers.map((m: any) => m.id));
+
+      // Group managers not already in run managers list (no account or not linked)
+      const unlinkedGroupManagers = (groupManagersData || [])
+        .map((gm: any) => gm.teacher)
+        .filter(Boolean)
+        .filter((t: any) => !runManagerIds.has(t.id));
+
       return {
         ...data,
         buses: data.buses.map((b: any) => b.bus),
         students: studentsData?.map((s: any) => s.student).filter(Boolean) || [],
-        managers: data.managers.map((m: any) => m.manager).filter(Boolean),
+        managers: runManagers,
+        unlinkedGroupManagers,
         events: data.events || []
       };
     },
@@ -435,12 +459,12 @@ export default function SpecialUseRunDetail() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Managers ({run.managers.length})
+              Managers ({run.managers.length + (run.unlinkedGroupManagers?.length || 0)})
             </CardTitle>
             <CardDescription>Staff managing this run</CardDescription>
           </CardHeader>
           <CardContent>
-            {run.managers.length === 0 ? (
+            {run.managers.length === 0 && (!run.unlinkedGroupManagers || run.unlinkedGroupManagers.length === 0) ? (
               <p className="text-muted-foreground text-center py-4">No managers assigned</p>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -450,6 +474,17 @@ export default function SpecialUseRunDetail() {
                       {manager.first_name} {manager.last_name}
                     </p>
                     <p className="text-sm text-muted-foreground">{manager.email}</p>
+                  </div>
+                ))}
+                {run.unlinkedGroupManagers?.map((teacher: any) => (
+                  <div key={teacher.id} className="border rounded-lg p-4 opacity-60">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold">
+                        {teacher.first_name} {teacher.last_name}
+                      </p>
+                      <Badge variant="secondary" className="text-xs">No account</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{teacher.email}</p>
                   </div>
                 ))}
               </div>
