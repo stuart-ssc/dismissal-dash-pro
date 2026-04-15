@@ -650,10 +650,9 @@ const Transportation = () => {
   useEffect(() => {
     let filtered = afterSchoolActivities.filter(record => {
       const matchesSearch = 
-        record.activity_name.toLowerCase().includes(activitySearchTerm.toLowerCase()) ||
-        (record.description && record.description.toLowerCase().includes(activitySearchTerm.toLowerCase())) ||
+        record.group_name.toLowerCase().includes(activitySearchTerm.toLowerCase()) ||
         (record.location && record.location.toLowerCase().includes(activitySearchTerm.toLowerCase())) ||
-        (record.supervisor_name && record.supervisor_name.toLowerCase().includes(activitySearchTerm.toLowerCase()));
+        record.manager_names.toLowerCase().includes(activitySearchTerm.toLowerCase());
       
       const matchesStatus = activityFilterStatus === 'all' || record.status === activityFilterStatus;
       
@@ -764,14 +763,11 @@ const Transportation = () => {
     },
   });
 
-  const activityForm = useForm<z.infer<typeof afterSchoolActivitySchema>>({
-    resolver: zodResolver(afterSchoolActivitySchema),
+  const activityForm = useForm<z.infer<typeof linkActivitySchema>>({
+    resolver: zodResolver(linkActivitySchema),
     defaultValues: {
-      activity_name: "",
-      description: "",
+      group_id: "",
       location: "",
-      supervisor_name: "",
-      capacity: undefined,
       status: "active",
     },
   });
@@ -1130,28 +1126,14 @@ const Transportation = () => {
     }
   };
 
-  const handleActivityFormSubmit = async (values: z.infer<typeof afterSchoolActivitySchema>) => {
+  const handleActivityFormSubmit = async (values: z.infer<typeof linkActivitySchema>) => {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('school_id')
-        .eq('id', user!.id)
-        .single();
-
-      if (!profile?.school_id) {
-        toast.error('No school found for user');
-        return;
-      }
-
       if (editingActivityRecord) {
+        // Update existing activity_transport_option (location/status only)
         const { error } = await supabase
-          .from('after_school_activities')
+          .from('activity_transport_options' as any)
           .update({
-            activity_name: values.activity_name,
-            description: values.description || null,
             location: values.location || null,
-            supervisor_name: values.supervisor_name || null,
-            capacity: values.capacity || null,
             status: values.status,
           })
           .eq('id', editingActivityRecord.id);
@@ -1160,20 +1142,18 @@ const Transportation = () => {
         toast.success('Activity updated successfully');
         setEditingActivityRecord(null);
       } else {
+        // Create new link
         const { error } = await supabase
-          .from('after_school_activities')
+          .from('activity_transport_options' as any)
           .insert({
-            school_id: profile.school_id,
-            activity_name: values.activity_name,
-            description: values.description || null,
+            group_id: values.group_id,
+            school_id: schoolId,
             location: values.location || null,
-            supervisor_name: values.supervisor_name || null,
-            capacity: values.capacity || null,
             status: values.status,
           });
 
         if (error) throw error;
-        toast.success('Activity added successfully');
+        toast.success('Group linked as activity successfully');
       }
 
       setShowAddActivityDialog(false);
@@ -1185,28 +1165,28 @@ const Transportation = () => {
     }
   };
 
-  const handleDeleteActivity = async (activity: AfterSchoolActivityRecord) => {
-    if (!confirm(`Are you sure you want to delete ${activity.activity_name}?`)) {
+  const handleDeleteActivity = async (activity: ActivityTransportRecord) => {
+    if (!confirm(`Are you sure you want to unlink ${activity.group_name}?`)) {
       return;
     }
 
     try {
       const { error } = await supabase
-        .from('after_school_activities')
+        .from('activity_transport_options' as any)
         .delete()
         .eq('id', activity.id);
 
       if (error) {
-        console.error('Error deleting activity:', error);
-        toast.error('Failed to delete activity');
+        console.error('Error unlinking activity:', error);
+        toast.error('Failed to unlink activity');
         return;
       }
 
-      toast.success('Activity deleted successfully');
+      toast.success('Activity unlinked successfully');
       await fetchAfterSchoolActivities();
     } catch (error) {
-      console.error('Error deleting activity:', error);
-      toast.error('Failed to delete activity');
+      console.error('Error unlinking activity:', error);
+      toast.error('Failed to unlink activity');
     }
   };
 
