@@ -3889,10 +3889,9 @@ const Transportation = () => {
           <Form {...activityForm}>
             <form onSubmit={activityForm.handleSubmit(handleActivityFormSubmit)} className="space-y-4">
               {editingActivityRecord && (
-                <div className="rounded-md border p-3 bg-muted/50">
-                  <div className="text-sm text-muted-foreground">Group</div>
-                  <div className="font-medium">{editingActivityRecord.group_name}</div>
-                  <Badge variant="outline" className="mt-1">{editingActivityRecord.group_type.charAt(0).toUpperCase() + editingActivityRecord.group_type.slice(1).replace(/_/g, ' ')}</Badge>
+                <div className="text-sm text-muted-foreground mb-2">
+                  Group: <span className="font-medium text-foreground">{editingActivityRecord.group_name}</span>{' '}
+                  <Badge variant="outline" className="ml-1">{editingActivityRecord.group_type.charAt(0).toUpperCase() + editingActivityRecord.group_type.slice(1).replace(/_/g, ' ')}</Badge>
                 </div>
               )}
               {!editingActivityRecord && (
