@@ -3888,6 +3888,13 @@ const Transportation = () => {
           </DialogHeader>
           <Form {...activityForm}>
             <form onSubmit={activityForm.handleSubmit(handleActivityFormSubmit)} className="space-y-4">
+              {editingActivityRecord && (
+                <div className="rounded-md border p-3 bg-muted/50">
+                  <div className="text-sm text-muted-foreground">Group</div>
+                  <div className="font-medium">{editingActivityRecord.group_name}</div>
+                  <Badge variant="outline" className="mt-1">{editingActivityRecord.group_type.charAt(0).toUpperCase() + editingActivityRecord.group_type.slice(1).replace(/_/g, ' ')}</Badge>
+                </div>
+              )}
               {!editingActivityRecord && (
                 <FormField
                   control={activityForm.control}
@@ -3946,17 +3953,29 @@ const Transportation = () => {
                   </FormItem>
                 )}
               />
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => {
-                  setShowAddActivityDialog(false);
-                  setEditingActivityRecord(null);
-                  activityForm.reset();
-                }}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingActivityRecord ? 'Update' : 'Link Activity'}
-                </Button>
+              <div className="flex justify-between pt-4">
+                {editingActivityRecord ? (
+                  <Button type="button" variant="destructive" onClick={() => {
+                    handleDeleteActivity(editingActivityRecord);
+                    setShowAddActivityDialog(false);
+                    setEditingActivityRecord(null);
+                    activityForm.reset();
+                  }}>
+                    Unlink Group
+                  </Button>
+                ) : <div />}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowAddActivityDialog(false);
+                    setEditingActivityRecord(null);
+                    activityForm.reset();
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    {editingActivityRecord ? 'Update' : 'Link Activity'}
+                  </Button>
+                </div>
               </div>
             </form>
           </Form>
