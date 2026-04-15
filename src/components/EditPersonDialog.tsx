@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { EmailChangeDialog } from "@/components/EmailChangeDialog";
-import { Mail } from "lucide-react";
+import { Mail, AlertCircle } from "lucide-react";
 
 interface PersonData {
   id: string;
