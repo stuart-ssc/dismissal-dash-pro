@@ -37,6 +37,9 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
   const [availableWalkerLocations, setAvailableWalkerLocations] = useState<Array<{ id: string; location_name: string }>>([]);
   const [availableActivities, setAvailableActivities] = useState<Array<{ id: string; activity_name: string }>>([]);
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
+  const [dbRole, setDbRole] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<string>('');
+  const [hasAccount, setHasAccount] = useState<boolean | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
