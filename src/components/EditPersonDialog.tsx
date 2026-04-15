@@ -147,12 +147,12 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
         supabase.from('buses').select('id, bus_number').eq('school_id', schoolId).order('bus_number', { ascending: true }),
         supabase.from('car_lines').select('id, line_name').eq('school_id', schoolId).order('line_name', { ascending: true }),
         supabase.from('walker_locations').select('id, location_name').eq('school_id', schoolId).order('location_name', { ascending: true }),
-        supabase.from('after_school_activities').select('id, activity_name').eq('school_id', schoolId).order('activity_name', { ascending: true })
+        supabase.from('activity_transport_options' as any).select('id, location, status, special_use_groups(name)').eq('school_id', schoolId).eq('status', 'active')
       ]);
       setAvailableBuses(buses || []);
       setAvailableCarLines(carLines || []);
       setAvailableWalkerLocations(walkerLocs || []);
-      setAvailableActivities(activities || []);
+      setAvailableActivities((activities as any[] || []).map((a: any) => ({ id: a.id, activity_name: a.special_use_groups?.name || 'Unknown' })));
     };
     fetchTransportationOptions();
   }, [open, person, schoolId]);
