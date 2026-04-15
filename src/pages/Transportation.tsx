@@ -3847,111 +3847,79 @@ const Transportation = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Add/Edit Activity Dialog */}
+      {/* Link/Edit Activity Dialog */}
       <Dialog open={showAddActivityDialog || !!editingActivityRecord} onOpenChange={() => {
         setShowAddActivityDialog(false);
         setEditingActivityRecord(null);
         activityForm.reset();
       }}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{editingActivityRecord ? 'Edit Activity' : 'Add New Activity'}</DialogTitle>
+            <DialogTitle>{editingActivityRecord ? 'Edit Activity' : 'Link Group as Activity'}</DialogTitle>
             <DialogDescription>
-              {editingActivityRecord ? 'Update the activity information below.' : 'Enter the details for the new after school activity.'}
+              {editingActivityRecord ? 'Update the location and status.' : 'Select a group to link as a transportation activity.'}
             </DialogDescription>
           </DialogHeader>
           <Form {...activityForm}>
             <form onSubmit={activityForm.handleSubmit(handleActivityFormSubmit)} className="space-y-4">
-              <FormField
-                control={activityForm.control}
-                name="activity_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Activity Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Soccer Club" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={activityForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Weekly soccer practice and games" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
+              {!editingActivityRecord && (
                 <FormField
                   control={activityForm.control}
-                  name="location"
+                  name="group_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Gymnasium" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={activityForm.control}
-                  name="supervisor_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Supervisor</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ms. Johnson" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={activityForm.control}
-                  name="capacity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Capacity</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="25" {...field} onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={activityForm.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
+                      <FormLabel>Group</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Select a group" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
+                          {availableGroups.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>{g.name} ({g.group_type})</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
+              )}
+              <FormField
+                control={activityForm.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Back Gym, Field #2" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={activityForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => {
                   setShowAddActivityDialog(false);
@@ -3961,23 +3929,13 @@ const Transportation = () => {
                   Cancel
                 </Button>
                 <Button type="submit">
-                  {editingActivityRecord ? 'Update Activity' : 'Add Activity'}
+                  {editingActivityRecord ? 'Update' : 'Link Activity'}
                 </Button>
               </div>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
-
-      {managingActivity && schoolId && (
-        <ManageActivityStudentsDialog
-          open={!!managingActivity}
-          onOpenChange={(o) => !o && setManagingActivity(null)}
-          activityId={managingActivity.id}
-          activityName={managingActivity.activity_name}
-          schoolId={schoolId}
-          onUpdated={fetchAfterSchoolActivities}
-        />
       )}
     </>
   );
