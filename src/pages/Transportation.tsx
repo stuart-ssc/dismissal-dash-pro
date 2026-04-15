@@ -651,7 +651,7 @@ const Transportation = () => {
       const matchesSearch = 
         record.group_name.toLowerCase().includes(activitySearchTerm.toLowerCase()) ||
         (record.location && record.location.toLowerCase().includes(activitySearchTerm.toLowerCase())) ||
-        record.manager_names.toLowerCase().includes(activitySearchTerm.toLowerCase());
+        record.manager_list.some(n => n.toLowerCase().includes(activitySearchTerm.toLowerCase()));
       
       const matchesStatus = activityFilterStatus === 'all' || record.status === activityFilterStatus;
       
