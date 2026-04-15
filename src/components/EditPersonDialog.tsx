@@ -53,6 +53,47 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
   });
   const { toast } = useToast();
 
+  // Load current DB role and account status for staff
+  useEffect(() => {
+    const loadRoleAndAccountStatus = async () => {
+      if (!open || !person || person.role === 'Student') {
+        setDbRole('');
+        setSelectedRole('');
+        setHasAccount(null);
+        return;
+      }
+
+      // Check if they have a profiles record (i.e., have an account)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', person.id)
+        .maybeSingle();
+
+      setHasAccount(!!profile);
+
+      // Load actual role from user_roles table
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', person.id);
+
+      if (roles && roles.length > 0) {
+        // Pick highest priority role
+        const roleMap: Record<string, number> = { system_admin: 1, district_admin: 2, school_admin: 3, teacher: 4 };
+        const sorted = roles.sort((a, b) => (roleMap[a.role] || 99) - (roleMap[b.role] || 99));
+        setDbRole(sorted[0].role);
+        setSelectedRole(sorted[0].role);
+      } else {
+        // No role in DB, infer from display role
+        const inferredRole = person.role === 'School Admin' ? 'school_admin' : 'teacher';
+        setDbRole(inferredRole);
+        setSelectedRole(inferredRole);
+      }
+    };
+    loadRoleAndAccountStatus();
+  }, [open, person]);
+
   // Update form data when person changes
   useEffect(() => {
     if (person) {
