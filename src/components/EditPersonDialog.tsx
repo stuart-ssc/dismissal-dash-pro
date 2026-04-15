@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { EmailChangeDialog } from "@/components/EmailChangeDialog";
-import { Mail } from "lucide-react";
+import { Mail, AlertCircle } from "lucide-react";
 
 interface PersonData {
   id: string;
@@ -37,6 +37,9 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
   const [availableWalkerLocations, setAvailableWalkerLocations] = useState<Array<{ id: string; location_name: string }>>([]);
   const [availableActivities, setAvailableActivities] = useState<Array<{ id: string; activity_name: string }>>([]);
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
+  const [dbRole, setDbRole] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<string>('');
+  const [hasAccount, setHasAccount] = useState<boolean | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -49,6 +52,47 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
     transportTargetId: '',
   });
   const { toast } = useToast();
+
+  // Load current DB role and account status for staff
+  useEffect(() => {
+    const loadRoleAndAccountStatus = async () => {
+      if (!open || !person || person.role === 'Student') {
+        setDbRole('');
+        setSelectedRole('');
+        setHasAccount(null);
+        return;
+      }
+
+      // Check if they have a profiles record (i.e., have an account)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', person.id)
+        .maybeSingle();
+
+      setHasAccount(!!profile);
+
+      // Load actual role from user_roles table
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', person.id);
+
+      if (roles && roles.length > 0) {
+        // Pick highest priority role
+        const roleMap: Record<string, number> = { system_admin: 1, district_admin: 2, school_admin: 3, teacher: 4 };
+        const sorted = roles.sort((a, b) => (roleMap[a.role] || 99) - (roleMap[b.role] || 99));
+        setDbRole(sorted[0].role);
+        setSelectedRole(sorted[0].role);
+      } else {
+        // No role in DB, infer from display role
+        const inferredRole = person.role === 'School Admin' ? 'school_admin' : 'teacher';
+        setDbRole(inferredRole);
+        setSelectedRole(inferredRole);
+      }
+    };
+    loadRoleAndAccountStatus();
+  }, [open, person]);
 
   // Update form data when person changes
   useEffect(() => {
@@ -216,7 +260,8 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
             if (insErr) throw insErr;
           }
         }
-      } else if (person.role === 'Teacher') {
+      } else if (person.role === 'Teacher' || person.role === 'School Admin') {
+        // Update teacher record
         const { error } = await supabase
           .from('teachers')
           .update({
@@ -227,18 +272,38 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
           .eq('id', person.id);
 
         if (error) throw error;
-      } else if (person.role === 'School Admin') {
-        // Update profile for school admin
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            email: formData.email
-          })
-          .eq('id', person.id);
 
-        if (error) throw error;
+        // Also update profiles if they have an account
+        if (hasAccount) {
+          await supabase
+            .from('profiles')
+            .update({
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              email: formData.email
+            })
+            .eq('id', person.id);
+        }
+
+        // Handle role change if different from DB role
+        if (selectedRole && selectedRole !== dbRole && hasAccount) {
+          // Delete old role
+          await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', person.id)
+            .eq('role', dbRole as any);
+
+          // Insert new role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: person.id,
+              role: selectedRole as any
+            });
+
+          if (roleError) throw roleError;
+        }
       }
 
       toast({
@@ -320,6 +385,31 @@ export const EditPersonDialog = ({ person, open, onOpenChange, schoolId, onPerso
               <p className="text-xs text-muted-foreground">
                 Use "Change Email" button for secure email updates that sync with authentication.
               </p>
+            </div>
+          )}
+
+          {(person.role === 'Teacher' || person.role === 'School Admin') && (
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              {hasAccount === false ? (
+                <div className="flex items-center gap-2 p-3 rounded-md bg-muted text-muted-foreground text-sm">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>This person must complete their account setup before their role can be changed.</span>
+                </div>
+              ) : (
+                <Select
+                  value={selectedRole}
+                  onValueChange={setSelectedRole}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectItem value="school_admin">School Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
 
