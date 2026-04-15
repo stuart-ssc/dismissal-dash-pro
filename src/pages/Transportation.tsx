@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -130,7 +131,7 @@ interface ActivityTransportRecord {
   location: string | null;
   status: 'active' | 'inactive';
   students_count: number;
-  manager_names: string;
+  manager_list: string[];
   created_at: string;
   updated_at: string;
 }
@@ -522,10 +523,9 @@ const Transportation = () => {
           .select('manager_id, teachers(first_name, last_name)')
           .eq('group_id', group.id);
 
-        const managerNames = (managers || [])
+        const managerList = (managers || [])
           .map((m: any) => m.teachers ? `${m.teachers.first_name} ${m.teachers.last_name}` : '')
-          .filter(Boolean)
-          .join(', ');
+          .filter(Boolean);
 
         records.push({
           id: ato.id,
@@ -536,7 +536,7 @@ const Transportation = () => {
           location: ato.location,
           status: ato.status as 'active' | 'inactive',
           students_count: studentCount || 0,
-          manager_names: managerNames,
+          manager_list: managerList,
           created_at: ato.created_at,
           updated_at: ato.updated_at,
         });
@@ -652,7 +652,7 @@ const Transportation = () => {
       const matchesSearch = 
         record.group_name.toLowerCase().includes(activitySearchTerm.toLowerCase()) ||
         (record.location && record.location.toLowerCase().includes(activitySearchTerm.toLowerCase())) ||
-        record.manager_names.toLowerCase().includes(activitySearchTerm.toLowerCase());
+        record.manager_list.some(n => n.toLowerCase().includes(activitySearchTerm.toLowerCase()));
       
       const matchesStatus = activityFilterStatus === 'all' || record.status === activityFilterStatus;
       
@@ -2761,9 +2761,9 @@ const Transportation = () => {
                                 <div className="min-w-0 flex-1">
                                   <CardTitle className="text-base">{activity.group_name}</CardTitle>
                                   <div className="flex flex-wrap gap-2 mt-2">
-                                    <Badge variant="outline">{activity.group_type}</Badge>
+                                    <Badge variant="outline">{activity.group_type.charAt(0).toUpperCase() + activity.group_type.slice(1).replace(/_/g, ' ')}</Badge>
                                     <Badge variant={activity.status === 'active' ? 'default' : 'secondary'}>
-                                      {activity.status}
+                                      {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
                                     </Badge>
                                     <Badge variant="secondary">{activity.students_count} students</Badge>
                                   </div>
@@ -2810,7 +2810,20 @@ const Transportation = () => {
                                   </div>
                                   <div>
                                     <div className="text-muted-foreground">Managers</div>
-                                    <div className="font-medium">{activity.manager_names || '-'}</div>
+                                    <div className="font-medium">
+                                      {activity.manager_list.length > 0 ? (
+                                        <HoverCard>
+                                          <HoverCardTrigger asChild>
+                                            <Badge variant="secondary" className="cursor-pointer">{activity.manager_list.length}</Badge>
+                                          </HoverCardTrigger>
+                                          <HoverCardContent className="w-auto">
+                                            <ul className="text-sm space-y-1">
+                                              {activity.manager_list.map((name, i) => <li key={i}>{name}</li>)}
+                                            </ul>
+                                          </HoverCardContent>
+                                        </HoverCard>
+                                      ) : '-'}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -2837,9 +2850,22 @@ const Transportation = () => {
                             {filteredAfterSchoolActivities.map((activity) => (
                               <TableRow key={activity.id}>
                                 <TableCell className="font-medium">{activity.group_name}</TableCell>
-                                <TableCell><Badge variant="outline">{activity.group_type}</Badge></TableCell>
+                                <TableCell><Badge variant="outline">{activity.group_type.charAt(0).toUpperCase() + activity.group_type.slice(1).replace(/_/g, ' ')}</Badge></TableCell>
                                 <TableCell>{activity.location || '-'}</TableCell>
-                                <TableCell>{activity.manager_names || '-'}</TableCell>
+                                <TableCell>
+                                  {activity.manager_list.length > 0 ? (
+                                    <HoverCard>
+                                      <HoverCardTrigger asChild>
+                                        <Badge variant="secondary" className="cursor-pointer">{activity.manager_list.length}</Badge>
+                                      </HoverCardTrigger>
+                                      <HoverCardContent className="w-auto">
+                                        <ul className="text-sm space-y-1">
+                                          {activity.manager_list.map((name, i) => <li key={i}>{name}</li>)}
+                                        </ul>
+                                      </HoverCardContent>
+                                    </HoverCard>
+                                  ) : '-'}
+                                </TableCell>
                                 <TableCell>
                                   <Badge variant="secondary">{activity.students_count}</Badge>
                                 </TableCell>
@@ -3877,7 +3903,7 @@ const Transportation = () => {
                         </FormControl>
                         <SelectContent>
                           {availableGroups.map((g) => (
-                            <SelectItem key={g.id} value={g.id}>{g.name} ({g.group_type})</SelectItem>
+                            <SelectItem key={g.id} value={g.id}>{g.name} ({g.group_type.charAt(0).toUpperCase() + g.group_type.slice(1).replace(/_/g, ' ')})</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
