@@ -433,7 +433,7 @@ const Classes = () => {
           onOpenChange={(o) => !o && setManagingClass(null)}
           classId={managingClass.id}
           className={managingClass.class_name}
-          gradeLevel={managingClass.grade_level}
+          gradeLevel={managingClass.grade_level || ''}
           schoolId={schoolId}
           onUpdated={() => {
             queryClient.invalidateQueries({ queryKey: ['classes'] });
