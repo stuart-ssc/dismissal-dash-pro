@@ -1,25 +1,42 @@
 
 
-# UI Polish: Capitalize Type Badges + Manager Count with Hover
+# Clickable Count Badges to Open Manage Dialogs
+
+## Problem
+Student, teacher, and manager count badges in tables are static. They should be clickable to open the corresponding "Manage..." dialog directly.
 
 ## Changes
 
-### 1. Capitalize group_type in badges
-Replace raw `activity.group_type` with a capitalize helper everywhere it's displayed. Apply to both mobile cards and desktop table. Also capitalize in the group selector dropdown.
+### 1. Classes Page (`src/pages/Classes.tsx`)
+- **Student count badge** (lines ~682, ~712): Make clickable — clicking opens `ManageClassStudentsDialog` for that class (sets `managingClass` state)
+- Style: `cursor-pointer hover:bg-primary/20` on the Badge
 
-Helper: `text.charAt(0).toUpperCase() + text.slice(1).replace(/_/g, ' ')` — turns `field_trip` → `Field trip`, `athletics` → `Athletics`.
+### 2. Groups Page (`src/pages/GroupsTeams.tsx`)
+- **Student count badge** (line ~443 desktop, ~413 mobile): Make clickable — opens `ManageGroupStudentsDialog` (sets `selectedGroup` + `studentsDialogOpen`)
+- **Manager count** (line ~444 desktop, ~417 mobile): Wrap in a Badge, make clickable — opens `ManageGroupManagersDialog` (sets `selectedGroup` + `managersDialogOpen`)
 
-### 2. Manager count badge with hover tooltip
-Replace the raw comma-separated manager names with a count badge (e.g., "5 managers"). Wrap it in a `HoverCard` or `Tooltip` that reveals the full list on hover.
+### 3. Transportation Page (`src/pages/Transportation.tsx`)
+- **Student count badge** (lines ~2768 mobile, ~2870 desktop): Make clickable — navigates to Groups page (since students are managed via the linked group, not on Transportation directly). Use `navigate('/dashboard/groups')`
+- **Manager count badge** (lines ~2817, ~2859): Same — navigate to Groups page since managers are managed there
 
-Locations to update in `Transportation.tsx`:
-- **Desktop table** (line ~2842): Replace `{activity.manager_names || '-'}` with a count badge + tooltip
-- **Mobile cards** (line ~2813): Same treatment
-- **Type badges** (lines ~2764, ~2840, ~3880): Capitalize the value
+### 4. Admin Classes Page (`src/pages/admin/Classes.tsx`)
+- **Student count badge** (line ~372): This page doesn't have a ManageClassStudentsDialog wired up. Add state + dialog import, make badge clickable to open it.
 
-### 3. Data model tweak
-Change `manager_names: string` on `ActivityTransportRecord` to `manager_list: string[]` so we can count and display individually. Update the data fetch to store an array instead of joining to a string.
+## Implementation Pattern
+```tsx
+// Clickable badge example
+<Badge
+  variant="secondary"
+  className="cursor-pointer hover:bg-secondary/80"
+  onClick={() => { setSelectedGroup(group); setStudentsDialogOpen(true); }}
+>
+  {group.student_count}
+</Badge>
+```
 
 ## Files Changed
-- `src/pages/Transportation.tsx` — capitalize type, manager count badge with hover
+- `src/pages/Classes.tsx` — clickable student count badges
+- `src/pages/GroupsTeams.tsx` — clickable student + manager count badges
+- `src/pages/Transportation.tsx` — clickable badges navigate to groups page
+- `src/pages/admin/Classes.tsx` — clickable student count badge + wire up dialog
 
