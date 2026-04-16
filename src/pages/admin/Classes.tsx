@@ -369,7 +369,7 @@ const Classes = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{cls.student_count}</Badge>
+                        <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => setManagingClass(cls)}>{cls.student_count}</Badge>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>

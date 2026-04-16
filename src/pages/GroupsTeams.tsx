@@ -410,11 +410,11 @@ export default function SpecialUseGroups() {
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
                           <div className="text-muted-foreground">Students</div>
-                          <div className="font-medium">{group.student_count}</div>
+                          <div className="font-medium"><Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => { setSelectedGroup(group); setStudentsDialogOpen(true); }}>{group.student_count}</Badge></div>
                         </div>
                         <div>
                           <div className="text-muted-foreground">Managers</div>
-                          <div className="font-medium">{group.manager_count}</div>
+                          <div className="font-medium"><Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => { setSelectedGroup(group); setManagersDialogOpen(true); }}>{group.manager_count}</Badge></div>
                         </div>
                       </div>
                     </CardContent>
@@ -440,8 +440,8 @@ export default function SpecialUseGroups() {
                         <TableRow key={group.id} className="border-border hover:bg-muted/30">
                           <TableCell className="font-medium">{group.name}</TableCell>
                           <TableCell>{getGroupTypeBadge(group.group_type)}</TableCell>
-                          <TableCell><Badge variant="secondary">{group.student_count}</Badge></TableCell>
-                          <TableCell>{group.manager_count}</TableCell>
+                          <TableCell><Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => { setSelectedGroup(group); setStudentsDialogOpen(true); }}>{group.student_count}</Badge></TableCell>
+                          <TableCell><Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => { setSelectedGroup(group); setManagersDialogOpen(true); }}>{group.manager_count}</Badge></TableCell>
                           <TableCell>
                             <Badge variant={group.is_active ? "default" : "secondary"}>
                               {group.is_active ? "Active" : "Inactive"}
