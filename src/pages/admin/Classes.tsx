@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { ManageClassStudentsDialog } from "@/components/ManageClassStudentsDialog";
 
 interface ClassData {
   id: string;
@@ -42,6 +43,7 @@ const Classes = () => {
   const [pageSize, setPageSize] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
   const [assignmentFilter, setAssignmentFilter] = useState<string>("assigned");
+  const [managingClass, setManagingClass] = useState<ClassData | null>(null);
 
   useEffect(() => {
     const fetchSchoolData = async () => {
@@ -369,7 +371,7 @@ const Classes = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{cls.student_count}</Badge>
+                        <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => setManagingClass(cls)}>{cls.student_count}</Badge>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -424,6 +426,21 @@ const Classes = () => {
           )}
         </CardContent>
       </Card>
+
+      {managingClass && schoolId && (
+        <ManageClassStudentsDialog
+          open={!!managingClass}
+          onOpenChange={(o) => !o && setManagingClass(null)}
+          classId={managingClass.id}
+          className={managingClass.class_name}
+          gradeLevel={managingClass.grade_level || ''}
+          schoolId={schoolId}
+          onUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['classes'] });
+            queryClient.invalidateQueries({ queryKey: ['classes-stats'] });
+          }}
+        />
+      )}
     </div>
   );
 };

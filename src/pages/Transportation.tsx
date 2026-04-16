@@ -2765,7 +2765,7 @@ const Transportation = () => {
                                     <Badge variant={activity.status === 'active' ? 'default' : 'secondary'}>
                                       {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
                                     </Badge>
-                                    <Badge variant="secondary">{activity.students_count} students</Badge>
+                                    <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => navigate('/dashboard/groups')}>{activity.students_count} students</Badge>
                                   </div>
                                 </div>
                                 <DropdownMenu>
@@ -2814,7 +2814,7 @@ const Transportation = () => {
                                       {activity.manager_list.length > 0 ? (
                                         <HoverCard>
                                           <HoverCardTrigger asChild>
-                                            <Badge variant="secondary" className="cursor-pointer">{activity.manager_list.length}</Badge>
+                                            <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => navigate('/dashboard/groups')}>{activity.manager_list.length}</Badge>
                                           </HoverCardTrigger>
                                           <HoverCardContent className="w-auto">
                                             <ul className="text-sm space-y-1">
@@ -2856,7 +2856,7 @@ const Transportation = () => {
                                   {activity.manager_list.length > 0 ? (
                                     <HoverCard>
                                       <HoverCardTrigger asChild>
-                                        <Badge variant="secondary" className="cursor-pointer">{activity.manager_list.length}</Badge>
+                                        <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => navigate('/dashboard/groups')}>{activity.manager_list.length}</Badge>
                                       </HoverCardTrigger>
                                       <HoverCardContent className="w-auto">
                                         <ul className="text-sm space-y-1">
@@ -2867,7 +2867,7 @@ const Transportation = () => {
                                   ) : '-'}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="secondary">{activity.students_count}</Badge>
+                                  <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => navigate('/dashboard/groups')}>{activity.students_count}</Badge>
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant={activity.status === 'active' ? 'default' : 'secondary'}>

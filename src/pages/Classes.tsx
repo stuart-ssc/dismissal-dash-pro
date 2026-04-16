@@ -679,7 +679,7 @@ const Classes = () => {
                             </CardHeader>
                             <CardContent className="pt-0">
                               <div className="flex items-center gap-2">
-                                <Badge variant="secondary">{classRecord.student_count} students</Badge>
+                                <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => setManagingClass(classRecord)}>{classRecord.student_count} students</Badge>
                               </div>
                             </CardContent>
                           </Card>
@@ -709,7 +709,7 @@ const Classes = () => {
                               <TableRow key={classRecord.id} className="border-border hover:bg-muted/30">
                                 <TableCell className="font-medium">{classRecord.class_name}</TableCell>
                                 <TableCell>{classRecord.teacher_name || 'No teacher assigned'}</TableCell>
-                                <TableCell><Badge variant="secondary">{classRecord.student_count}</Badge></TableCell>
+                                <TableCell><Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80" onClick={() => setManagingClass(classRecord)}>{classRecord.student_count}</Badge></TableCell>
                                 <TableCell>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
